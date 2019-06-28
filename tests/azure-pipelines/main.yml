@@ -17,9 +17,10 @@
 
 # Azure pipeline
 # We use these pipelines to cover windows and mac build
+
+name: $(Date:yyyyMMdd)$(Rev:.r)
 jobs:
-  # Windows x86 build
-  - job: Windows_VS2017_x86
+  - job: 'Windows VS2017 x86'
     pool:
       vmImage: 'vs2017-win2016'
     steps:
@@ -40,8 +41,7 @@ jobs:
         solution: 'build.common/ALL_BUILD.vcxproj'
         maximumCpuCount: true
         configuration: 'Release'
-  # Windows x64 build
-  - job: Windows_VS2017_x64
+  - job: 'Windows VS2017 x64'
     pool:
       vmImage: 'vs2017-win2016'
     steps:
@@ -60,8 +60,7 @@ jobs:
     - task: MSBuild@1
       inputs:
         solution: 'build.common/ALL_BUILD.vcxproj'
-  # MacOS build
-  - job: MacOS_XCode9
+  - job: 'MacOS XCode9'
     pool:
       vmImage: 'xcode9-macos10.13'
     steps:
@@ -73,9 +72,10 @@ jobs:
       inputs:
         workingDirectory: 'build.common'
         cmakeArgs: >
+          –GNinja
           -DUSE_SORT=ON
           -DUSE_RPC=ON
           -DUSE_GRAPH_RUNTIME=ON
           ..
-    - script: cd build.common && make -j4
+    - script: cd build.common && ninja
       displayName: Build the project
