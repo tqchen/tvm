@@ -20,7 +20,7 @@
 
 name: $(Date:yyyyMMdd)$(Rev:.r)
 jobs:
-  - job: 'Windows VS2017 x86'
+  - job: Windows_VS2017_x86
     pool:
       vmImage: 'vs2017-win2016'
     steps:
@@ -41,7 +41,7 @@ jobs:
         solution: 'build.common/ALL_BUILD.vcxproj'
         maximumCpuCount: true
         configuration: 'Release'
-  - job: 'Windows VS2017 x64'
+  - job: Windows_VS2017_x64
     pool:
       vmImage: 'vs2017-win2016'
     steps:
@@ -60,7 +60,7 @@ jobs:
     - task: MSBuild@1
       inputs:
         solution: 'build.common/ALL_BUILD.vcxproj'
-  - job: 'MacOS XCode9'
+  - job: MacOS_XCode9
     pool:
       vmImage: 'xcode9-macos10.13'
     steps:
