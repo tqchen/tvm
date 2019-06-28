@@ -31,6 +31,7 @@ jobs:
           -DUSE_SORT=ON
           -DUSE_RPC=ON
           -DUSE_GRAPH_RUNTIME=ON
+          ..
     - task: MSBuild@1
       inputs:
         solution: 'build.common/ALL_BUILD.vcxproj'
@@ -50,6 +51,7 @@ jobs:
           -DUSE_SORT=ON
           -DUSE_RPC=ON
           -DUSE_GRAPH_RUNTIME=ON
+          ..
     - task: MSBuild@1
       inputs:
         solution: 'build.common/ALL_BUILD.vcxproj'
