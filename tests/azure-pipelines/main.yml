@@ -61,7 +61,7 @@ jobs:
       inputs:
         solution: 'build.common/ALL_BUILD.vcxproj'
   # MacOS build
-  - job: MacOS-XCode9
+  - job: MacOS_XCode9
     pool:
       vmImage: 'xcode9-macos10.13'
     steps:
