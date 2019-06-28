@@ -22,8 +22,8 @@ jobs:
     pool:
       vmImage: 'vs2017-win2016'
     steps:
+    - script: git submodule update --recursive --init
     - script: mkdir build.common
-      displayName: Make Build Directory
     - task: CMake@1
       inputs:
         workingDirectory: 'build.common'
@@ -42,8 +42,8 @@ jobs:
     pool:
       vmImage: 'vs2017-win2016'
     steps:
+    - script: git submodule update --recursive --init
     - script: mkdir build.common
-      displayName: Make Build Directory
     - task: CMake@1
       inputs:
         workingDirectory: 'build.common'
