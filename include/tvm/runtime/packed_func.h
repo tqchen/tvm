@@ -237,6 +237,12 @@ class TypedPackedFunc<R(Args...)> {
   TypedPackedFunc(const FLambda& typed_lambda) {  // NOLINT(*)
     this->AssignTypedLambda(typed_lambda);
   }
+  template <typename FLambda, typename = typename std::enable_if<
+                                  std::is_convertible<FLambda,
+                                                      std::function<R(Args...)>>::value>::type>
+  TypedPackedFunc(const FLambda& typed_lambda, std::string name) {  // NOLINT(*)
+    this->AssignTypedLambda(typed_lambda, name);
+  }
   /*!
    * \brief copy assignment operator from typed lambda
    *
@@ -302,6 +308,15 @@ class TypedPackedFunc<R(Args...)> {
    */
   template <typename FLambda>
   inline void AssignTypedLambda(FLambda flambda);
+  /*!
+   * \brief Assign the packed field using a typed lambda function.
+   *
+   * \param flambda The lambda function.
+   * \tparam FLambda The lambda function type.
+   * \note We capture the lambda when possible for maximum efficiency.
+   */
+  template <typename FLambda>
+  inline void AssignTypedLambda(FLambda flambda, std::string name);
 };
 
 /*! \brief Arguments into TVM functions. */
@@ -573,7 +588,7 @@ class TVMMovableArgValueWithContext_ {
  public:
  public:
   TVMMovableArgValueWithContext_(TVMValue value, int type_code,
-                                 int arg_index, std::string* name)
+                                 int arg_index, const std::string* name)
       : value_(value, type_code), arg_index_(arg_index), name_(name) {}
 
   template<typename T>
@@ -582,7 +597,7 @@ class TVMMovableArgValueWithContext_ {
  private:
   TVMMovableArgValue_ value_;
   int arg_index_;
-  std::string* name_;
+  const std::string* name_;
 };
 
 /*!
@@ -1237,13 +1252,14 @@ template <typename R, int nleft, int index, typename F>
 struct unpack_call_dispatcher {
   template <typename... Args>
   TVM_ALWAYS_INLINE static void run(const F& f, const TVMArgs& args_pack, TVMRetValue* rv,
+                                    const std::string* opt_name,
                                     Args&&... unpacked_args) {
     // construct a movable argument value
     // which allows potential move of argument to the input of F.
     unpack_call_dispatcher<R, nleft - 1, index + 1, F>::run(
-        f, args_pack, rv, std::forward<Args>(unpacked_args)...,
+        f, args_pack, rv, opt_name, std::forward<Args>(unpacked_args)...,
         TVMMovableArgValueWithContext_(args_pack.values[index], args_pack.type_codes[index],
-                                       index, nullptr));
+                                       index, opt_name));
   }
 };
 
@@ -1251,6 +1267,7 @@ template <typename R, int index, typename F>
 struct unpack_call_dispatcher<R, 0, index, F> {
   template <typename... Args>
   TVM_ALWAYS_INLINE static void run(const F& f, const TVMArgs& args_pack, TVMRetValue* rv,
+                                    const std::string* opt_name,
                                     Args&&... unpacked_args) {
     using RetType = decltype(f(std::forward<Args>(unpacked_args)...));
     if (std::is_same<RetType, R>::value) {
@@ -1265,15 +1282,17 @@ template <int index, typename F>
 struct unpack_call_dispatcher<void, 0, index, F> {
   template <typename... Args>
   TVM_ALWAYS_INLINE static void run(const F& f, const TVMArgs& args_pack, TVMRetValue* rv,
+                                    const std::string* opt_name,
                                     Args&&... unpacked_args) {
     f(std::forward<Args>(unpacked_args)...);
   }
 };
 
 template <typename R, int nargs, typename F>
-TVM_ALWAYS_INLINE void unpack_call(const F& f, const TVMArgs& args, TVMRetValue* rv) {
+TVM_ALWAYS_INLINE void unpack_call(const F& f, const TVMArgs& args, TVMRetValue* rv,
+                                   const std::string* opt_name = nullptr) {
   ICHECK_EQ(nargs, args.size()) << "Expect " << nargs << " arguments but get " << args.size();
-  unpack_call_dispatcher<R, nargs, 0, F>::run(f, args, rv);
+  unpack_call_dispatcher<R, nargs, 0, F>::run(f, args, rv, opt_name);
 }
 
 template <typename FType>
@@ -1329,6 +1348,14 @@ template <typename FType>
 inline void TypedPackedFunc<R(Args...)>::AssignTypedLambda(FType flambda) {
   packed_ = PackedFunc([flambda](const TVMArgs& args, TVMRetValue* rv) {
     detail::unpack_call<R, sizeof...(Args)>(flambda, args, rv);
+  });
+}
+
+template <typename R, typename... Args>
+template <typename FType>
+inline void TypedPackedFunc<R(Args...)>::AssignTypedLambda(FType flambda, std::string name) {
+  packed_ = PackedFunc([flambda, name](const TVMArgs& args, TVMRetValue* rv) {
+    detail::unpack_call<R, sizeof...(Args)>(flambda, args, rv, &name);
   });
 }
 
