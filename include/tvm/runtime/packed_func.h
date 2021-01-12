@@ -60,7 +60,7 @@ namespace runtime {
 // forward declarations
 class TVMArgs;
 class TVMArgValue;
-class TVMMovableArgValue_;
+class TVMMovableArgValueWithContext_;
 class TVMRetValue;
 class TVMArgsSetter;
 
@@ -215,7 +215,7 @@ class TypedPackedFunc<R(Args...)> {
    * \brief constructor from TVMMovableArgValue_
    * \param value The TVMMovableArgValue_
    */
-  inline TypedPackedFunc(TVMMovableArgValue_&& value);  // NOLINT(*)
+  inline TypedPackedFunc(TVMMovableArgValueWithContext_&& value);  // NOLINT(*)
   /*!
    * \brief construct from a lambda function with the same signature.
    *
@@ -560,6 +560,29 @@ class TVMMovableArgValue_ : public TVMPODValue_ {
  private:
   /*! \return The arg value repr of the value. */
   TVMArgValue AsArgValue() const { return TVMArgValue(value_, type_code_); }
+};
+
+/*!
+ * \brief Internal auxiliary struct for TypedPackedFunc to indicate a movable argument
+ *  with additional context information for better error reporting.
+ *
+ * \sa MovableArgValue_
+ * \note For internal development purpose only.
+ */
+class TVMMovableArgValueWithContext_ {
+ public:
+ public:
+  TVMMovableArgValueWithContext_(TVMValue value, int type_code,
+                                 int arg_index, std::string* name)
+      : value_(value, type_code), arg_index_(arg_index), name_(name) {}
+
+  template<typename T>
+  inline operator T() const;
+
+ private:
+  TVMMovableArgValue_ value_;
+  int arg_index_;
+  std::string* name_;
 };
 
 /*!
@@ -1219,7 +1242,8 @@ struct unpack_call_dispatcher {
     // which allows potential move of argument to the input of F.
     unpack_call_dispatcher<R, nleft - 1, index + 1, F>::run(
         f, args_pack, rv, std::forward<Args>(unpacked_args)...,
-        TVMMovableArgValue_(args_pack.values[index], args_pack.type_codes[index]));
+        TVMMovableArgValueWithContext_(args_pack.values[index], args_pack.type_codes[index],
+                                       index, nullptr));
   }
 };
 
@@ -1297,7 +1321,7 @@ TypedPackedFunc<R(Args...)>::TypedPackedFunc(const TVMArgValue& value)
     : packed_(value.operator PackedFunc()) {}
 
 template <typename R, typename... Args>
-TypedPackedFunc<R(Args...)>::TypedPackedFunc(TVMMovableArgValue_&& value)
+TypedPackedFunc<R(Args...)>::TypedPackedFunc(TVMMovableArgValueWithContext_&& value)
     : packed_(value.operator PackedFunc()) {}
 
 template <typename R, typename... Args>
@@ -1465,6 +1489,18 @@ inline TVMMovableArgValue_::operator T() const {
   }
   // fallback
   return PackedFuncValueConverter<T>::From(AsArgValue());
+}
+
+template <typename T>
+inline TVMMovableArgValueWithContext_::operator T() const{
+  try {
+    return value_;
+  } catch (dmlc::Error &e) {
+    LOG(FATAL)
+      << (name_ != nullptr ? "" : *name_)
+      << "Error at argument " << arg_index_ << e.what();
+    throw "";
+  }
 }
 
 template <typename T, typename>
