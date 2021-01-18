@@ -365,7 +365,8 @@ class Vectorizer : public StmtMutator, public ExprFunctor<PrimExpr(const PrimExp
     if (extent.same_as(op->extent) && body.same_as(op->body)) {
       return GetRef<Stmt>(op);
     } else {
-      return For(op->loop_var, op->min, extent, op->for_type, body, op->thread_binding, op->annotations);
+      return For(op->loop_var, op->min, extent, op->for_type, body, op->thread_binding,
+                 op->annotations);
     }
   }
   // IfThenElse

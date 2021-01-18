@@ -128,9 +128,8 @@ TVM_STATIC_IR_FUNCTOR(ReprPrinter, vtable)
     });
 
 // For
-For::For(Var loop_var, PrimExpr min, PrimExpr extent, ForType for_type,
-         Stmt body, Optional<IterVar> thread_binding,
-         Map<String, ObjectRef> annotations, Span span) {
+For::For(Var loop_var, PrimExpr min, PrimExpr extent, ForType for_type, Stmt body,
+         Optional<IterVar> thread_binding, Map<String, ObjectRef> annotations, Span span) {
   ICHECK(min.defined());
   ICHECK(extent.defined());
   ICHECK(min.dtype().is_scalar());
@@ -150,12 +149,12 @@ For::For(Var loop_var, PrimExpr min, PrimExpr extent, ForType for_type,
   data_ = std::move(node);
 }
 
-TVM_REGISTER_GLOBAL("tir.For").set_body_typed([](Var loop_var, PrimExpr min, PrimExpr extent,
-                                                 int for_type, Stmt body, Optional<IterVar> thread_binding,
-                                                 Map<String, ObjectRef> annotations, Span span) {
-  return For(loop_var, min, extent, static_cast<ForType>(for_type),
-             body, thread_binding, annotations, span);
-});
+TVM_REGISTER_GLOBAL("tir.For").set_body_typed(
+    [](Var loop_var, PrimExpr min, PrimExpr extent, int for_type, Stmt body,
+       Optional<IterVar> thread_binding, Optional<Map<String, ObjectRef>> annotations, Span span) {
+      return For(loop_var, min, extent, static_cast<ForType>(for_type), body, thread_binding,
+                 annotations.value_or(Map<String, ObjectRef>()), span);
+    });
 
 TVM_REGISTER_NODE_TYPE(ForNode);
 
