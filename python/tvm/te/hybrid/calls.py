@@ -23,18 +23,18 @@ from tvm.ir.container import Array
 from tvm.target import Target
 from tvm.tir import expr as _expr
 from tvm.tir import call_intrin
-from tvm.tir.stmt import For
+from tvm.tir.stmt import For, ForKind
 
 from .utils import _internal_assert
 
 # pylint: disable=redefined-builtin,invalid-name
 
 LOOP_INTRIN = {
-    "range": For.Serial,
-    "unroll": For.Unrolled,
-    "parallel": For.Parallel,
-    "vectorize": For.Vectorized,
-    "const_range": (For.Unrolled,),
+    "range": ForKind.SERIAL,
+    "unroll": ForKind.UNROLLED,
+    "parallel": ForKind.PARALLEL,
+    "vectorize": ForKind.VECTORIZED,
+    "const_range": (ForKind.UNROLLED,),
 }
 
 
