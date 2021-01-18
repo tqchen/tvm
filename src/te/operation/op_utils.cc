@@ -77,7 +77,7 @@ std::vector<std::vector<Stmt> > MakeLoopNest(const Stage& stage,
         var = Var(iv->var->name_hint + ".init", bind_iv->var.dtype());
       }
 
-      ForType for_type = ForType::Serial;
+      ForKind for_type = ForKind::Serial;
       IterVarAttr it_attr;
       if (stage->iter_var_attrs.count(iv)) {
         it_attr = stage->iter_var_attrs[iv];
@@ -85,13 +85,13 @@ std::vector<std::vector<Stmt> > MakeLoopNest(const Stage& stage,
       if (it_attr.defined()) {
         switch (it_attr->iter_type) {
           case kUnrolled:
-            for_type = ForType::Unrolled;
+            for_type = ForKind::Unrolled;
             break;
           case kVectorized:
-            for_type = ForType::Vectorized;
+            for_type = ForKind::Vectorized;
             break;
           case kParallelized:
-            for_type = ForType::Parallel;
+            for_type = ForKind::Parallel;
             break;
           case kDataPar:
             break;
@@ -243,33 +243,33 @@ Stmt Substitute(Stmt s, const std::unordered_map<IterVar, PrimExpr>& value_map) 
   return tir::Substitute(s, init);
 }
 
-IterVarType ForTypeToIterVarType(tir::ForType for_type) {
+IterVarType ForKindToIterVarType(tir::ForKind for_type) {
   switch (for_type) {
-    case ForType::Serial:
+    case ForKind::Serial:
       return kDataPar;
-    case ForType::Parallel:
+    case ForKind::Parallel:
       return kParallelized;
-    case ForType::Vectorized:
+    case ForKind::Vectorized:
       return kVectorized;
-    case ForType::Unrolled:
+    case ForKind::Unrolled:
       return kUnrolled;
     default:
       return kDataPar;
   }
 }
 
-tir::ForType IterVarTypeToForType(IterVarType iter_type) {
+tir::ForKind IterVarTypeToForKind(IterVarType iter_type) {
   switch (iter_type) {
     case kDataPar:
-      return ForType::Serial;
+      return ForKind::Serial;
     case kParallelized:
-      return ForType::Parallel;
+      return ForKind::Parallel;
     case kVectorized:
-      return ForType::Vectorized;
+      return ForKind::Vectorized;
     case kUnrolled:
-      return ForType::Unrolled;
+      return ForKind::Unrolled;
     default:
-      return ForType::Serial;
+      return ForKind::Serial;
   }
 }
 

@@ -84,7 +84,7 @@ std::string CodeGenCUDA::Finish() {
 
 void CodeGenCUDA::VisitStmt_(const tir::ForNode* op) {
   ICHECK(is_const_int(op->min, 0));
-  if (op->for_type == tir::ForType::Unrolled) {
+  if (op->for_type == tir::ForKind::Unrolled) {
     PrintIndent();
     stream << "#pragma unroll\n";
   }

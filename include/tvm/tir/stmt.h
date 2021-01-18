@@ -755,11 +755,11 @@ class Evaluate : public Stmt {
 /*!
  * \brief The type of the loop.
  *
- *  ForType can change the control flow semantics
+ *  ForKind can change the control flow semantics
  *  of the loop. So the for_type field needs to be considered
  *  in all TIR passes.
  */
-enum class ForType : int {
+enum class ForKind : int {
   /*! \brief default semantics -- serial execution. */
   Serial = 0,
   /*! \brief Parallel execution on CPU. */
@@ -804,11 +804,11 @@ class ForNode : public StmtNode {
   /*! \brief The extent of the iteration. */
   PrimExpr extent;
   /*! \brief The type of the for loop. */
-  ForType for_type;
+  ForKind for_type;
   /*! \brief The body of the for loop. */
   Stmt body;
   /*!
-   * \brief Only valid when for_type == ForType::ThreadBinding
+   * \brief Only valid when for_type == ForKind::ThreadBinding
    * The context thread that this loop variable bounds to.
    */
   Optional<IterVar> thread_binding;
@@ -860,7 +860,7 @@ class ForNode : public StmtNode {
  */
 class For : public Stmt {
  public:
-  TVM_DLL For(Var loop_var, PrimExpr min, PrimExpr extent, ForType for_type, Stmt body,
+  TVM_DLL For(Var loop_var, PrimExpr min, PrimExpr extent, ForKind for_type, Stmt body,
               Optional<IterVar> thread_binding = NullOpt,
               Map<String, ObjectRef> annotations = Map<String, ObjectRef>(), Span span = Span());
 
@@ -1044,7 +1044,7 @@ inline bool IsPragmaKey(const std::string& attr_key) {
 TVM_DLL PrimExpr TypeAnnotation(DataType dtype, Span span = Span());
 
 // overload printing of for type.
-TVM_DLL std::ostream& operator<<(std::ostream& os, ForType for_type);
+TVM_DLL std::ostream& operator<<(std::ostream& os, ForKind for_type);
 
 }  // namespace tir
 }  // namespace tvm

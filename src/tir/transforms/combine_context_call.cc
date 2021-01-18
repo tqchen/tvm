@@ -72,7 +72,7 @@ class ContextCallCombiner final : public StmtExprMutator {
   }
 
   Stmt VisitStmt_(const ForNode* op) final {
-    if (op->for_type == ForType::Parallel) {
+    if (op->for_type == ForKind::Parallel) {
       // Map of comparison expression to variable
       std::unordered_map<PrimExpr, Var, StructuralHash, StructuralEqual> temp;
       std::swap(temp, ctx_map_);

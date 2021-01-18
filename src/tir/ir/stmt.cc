@@ -128,7 +128,7 @@ TVM_STATIC_IR_FUNCTOR(ReprPrinter, vtable)
     });
 
 // For
-For::For(Var loop_var, PrimExpr min, PrimExpr extent, ForType for_type, Stmt body,
+For::For(Var loop_var, PrimExpr min, PrimExpr extent, ForKind for_type, Stmt body,
          Optional<IterVar> thread_binding, Map<String, ObjectRef> annotations, Span span) {
   ICHECK(min.defined());
   ICHECK(extent.defined());
@@ -152,27 +152,27 @@ For::For(Var loop_var, PrimExpr min, PrimExpr extent, ForType for_type, Stmt bod
 TVM_REGISTER_GLOBAL("tir.For").set_body_typed(
     [](Var loop_var, PrimExpr min, PrimExpr extent, int for_type, Stmt body,
        Optional<IterVar> thread_binding, Optional<Map<String, ObjectRef>> annotations, Span span) {
-      return For(loop_var, min, extent, static_cast<ForType>(for_type), body, thread_binding,
+      return For(loop_var, min, extent, static_cast<ForKind>(for_type), body, thread_binding,
                  annotations.value_or(Map<String, ObjectRef>()), span);
     });
 
 TVM_REGISTER_NODE_TYPE(ForNode);
 
-std::ostream& operator<<(std::ostream& out, ForType type) {  // NOLINT(*)
+std::ostream& operator<<(std::ostream& out, ForKind type) {  // NOLINT(*)
   switch (type) {
-    case ForType::Serial:
+    case ForKind::Serial:
       out << "for";
       break;
-    case ForType::Parallel:
+    case ForKind::Parallel:
       out << "parallel";
       break;
-    case ForType::Unrolled:
+    case ForKind::Unrolled:
       out << "unrolled";
       break;
-    case ForType::Vectorized:
+    case ForKind::Vectorized:
       out << "vectorized";
       break;
-    case ForType::ThreadBinding:
+    case ForKind::ThreadBinding:
       out << "launch_thread";
       break;
   }
