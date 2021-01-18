@@ -89,9 +89,9 @@ Stmt Substitute(Stmt stmt, const std::unordered_map<IterVar, PrimExpr>& value_ma
 
 /*!
  * \brief Converts Halide ForKind to its corresponding IterVarType
- * \param for_type The ForKind to be converted
+ * \param kind The ForKind to be converted
  */
-IterVarType ForKindToIterVarType(tir::ForKind for_type);
+IterVarType ForKindToIterVarType(tir::ForKind kind);
 
 /*!
  * \brief Converts IterVarType to its corresponding Halide ForKind

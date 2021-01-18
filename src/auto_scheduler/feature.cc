@@ -642,11 +642,11 @@ class PerStoreFeatureExtractor : public StmtExprVisitor {
   void VisitStmt_(const ForNode* node) final {
     int64_t loop_extent = GetLoopExtent(node);
 
-    if (node->for_type == ForKind::kVectorized) {
+    if (node->kind == ForKind::kVectorized) {
       vec_for_stack_.push_back(node);
-    } else if (node->for_type == ForKind::kUnrolled) {
+    } else if (node->kind == ForKind::kUnrolled) {
       unroll_for_stack_.push_back(node);
-    } else if (node->for_type == ForKind::kParallel) {
+    } else if (node->kind == ForKind::kParallel) {
       parallel_for_stack_.push_back(node);
     }
 
@@ -656,11 +656,11 @@ class PerStoreFeatureExtractor : public StmtExprVisitor {
     for_loop_stack_.pop_back();
     outer_loop_prod_ /= loop_extent;
 
-    if (node->for_type == ForKind::kVectorized) {
+    if (node->kind == ForKind::kVectorized) {
       vec_for_stack_.pop_back();
-    } else if (node->for_type == ForKind::kUnrolled) {
+    } else if (node->kind == ForKind::kUnrolled) {
       unroll_for_stack_.pop_back();
-    } else if (node->for_type == ForKind::kParallel) {
+    } else if (node->kind == ForKind::kParallel) {
       parallel_for_stack_.pop_back();
     }
   }

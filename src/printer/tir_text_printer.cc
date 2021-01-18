@@ -487,8 +487,8 @@ Doc TIRTextPrinter::VisitStmt_(const ForNode* op) {
   Doc doc;
   doc << "for (" << Print(op->loop_var) << ", " << Print(op->min) << ", "
       << Print(op->min + op->extent) << ")";
-  if (op->for_type != ForKind::kSerial) {
-    doc << " " << Doc::StrLiteral(ForKind2String(op->for_type));
+  if (op->kind != ForKind::kSerial) {
+    doc << " " << Doc::StrLiteral(ForKind2String(op->kind));
   }
   doc << PrintBody(op->body);
   return doc;

@@ -34,7 +34,7 @@ void FeatureVisitor::VisitStmt_(const ForNode* op) {
   int64_t loop_extent = -1;
   if (extent != nullptr) loop_extent = extent->value;
   AnnotationType ann = kSerial;
-  switch (op->for_type) {
+  switch (op->kind) {
     case ForKind ::kParallel:
       ann = kParallel;
       break;

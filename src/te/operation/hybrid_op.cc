@@ -277,7 +277,7 @@ Stmt ApplyLoopShapes(const Stage& stage, const std::unordered_map<IterVar, Range
         rmap[op->loop_var.get()] = indexdiv(parent, extent);
         body = tir::Substitute(body, rmap);
         under_outer = false;
-        return For(parent->var, PrimExpr(0), extent * op->extent, op->for_type, body,
+        return For(parent->var, PrimExpr(0), extent * op->extent, op->kind, body,
                    op->thread_binding, op->annotations);
       } else if (under_outer) {
         Stmt body = this->VisitStmt(op->body);
@@ -356,7 +356,7 @@ Stmt ApplyLoopAnnotations(const Stage& stage, const std::unordered_map<IterVar, 
       if (const ForNode* op = node.as<ForNode>()) {
         if (op->loop_var.get() == var) {
           ++found;
-          need_change = expected != op->for_type || (attr.defined() && attr->bind_thread.defined());
+          need_change = expected != op->kind || (attr.defined() && attr->bind_thread.defined());
         }
       }
     });
@@ -409,12 +409,12 @@ Stmt ApplyLoopOrder(const Stage& stage, const std::unordered_map<IterVar, Range>
       if (body_.same_as(op->body) && op->loop_var.get() == target->var.get())
         return GetRef<Stmt>(op);
       const Stmt& body = op->body.same_as(body_) ? op->body : body_;
-      ForKind for_type = IterVarTypeToForKind(target->iter_type);
+      ForKind kind = IterVarTypeToForKind(target->iter_type);
       if (stage->iter_var_attrs.count(target)) {
-        for_type = IterVarTypeToForKind(stage->iter_var_attrs[target]->iter_type);
+        kind = IterVarTypeToForKind(stage->iter_var_attrs[target]->iter_type);
       }
       const Range& range = target->dom.defined() ? target->dom : dom_map.find(target)->second;
-      return For(target->var, range->min, range->extent, for_type, body, op->thread_binding,
+      return For(target->var, range->min, range->extent, kind, body, op->thread_binding,
                  op->annotations);
     }
   };
@@ -449,7 +449,7 @@ std::vector<IterVar> GatherLoopVars(Stmt stmt) {
     if (const ForNode* op = node.as<ForNode>()) {
       Var loop_var(op->loop_var);
       Range dom = Range::FromMinExtent(op->min, op->extent);
-      res_.push_back(IterVar(dom, loop_var, ForKindToIterVarType(op->for_type)));
+      res_.push_back(IterVar(dom, loop_var, ForKindToIterVarType(op->kind)));
     }
   });
   std::reverse(res_.begin(), res_.end());

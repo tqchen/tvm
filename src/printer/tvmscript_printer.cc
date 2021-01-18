@@ -672,7 +672,7 @@ Doc TVMScriptPrinter::VisitStmt_(const ForNode* op) {
   Doc doc;
   var_not_in_headers.insert(op->loop_var.get());
   doc << "for " << Print(op->loop_var)
-      << " in tir." + std::string(ForKind2String(op->for_type)) + "(" << Print(op->min) << ", "
+      << " in tir." + std::string(ForKind2String(op->kind)) + "(" << Print(op->min) << ", "
       << Print(op->min + op->extent)
       << "):" << Doc::Indent(4, Doc::NewLine() << PrintBody(op->body));
   return doc;
