@@ -756,7 +756,7 @@ class Evaluate : public Stmt {
  * \brief The kind of the loop.
  *
  *  ForKind can change the control flow semantics
- *  of the loop. So the for_type field needs to be considered
+ *  of the loop. So the kind field needs to be considered
  *  in all TIR passes.
  */
 enum class ForKind : int {
@@ -798,12 +798,12 @@ class ForNode : public StmtNode {
   PrimExpr min;
   /*! \brief The extent of the iteration. */
   PrimExpr extent;
-  /*! \brief The type of the for loop. */
-  ForKind for_type;
+  /*! \brief The kind of the for loop. */
+  ForKind kind;
   /*! \brief The body of the for loop. */
   Stmt body;
   /*!
-   * \brief Only valid when for_type == ForKind::kThreadBinding
+   * \brief Only valid when kind == ForKind::kThreadBinding
    * The context thread that this loop variable bounds to.
    */
   Optional<IterVar> thread_binding;
@@ -821,7 +821,7 @@ class ForNode : public StmtNode {
     v->Visit("loop_var", &loop_var);
     v->Visit("min", &min);
     v->Visit("extent", &extent);
-    v->Visit("for_type", &for_type);
+    v->Visit("kind", &kind);
     v->Visit("body", &body);
     v->Visit("thread_binding", &thread_binding);
     v->Visit("annotations", &annotations);
@@ -830,7 +830,7 @@ class ForNode : public StmtNode {
 
   bool SEqualReduce(const ForNode* other, SEqualReducer equal) const {
     return equal.DefEqual(loop_var, other->loop_var) && equal(min, other->min) &&
-           equal(extent, other->extent) && equal(for_type, other->for_type) &&
+           equal(extent, other->extent) && equal(kind, other->kind) &&
            equal(body, other->body) && equal(thread_binding, other->thread_binding) &&
            equal(annotations, other->annotations);
   }
@@ -839,7 +839,7 @@ class ForNode : public StmtNode {
     hash_reduce.DefHash(loop_var);
     hash_reduce(min);
     hash_reduce(extent);
-    hash_reduce(for_type);
+    hash_reduce(kind);
     hash_reduce(body);
     hash_reduce(thread_binding);
     hash_reduce(annotations);
@@ -855,7 +855,7 @@ class ForNode : public StmtNode {
  */
 class For : public Stmt {
  public:
-  TVM_DLL For(Var loop_var, PrimExpr min, PrimExpr extent, ForKind for_type, Stmt body,
+  TVM_DLL For(Var loop_var, PrimExpr min, PrimExpr extent, ForKind kind, Stmt body,
               Optional<IterVar> thread_binding = NullOpt,
               Map<String, ObjectRef> annotations = Map<String, ObjectRef>(), Span span = Span());
 
@@ -1039,7 +1039,7 @@ inline bool IsPragmaKey(const std::string& attr_key) {
 TVM_DLL PrimExpr TypeAnnotation(DataType dtype, Span span = Span());
 
 // overload printing of for type.
-TVM_DLL std::ostream& operator<<(std::ostream& os, ForKind for_type);
+TVM_DLL std::ostream& operator<<(std::ostream& os, ForKind kind);
 
 }  // namespace tir
 }  // namespace tvm
