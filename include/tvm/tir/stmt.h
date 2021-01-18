@@ -753,7 +753,7 @@ class Evaluate : public Stmt {
 };
 
 /*!
- * \brief The type of the loop.
+ * \brief The kind of the loop.
  *
  *  ForKind can change the control flow semantics
  *  of the loop. So the for_type field needs to be considered
@@ -761,29 +761,24 @@ class Evaluate : public Stmt {
  */
 enum class ForKind : int {
   /*! \brief default semantics -- serial execution. */
-  Serial = 0,
+  kSerial = 0,
   /*! \brief Parallel execution on CPU. */
-  Parallel = 1,
+  kParallel = 1,
   /*!
    * \brief Vector SIMD loop.
    *  The loop body will be vectorized.
    */
-  Vectorized = 2,
+  kVectorized = 2,
   /*! \brief The loop body must be unrolled. */
-  Unrolled = 3,
+  kUnrolled = 3,
   /*!
    * \brief The loop variable is bound to a thread in
    * an environment. In the final stage of lowering,
    * the loop is simply removed and the loop variable is
    * mapped to the corresponding context thread.
    */
-  ThreadBinding = 4
+  kThreadBinding = 4
 };
-
-// Kevice api of for loop
-// kept for backward compatibility
-// consider refactor and remove later.
-enum class DeviceAPI : int { None = 0 };
 
 /*!
  * \brief A for loop, with poissible type annotations.
@@ -808,7 +803,7 @@ class ForNode : public StmtNode {
   /*! \brief The body of the for loop. */
   Stmt body;
   /*!
-   * \brief Only valid when for_type == ForKind::ThreadBinding
+   * \brief Only valid when for_type == ForKind::kThreadBinding
    * The context thread that this loop variable bounds to.
    */
   Optional<IterVar> thread_binding;

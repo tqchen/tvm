@@ -160,19 +160,19 @@ TVM_REGISTER_NODE_TYPE(ForNode);
 
 std::ostream& operator<<(std::ostream& out, ForKind type) {  // NOLINT(*)
   switch (type) {
-    case ForKind::Serial:
+    case ForKind::kSerial:
       out << "for";
       break;
-    case ForKind::Parallel:
+    case ForKind::kParallel:
       out << "parallel";
       break;
-    case ForKind::Unrolled:
+    case ForKind::kUnrolled:
       out << "unrolled";
       break;
-    case ForKind::Vectorized:
+    case ForKind::kVectorized:
       out << "vectorized";
       break;
-    case ForKind::ThreadBinding:
+    case ForKind::kThreadBinding:
       out << "launch_thread";
       break;
   }

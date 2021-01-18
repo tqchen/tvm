@@ -77,7 +77,7 @@ std::vector<std::vector<Stmt> > MakeLoopNest(const Stage& stage,
         var = Var(iv->var->name_hint + ".init", bind_iv->var.dtype());
       }
 
-      ForKind for_type = ForKind::Serial;
+      ForKind for_type = ForKind::kSerial;
       IterVarAttr it_attr;
       if (stage->iter_var_attrs.count(iv)) {
         it_attr = stage->iter_var_attrs[iv];
@@ -85,13 +85,13 @@ std::vector<std::vector<Stmt> > MakeLoopNest(const Stage& stage,
       if (it_attr.defined()) {
         switch (it_attr->iter_type) {
           case kUnrolled:
-            for_type = ForKind::Unrolled;
+            for_type = ForKind::kUnrolled;
             break;
           case kVectorized:
-            for_type = ForKind::Vectorized;
+            for_type = ForKind::kVectorized;
             break;
           case kParallelized:
-            for_type = ForKind::Parallel;
+            for_type = ForKind::kParallel;
             break;
           case kDataPar:
             break;
@@ -245,13 +245,13 @@ Stmt Substitute(Stmt s, const std::unordered_map<IterVar, PrimExpr>& value_map) 
 
 IterVarType ForKindToIterVarType(tir::ForKind for_type) {
   switch (for_type) {
-    case ForKind::Serial:
+    case ForKind::kSerial:
       return kDataPar;
-    case ForKind::Parallel:
+    case ForKind::kParallel:
       return kParallelized;
-    case ForKind::Vectorized:
+    case ForKind::kVectorized:
       return kVectorized;
-    case ForKind::Unrolled:
+    case ForKind::kUnrolled:
       return kUnrolled;
     default:
       return kDataPar;
@@ -261,15 +261,15 @@ IterVarType ForKindToIterVarType(tir::ForKind for_type) {
 tir::ForKind IterVarTypeToForKind(IterVarType iter_type) {
   switch (iter_type) {
     case kDataPar:
-      return ForKind::Serial;
+      return ForKind::kSerial;
     case kParallelized:
-      return ForKind::Parallel;
+      return ForKind::kParallel;
     case kVectorized:
-      return ForKind::Vectorized;
+      return ForKind::kVectorized;
     case kUnrolled:
-      return ForKind::Unrolled;
+      return ForKind::kUnrolled;
     default:
-      return ForKind::Serial;
+      return ForKind::kSerial;
   }
 }
 

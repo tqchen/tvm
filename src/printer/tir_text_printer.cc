@@ -467,15 +467,15 @@ Doc TIRTextPrinter::VisitStmt_(const EvaluateNode* op) {
 
 inline const char* ForKind2String(ForKind t) {
   switch (t) {
-    case ForKind::Serial:
+    case ForKind::kSerial:
       return "serial";
-    case ForKind::Parallel:
+    case ForKind::kParallel:
       return "parallel";
-    case ForKind::Vectorized:
+    case ForKind::kVectorized:
       return "vectorized";
-    case ForKind::Unrolled:
+    case ForKind::kUnrolled:
       return "unroll";
-    case ForKind::ThreadBinding:
+    case ForKind::kThreadBinding:
       LOG(FATAL) << "Loop ThreadBinding is reserved for future used and "
                  << "not yet supported in TIR";
   }
@@ -487,7 +487,7 @@ Doc TIRTextPrinter::VisitStmt_(const ForNode* op) {
   Doc doc;
   doc << "for (" << Print(op->loop_var) << ", " << Print(op->min) << ", "
       << Print(op->min + op->extent) << ")";
-  if (op->for_type != ForKind::Serial) {
+  if (op->for_type != ForKind::kSerial) {
     doc << " " << Doc::StrLiteral(ForKind2String(op->for_type));
   }
   doc << PrintBody(op->body);

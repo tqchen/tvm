@@ -651,15 +651,15 @@ Doc TVMScriptPrinter::VisitStmt_(const EvaluateNode* op) {
 
 inline const char* ForKind2String(ForKind t) {
   switch (t) {
-    case ForKind::Serial:
+    case ForKind::kSerial:
       return "serial";
-    case ForKind::Parallel:
+    case ForKind::kParallel:
       return "parallel";
-    case ForKind::Vectorized:
+    case ForKind::kVectorized:
       return "vectorized";
-    case ForKind::Unrolled:
+    case ForKind::kUnrolled:
       return "unroll";
-    case ForKind::ThreadBinding:
+    case ForKind::kThreadBinding:
       LOG(FATAL) << "Loop ThreadBinding is reserved for future used and "
                  << "not yet supported in TIR";
       return "threadbinding";

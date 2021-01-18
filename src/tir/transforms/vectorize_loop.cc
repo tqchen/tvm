@@ -352,7 +352,7 @@ class Vectorizer : public StmtMutator, public ExprFunctor<PrimExpr(const PrimExp
   }
   // For
   Stmt VisitStmt_(const ForNode* op) final {
-    if (op->for_type == ForKind::Vectorized) {
+    if (op->for_type == ForKind::kVectorized) {
       LOG(WARNING) << "Detect vectorize inside vectorized loop, ignoring...";
     }
     ICHECK(is_zero(op->min));
@@ -437,7 +437,7 @@ class Vectorizer : public StmtMutator, public ExprFunctor<PrimExpr(const PrimExp
     Var idx(var_->name_hint + ".s", var_->dtype);
     Map<Var, PrimExpr> values{{var_, idx}};
     stmt = Substitute(stmt, values);
-    return For(idx, 0, var_lanes_, ForKind::Serial, stmt);
+    return For(idx, 0, var_lanes_, ForKind::kSerial, stmt);
   }
   // ProducerStore
   Stmt VisitStmt_(const ProducerStoreNode* op) final {
@@ -526,7 +526,7 @@ class Vectorizer : public StmtMutator, public ExprFunctor<PrimExpr(const PrimExp
 class LoopVectorizer : public StmtMutator {
  public:
   Stmt VisitStmt_(const ForNode* op) final {
-    if (op->for_type == ForKind::Vectorized) {
+    if (op->for_type == ForKind::kVectorized) {
       ICHECK(is_zero(op->min));
       auto* extent_as_int = op->extent.as<IntImmNode>();
       if (!extent_as_int || extent_as_int->value < 1) {
@@ -546,8 +546,8 @@ class VectorizeSkipper : public StmtMutator {
   Stmt VisitStmt_(const ForNode* op) final {
     Stmt stmt = StmtMutator::VisitStmt_(op);
     op = stmt.as<ForNode>();
-    if (op->for_type == ForKind::Vectorized) {
-      return For(op->loop_var, op->min, op->extent, ForKind::Serial, op->body);
+    if (op->for_type == ForKind::kVectorized) {
+      return For(op->loop_var, op->min, op->extent, ForKind::kSerial, op->body);
     } else {
       return stmt;
     }

@@ -976,9 +976,9 @@ void CodeGenCPU::VisitStmt_(const AttrStmtNode* op) {
 
 void CodeGenCPU::VisitStmt_(const ForNode* op) {
   ICHECK(is_zero(op->min));
-  if (op->for_type == ForKind::Serial || op->for_type == ForKind::Unrolled) {
+  if (op->for_type == ForKind::kSerial || op->for_type == ForKind::kUnrolled) {
     CodeGenLLVM::VisitStmt_(op);
-  } else if (op->for_type == ForKind::Parallel) {
+  } else if (op->for_type == ForKind::kParallel) {
     if (parallel_env_.penv == nullptr) {
       CreateParallelLaunch(For(op->loop_var, op->min, op->extent, op->for_type, op->body,
                                op->thread_binding, op->annotations),
