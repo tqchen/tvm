@@ -830,9 +830,8 @@ class ForNode : public StmtNode {
 
   bool SEqualReduce(const ForNode* other, SEqualReducer equal) const {
     return equal.DefEqual(loop_var, other->loop_var) && equal(min, other->min) &&
-           equal(extent, other->extent) && equal(kind, other->kind) &&
-           equal(body, other->body) && equal(thread_binding, other->thread_binding) &&
-           equal(annotations, other->annotations);
+           equal(extent, other->extent) && equal(kind, other->kind) && equal(body, other->body) &&
+           equal(thread_binding, other->thread_binding) && equal(annotations, other->annotations);
   }
 
   void SHashReduce(SHashReducer hash_reduce) const {

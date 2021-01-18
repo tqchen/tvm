@@ -91,6 +91,7 @@ class ForKind(IntEnum):
     ForKind can change the control flow semantics
     of the loop and need to be considered in all TIR passes.
     """
+
     SERIAL = 0
     PARALLEL = 1
     VECTORIZED = 2

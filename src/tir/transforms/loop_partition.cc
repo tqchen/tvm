@@ -608,8 +608,7 @@ inline Stmt LoopPartitioner::MakeFor(const Object* node, PrimExpr extent, Stmt b
     return Substitute(body, {{Var{for_node->loop_var}, make_const(DataType::Int(32), 0)}});
   } else {
     ICHECK(for_node->kind == ForKind::kSerial || for_node->kind == ForKind::kUnrolled);
-    return For(for_node->loop_var, IntImm(for_node->min.dtype(), 0), extent, for_node->kind,
-               body);
+    return For(for_node->loop_var, IntImm(for_node->min.dtype(), 0), extent, for_node->kind, body);
   }
 }
 
