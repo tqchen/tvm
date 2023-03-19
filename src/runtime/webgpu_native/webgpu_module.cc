@@ -1,10 +1,15 @@
 #include <dawn/webgpu.h>
+#include <dawn/dawn_proc.h>
+#include <dawn/native/DawnNative.h>
 #include <tvm/runtime/registry.h>
 
 namespace tvm {
 namespace runtime {
 namespace webgpu {
 void Init() {
+    DawnProcTable procs = dawn::native::GetProcs();
+    dawnProcSetProcs(&procs);
+
     // 1. We create a descriptor
     WGPUInstanceDescriptor desc = {};
     desc.nextInChain = nullptr;
@@ -15,7 +20,6 @@ void Init() {
     // 3. We can check whether there is actually an instance created
     if (!instance) {
         std::cerr << "Could not initialize WebGPU!" << std::endl;
-        return 1;
     }
 
     // 4. Display the object (WGPUInstance is a simple pointer, it may be

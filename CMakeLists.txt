@@ -573,9 +573,7 @@ endif()
 target_include_directories(tvm_runtime PUBLIC "$<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}>")
 set_property(TARGET tvm_runtime APPEND PROPERTY LINK_OPTIONS "${TVM_VISIBILITY_FLAG}")
 
-target_include_directories(tvm_runtime PRIVATE ${TVM_RUNTIME_PRIVATE_INCLUDES})
-target_include_directories(tvm_runtime PRIVATE ${TVM_RUNTIME_PRIVATE_INCLUDES})
-
+target_include_directories(tvm_runtime_objs PRIVATE ${TVM_RUNTIME_PRIVATE_INCLUDES})
 target_compile_definitions(tvm_objs PUBLIC DMLC_USE_LOGGING_LIBRARY=<tvm/runtime/logging.h>)
 target_compile_definitions(tvm_runtime_objs PUBLIC DMLC_USE_LOGGING_LIBRARY=<tvm/runtime/logging.h>)
 target_compile_definitions(tvm_libinfo_objs PUBLIC DMLC_USE_LOGGING_LIBRARY=<tvm/runtime/logging.h>)
