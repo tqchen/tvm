@@ -120,6 +120,8 @@ tvm_option(USE_CLML "Build with CLML Codegen support" OFF)
 tvm_option(USE_CLML_GRAPH_EXECUTOR "Build with CLML graph runtime" OFF)
 tvm_option(USE_UMA "Build with UMA support" OFF)
 tvm_option(USE_VERILATOR "Build with Verilator support" OFF)
+tvm_option(USE_WEBGPU_DAWN "Build with webgpu dawn support" OFF)
+
 
 # include directories
 include_directories(${CMAKE_INCLUDE_PATH})
@@ -133,6 +135,7 @@ include_directories(SYSTEM ${PICOJSON_PATH})
 # initial variables
 set(TVM_LINKER_LIBS "")
 set(TVM_RUNTIME_LINKER_LIBS "")
+set(TVM_RUNTIME_PRIVATE_INCLUDES "")
 
 
 # Check if this is being run on its own or as a subdirectory for another project
@@ -541,6 +544,7 @@ include(cmake/modules/contrib/UMA.cmake)
 include(cmake/modules/Git.cmake)
 include(cmake/modules/LibInfo.cmake)
 include(cmake/modules/RustExt.cmake)
+include(cmake/modules/WebGPUDawn.cmake)
 
 set(LIBINFO_FILE ${CMAKE_CURRENT_LIST_DIR}/src/support/libinfo.cc)
 add_lib_info(${LIBINFO_FILE})
@@ -568,6 +572,9 @@ else()
 endif()
 target_include_directories(tvm_runtime PUBLIC "$<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}>")
 set_property(TARGET tvm_runtime APPEND PROPERTY LINK_OPTIONS "${TVM_VISIBILITY_FLAG}")
+
+target_include_directories(tvm_runtime PRIVATE ${TVM_RUNTIME_PRIVATE_INCLUDES})
+target_include_directories(tvm_runtime PRIVATE ${TVM_RUNTIME_PRIVATE_INCLUDES})
 
 target_compile_definitions(tvm_objs PUBLIC DMLC_USE_LOGGING_LIBRARY=<tvm/runtime/logging.h>)
 target_compile_definitions(tvm_runtime_objs PUBLIC DMLC_USE_LOGGING_LIBRARY=<tvm/runtime/logging.h>)
