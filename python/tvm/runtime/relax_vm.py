@@ -227,7 +227,7 @@ class VirtualMachine(object):
             field_args: List[Any] = []
             for field in arg:
                 self._convert(field, field_args)
-            cargs.append(container.tuple_object(field_args))
+            cargs.append(tuple(field_args))
         elif isinstance(arg, (_base.numeric_types, bool)):
             dtype = _gettype(arg)
             value = tvm.nd.array(np.array(arg, dtype=dtype), device=tvm.cpu(0))
