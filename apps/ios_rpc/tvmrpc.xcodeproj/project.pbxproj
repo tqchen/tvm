@@ -378,7 +378,7 @@
 				OTHER_LDFLAGS = "${_DSO_LOADER_NAME_${USE_CUSTOM_DSO_LOADER}}";
 				PRODUCT_BUNDLE_IDENTIFIER = org.apache.tvmiosrpc;
 				PRODUCT_NAME = "$(TARGET_NAME)";
-				TVM_BUILD_DIR = "path-to-tvm-ios-build-folder";
+				TVM_BUILD_DIR = "../../build_ios";
 				USE_CUSTOM_DSO_LOADER = 1;
 				WARNING_CFLAGS = "-Wno-shorten-64-to-32";
 				_DSO_LOADER_NAME_0 = "";
@@ -413,7 +413,7 @@
 				OTHER_LDFLAGS = "${_DSO_LOADER_NAME_${USE_CUSTOM_DSO_LOADER}}";
 				PRODUCT_BUNDLE_IDENTIFIER = org.apache.tvmiosrpc;
 				PRODUCT_NAME = "$(TARGET_NAME)";
-				TVM_BUILD_DIR = "path-to-tvm-ios-build-folder";
+				TVM_BUILD_DIR = "../../build_ios";
 				USE_CUSTOM_DSO_LOADER = 1;
 				WARNING_CFLAGS = "-Wno-shorten-64-to-32";
 				_DSO_LOADER_NAME_0 = "";
