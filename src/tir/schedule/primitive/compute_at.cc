@@ -83,6 +83,9 @@ class NotInSameScopeError : public ScheduleError {
     for (const StmtSRefNode* p = loop_sref.get();; p = p->parent) {
       if (const ForNode* loop = p->StmtAs<ForNode>()) {
         analyzer->Bind(loop->loop_var, Range::FromMinExtent(loop->min, loop->extent));
+        // NOTE: this is not the right fix, just a hack to confirm it works
+        // find the root prim_func and use buffer shape there instead.
+        analyzer->MarkGlobalPositiveValue(loop->extent);
       } else if (p != scope_root_sref.get()) {
         throw NotInSameScopeError(self->mod, block_sref, loop_sref);
       } else {
