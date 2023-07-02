@@ -25,6 +25,7 @@
 #include <tvm/tir/expr.h>
 #include <tvm/tir/op.h>
 
+#include "const_fold.h"
 #include "product_normal_form.h"
 
 namespace tvm {
@@ -61,6 +62,35 @@ void Analyzer::Bind(const Var& var, const Range& range, bool allow_override) {
   }
   // skip modular_set
   // skip rewrite simplify
+}
+
+void Analyzer::MarkGlobalPositiveValue(const PrimExpr& value) {
+  // split out the symbolic and non-symbolic part
+  int64_t cscale = 1;
+  PrimExpr symbolic = tir::make_const(value.dtype(), 1);
+  auto fcollect = [&](PrimExpr val) {
+    if (const auto* intimm = val.as<IntImmNode>()) {
+      cscale *= intimm->value;
+    } else {
+      symbolic = symbolic * val;
+    }
+  };
+  UnpackReduction<tir::MulNode>(value, fcollect);
+  if (cscale <= 0) return;
+  // override the constant int bound by marking it as non-negative
+  // NOTE: there might be future opportunities of more bound hint
+  // this is a simple step and covers all the current needs
+  //
+  // We may consider enhance the sub analyzer to directly take
+  // MarkPositiveVar so their bounds do not overlap
+  if (const auto* var_ptr = symbolic.as<VarNode>()) {
+    Var var = GetRef<Var>(var_ptr);
+    bool allow_override = true;
+    // mark the constant bound is sufficient
+    this->const_int_bound.Update(var, ConstIntBound(1, ConstIntBound::kPosInf), allow_override);
+    this->int_set.Update(var, IntSet::Interval(tir::make_const(var.dtype(), 1), pos_inf()),
+                         allow_override);
+  }
 }
 
 void Analyzer::Bind(const Map<Var, Range>& variables, bool allow_override) {
