@@ -353,6 +353,50 @@ void CodeGenWebGPU::VisitExpr_(const BroadcastNode* op, std::ostream& os) {  // 
   os << ')';
 }
 
+void CodeGenWebGPU::VisitExpr_(const ShuffleNode* op, std::ostream& os) {  // NOLINT(*)
+  // Shuffle support
+  // vec = concat(vectors)
+  // result = (vec[indices[0]], vec[indices[1]] ..
+  // start to get each element type
+  //
+  // WebGPU print shuffle as:
+  // target_dtype(e0, e1, e2, .. en)
+  // target elements
+  // construct the concat
+  std::vector<std::string> concat_vec;
+  // NOTE: important to print expr first
+  // in case each expr have their own nested expressions
+  // print each elements
+  for (PrimExpr vec :  op->vectors) {
+    std::string vec_value = this->PrintExpr(vec);
+    if (vec.dtype().lanes() == 1) {
+      concat_vec.push_back(vec_value);
+    } else {
+      // print out each element
+      for (int i = 0; i < vec.dtype().lanes(); ++i) {
+        // access i-th element of each vector
+        std::ostringstream vec_elem_strm;
+        vec_elem_strm << vec_value << "[" << i << "]";
+        concat_vec.push_back(vec_elem_strm.str());
+      }
+    }
+  }
+  if (op->indices.size() == 1) {
+    // This is an extract element
+    os <<  concat_vec[Downcast<IntImm>(op->indices[0])->value];
+  } else {
+    // Print the shuffle as vector constructor
+    // vec(e0, e1, e2, .. en)
+    PrintType(op->dtype, os);
+    os << '(';
+    for (size_t i = 0; i < op->indices.size(); ++i) {
+      if (i != 0) os << ", ";
+      os << concat_vec[Downcast<IntImm>(op->indices[i])->value];
+    }
+    os << ')';
+  }
+}
+
 PrimExpr CodeGenWebGPU::EnforceU32(PrimExpr value) {
   return cast(DataType::UInt(32, value.dtype().lanes()), value);
 }
