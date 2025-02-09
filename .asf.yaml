@@ -64,7 +64,6 @@ github:
           - hexagon/pr-head
           - i386/pr-head
           - lint/pr-head
-          - wasm/pr-head
 
       required_pull_request_reviews:
         required_approving_review_count: 1

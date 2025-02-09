@@ -60,7 +60,7 @@
 // 'python3 jenkins/generate.py'
 // Note: This timestamp is here to ensure that updates to the Jenkinsfile are
 // always rebased on main before merging:
-// Generated at 2025-02-08T14:55:01.994339
+// Generated at 2025-02-09T09:11:59.026015
 
 import org.jenkinsci.plugins.pipeline.modeldefinition.Utils
 // These are set at runtime from data in ci/jenkins/docker-images.yml, update
@@ -798,6 +798,53 @@ def shard_run_unittest_CPU_1_of_1(node_type) {
 }
 
 
+
+def shard_run_unittest_WASM_1_of_1(node_type) {
+  echo 'Begin running on node_type ' + node_type
+  if (!skip_ci && is_docs_only_build != 1) {
+    node(node_type) {
+      ws("workspace/exec_${env.EXECUTOR_NUMBER}/tvm/ut-wasm") {
+        // NOTE: if exception happens, it will be caught outside
+        init_git()
+        docker_init(ci_wasm)
+        timeout(time: max_time, unit: 'MINUTES') {
+          withEnv([
+            'PLATFORM=wasm',
+            'TEST_STEP_NAME=unittest: WASM',
+            'TVM_NUM_SHARDS=1',
+            'TVM_SHARD_INDEX=0',
+            "SKIP_SLOW_TESTS=${skip_slow_tests}"], {
+            sh(
+                  script: "./${jenkins_scripts_root}/s3.py --action download --bucket ${s3_bucket} --prefix ${s3_prefix}/cpu",
+                  label: 'Download artifacts from S3',
+                )
+
+              sh (
+                script: "${docker_run} ${ci_wasm} ./tests/scripts/task_web_wasm.sh",
+                label: 'Run WASM lint and tests',
+              )
+          })
+        }
+        // only run upload if things are successful
+        try {
+          sh(
+            script: "./${jenkins_scripts_root}/s3.py --action upload --bucket ${s3_bucket} --prefix ${s3_prefix}/pytest-results/unittest_WASM --items build/pytest-results",
+            label: 'Upload JUnits to S3',
+          )
+
+          junit 'build/pytest-results/*.xml'
+        } catch (Exception e) {
+          echo 'Exception during JUnit upload: ' + e.toString()
+        }
+      }
+    }
+    echo 'End running on node_type ' + node_type
+  } else {
+    Utils.markStageSkippedForConditional('unittest: WASM 1 of 1')
+  }
+}
+
+
 def test() {
   stage('Test') {
     environment {
@@ -857,6 +904,17 @@ def test() {
         echo 'Exception during SPOT run ' + ex.toString() + ' retry on-demand'
         currentBuild.result = 'SUCCESS'
         shard_run_unittest_CPU_1_of_1('CPU-SMALL')
+      }
+    },
+    'unittest: WASM 1 of 1': {
+      try {
+      shard_run_unittest_WASM_1_of_1('CPU-SMALL-SPOT')
+      } catch (Throwable ex) {
+        // mark the current stage as success
+        // and try again via on demand node
+        echo 'Exception during SPOT run ' + ex.toString() + ' retry on-demand'
+        currentBuild.result = 'SUCCESS'
+        shard_run_unittest_WASM_1_of_1('CPU-SMALL')
       }
     },
     )
