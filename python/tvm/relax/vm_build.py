@@ -248,7 +248,8 @@ def _vmlink(
     relax_ext_libs = []
     tir_ext_libs = []
     if tir_mod is not None and len(tir_mod.get_global_vars()) > 0:
-        lib = tvm.build(_auto_attach_system_lib_prefix(tir_mod, system_lib), target=target)
+        tir_mod = _auto_attach_system_lib_prefix(tir_mod, target, system_lib)
+        lib = tvm.build(tir_mod, target=target)
     for ext_mod in ext_libs:
         if ext_mod.is_device_module:
             tir_ext_libs.append(ext_mod)
