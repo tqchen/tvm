@@ -134,4 +134,18 @@ TEST(Variant, Upcast) {
   EXPECT_EQ(a1[0].get<int>(), 1);
 }
 
+TEST(Variant, AllObjectRef) {
+  Variant<TInt, Array<TInt>> v0 = TInt(1);
+  EXPECT_EQ(v0.get<TInt>()->value, 1);
+  static_assert(std::is_base_of_v<ObjectRef, decltype(v0)>);
+  AnyView view0 = v0;
+  EXPECT_EQ(view0.cast<TInt>()->value, 1);
+  // assignment operator
+  v0 = Array<TInt>({TInt(2), TInt(3)});
+  EXPECT_EQ(v0.get<Array<TInt>>().size(), 2);
+  EXPECT_EQ(v0.get<Array<TInt>>()[0]->value, 2);
+  EXPECT_EQ(v0.get<Array<TInt>>()[1]->value, 3);
+  EXPECT_EQ(sizeof(v0), sizeof(ObjectRef));
+}
+
 }  // namespace
