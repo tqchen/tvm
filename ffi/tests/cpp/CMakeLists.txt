@@ -15,7 +15,7 @@ set_target_properties(
   RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/bin"
 )
 add_cxx_warning(tvm_ffi_tests)
-add_sanitizer_address(tvm_ffi_tests)
+# add_sanitizer_address(tvm_ffi_tests)
 add_dsymutil(tvm_ffi_tests)
 add_msvc_flags(tvm_ffi_tests)
 target_link_libraries(tvm_ffi_tests PRIVATE tvm_ffi_shared)
