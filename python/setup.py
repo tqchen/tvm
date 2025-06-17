@@ -157,7 +157,7 @@ def config_cython():
             }
 
         ret = []
-        extra_compile_args = ["-std=c++17", "-DDMLC_USE_LOGGING_LIBRARY=<tvm/runtime/logging.h>"]
+        extra_compile_args = ["-std=c++17", "-DDMLC_USE_LOGGING_LIBRARY=<tvm/runtime/logging.h>", "-O3"]
         if os.name == "nt":
             library_dirs = ["tvm", "../build/Release", "../build"]
             libraries = ["tvm"]
@@ -191,7 +191,19 @@ def config_cython():
                     **limited_api_kwargs,
                 )
             )
-        return cythonize(ret, compiler_directives={"language_level": 3})
+        result = cythonize(ret, compiler_directives={"language_level": 3})
+        result.append(
+            Extension(
+                "tvm.ffi.extra",
+                ["tvm/ffi/cython/extra.cc"],
+                extra_compile_args=extra_compile_args,
+                library_dirs=library_dirs,
+                libraries=libraries,
+                language="c++",
+                **limited_api_kwargs,
+            )
+        )
+        return result
     except ImportError as error:
         raise RuntimeError("Cython is not installed, please pip install cython")
 

@@ -103,5 +103,38 @@ TVM_FFI_REGISTER_GLOBAL("testing.object_use_count").set_body_typed([](const Obje
   return obj->use_count();
 });
 
+TVM_FFI_REGISTER_GLOBAL("testing.invoke_n_times").set_body_typed([](int64_t n, Function f) {
+  for (int64_t i = 0; i < n; ++i) {
+    f(i);
+  }
+});
+
+int64_t NativeAddOne(int64_t x) { return x + 1; }
+int64_t NativeAddTwo(int64_t x) { return x + 2; }
+
+TVM_FFI_REGISTER_GLOBAL("testing.invoke_n_times_native").set_body_typed([](int64_t n, int64_t sel) {
+  int64_t (*f_add_one)(int64_t);
+  if (sel == 0) {
+    f_add_one = NativeAddOne;
+  } else {
+    f_add_one = NativeAddTwo;
+  }
+
+  int64_t result = 0;
+  for (int64_t i = 0; i < n; ++i) {
+    result = f_add_one(i);
+  }
+  return result;
+});
+
+TVM_FFI_REGISTER_GLOBAL("testing.invoke_n_times_any").set_body_typed([](int64_t n, Any val) {
+  int64_t result = 0;
+  for (int64_t i = 0; i < n; ++i) {
+    result = (result + val.cast<int64_t>()) % 128;
+  }
+  return result;
+});
+
+
 }  // namespace ffi
 }  // namespace tvm

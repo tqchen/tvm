@@ -31,6 +31,7 @@ from .ndarray import cpu, cuda, rocm, opencl, metal, vpi, vulkan, ext_dev, hexag
 from .ndarray import from_dlpack, NDArray, Shape
 from .container import Array, Map
 from . import testing
+from . import extra
 
 
 __all__ = [

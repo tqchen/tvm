@@ -346,6 +346,7 @@ def _get_global_func(name, allow_missing):
     if chandle != NULL:
         ret = Function.__new__(Function)
         (<Object>ret).chandle = chandle
+        ret.__name__ = name
         return ret
 
     if allow_missing:
@@ -396,7 +397,12 @@ def _convert_to_ffi_func(object pyfunc):
         &chandle))
     ret = Function.__new__(Function)
     (<Object>ret).chandle = chandle
+    ret.__name__ = pyfunc.__name__
     return ret
 
 _STR_CONSTRUCTOR = _get_global_func("ffi.String", False)
 _BYTES_CONSTRUCTOR = _get_global_func("ffi.Bytes", False)
+
+
+def TestAddOne(x):
+    return x + 1
