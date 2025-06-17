@@ -220,13 +220,27 @@ class Object {
 
  private:
   /*! \brief increase reference count */
-  void IncRef() { details::AtomicIncrementRelaxed(&(header_.ref_counter)); }
+  void IncRef() {
+    if ((header_.type_index & (1UL << 31)) != 0) {
+      details::AtomicIncrementRelaxed(&(header_.ref_counter));
+    } else {
+      header_.ref_counter++;
+    }
+  }
 
   /*! \brief decrease reference count and delete the object */
   void DecRef() {
-    if (details::AtomicDecrementRelAcq(&(header_.ref_counter)) == 1) {
-      if (header_.deleter != nullptr) {
-        header_.deleter(&(this->header_));
+    if ((header_.type_index & (1UL << 31)) != 0) {
+      if (details::AtomicDecrementRelAcq(&(header_.ref_counter)) == 1) {
+        if (header_.deleter != nullptr) {
+          header_.deleter(&(this->header_));
+        }
+      }
+    } else {
+      if (--header_.ref_counter == 0) {
+        if (header_.deleter != nullptr) {
+          header_.deleter(&(this->header_));
+        }
       }
     }
   }

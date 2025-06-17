@@ -47,40 +47,6 @@ TEST(Func, FromPacked) {
   EXPECT_EQ(fadd2(TInt(12)).cast<int>(), 13);
 }
 
-TEST(Func, InvokeN) {
-  Function fecho = Function::FromPacked([](const AnyView* args, int32_t num_args, Any* rv) {
-    *rv = args[0];
-  });
-  fecho(1);
-
-  int n = 1000000;
-  auto start = std::chrono::high_resolution_clock::now();
-  for (int i = 0; i < n; ++i) {
-   fecho(i).cast<int>();
-  }
-  auto end = std::chrono::high_resolution_clock::now();
-  std::chrono::duration<double> duration = end - start;
-  std::cout << "Time taken: " << duration.count() / n << " seconds" << std::endl;
-}
-
-TEST(Func, InvokeNStd) {
-  std::function<int(int)> fecho = [](AnyView a) -> int {
-    static int sum = 0;
-    sum += a.cast<int>();
-    return sum;
-  };
-  fecho(1);
-
-  int n = 10000000;
-  auto start = std::chrono::high_resolution_clock::now();
-  for (int i = 0; i < n; ++i) {
-   fecho(i);
-  }
-  auto end = std::chrono::high_resolution_clock::now();
-  std::chrono::duration<double> duration = end - start;
-  std::cout << "Time taken: " << duration.count() / n << " seconds" << std::endl;
-}
-
 TEST(Func, PackedArgs) {
   Function fadd1 = Function::FromPacked([](PackedArgs args, Any* rv) {
     EXPECT_EQ(args.size(), 1);

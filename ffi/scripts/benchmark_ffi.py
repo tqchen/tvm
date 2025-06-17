@@ -113,6 +113,15 @@ def benchmark_invoke_n_times_any(repeat, val):
     name = "invoke_n_times_any"
     print_speed(name, speed)
 
+def benchmark_invoke_n_times_round(repeat, val):
+    invoke_n = tvm_ffi.get_global_func("testing.invoke_n_times_round")
+    start = time.time()
+    invoke_n(repeat, val)
+    end = time.time()
+    speed = (end - start) / repeat
+    name = "invoke_n_times_round"
+    print_speed(name, speed)
+
 
 def main():
     repeat = 100000
@@ -136,7 +145,8 @@ def main():
     benchmark_invoke_n_times(repeat, lambda x: x + 1)
     benchmark_invoke_n_times(repeat, tvm_ffi.get_global_func("testing.echo"))
     benchmark_invoke_n_times_native(repeat, selector=2)
-    benchmark_invoke_n_times_any(repeat, 1)
+    benchmark_invoke_n_times_any(repeat, tvm_ffi.testing.create_object("testing.TestObjectBase", v_i64=10))
+    benchmark_invoke_n_times_round(repeat, "a")
 
 if __name__ == "__main__":
     main()

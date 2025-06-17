@@ -128,13 +128,17 @@ TVM_FFI_REGISTER_GLOBAL("testing.invoke_n_times_native").set_body_typed([](int64
 });
 
 TVM_FFI_REGISTER_GLOBAL("testing.invoke_n_times_any").set_body_typed([](int64_t n, Any val) {
-  int64_t result = 0;
   for (int64_t i = 0; i < n; ++i) {
-    result = (result + val.cast<int64_t>()) % 128;
+    val.cast<ObjectRef>();
   }
-  return result;
 });
 
+TVM_FFI_REGISTER_GLOBAL("testing.invoke_n_times_round").set_body_typed([](int64_t n, String val) {
+  std::string result = val;
+  for (int64_t i = 0; i < n; ++i) {
+    result + "a";
+  }
+});
 
 }  // namespace ffi
 }  // namespace tvm
