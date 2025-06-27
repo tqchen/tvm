@@ -20,6 +20,7 @@
 #include <tvm/relax/expr.h>
 #include <tvm/relax/struct_info.h>
 #include <tvm/relax/type.h>
+#include <tvm/ffi/reflection/reflection.h>
 
 #include <unordered_set>
 
@@ -27,6 +28,28 @@ namespace tvm {
 namespace relax {
 
 using tvm::ReprPrinter;
+
+TVM_FFI_STATIC_INIT_BLOCK({
+  IdNode::RegisterReflection();
+  CallNode::RegisterReflection();
+  TupleNode::RegisterReflection();
+  TupleGetItemNode::RegisterReflection();
+  ShapeExprNode::RegisterReflection();
+  VarNode::RegisterReflection();
+  BindingNode::RegisterReflection();
+  DataflowVarNode::RegisterReflection();
+  ConstantNode::RegisterReflection();
+  PrimValueNode::RegisterReflection();
+  StringImmNode::RegisterReflection();
+  DataTypeImmNode::RegisterReflection();
+  MatchCastNode::RegisterReflection();
+  VarBindingNode::RegisterReflection();
+  BindingBlockNode::RegisterReflection();
+  SeqExprNode::RegisterReflection();
+  IfNode::RegisterReflection();
+  FunctionNode::RegisterReflection();
+  ExternFuncNode::RegisterReflection();
+});
 
 TVM_REGISTER_NODE_TYPE(IdNode);
 

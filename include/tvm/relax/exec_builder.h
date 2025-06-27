@@ -30,6 +30,7 @@
 #include <tvm/runtime/object.h>
 #include <tvm/runtime/vm/bytecode.h>
 #include <tvm/runtime/vm/executable.h>
+#include <tvm/ffi/reflection/reflection.h>
 
 #include <string>
 #include <unordered_map>
@@ -137,7 +138,12 @@ class ExecBuilderNode : public Object {
    */
   TVM_DLL static ExecBuilder Create();
 
-  void VisitAttrs(AttrVisitor* v) {}
+  static void RegisterReflection() {
+    namespace refl = tvm::ffi::reflection;
+    refl::ObjectDef<ExecBuilderNode>();
+  }
+
+  static constexpr bool _type_has_method_visit_attrs = false;
 
   static constexpr const char* _type_key = "relax.ExecBuilder";
   TVM_DECLARE_FINAL_OBJECT_INFO(ExecBuilderNode, Object);

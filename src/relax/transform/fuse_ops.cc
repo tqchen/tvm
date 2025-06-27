@@ -36,6 +36,7 @@
 #include <tvm/tir/analysis.h>
 #include <tvm/tir/expr_functor.h>
 #include <tvm/tir/function.h>
+#include <tvm/ffi/reflection/reflection.h>
 
 #include <optional>
 
@@ -46,6 +47,11 @@
 
 namespace tvm {
 namespace relax {
+
+TVM_FFI_STATIC_INIT_BLOCK({
+  transform::FusionPatternNode::RegisterReflection();
+  transform::PatternCheckContextNode::RegisterReflection();
+});
 
 /*
   Note on Fusing algorithm:
