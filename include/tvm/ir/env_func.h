@@ -26,6 +26,7 @@
 
 #include <tvm/ffi/function.h>
 #include <tvm/node/reflection.h>
+#include <tvm/ffi/reflection/reflection.h>
 
 #include <string>
 #include <utility>
@@ -48,7 +49,13 @@ class EnvFuncNode : public Object {
   /*! \brief constructor */
   EnvFuncNode() {}
 
-  void VisitAttrs(AttrVisitor* v) { v->Visit("name", &name); }
+  static void RegisterReflection() {
+    namespace refl = tvm::ffi::reflection;
+    refl::ObjectDef<EnvFuncNode>()
+        .def_ro("name", &EnvFuncNode::name);
+  }
+
+  static constexpr bool _type_has_method_visit_attrs = false;
 
   bool SEqualReduce(const EnvFuncNode* other, SEqualReducer equal) const {
     // name uniquely identifies the env function.

@@ -40,6 +40,12 @@
 namespace tvm {
 namespace transform {
 
+TVM_FFI_STATIC_INIT_BLOCK({
+  PassContextNode::RegisterReflection();
+  PassInfoNode::RegisterReflection();
+  SequentialNode::RegisterReflection();
+});
+
 using tvm::ReprPrinter;
 using tvm::ffi::Any;
 using tvm::ffi::PackedArgs;

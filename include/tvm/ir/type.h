@@ -54,6 +54,7 @@
 #include <tvm/node/node.h>
 #include <tvm/runtime/data_type.h>
 #include <tvm/runtime/object.h>
+#include <tvm/ffi/reflection/reflection.h>
 
 #include <string>
 
@@ -110,7 +111,13 @@ class PrimTypeNode : public TypeNode {
    */
   runtime::DataType dtype;
 
-  void VisitAttrs(AttrVisitor* v) { v->Visit("dtype", &dtype); }
+  static void RegisterReflection() {
+    namespace refl = tvm::ffi::reflection;
+    refl::ObjectDef<PrimTypeNode>()
+        .def_ro("dtype", &PrimTypeNode::dtype);
+  }
+
+  static constexpr bool _type_has_method_visit_attrs = false;
 
   bool SEqualReduce(const PrimTypeNode* other, SEqualReducer equal) const {
     return equal(dtype, other->dtype);
@@ -159,10 +166,14 @@ class PointerTypeNode : public TypeNode {
    */
   String storage_scope;
 
-  void VisitAttrs(AttrVisitor* v) {
-    v->Visit("element_type", &element_type);
-    v->Visit("storage_scope", &storage_scope);
+  static void RegisterReflection() {
+    namespace refl = tvm::ffi::reflection;
+    refl::ObjectDef<PointerTypeNode>()
+        .def_ro("element_type", &PointerTypeNode::element_type)
+        .def_ro("storage_scope", &PointerTypeNode::storage_scope);
   }
+
+  static constexpr bool _type_has_method_visit_attrs = false;
 
   bool SEqualReduce(const PointerTypeNode* other, SEqualReducer equal) const {
     // Make "global" equal to ""
@@ -208,10 +219,14 @@ class TupleTypeNode : public TypeNode {
 
   TupleTypeNode() {}
 
-  void VisitAttrs(AttrVisitor* v) {
-    v->Visit("fields", &fields);
-    v->Visit("span", &span);
+  static void RegisterReflection() {
+    namespace refl = tvm::ffi::reflection;
+    refl::ObjectDef<TupleTypeNode>()
+        .def_ro("fields", &TupleTypeNode::fields)
+        .def_ro("span", &TupleTypeNode::span);
   }
+
+  static constexpr bool _type_has_method_visit_attrs = false;
 
   bool SEqualReduce(const TupleTypeNode* other, SEqualReducer equal) const {
     return equal(fields, other->fields);
@@ -274,11 +289,15 @@ class FuncTypeNode : public TypeNode {
   /*! \brief The type of return value. */
   Type ret_type;
 
-  void VisitAttrs(AttrVisitor* v) {
-    v->Visit("arg_types", &arg_types);
-    v->Visit("ret_type", &ret_type);
-    v->Visit("span", &span);
+  static void RegisterReflection() {
+    namespace refl = tvm::ffi::reflection;
+    refl::ObjectDef<FuncTypeNode>()
+        .def_ro("arg_types", &FuncTypeNode::arg_types)
+        .def_ro("ret_type", &FuncTypeNode::ret_type)
+        .def_ro("span", &FuncTypeNode::span);
   }
+
+  static constexpr bool _type_has_method_visit_attrs = false;
 
   bool SEqualReduce(const FuncTypeNode* other, SEqualReducer equal) const {
     // type params first as they defines type vars.
