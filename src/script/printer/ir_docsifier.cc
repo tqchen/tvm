@@ -26,9 +26,15 @@
 
 #include "./utils.h"
 
+
 namespace tvm {
 namespace script {
 namespace printer {
+
+TVM_FFI_STATIC_INIT_BLOCK({
+  FrameNode::RegisterReflection();
+  IRDocsifierNode::RegisterReflection();
+});
 
 IdDoc IRDocsifierNode::Define(const ObjectRef& obj, const Frame& frame, const String& name_hint) {
   if (auto it = obj2info.find(obj); it != obj2info.end()) {
