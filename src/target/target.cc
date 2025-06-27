@@ -42,6 +42,10 @@
 
 namespace tvm {
 
+TVM_FFI_STATIC_INIT_BLOCK({
+  TargetNode::RegisterReflection();
+});
+
 TVM_REGISTER_NODE_TYPE(TargetNode);
 
 class TargetInternal {
