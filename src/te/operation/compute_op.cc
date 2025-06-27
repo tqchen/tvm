@@ -39,6 +39,7 @@ namespace te {
 using namespace tir;
 
 TVM_FFI_STATIC_INIT_BLOCK({
+  OperationNode::RegisterReflection();
   BaseComputeOpNode::RegisterReflection();
   ComputeOpNode::RegisterReflection();
 });
