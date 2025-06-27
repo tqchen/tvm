@@ -625,7 +625,8 @@ class UnorderedTuplePatternNode : public DFPatternNode {
 
   static void RegisterReflection() {
     namespace refl = tvm::ffi::reflection;
-    refl::ObjectDef<UnorderedTuplePatternNode>().def_ro("fields", &UnorderedTuplePatternNode::fields);
+    refl::ObjectDef<UnorderedTuplePatternNode>().def_ro("fields",
+                                                        &UnorderedTuplePatternNode::fields);
   }
 
   static constexpr bool _type_has_method_visit_attrs = false;
@@ -972,7 +973,8 @@ class ExternFuncPatternNode : public DFPatternNode {
 
   static void RegisterReflection() {
     namespace refl = tvm::ffi::reflection;
-    refl::ObjectDef<ExternFuncPatternNode>().def_ro("global_symbol", &ExternFuncPatternNode::global_symbol_);
+    refl::ObjectDef<ExternFuncPatternNode>().def_ro("global_symbol",
+                                                    &ExternFuncPatternNode::global_symbol_);
   }
 
   static constexpr bool _type_has_method_visit_attrs = false;

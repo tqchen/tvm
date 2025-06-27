@@ -32,9 +32,7 @@
 namespace tvm {
 namespace instrument {
 
-TVM_FFI_STATIC_INIT_BLOCK({
-  PassInstrumentNode::RegisterReflection();
-});
+TVM_FFI_STATIC_INIT_BLOCK({ PassInstrumentNode::RegisterReflection(); });
 
 /*!
  * \brief Base PassInstrument implementation

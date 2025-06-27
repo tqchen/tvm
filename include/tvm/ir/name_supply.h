@@ -24,8 +24,8 @@
 #ifndef TVM_IR_NAME_SUPPLY_H_
 #define TVM_IR_NAME_SUPPLY_H_
 
-#include <tvm/ir/expr.h>
 #include <tvm/ffi/reflection/reflection.h>
+#include <tvm/ir/expr.h>
 
 #include <algorithm>
 #include <cctype>

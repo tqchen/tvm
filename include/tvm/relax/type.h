@@ -25,11 +25,11 @@
 #define TVM_RELAX_TYPE_H_
 
 #include <tvm/ffi/function.h>
+#include <tvm/ffi/reflection/reflection.h>
 #include <tvm/ir/attrs.h>
 #include <tvm/ir/env_func.h>
 #include <tvm/ir/type.h>
 #include <tvm/tir/expr.h>
-#include <tvm/ffi/reflection/reflection.h>
 
 #include <string>
 

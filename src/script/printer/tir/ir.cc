@@ -24,9 +24,7 @@ namespace tvm {
 namespace script {
 namespace printer {
 
-TVM_FFI_STATIC_INIT_BLOCK({
-  TIRFrameNode::RegisterReflection();
-});
+TVM_FFI_STATIC_INIT_BLOCK({ TIRFrameNode::RegisterReflection(); });
 
 TVM_REGISTER_NODE_TYPE(TIRFrameNode);
 

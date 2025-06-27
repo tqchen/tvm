@@ -672,8 +672,7 @@ class MSCPrimNode : public BaseJointNode {
 
   static void RegisterReflection() {
     namespace refl = tvm::ffi::reflection;
-    refl::ObjectDef<MSCPrimNode>()
-        .def_ro("optype", &MSCPrimNode::optype);
+    refl::ObjectDef<MSCPrimNode>().def_ro("optype", &MSCPrimNode::optype);
   }
 
   static constexpr bool _type_has_method_visit_attrs = false;

@@ -26,9 +26,9 @@
 #ifndef TVM_IR_INSTRUMENT_H_
 #define TVM_IR_INSTRUMENT_H_
 
+#include <tvm/ffi/reflection/reflection.h>
 #include <tvm/ffi/string.h>
 #include <tvm/node/reflection.h>
-#include <tvm/ffi/reflection/reflection.h>
 
 #include <utility>
 #include <vector>
@@ -139,8 +139,7 @@ class PassInstrumentNode : public Object {
 
   static void RegisterReflection() {
     namespace refl = tvm::ffi::reflection;
-    refl::ObjectDef<PassInstrumentNode>()
-        .def_ro("name", &PassInstrumentNode::name);
+    refl::ObjectDef<PassInstrumentNode>().def_ro("name", &PassInstrumentNode::name);
   }
 
   static constexpr bool _type_has_method_visit_attrs = false;

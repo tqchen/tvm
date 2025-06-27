@@ -22,8 +22,8 @@
  * \brief Relax type system.
  */
 #include <tvm/ffi/function.h>
-#include <tvm/relax/type.h>
 #include <tvm/ffi/reflection/reflection.h>
+#include <tvm/relax/type.h>
 
 namespace tvm {
 namespace relax {

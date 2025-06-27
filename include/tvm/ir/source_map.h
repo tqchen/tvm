@@ -24,9 +24,9 @@
 #define TVM_IR_SOURCE_MAP_H_
 
 #include <tvm/ffi/function.h>
+#include <tvm/ffi/reflection/reflection.h>
 #include <tvm/node/node.h>
 #include <tvm/runtime/object.h>
-#include <tvm/ffi/reflection/reflection.h>
 
 #include <fstream>
 #include <string>
@@ -50,8 +50,7 @@ class SourceNameNode : public Object {
 
   static void RegisterReflection() {
     namespace refl = tvm::ffi::reflection;
-    refl::ObjectDef<SourceNameNode>()
-        .def_ro("name", &SourceNameNode::name);
+    refl::ObjectDef<SourceNameNode>().def_ro("name", &SourceNameNode::name);
   }
 
   static constexpr bool _type_has_method_visit_attrs = false;
@@ -147,8 +146,7 @@ class SequentialSpanNode : public SpanNode {
 
   static void RegisterReflection() {
     namespace refl = tvm::ffi::reflection;
-    refl::ObjectDef<SequentialSpanNode>()
-        .def_ro("spans", &SequentialSpanNode::spans);
+    refl::ObjectDef<SequentialSpanNode>().def_ro("spans", &SequentialSpanNode::spans);
   }
 
   static constexpr bool _type_has_method_visit_attrs = false;
@@ -236,8 +234,7 @@ class SourceMapObj : public Object {
 
   static void RegisterReflection() {
     namespace refl = tvm::ffi::reflection;
-    refl::ObjectDef<SourceMapObj>()
-        .def_ro("source_map", &SourceMapObj::source_map);
+    refl::ObjectDef<SourceMapObj>().def_ro("source_map", &SourceMapObj::source_map);
   }
 
   static constexpr bool _type_has_method_visit_attrs = false;

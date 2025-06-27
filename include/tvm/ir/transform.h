@@ -57,12 +57,12 @@
 #define TVM_IR_TRANSFORM_H_
 
 #include <tvm/ffi/container/array.h>
+#include <tvm/ffi/reflection/reflection.h>
 #include <tvm/ffi/string.h>
 #include <tvm/ir/diagnostic.h>
 #include <tvm/ir/instrument.h>
 #include <tvm/ir/module.h>
 #include <tvm/support/with.h>
-#include <tvm/ffi/reflection/reflection.h>
 
 #include <string>
 #include <utility>
@@ -382,7 +382,6 @@ class PassNode : public Object {
    * \return The transformed module.
    */
   virtual IRModule operator()(IRModule mod, const PassContext& pass_ctx) const = 0;
-
 
   static constexpr bool _type_has_method_visit_attrs = false;
 

@@ -126,6 +126,11 @@ class ExprDocNode : public DocNode {
                Array<String> kwargs_keys,  //
                Array<ExprDoc, void> kwargs_values) const;
 
+  static void RegisterReflection() {
+    namespace refl = tvm::ffi::reflection;
+    refl::ObjectDef<ExprDocNode>();
+  }
+
   static constexpr const char* _type_key = "script.printer.ExprDoc";
   static constexpr const bool _type_has_method_visit_attrs = false;
   TVM_DECLARE_BASE_OBJECT_INFO(ExprDocNode, DocNode);

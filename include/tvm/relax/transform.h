@@ -24,12 +24,12 @@
 #ifndef TVM_RELAX_TRANSFORM_H_
 #define TVM_RELAX_TRANSFORM_H_
 
+#include <tvm/ffi/reflection/reflection.h>
 #include <tvm/ir/transform.h>
 #include <tvm/relax/dataflow_pattern.h>
 #include <tvm/relax/expr.h>
 #include <tvm/tir/function.h>
 #include <tvm/tir/index_map.h>
-#include <tvm/ffi/reflection/reflection.h>
 
 namespace tvm {
 namespace relax {

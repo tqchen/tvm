@@ -50,11 +50,11 @@
 #define TVM_IR_TYPE_H_
 
 #include <tvm/ffi/container/array.h>
+#include <tvm/ffi/reflection/reflection.h>
 #include <tvm/ir/source_map.h>
 #include <tvm/node/node.h>
 #include <tvm/runtime/data_type.h>
 #include <tvm/runtime/object.h>
-#include <tvm/ffi/reflection/reflection.h>
 
 #include <string>
 
@@ -113,8 +113,7 @@ class PrimTypeNode : public TypeNode {
 
   static void RegisterReflection() {
     namespace refl = tvm::ffi::reflection;
-    refl::ObjectDef<PrimTypeNode>()
-        .def_ro("dtype", &PrimTypeNode::dtype);
+    refl::ObjectDef<PrimTypeNode>().def_ro("dtype", &PrimTypeNode::dtype);
   }
 
   static constexpr bool _type_has_method_visit_attrs = false;

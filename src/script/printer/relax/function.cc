@@ -37,9 +37,7 @@ bool AtTopLevelFunction(const IRDocsifier& d) {
   return d->frames.size() == 3;
 }
 
-TVM_FFI_STATIC_INIT_BLOCK({
-  RelaxFrameNode::RegisterReflection();
-});
+TVM_FFI_STATIC_INIT_BLOCK({ RelaxFrameNode::RegisterReflection(); });
 
 TVM_REGISTER_NODE_TYPE(RelaxFrameNode);
 

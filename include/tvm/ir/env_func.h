@@ -25,8 +25,8 @@
 #define TVM_IR_ENV_FUNC_H_
 
 #include <tvm/ffi/function.h>
-#include <tvm/node/reflection.h>
 #include <tvm/ffi/reflection/reflection.h>
+#include <tvm/node/reflection.h>
 
 #include <string>
 #include <utility>
@@ -51,8 +51,7 @@ class EnvFuncNode : public Object {
 
   static void RegisterReflection() {
     namespace refl = tvm::ffi::reflection;
-    refl::ObjectDef<EnvFuncNode>()
-        .def_ro("name", &EnvFuncNode::name);
+    refl::ObjectDef<EnvFuncNode>().def_ro("name", &EnvFuncNode::name);
   }
 
   static constexpr bool _type_has_method_visit_attrs = false;

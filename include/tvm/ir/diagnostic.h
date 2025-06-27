@@ -26,8 +26,8 @@
 #ifndef TVM_IR_DIAGNOSTIC_H_
 #define TVM_IR_DIAGNOSTIC_H_
 
-#include <tvm/ir/module.h>
 #include <tvm/ffi/reflection/reflection.h>
+#include <tvm/ir/module.h>
 
 #include <sstream>
 #include <string>
@@ -171,8 +171,7 @@ class DiagnosticRendererNode : public Object {
 
   static void RegisterReflection() {
     namespace refl = tvm::ffi::reflection;
-    refl::ObjectDef<DiagnosticRendererNode>()
-        .def_ro("renderer", &DiagnosticRendererNode::renderer);
+    refl::ObjectDef<DiagnosticRendererNode>().def_ro("renderer", &DiagnosticRendererNode::renderer);
   }
 
   static constexpr bool _type_has_method_visit_attrs = false;

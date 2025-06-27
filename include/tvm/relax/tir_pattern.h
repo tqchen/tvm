@@ -25,8 +25,8 @@
 #ifndef TVM_RELAX_TIR_PATTERN_H_
 #define TVM_RELAX_TIR_PATTERN_H_
 
-#include <tvm/tir/function.h>
 #include <tvm/ffi/reflection/reflection.h>
+#include <tvm/tir/function.h>
 
 namespace tvm {
 namespace relax {

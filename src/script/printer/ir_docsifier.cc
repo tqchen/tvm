@@ -26,7 +26,6 @@
 
 #include "./utils.h"
 
-
 namespace tvm {
 namespace script {
 namespace printer {

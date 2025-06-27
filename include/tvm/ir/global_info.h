@@ -25,9 +25,9 @@
 #ifndef TVM_IR_GLOBAL_INFO_H_
 #define TVM_IR_GLOBAL_INFO_H_
 
+#include <tvm/ffi/reflection/reflection.h>
 #include <tvm/ir/expr.h>
 #include <tvm/target/target.h>
-#include <tvm/ffi/reflection/reflection.h>
 
 namespace tvm {
 

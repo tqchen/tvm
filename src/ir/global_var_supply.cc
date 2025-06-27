@@ -31,9 +31,7 @@
 
 namespace tvm {
 
-TVM_FFI_STATIC_INIT_BLOCK({
-  GlobalVarSupplyNode::RegisterReflection();
-});
+TVM_FFI_STATIC_INIT_BLOCK({ GlobalVarSupplyNode::RegisterReflection(); });
 
 GlobalVarSupply::GlobalVarSupply(const NameSupply& name_supply,
                                  std::unordered_map<std::string, GlobalVar> name_to_var_map) {

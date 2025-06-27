@@ -22,11 +22,11 @@
  * \brief Implementation of binding rewriters.
  */
 
+#include <tvm/ffi/reflection/reflection.h>
 #include <tvm/relax/binding_rewrite.h>
 #include <tvm/relax/block_builder.h>
 #include <tvm/relax/expr.h>
 #include <tvm/relax/expr_functor.h>
-#include <tvm/ffi/reflection/reflection.h>
 
 #include <functional>
 #include <iterator>
@@ -36,9 +36,7 @@
 namespace tvm {
 namespace relax {
 
-TVM_FFI_STATIC_INIT_BLOCK({
-  DataflowBlockRewriteNode::RegisterReflection();
-});
+TVM_FFI_STATIC_INIT_BLOCK({ DataflowBlockRewriteNode::RegisterReflection(); });
 
 TVM_REGISTER_NODE_TYPE(DataflowBlockRewriteNode);
 

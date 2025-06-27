@@ -21,6 +21,7 @@
 
 #include <tvm/ffi/container/array.h>
 #include <tvm/ffi/container/map.h>
+#include <tvm/ffi/reflection/reflection.h>
 #include <tvm/ir/expr.h>
 #include <tvm/ir/function.h>
 #include <tvm/ir/source_map.h>
@@ -29,7 +30,6 @@
 #include <tvm/runtime/object.h>
 #include <tvm/tir/expr.h>
 #include <tvm/tir/op.h>
-#include <tvm/ffi/reflection/reflection.h>
 
 #include <functional>
 

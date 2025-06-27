@@ -27,10 +27,10 @@
 #include <string>
 #include <unordered_map>
 
+#include "tvm/ffi/reflection/reflection.h"
 #include "tvm/ir/expr.h"
 #include "tvm/ir/module.h"
 #include "tvm/ir/name_supply.h"
-#include "tvm/ffi/reflection/reflection.h"
 
 namespace tvm {
 
