@@ -22,8 +22,8 @@
  * \brief TVM module system
  */
 #include <tvm/ffi/function.h>
-#include <tvm/runtime/module.h>
 #include <tvm/ffi/reflection/reflection.h>
+#include <tvm/runtime/module.h>
 
 #include <cstring>
 #include <unordered_set>
@@ -169,39 +169,29 @@ bool RuntimeEnabled(const String& target_str) {
 TVM_FFI_STATIC_INIT_BLOCK({
   namespace refl = tvm::ffi::reflection;
   refl::GlobalDef()
-    .def("runtime.RuntimeEnabled", RuntimeEnabled)
-    .def("runtime.ModuleGetSource", [](Module mod, std::string fmt) {
-  return mod->GetSource(fmt);
-})
-    .def("runtime.ModuleImportsSize", [](Module mod) {
-  return static_cast<int64_t>(mod->imports().size());
-})
-    .def("runtime.ModuleGetImport", [](Module mod, int index) {
-  return mod->imports().at(index);
-})
-    .def("runtime.ModuleClearImports", [](Module mod) {
-  mod->ClearImports();
-})
-    .def("runtime.ModuleGetTypeKey", [](Module mod) {
-  return std::string(mod->type_key());
-})
-    .def("runtime.ModuleGetFormat", [](Module mod) {
-  return mod->GetFormat();
-})
-    .def("runtime.ModuleLoadFromFile", Module::LoadFromFile)
-    .def("runtime.ModuleSaveToFile", [](Module mod, String name, String fmt) { mod->SaveToFile(name, fmt); })
-    .def("runtime.ModuleGetPropertyMask", [](Module mod) {
-  return mod->GetPropertyMask();
-})
-    .def("runtime.ModuleImplementsFunction", [](Module mod, String name, bool query_imports) {
-      return mod->ImplementsFunction(std::move(name), query_imports);
-    })
-    .def("runtime.ModuleGetFunction", [](Module mod, String name, bool query_imports) {
-      return mod->GetFunction(name, query_imports);
-    })
-    .def("runtime.ModuleImport", [](Module mod, Module other) {
-  mod->Import(other);
-});
+      .def("runtime.RuntimeEnabled", RuntimeEnabled)
+      .def("runtime.ModuleGetSource",
+           [](Module mod, std::string fmt) { return mod->GetSource(fmt); })
+      .def("runtime.ModuleImportsSize",
+           [](Module mod) { return static_cast<int64_t>(mod->imports().size()); })
+      .def("runtime.ModuleGetImport",
+           [](Module mod, int index) { return mod->imports().at(index); })
+      .def("runtime.ModuleClearImports", [](Module mod) { mod->ClearImports(); })
+      .def("runtime.ModuleGetTypeKey", [](Module mod) { return std::string(mod->type_key()); })
+      .def("runtime.ModuleGetFormat", [](Module mod) { return mod->GetFormat(); })
+      .def("runtime.ModuleLoadFromFile", Module::LoadFromFile)
+      .def("runtime.ModuleSaveToFile",
+           [](Module mod, String name, String fmt) { mod->SaveToFile(name, fmt); })
+      .def("runtime.ModuleGetPropertyMask", [](Module mod) { return mod->GetPropertyMask(); })
+      .def("runtime.ModuleImplementsFunction",
+           [](Module mod, String name, bool query_imports) {
+             return mod->ImplementsFunction(std::move(name), query_imports);
+           })
+      .def("runtime.ModuleGetFunction",
+           [](Module mod, String name, bool query_imports) {
+             return mod->GetFunction(name, query_imports);
+           })
+      .def("runtime.ModuleImport", [](Module mod, Module other) { mod->Import(other); });
 });
 
 }  // namespace runtime

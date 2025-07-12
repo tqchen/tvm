@@ -22,13 +22,13 @@
  * \brief Split device function from host.
  */
 #include <tvm/ffi/function.h>
+#include <tvm/ffi/reflection/reflection.h>
 #include <tvm/ir/transform.h>
 #include <tvm/target/target.h>
 #include <tvm/tir/builtin.h>
 #include <tvm/tir/expr.h>
 #include <tvm/tir/stmt_functor.h>
 #include <tvm/tir/transform.h>
-#include <tvm/ffi/reflection/reflection.h>
 
 #include "../../runtime/thread_storage_scope.h"
 #include "ir_utils.h"
@@ -372,8 +372,7 @@ Pass LowerDeviceKernelLaunch() {
 
 TVM_FFI_STATIC_INIT_BLOCK({
   namespace refl = tvm::ffi::reflection;
-  refl::GlobalDef()
-    .def("tir.transform.LowerDeviceKernelLaunch", LowerDeviceKernelLaunch);
+  refl::GlobalDef().def("tir.transform.LowerDeviceKernelLaunch", LowerDeviceKernelLaunch);
 });
 
 }  // namespace transform

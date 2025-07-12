@@ -804,9 +804,11 @@ TVM_REGISTER_NODE_TYPE(EvolutionarySearchNode);
 TVM_FFI_STATIC_INIT_BLOCK({
   namespace refl = tvm::ffi::reflection;
   refl::GlobalDef()
-    .def("meta_schedule.SearchStrategyEvolutionarySearch", SearchStrategy::EvolutionarySearch)
-    .def("meta_schedule.SearchStrategyEvolutionarySearchSampleInitPopulation", EvolutionarySearchSampleInitPopulation)
-    .def("meta_schedule.SearchStrategyEvolutionarySearchEvolveWithCostModel", EvolutionarySearchEvolveWithCostModel);
+      .def("meta_schedule.SearchStrategyEvolutionarySearch", SearchStrategy::EvolutionarySearch)
+      .def("meta_schedule.SearchStrategyEvolutionarySearchSampleInitPopulation",
+           EvolutionarySearchSampleInitPopulation)
+      .def("meta_schedule.SearchStrategyEvolutionarySearchEvolveWithCostModel",
+           EvolutionarySearchEvolveWithCostModel);
 });
 
 }  // namespace meta_schedule

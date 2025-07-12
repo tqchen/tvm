@@ -21,6 +21,7 @@
  * \file make_packed_api.cc Lower PrimFunc to use the packed function API.
  */
 #include <tvm/ffi/function.h>
+#include <tvm/ffi/reflection/reflection.h>
 #include <tvm/runtime/device_api.h>
 #include <tvm/runtime/module.h>
 #include <tvm/target/target.h>
@@ -30,7 +31,6 @@
 #include <tvm/tir/expr.h>
 #include <tvm/tir/stmt_functor.h>
 #include <tvm/tir/transform.h>
-#include <tvm/ffi/reflection/reflection.h>
 
 #include <unordered_set>
 #include <utility>
@@ -441,10 +441,7 @@ Pass MakePackedAPI() {
 
 TVM_FFI_STATIC_INIT_BLOCK({
   namespace refl = tvm::ffi::reflection;
-  refl::GlobalDef()
-    .def("tir.transform.MakePackedAPI", []() {
-  return MakePackedAPI();
-});
+  refl::GlobalDef().def("tir.transform.MakePackedAPI", []() { return MakePackedAPI(); });
 });
 }  // namespace transform
 }  // namespace tir

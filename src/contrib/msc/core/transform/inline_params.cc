@@ -22,10 +22,10 @@
  * \brief Pass for inline Exprs.
  */
 
+#include <tvm/ffi/reflection/reflection.h>
 #include <tvm/relax/expr.h>
 #include <tvm/relax/expr_functor.h>
 #include <tvm/relax/transform.h>
-#include <tvm/ffi/reflection/reflection.h>
 
 #include "../../../../relax/transform/utils.h"
 #include "../utils.h"
@@ -187,8 +187,7 @@ Pass InlineParams(const String& entry_name) {
 
 TVM_FFI_STATIC_INIT_BLOCK({
   namespace refl = tvm::ffi::reflection;
-  refl::GlobalDef()
-    .def("relax.transform.InlineParams", InlineParams);
+  refl::GlobalDef().def("relax.transform.InlineParams", InlineParams);
 });
 
 }  // namespace transform

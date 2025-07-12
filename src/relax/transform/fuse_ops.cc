@@ -1403,11 +1403,12 @@ FusionPattern::FusionPattern(String name, DFPattern pattern,
 TVM_REGISTER_NODE_TYPE(FusionPatternNode);
 TVM_FFI_STATIC_INIT_BLOCK({
   namespace refl = tvm::ffi::reflection;
-  refl::GlobalDef()
-    .def("relax.transform.FusionPattern", [](String name, DFPattern pattern, Map<String, DFPattern> annotation_patterns,
-                       Optional<ffi::Function> check, Optional<ffi::Function> attrs_getter) {
-      return FusionPattern(name, pattern, annotation_patterns, check, attrs_getter);
-    });
+  refl::GlobalDef().def(
+      "relax.transform.FusionPattern",
+      [](String name, DFPattern pattern, Map<String, DFPattern> annotation_patterns,
+         Optional<ffi::Function> check, Optional<ffi::Function> attrs_getter) {
+        return FusionPattern(name, pattern, annotation_patterns, check, attrs_getter);
+      });
 });
 
 PatternCheckContext::PatternCheckContext(Expr matched_expr, Map<String, Expr> annotated_expr,
@@ -1440,8 +1441,7 @@ Pass FuseOps(int fuse_opt_level) {
 
 TVM_FFI_STATIC_INIT_BLOCK({
   namespace refl = tvm::ffi::reflection;
-  refl::GlobalDef()
-    .def("relax.transform.FuseOps", FuseOps);
+  refl::GlobalDef().def("relax.transform.FuseOps", FuseOps);
 });
 
 Pass FuseOpsByPattern(const tvm::Array<FusionPattern>& patterns, bool bind_constants,
@@ -1459,8 +1459,7 @@ Pass FuseOpsByPattern(const tvm::Array<FusionPattern>& patterns, bool bind_const
 
 TVM_FFI_STATIC_INIT_BLOCK({
   namespace refl = tvm::ffi::reflection;
-  refl::GlobalDef()
-    .def("relax.transform.FuseOpsByPattern", FuseOpsByPattern);
+  refl::GlobalDef().def("relax.transform.FuseOpsByPattern", FuseOpsByPattern);
 });
 
 }  // namespace transform

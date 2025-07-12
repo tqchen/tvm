@@ -219,8 +219,7 @@ TVM_FFI_STATIC_INIT_BLOCK({ JSONDatabaseNode::RegisterReflection(); });
 TVM_REGISTER_NODE_TYPE(JSONDatabaseNode);
 TVM_FFI_STATIC_INIT_BLOCK({
   namespace refl = tvm::ffi::reflection;
-  refl::GlobalDef()
-    .def("meta_schedule.DatabaseJSONDatabase", Database::JSONDatabase);
+  refl::GlobalDef().def("meta_schedule.DatabaseJSONDatabase", Database::JSONDatabase);
 });
 
 }  // namespace meta_schedule

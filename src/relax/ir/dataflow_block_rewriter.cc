@@ -365,10 +365,9 @@ Optional<Map<DFPattern, Var>> MatchGraph(const PatternContext& ctx, const Datafl
 
 TVM_FFI_STATIC_INIT_BLOCK({
   namespace refl = tvm::ffi::reflection;
-  refl::GlobalDef()
-    .def("relax.dpl.match_dfb", [](const PatternContext& ctx, const DataflowBlock& dfb) {
-      return MatchGraph(ctx, dfb);
-    });
+  refl::GlobalDef().def(
+      "relax.dpl.match_dfb",
+      [](const PatternContext& ctx, const DataflowBlock& dfb) { return MatchGraph(ctx, dfb); });
 });
 
 class PatternContextRewriterNode : public PatternMatchingRewriterNode {
@@ -454,8 +453,7 @@ Function RewriteBindings(
 
 TVM_FFI_STATIC_INIT_BLOCK({
   namespace refl = tvm::ffi::reflection;
-  refl::GlobalDef()
-    .def("relax.dpl.rewrite_bindings", RewriteBindings);
+  refl::GlobalDef().def("relax.dpl.rewrite_bindings", RewriteBindings);
 });
 
 TVM_FFI_STATIC_INIT_BLOCK({ PatternContextRewriterNode::RegisterReflection(); });

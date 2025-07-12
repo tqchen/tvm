@@ -22,8 +22,8 @@
  * \brief Use external miopen softmax function
  */
 #include <tvm/ffi/function.h>
-#include <tvm/runtime/data_type.h>
 #include <tvm/ffi/reflection/reflection.h>
+#include <tvm/runtime/data_type.h>
 
 #include "miopen_utils.h"
 
@@ -83,12 +83,13 @@ void softmax_impl(ffi::PackedArgs args, ffi::Any* ret, miopenSoftmaxAlgorithm_t 
 TVM_FFI_STATIC_INIT_BLOCK({
   namespace refl = tvm::ffi::reflection;
   refl::GlobalDef()
-    .def_packed("tvm.contrib.miopen.softmax.forward", [](ffi::PackedArgs args, ffi::Any* ret) {
-      softmax_impl(args, ret, MIOPEN_SOFTMAX_ACCURATE);
-    })
-    .def_packed("tvm.contrib.miopen.log_softmax.forward", [](ffi::PackedArgs args, ffi::Any* ret) {
-      softmax_impl(args, ret, MIOPEN_SOFTMAX_LOG);
-    });
+      .def_packed("tvm.contrib.miopen.softmax.forward",
+                  [](ffi::PackedArgs args, ffi::Any* ret) {
+                    softmax_impl(args, ret, MIOPEN_SOFTMAX_ACCURATE);
+                  })
+      .def_packed(
+          "tvm.contrib.miopen.log_softmax.forward",
+          [](ffi::PackedArgs args, ffi::Any* ret) { softmax_impl(args, ret, MIOPEN_SOFTMAX_LOG); });
 });
 
 }  // namespace miopen

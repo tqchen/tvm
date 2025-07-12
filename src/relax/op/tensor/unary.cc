@@ -23,6 +23,7 @@
  */
 
 #include "unary.h"
+
 #include <tvm/ffi/reflection/reflection.h>
 
 #include <utility>
@@ -88,8 +89,7 @@ Expr clip(Expr x, Expr min, Expr max) {
 
 TVM_FFI_STATIC_INIT_BLOCK({
   namespace refl = tvm::ffi::reflection;
-  refl::GlobalDef()
-    .def("relax.op.clip", clip);
+  refl::GlobalDef().def("relax.op.clip", clip);
 });
 
 /***************** Check operators *****************/

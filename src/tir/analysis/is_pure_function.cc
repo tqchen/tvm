@@ -21,10 +21,10 @@
  * \file is_pure_function.cc
  * \brief PrimFunc purity analysis
  */
+#include <tvm/ffi/reflection/reflection.h>
 #include <tvm/ir/op.h>
 #include <tvm/tir/analysis.h>
 #include <tvm/tir/stmt_functor.h>
-#include <tvm/ffi/reflection/reflection.h>
 
 #include "../ir/tir_visitor_with_path.h"
 
@@ -94,8 +94,7 @@ bool IsPureFunction(const PrimFunc& func, bool assert_on_error) {
 
 TVM_FFI_STATIC_INIT_BLOCK({
   namespace refl = tvm::ffi::reflection;
-  refl::GlobalDef()
-    .def("tir.analysis.is_pure_function", IsPureFunction);
+  refl::GlobalDef().def("tir.analysis.is_pure_function", IsPureFunction);
 });
 
 }  // namespace tir

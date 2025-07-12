@@ -24,9 +24,9 @@
 
 #include <dmlc/memory_io.h>
 #include <tvm/ffi/function.h>
+#include <tvm/ffi/reflection/reflection.h>
 #include <tvm/runtime/module.h>
 #include <tvm/runtime/ndarray.h>
-#include <tvm/ffi/reflection/reflection.h>
 
 #include <algorithm>
 #include <functional>
@@ -177,8 +177,7 @@ runtime::Module CSourceModuleCreate(const String& code, const String& fmt,
 
 TVM_FFI_STATIC_INIT_BLOCK({
   namespace refl = tvm::ffi::reflection;
-  refl::GlobalDef()
-    .def("runtime.module.loadbinary_c", CSourceModuleNode::LoadFromBinary);
+  refl::GlobalDef().def("runtime.module.loadbinary_c", CSourceModuleNode::LoadFromBinary);
 });
 
 /*!
@@ -255,11 +254,12 @@ runtime::Module DeviceSourceModuleCreate(
 TVM_FFI_STATIC_INIT_BLOCK({
   namespace refl = tvm::ffi::reflection;
   refl::GlobalDef()
-    .def("runtime.SourceModuleCreate", SourceModuleCreate)
-    .def("runtime.CSourceModuleCreate", [](String code, String fmt, Optional<Array<String>> func_names,
-                       Optional<Array<String>> const_vars) {
-      return CSourceModuleCreate(code, fmt, func_names.value_or({}), const_vars.value_or({}));
-    });
+      .def("runtime.SourceModuleCreate", SourceModuleCreate)
+      .def("runtime.CSourceModuleCreate", [](String code, String fmt,
+                                             Optional<Array<String>> func_names,
+                                             Optional<Array<String>> const_vars) {
+        return CSourceModuleCreate(code, fmt, func_names.value_or({}), const_vars.value_or({}));
+      });
 });
 
 }  // namespace codegen

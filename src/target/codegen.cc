@@ -23,6 +23,7 @@
  */
 #include <dmlc/memory_io.h>
 #include <tvm/ffi/function.h>
+#include <tvm/ffi/reflection/reflection.h>
 #include <tvm/ir/module.h>
 #include <tvm/runtime/base.h>
 #include <tvm/runtime/module.h>
@@ -30,7 +31,6 @@
 #include <tvm/target/target.h>
 #include <tvm/tir/function.h>
 #include <tvm/tir/transform.h>
-#include <tvm/ffi/reflection/reflection.h>
 
 #include <cstdint>
 #include <cstring>
@@ -364,33 +364,32 @@ runtime::Module PackImportsToLLVM(const runtime::Module& mod, bool system_lib,
 
 TVM_FFI_STATIC_INIT_BLOCK({
   namespace refl = tvm::ffi::reflection;
-  refl::GlobalDef()
-    .def("target.Build", Build);
+  refl::GlobalDef().def("target.Build", Build);
 });
 
 // Export a few auxiliary function to the runtime namespace.
 TVM_FFI_STATIC_INIT_BLOCK({
   namespace refl = tvm::ffi::reflection;
   refl::GlobalDef()
-    .def("runtime.ModuleImportsBlobName", []() -> std::string {
-  return runtime::symbol::tvm_ffi_library_bin;
-})
-    .def("runtime.ModulePackImportsToNDArray", [](const runtime::Module& mod) {
-      std::string buffer = PackImportsToBytes(mod);
-      ffi::Shape::index_type size = buffer.size();
-      DLDataType uchar;
-      uchar.code = kDLUInt;
-      uchar.bits = 8;
-      uchar.lanes = 1;
-      DLDevice dev;
-      dev.device_type = kDLCPU;
-      dev.device_id = 0;
-      auto array = runtime::NDArray::Empty({size}, uchar, dev);
-      array.CopyFromBytes(buffer.data(), size);
-      return array;
-    })
-    .def("runtime.ModulePackImportsToC", PackImportsToC)
-    .def("runtime.ModulePackImportsToLLVM", PackImportsToLLVM);
+      .def("runtime.ModuleImportsBlobName",
+           []() -> std::string { return runtime::symbol::tvm_ffi_library_bin; })
+      .def("runtime.ModulePackImportsToNDArray",
+           [](const runtime::Module& mod) {
+             std::string buffer = PackImportsToBytes(mod);
+             ffi::Shape::index_type size = buffer.size();
+             DLDataType uchar;
+             uchar.code = kDLUInt;
+             uchar.bits = 8;
+             uchar.lanes = 1;
+             DLDevice dev;
+             dev.device_type = kDLCPU;
+             dev.device_id = 0;
+             auto array = runtime::NDArray::Empty({size}, uchar, dev);
+             array.CopyFromBytes(buffer.data(), size);
+             return array;
+           })
+      .def("runtime.ModulePackImportsToC", PackImportsToC)
+      .def("runtime.ModulePackImportsToLLVM", PackImportsToLLVM);
 });
 
 }  // namespace codegen

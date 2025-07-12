@@ -21,13 +21,13 @@
  * \brief Automatic layout conversion pass, especially for axis swapping.
  */
 
+#include <tvm/ffi/reflection/reflection.h>
 #include <tvm/node/serialization.h>
 #include <tvm/relax/expr_functor.h>
 #include <tvm/relax/nested_msg.h>
 #include <tvm/relax/op_attr_types.h>
 #include <tvm/relax/transform.h>
 #include <tvm/tir/index_map.h>
-#include <tvm/ffi/reflection/reflection.h>
 
 #include "../op/tensor/manipulate.h"
 #include "infer_layout_utils.h"
@@ -353,8 +353,7 @@ Pass ConvertLayout(Map<String, Array<String>> desired_layouts) {
 
 TVM_FFI_STATIC_INIT_BLOCK({
   namespace refl = tvm::ffi::reflection;
-  refl::GlobalDef()
-    .def("relax.transform.ConvertLayout", ConvertLayout);
+  refl::GlobalDef().def("relax.transform.ConvertLayout", ConvertLayout);
 });
 
 }  // namespace transform

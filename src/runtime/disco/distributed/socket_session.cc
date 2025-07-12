@@ -297,8 +297,7 @@ void RemoteSocketSessionEntryPoint(const String& server_host, int server_port,
 
 TVM_FFI_STATIC_INIT_BLOCK({
   namespace refl = tvm::ffi::reflection;
-  refl::GlobalDef()
-    .def("runtime.disco.RemoteSocketSession", RemoteSocketSessionEntryPoint);
+  refl::GlobalDef().def("runtime.disco.RemoteSocketSession", RemoteSocketSessionEntryPoint);
 });
 
 Session SocketSession(int num_nodes, int num_workers_per_node, int num_groups, const String& host,
@@ -310,15 +309,17 @@ Session SocketSession(int num_nodes, int num_workers_per_node, int num_groups, c
 TVM_FFI_STATIC_INIT_BLOCK({
   namespace refl = tvm::ffi::reflection;
   refl::GlobalDef()
-    .def("runtime.disco.SocketSession", SocketSession)
-    .def("runtime.disco.socket_session_init_workers", [](int num_nodes, int node_id, int num_groups, int num_workers_per_node) {
-      LOG(INFO) << "Initializing worker group with " << num_nodes << " nodes, "
-                << num_workers_per_node << " workers per node, and " << num_groups << " groups.";
-      DiscoWorker* worker = DiscoWorker::ThreadLocal();
-      worker->num_groups = num_groups;
-      worker->worker_id = worker->worker_id + node_id * num_workers_per_node;
-      worker->num_workers = num_nodes * num_workers_per_node;
-    });
+      .def("runtime.disco.SocketSession", SocketSession)
+      .def("runtime.disco.socket_session_init_workers",
+           [](int num_nodes, int node_id, int num_groups, int num_workers_per_node) {
+             LOG(INFO) << "Initializing worker group with " << num_nodes << " nodes, "
+                       << num_workers_per_node << " workers per node, and " << num_groups
+                       << " groups.";
+             DiscoWorker* worker = DiscoWorker::ThreadLocal();
+             worker->num_groups = num_groups;
+             worker->worker_id = worker->worker_id + node_id * num_workers_per_node;
+             worker->num_workers = num_nodes * num_workers_per_node;
+           });
 });
 
 }  // namespace runtime

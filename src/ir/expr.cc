@@ -23,11 +23,11 @@
  */
 #include <tvm/arith/analyzer.h>
 #include <tvm/ffi/function.h>
+#include <tvm/ffi/reflection/reflection.h>
 #include <tvm/ir/expr.h>
 #include <tvm/ir/function.h>
 #include <tvm/te/tensor.h>
 #include <tvm/tir/expr.h>
-#include <tvm/ffi/reflection/reflection.h>
 
 #include "../support/scalars.h"
 
@@ -80,10 +80,9 @@ IntImm::IntImm(DataType dtype, int64_t value, Span span) {
 
 TVM_FFI_STATIC_INIT_BLOCK({
   namespace refl = tvm::ffi::reflection;
-  refl::GlobalDef()
-    .def("ir.IntImm", [](DataType dtype, int64_t value, Span span) {
-  return IntImm(dtype, value, span);
-});
+  refl::GlobalDef().def("ir.IntImm", [](DataType dtype, int64_t value, Span span) {
+    return IntImm(dtype, value, span);
+  });
 });
 
 TVM_REGISTER_NODE_TYPE(IntImmNode);
@@ -186,10 +185,9 @@ FloatImm::FloatImm(DataType dtype, double value, Span span) {
 
 TVM_FFI_STATIC_INIT_BLOCK({
   namespace refl = tvm::ffi::reflection;
-  refl::GlobalDef()
-    .def("ir.FloatImm", [](DataType dtype, double value, Span span) {
-  return FloatImm(dtype, value, span);
-});
+  refl::GlobalDef().def("ir.FloatImm", [](DataType dtype, double value, Span span) {
+    return FloatImm(dtype, value, span);
+  });
 });
 
 TVM_REGISTER_NODE_TYPE(FloatImmNode);
@@ -204,14 +202,14 @@ Range Range::FromMinExtent(PrimExpr min, PrimExpr extent, Span span) {
 TVM_FFI_STATIC_INIT_BLOCK({
   namespace refl = tvm::ffi::reflection;
   refl::GlobalDef()
-    .def("ir.Range_from_min_extent", Range::FromMinExtent)
-    .def("ir.Range", [](PrimExpr begin, Optional<PrimExpr> end, Span span) -> Range {
-      if (end.defined()) {
-        return Range(begin, end.value(), span);
-      } else {
-        return Range(IntImm(begin->dtype, 0), begin, span);
-      }
-    });
+      .def("ir.Range_from_min_extent", Range::FromMinExtent)
+      .def("ir.Range", [](PrimExpr begin, Optional<PrimExpr> end, Span span) -> Range {
+        if (end.defined()) {
+          return Range(begin, end.value(), span);
+        } else {
+          return Range(IntImm(begin->dtype, 0), begin, span);
+        }
+      });
 });
 
 TVM_REGISTER_NODE_TYPE(RangeNode);
@@ -228,12 +226,12 @@ TVM_REGISTER_NODE_TYPE(GlobalVarNode);
 TVM_FFI_STATIC_INIT_BLOCK({
   namespace refl = tvm::ffi::reflection;
   refl::GlobalDef()
-    .def("ir.GlobalVar", [](String name) { return GlobalVar(name); })
-    .def("ir.DebugPrint", [](ObjectRef ref) {
-  std::stringstream ss;
-  ss << ref;
-  return ss.str();
-});
+      .def("ir.GlobalVar", [](String name) { return GlobalVar(name); })
+      .def("ir.DebugPrint", [](ObjectRef ref) {
+        std::stringstream ss;
+        ss << ref;
+        return ss.str();
+      });
 });
 
 }  // namespace tvm

@@ -35,9 +35,9 @@
  */
 #include <tvm/arith/analyzer.h>
 #include <tvm/ffi/function.h>
+#include <tvm/ffi/reflection/reflection.h>
 #include <tvm/tir/stmt_functor.h>
 #include <tvm/tir/transform.h>
-#include <tvm/ffi/reflection/reflection.h>
 
 #include "ir_utils.h"
 
@@ -318,8 +318,7 @@ Pass InjectRollingBuffer() {
 
 TVM_FFI_STATIC_INIT_BLOCK({
   namespace refl = tvm::ffi::reflection;
-  refl::GlobalDef()
-    .def("tir.transform.InjectRollingBuffer", InjectRollingBuffer);
+  refl::GlobalDef().def("tir.transform.InjectRollingBuffer", InjectRollingBuffer);
 });
 
 }  // namespace transform

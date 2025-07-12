@@ -17,8 +17,8 @@
  * under the License.
  */
 
-#include <tvm/relax/transform.h>
 #include <tvm/ffi/reflection/reflection.h>
+#include <tvm/relax/transform.h>
 
 #include "../../meta_schedule/utils.h"
 
@@ -175,8 +175,7 @@ Pass FewShotTuning(int valid_count, bool benchmark) {
 
 TVM_FFI_STATIC_INIT_BLOCK({
   namespace refl = tvm::ffi::reflection;
-  refl::GlobalDef()
-    .def("relax.transform.FewShotTuning", FewShotTuning);
+  refl::GlobalDef().def("relax.transform.FewShotTuning", FewShotTuning);
 });
 
 }  // namespace transform

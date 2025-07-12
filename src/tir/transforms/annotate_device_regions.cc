@@ -22,13 +22,13 @@
  * \brief Split device function from host.
  */
 #include <tvm/ffi/function.h>
+#include <tvm/ffi/reflection/reflection.h>
 #include <tvm/ir/transform.h>
 #include <tvm/target/target.h>
 #include <tvm/tir/builtin.h>
 #include <tvm/tir/expr.h>
 #include <tvm/tir/stmt_functor.h>
 #include <tvm/tir/transform.h>
-#include <tvm/ffi/reflection/reflection.h>
 
 namespace tvm {
 namespace tir {
@@ -77,8 +77,7 @@ Pass AnnotateDeviceRegions() {
 
 TVM_FFI_STATIC_INIT_BLOCK({
   namespace refl = tvm::ffi::reflection;
-  refl::GlobalDef()
-    .def("tir.transform.AnnotateDeviceRegions", AnnotateDeviceRegions);
+  refl::GlobalDef().def("tir.transform.AnnotateDeviceRegions", AnnotateDeviceRegions);
 });
 
 }  // namespace transform

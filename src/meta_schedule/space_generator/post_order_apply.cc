@@ -120,8 +120,8 @@ TVM_FFI_STATIC_INIT_BLOCK({ PostOrderApplyNode::RegisterReflection(); });
 TVM_REGISTER_NODE_TYPE(PostOrderApplyNode);
 TVM_FFI_STATIC_INIT_BLOCK({
   namespace refl = tvm::ffi::reflection;
-  refl::GlobalDef()
-    .def("meta_schedule.SpaceGeneratorPostOrderApply", SpaceGenerator::PostOrderApply);
+  refl::GlobalDef().def("meta_schedule.SpaceGeneratorPostOrderApply",
+                        SpaceGenerator::PostOrderApply);
 });
 
 }  // namespace meta_schedule

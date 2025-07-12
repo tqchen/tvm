@@ -25,10 +25,10 @@
 #include <hip/hip_runtime_api.h>
 #include <hsa/hsa.h>
 #include <tvm/ffi/function.h>
+#include <tvm/ffi/reflection/reflection.h>
 #include <tvm/runtime/device_api.h>
 #include <tvm/runtime/logging.h>
 #include <tvm/runtime/profiling.h>
-#include <tvm/ffi/reflection/reflection.h>
 
 #include "rocm_common.h"
 
@@ -255,14 +255,15 @@ ROCMThreadEntry* ROCMThreadEntry::ThreadLocal() { return ROCMThreadStore::Get();
 TVM_FFI_STATIC_INIT_BLOCK({
   namespace refl = tvm::ffi::reflection;
   refl::GlobalDef()
-    .def_packed("device_api.rocm", [](ffi::PackedArgs args, ffi::Any* rv) {
-  DeviceAPI* ptr = ROCMDeviceAPI::Global();
-  *rv = static_cast<void*>(ptr);
-})
-    .def_packed("device_api.rocm_host", [](ffi::PackedArgs args, ffi::Any* rv) {
-      DeviceAPI* ptr = ROCMDeviceAPI::Global();
-      *rv = static_cast<void*>(ptr);
-    });
+      .def_packed("device_api.rocm",
+                  [](ffi::PackedArgs args, ffi::Any* rv) {
+                    DeviceAPI* ptr = ROCMDeviceAPI::Global();
+                    *rv = static_cast<void*>(ptr);
+                  })
+      .def_packed("device_api.rocm_host", [](ffi::PackedArgs args, ffi::Any* rv) {
+        DeviceAPI* ptr = ROCMDeviceAPI::Global();
+        *rv = static_cast<void*>(ptr);
+      });
 });
 
 class ROCMTimerNode : public TimerNode {
@@ -299,12 +300,9 @@ TVM_REGISTER_OBJECT_TYPE(ROCMTimerNode);
 TVM_FFI_STATIC_INIT_BLOCK({
   namespace refl = tvm::ffi::reflection;
   refl::GlobalDef()
-    .def("profiling.timer.rocm", [](Device dev) {
-  return Timer(make_object<ROCMTimerNode>());
-})
-    .def("runtime.get_rocm_stream", []() {
-  return static_cast<void*>(ROCMThreadEntry::ThreadLocal()->stream);
-});
+      .def("profiling.timer.rocm", [](Device dev) { return Timer(make_object<ROCMTimerNode>()); })
+      .def("runtime.get_rocm_stream",
+           []() { return static_cast<void*>(ROCMThreadEntry::ThreadLocal()->stream); });
 });
 
 }  // namespace runtime

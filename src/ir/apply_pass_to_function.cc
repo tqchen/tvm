@@ -22,10 +22,10 @@
  * \brief Utility transformation that applies an inner pass to a subset of an IRModule
  */
 #include <tvm/ffi/function.h>
+#include <tvm/ffi/reflection/reflection.h>
 #include <tvm/ir/transform.h>
 #include <tvm/relax/expr.h>
 #include <tvm/tir/function.h>
-#include <tvm/ffi/reflection/reflection.h>
 
 #include <unordered_set>
 
@@ -132,8 +132,7 @@ Pass ApplyPassToFunction(Pass pass, String func_name_regex,
 
 TVM_FFI_STATIC_INIT_BLOCK({
   namespace refl = tvm::ffi::reflection;
-  refl::GlobalDef()
-    .def("transform.ApplyPassToFunction", ApplyPassToFunction);
+  refl::GlobalDef().def("transform.ApplyPassToFunction", ApplyPassToFunction);
 });
 
 }  // namespace transform

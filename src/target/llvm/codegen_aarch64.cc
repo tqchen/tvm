@@ -109,10 +109,10 @@ void CodeGenAArch64::VisitStmt_(const AttrStmtNode* op) {
 
 TVM_FFI_STATIC_INIT_BLOCK({
   namespace refl = tvm::ffi::reflection;
-  refl::GlobalDef()
-    .def_packed("tvm.codegen.llvm.target_aarch64", [](const ffi::PackedArgs& targs, ffi::Any* rv) {
-      *rv = static_cast<void*>(new CodeGenAArch64());
-    });
+  refl::GlobalDef().def_packed("tvm.codegen.llvm.target_aarch64",
+                               [](const ffi::PackedArgs& targs, ffi::Any* rv) {
+                                 *rv = static_cast<void*>(new CodeGenAArch64());
+                               });
 });
 
 }  // namespace codegen

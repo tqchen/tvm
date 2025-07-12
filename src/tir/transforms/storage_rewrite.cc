@@ -24,6 +24,7 @@
  */
 #include <tvm/arith/analyzer.h>
 #include <tvm/ffi/function.h>
+#include <tvm/ffi/reflection/reflection.h>
 #include <tvm/ir/type.h>
 #include <tvm/target/target_info.h>
 #include <tvm/tir/analysis.h>
@@ -31,7 +32,6 @@
 #include <tvm/tir/expr.h>
 #include <tvm/tir/stmt_functor.h>
 #include <tvm/tir/transform.h>
-#include <tvm/ffi/reflection/reflection.h>
 
 #include <map>
 #include <unordered_map>
@@ -1765,8 +1765,7 @@ Pass StorageRewrite() {
 
 TVM_FFI_STATIC_INIT_BLOCK({
   namespace refl = tvm::ffi::reflection;
-  refl::GlobalDef()
-    .def("tir.transform.StorageRewrite", StorageRewrite);
+  refl::GlobalDef().def("tir.transform.StorageRewrite", StorageRewrite);
 });
 
 Pass PointerValueTypeRewrite() {
@@ -1778,8 +1777,7 @@ Pass PointerValueTypeRewrite() {
 
 TVM_FFI_STATIC_INIT_BLOCK({
   namespace refl = tvm::ffi::reflection;
-  refl::GlobalDef()
-    .def("tir.transform.PointerValueTypeRewrite", PointerValueTypeRewrite);
+  refl::GlobalDef().def("tir.transform.PointerValueTypeRewrite", PointerValueTypeRewrite);
 });
 
 }  // namespace transform

@@ -22,10 +22,10 @@
  */
 
 #include <tvm/arith/iter_affine_map.h>
+#include <tvm/ffi/reflection/reflection.h>
 #include <tvm/tir/analysis.h>
 #include <tvm/tir/stmt_functor.h>
 #include <tvm/tir/transform.h>
-#include <tvm/ffi/reflection/reflection.h>
 
 #include "../../arith/ir_mutator_with_analyzer.h"
 #include "ir_utils.h"
@@ -282,8 +282,7 @@ Pass FlattenBuffer() {
 
 TVM_FFI_STATIC_INIT_BLOCK({
   namespace refl = tvm::ffi::reflection;
-  refl::GlobalDef()
-    .def("tir.transform.FlattenBuffer", FlattenBuffer);
+  refl::GlobalDef().def("tir.transform.FlattenBuffer", FlattenBuffer);
 });
 }  // namespace transform
 

@@ -21,10 +21,10 @@
  * \brief Automatic mixed precision pass.
  */
 
+#include <tvm/ffi/reflection/reflection.h>
 #include <tvm/relax/expr_functor.h>
 #include <tvm/relax/op_attr_types.h>
 #include <tvm/relax/transform.h>
-#include <tvm/ffi/reflection/reflection.h>
 
 #include <array>
 #include <cstdint>
@@ -621,8 +621,7 @@ Pass ToMixedPrecision(const DataType& out_dtype, Optional<Array<String>> fp16_in
 
 TVM_FFI_STATIC_INIT_BLOCK({
   namespace refl = tvm::ffi::reflection;
-  refl::GlobalDef()
-    .def("relax.transform.ToMixedPrecision", ToMixedPrecision);
+  refl::GlobalDef().def("relax.transform.ToMixedPrecision", ToMixedPrecision);
 });
 
 }  // namespace transform

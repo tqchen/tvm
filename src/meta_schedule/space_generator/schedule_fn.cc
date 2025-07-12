@@ -102,8 +102,7 @@ TVM_FFI_STATIC_INIT_BLOCK({ ScheduleFnNode::RegisterReflection(); });
 TVM_REGISTER_NODE_TYPE(ScheduleFnNode);
 TVM_FFI_STATIC_INIT_BLOCK({
   namespace refl = tvm::ffi::reflection;
-  refl::GlobalDef()
-    .def("meta_schedule.SpaceGeneratorScheduleFn", SpaceGenerator::ScheduleFn);
+  refl::GlobalDef().def("meta_schedule.SpaceGeneratorScheduleFn", SpaceGenerator::ScheduleFn);
 });
 
 }  // namespace meta_schedule

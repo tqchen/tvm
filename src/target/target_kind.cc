@@ -22,11 +22,11 @@
  * \brief Target kind registry
  */
 #include <tvm/ffi/function.h>
+#include <tvm/ffi/reflection/reflection.h>
 #include <tvm/ir/expr.h>
 #include <tvm/runtime/device_api.h>
 #include <tvm/target/target.h>
 #include <tvm/target/target_kind.h>
-#include <tvm/ffi/reflection/reflection.h>
 
 #include <algorithm>
 
@@ -452,20 +452,21 @@ TVM_REGISTER_TARGET_KIND("test", kDLCPU)  // line break
 TVM_FFI_STATIC_INIT_BLOCK({
   namespace refl = tvm::ffi::reflection;
   refl::GlobalDef()
-    .def("target.TargetKindGetAttr", [](TargetKind kind, String attr_name) -> ffi::Any {
-      auto target_attr_map = TargetKind::GetAttrMap<ffi::Any>(attr_name);
-      ffi::Any rv;
-      if (target_attr_map.count(kind)) {
-        rv = target_attr_map[kind];
-      }
-      return rv;
-    })
-    .def("target.ListTargetKinds", TargetKindRegEntry::ListTargetKinds)
-    .def("target.ListTargetKindOptions", TargetKindRegEntry::ListTargetKindOptions)
-    .def("target.ListTargetKindOptionsFromName", [](String target_kind_name) {
-      TargetKind kind = TargetKind::Get(target_kind_name).value();
-      return TargetKindRegEntry::ListTargetKindOptions(kind);
-    });
+      .def("target.TargetKindGetAttr",
+           [](TargetKind kind, String attr_name) -> ffi::Any {
+             auto target_attr_map = TargetKind::GetAttrMap<ffi::Any>(attr_name);
+             ffi::Any rv;
+             if (target_attr_map.count(kind)) {
+               rv = target_attr_map[kind];
+             }
+             return rv;
+           })
+      .def("target.ListTargetKinds", TargetKindRegEntry::ListTargetKinds)
+      .def("target.ListTargetKindOptions", TargetKindRegEntry::ListTargetKindOptions)
+      .def("target.ListTargetKindOptionsFromName", [](String target_kind_name) {
+        TargetKind kind = TargetKind::Get(target_kind_name).value();
+        return TargetKindRegEntry::ListTargetKindOptions(kind);
+      });
 });
 
 }  // namespace tvm

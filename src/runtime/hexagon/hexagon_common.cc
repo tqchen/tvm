@@ -21,9 +21,9 @@
  * \file hexagon_common.cc
  */
 #include "hexagon_common.h"
-#include <tvm/ffi/reflection/reflection.h>
 
 #include <tvm/ffi/function.h>
+#include <tvm/ffi/reflection/reflection.h>
 #include <tvm/runtime/logging.h>
 #include <tvm/runtime/profiling.h>
 
@@ -59,10 +59,8 @@ TVM_REGISTER_OBJECT_TYPE(HexagonTimerNode);
 
 TVM_FFI_STATIC_INIT_BLOCK({
   namespace refl = tvm::ffi::reflection;
-  refl::GlobalDef()
-    .def("profiling.timer.hexagon", [](Device dev) {
-  return Timer(make_object<HexagonTimerNode>());
-});
+  refl::GlobalDef().def("profiling.timer.hexagon",
+                        [](Device dev) { return Timer(make_object<HexagonTimerNode>()); });
 });
 }  // namespace hexagon
 
@@ -96,11 +94,11 @@ void LogMessageImpl(const std::string& file, int lineno, int level, const std::s
 
 TVM_FFI_STATIC_INIT_BLOCK({
   namespace refl = tvm::ffi::reflection;
-  refl::GlobalDef()
-    .def_packed("runtime.module.loadfile_hexagon", [](ffi::PackedArgs args, ffi::Any* rv) {
-      ObjectPtr<Library> n = CreateDSOLibraryObject(args[0].cast<String>());
-      *rv = CreateModuleFromLibrary(n);
-    });
+  refl::GlobalDef().def_packed(
+      "runtime.module.loadfile_hexagon", [](ffi::PackedArgs args, ffi::Any* rv) {
+        ObjectPtr<Library> n = CreateDSOLibraryObject(args[0].cast<String>());
+        *rv = CreateModuleFromLibrary(n);
+      });
 });
 
 }  // namespace runtime

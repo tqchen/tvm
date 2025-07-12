@@ -21,10 +21,10 @@
  * \brief Attach layout_free_buffers for layout-free buffers.
  */
 
+#include <tvm/ffi/reflection/reflection.h>
 #include <tvm/relax/expr_functor.h>
 #include <tvm/relax/transform.h>
 #include <tvm/tir/stmt_functor.h>
-#include <tvm/ffi/reflection/reflection.h>
 
 namespace tvm {
 namespace relax {
@@ -108,8 +108,7 @@ Pass AttachAttrLayoutFreeBuffers() {
 
 TVM_FFI_STATIC_INIT_BLOCK({
   namespace refl = tvm::ffi::reflection;
-  refl::GlobalDef()
-    .def("relax.transform.AttachAttrLayoutFreeBuffers", AttachAttrLayoutFreeBuffers);
+  refl::GlobalDef().def("relax.transform.AttachAttrLayoutFreeBuffers", AttachAttrLayoutFreeBuffers);
 });
 }  // namespace transform
 }  // namespace relax

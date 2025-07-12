@@ -23,6 +23,7 @@
  */
 
 #include "ternary.h"
+
 #include <tvm/ffi/reflection/reflection.h>
 
 namespace tvm {
@@ -146,8 +147,7 @@ Expr ewise_fma(Expr x1, Expr x2, Expr x3) {
 
 TVM_FFI_STATIC_INIT_BLOCK({
   namespace refl = tvm::ffi::reflection;
-  refl::GlobalDef()
-    .def("relax.op.ewise_fma", ewise_fma);
+  refl::GlobalDef().def("relax.op.ewise_fma", ewise_fma);
 });
 
 }  // namespace relax

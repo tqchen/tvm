@@ -21,10 +21,10 @@
  * \file src/relax/backend/contrib/clml/codegen.cc
  * \brief Implementation of the OpenCLML JSON serializer.
  */
+#include <tvm/ffi/reflection/reflection.h>
 #include <tvm/ir/module.h>
 #include <tvm/ir/transform.h>
 #include <tvm/relax/type.h>
-#include <tvm/ffi/reflection/reflection.h>
 
 #include <memory>
 #include <string>
@@ -331,8 +331,7 @@ Array<runtime::Module> OpenCLMLCompiler(Array<Function> functions, Map<String, A
 
 TVM_FFI_STATIC_INIT_BLOCK({
   namespace refl = tvm::ffi::reflection;
-  refl::GlobalDef()
-    .def("relax.ext.openclml", OpenCLMLCompiler);
+  refl::GlobalDef().def("relax.ext.openclml", OpenCLMLCompiler);
 });
 
 /*!
@@ -362,8 +361,8 @@ Integer GetOpenCLMLVersion() {
 TVM_FFI_STATIC_INIT_BLOCK({
   namespace refl = tvm::ffi::reflection;
   refl::GlobalDef()
-    .def("relax.is_openclml_runtime_enabled", IsOpenCLMLRuntimeEnabled)
-    .def("relax.get_openclml_version", GetOpenCLMLVersion);
+      .def("relax.is_openclml_runtime_enabled", IsOpenCLMLRuntimeEnabled)
+      .def("relax.get_openclml_version", GetOpenCLMLVersion);
 });
 
 }  // namespace contrib

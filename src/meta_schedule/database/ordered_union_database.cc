@@ -87,8 +87,8 @@ Database Database::OrderedUnionDatabase(Array<Database> databases) {
 TVM_REGISTER_NODE_TYPE(OrderedUnionDatabaseNode);
 TVM_FFI_STATIC_INIT_BLOCK({
   namespace refl = tvm::ffi::reflection;
-  refl::GlobalDef()
-    .def("meta_schedule.DatabaseOrderedUnionDatabase", Database::OrderedUnionDatabase);
+  refl::GlobalDef().def("meta_schedule.DatabaseOrderedUnionDatabase",
+                        Database::OrderedUnionDatabase);
 });
 
 TVM_FFI_STATIC_INIT_BLOCK({ OrderedUnionDatabaseNode::RegisterReflection(); });

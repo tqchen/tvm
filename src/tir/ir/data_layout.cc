@@ -23,9 +23,9 @@
  */
 #include <tvm/arith/analyzer.h>
 #include <tvm/ffi/function.h>
+#include <tvm/ffi/reflection/reflection.h>
 #include <tvm/tir/data_layout.h>
 #include <tvm/tir/stmt_functor.h>
-#include <tvm/ffi/reflection/reflection.h>
 
 #include <cctype>
 
@@ -436,29 +436,29 @@ TVM_STATIC_IR_FUNCTOR(ReprPrinter, vtable)
 TVM_FFI_STATIC_INIT_BLOCK({
   namespace refl = tvm::ffi::reflection;
   refl::GlobalDef()
-    .def("tir.Layout", [](std::string name, DataType dtype) {
-  return Layout(name, dtype);
-})
-    .def("tir.LayoutIndexOf", [](Layout layout, std::string axis) -> int {
-      return layout.IndexOf(LayoutAxis::Get(axis));
-    })
-    .def("tir.LayoutFactorOf", [](Layout layout, std::string axis) -> int {
-      return layout.FactorOf(LayoutAxis::Get(axis));
-    })
-    .def("tir.LayoutNdim", [](Layout layout) -> int {
-  return layout.ndim();
-})
-    .def("tir.LayoutGetItem", [](Layout layout, int idx) -> std::string {
-      const LayoutAxis& axis = layout[idx];
-      return axis.name();
-    })
-    .def("tir.BijectiveLayout", [](Layout src_layout, Layout dst_layout) -> BijectiveLayout {
-      return BijectiveLayout(src_layout, dst_layout);
-    })
-    .def_method("tir.BijectiveLayoutForwardIndex", &BijectiveLayout::ForwardIndex)
-    .def_method("tir.BijectiveLayoutBackwardIndex", &BijectiveLayout::BackwardIndex)
-    .def_method("tir.BijectiveLayoutForwardShape", &BijectiveLayout::ForwardShape)
-    .def_method("tir.BijectiveLayoutBackwardShape", &BijectiveLayout::BackwardShape);
+      .def("tir.Layout", [](std::string name, DataType dtype) { return Layout(name, dtype); })
+      .def("tir.LayoutIndexOf",
+           [](Layout layout, std::string axis) -> int {
+             return layout.IndexOf(LayoutAxis::Get(axis));
+           })
+      .def("tir.LayoutFactorOf",
+           [](Layout layout, std::string axis) -> int {
+             return layout.FactorOf(LayoutAxis::Get(axis));
+           })
+      .def("tir.LayoutNdim", [](Layout layout) -> int { return layout.ndim(); })
+      .def("tir.LayoutGetItem",
+           [](Layout layout, int idx) -> std::string {
+             const LayoutAxis& axis = layout[idx];
+             return axis.name();
+           })
+      .def("tir.BijectiveLayout",
+           [](Layout src_layout, Layout dst_layout) -> BijectiveLayout {
+             return BijectiveLayout(src_layout, dst_layout);
+           })
+      .def_method("tir.BijectiveLayoutForwardIndex", &BijectiveLayout::ForwardIndex)
+      .def_method("tir.BijectiveLayoutBackwardIndex", &BijectiveLayout::BackwardIndex)
+      .def_method("tir.BijectiveLayoutForwardShape", &BijectiveLayout::ForwardShape)
+      .def_method("tir.BijectiveLayoutBackwardShape", &BijectiveLayout::BackwardShape);
 });
 }  // namespace tir
 }  // namespace tvm

@@ -21,6 +21,7 @@
  * \file tvm/relax/distributed/transform/propagate_sharding.cc
  * \brief Pass for propagating sharding information.
  */
+#include <tvm/ffi/reflection/reflection.h>
 #include <tvm/relax/analysis.h>
 #include <tvm/relax/attrs/distributed.h>
 #include <tvm/relax/attrs/linear_algebra.h>
@@ -29,7 +30,6 @@
 #include <tvm/relax/distributed/axis_group_graph.h>
 #include <tvm/relax/distributed/transform.h>
 #include <tvm/relax/expr_functor.h>
-#include <tvm/ffi/reflection/reflection.h>
 
 #include <numeric>
 
@@ -618,8 +618,7 @@ Pass PropagateSharding() {
 }
 TVM_FFI_STATIC_INIT_BLOCK({
   namespace refl = tvm::ffi::reflection;
-  refl::GlobalDef()
-    .def("relax.distributed.transform.PropagateSharding", PropagateSharding);
+  refl::GlobalDef().def("relax.distributed.transform.PropagateSharding", PropagateSharding);
 });
 }  // namespace transform
 

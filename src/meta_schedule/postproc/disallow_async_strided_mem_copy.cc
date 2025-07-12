@@ -16,8 +16,9 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-#include "../utils.h"
 #include <tvm/ffi/reflection/reflection.h>
+
+#include "../utils.h"
 
 namespace tvm {
 namespace tir {
@@ -187,8 +188,8 @@ Postproc Postproc::DisallowAsyncStridedMemCopy() {
 TVM_REGISTER_NODE_TYPE(DisallowAsyncStridedMemCopyNode);
 TVM_FFI_STATIC_INIT_BLOCK({
   namespace refl = tvm::ffi::reflection;
-  refl::GlobalDef()
-    .def("meta_schedule.PostprocDisallowAsyncStridedMemCopy", Postproc::DisallowAsyncStridedMemCopy);
+  refl::GlobalDef().def("meta_schedule.PostprocDisallowAsyncStridedMemCopy",
+                        Postproc::DisallowAsyncStridedMemCopy);
 });
 
 }  // namespace meta_schedule

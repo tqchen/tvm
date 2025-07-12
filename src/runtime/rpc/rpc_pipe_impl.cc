@@ -28,8 +28,8 @@
 #include <signal.h>
 #include <sys/types.h>
 #include <tvm/ffi/function.h>
-#include <unistd.h>
 #include <tvm/ffi/reflection/reflection.h>
+#include <unistd.h>
 
 #include <cstdlib>
 #include <memory>
@@ -115,14 +115,13 @@ Module CreatePipeClient(std::vector<std::string> cmd) {
 
 TVM_FFI_STATIC_INIT_BLOCK({
   namespace refl = tvm::ffi::reflection;
-  refl::GlobalDef()
-    .def_packed("rpc.CreatePipeClient", [](ffi::PackedArgs args, ffi::Any* rv) {
-      std::vector<std::string> cmd;
-      for (int i = 0; i < args.size(); ++i) {
-        cmd.push_back(args[i].cast<std::string>());
-      }
-      *rv = CreatePipeClient(cmd);
-    });
+  refl::GlobalDef().def_packed("rpc.CreatePipeClient", [](ffi::PackedArgs args, ffi::Any* rv) {
+    std::vector<std::string> cmd;
+    for (int i = 0; i < args.size(); ++i) {
+      cmd.push_back(args[i].cast<std::string>());
+    }
+    *rv = CreatePipeClient(cmd);
+  });
 });
 
 }  // namespace runtime

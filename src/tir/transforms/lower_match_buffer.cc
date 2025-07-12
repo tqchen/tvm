@@ -23,11 +23,11 @@
  */
 
 #include <tvm/arith/analyzer.h>
+#include <tvm/ffi/reflection/reflection.h>
 #include <tvm/tir/function.h>
 #include <tvm/tir/op.h>
 #include <tvm/tir/stmt_functor.h>
 #include <tvm/tir/transform.h>
-#include <tvm/ffi/reflection/reflection.h>
 
 #include "../ir/functor_common.h"
 #include "ir_utils.h"
@@ -270,8 +270,7 @@ Pass LowerMatchBuffer() {
 
 TVM_FFI_STATIC_INIT_BLOCK({
   namespace refl = tvm::ffi::reflection;
-  refl::GlobalDef()
-    .def("tir.transform.LowerMatchBuffer", LowerMatchBuffer);
+  refl::GlobalDef().def("tir.transform.LowerMatchBuffer", LowerMatchBuffer);
 });
 
 }  // namespace transform

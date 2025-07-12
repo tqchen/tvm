@@ -21,12 +21,12 @@
  * \brief Kill storage/tensor objects after last use, if not already killed
  */
 #include <tvm/arith/analyzer.h>
+#include <tvm/ffi/reflection/reflection.h>
 #include <tvm/relax/analysis.h>
 #include <tvm/relax/expr_functor.h>
 #include <tvm/relax/nested_msg.h>
 #include <tvm/relax/transform.h>
 #include <tvm/tir/stmt_functor.h>
-#include <tvm/ffi/reflection/reflection.h>
 
 #include <map>
 #include <set>
@@ -268,8 +268,7 @@ Pass KillAfterLastUse() {
 
 TVM_FFI_STATIC_INIT_BLOCK({
   namespace refl = tvm::ffi::reflection;
-  refl::GlobalDef()
-    .def("relax.transform.KillAfterLastUse", KillAfterLastUse);
+  refl::GlobalDef().def("relax.transform.KillAfterLastUse", KillAfterLastUse);
 });
 
 }  // namespace transform

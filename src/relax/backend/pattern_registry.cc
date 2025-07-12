@@ -18,6 +18,7 @@
  */
 
 #include "./pattern_registry.h"
+
 #include <tvm/ffi/reflection/reflection.h>
 
 #include "../../support/utils.h"
@@ -71,10 +72,10 @@ Optional<FusionPattern> GetPattern(const String& pattern_name) {
 TVM_FFI_STATIC_INIT_BLOCK({
   namespace refl = tvm::ffi::reflection;
   refl::GlobalDef()
-    .def("relax.backend.RegisterPatterns", RegisterPatterns)
-    .def("relax.backend.RemovePatterns", RemovePatterns)
-    .def("relax.backend.GetPatternsWithPrefix", GetPatternsWithPrefix)
-    .def("relax.backend.GetPattern", GetPattern);
+      .def("relax.backend.RegisterPatterns", RegisterPatterns)
+      .def("relax.backend.RemovePatterns", RemovePatterns)
+      .def("relax.backend.GetPatternsWithPrefix", GetPatternsWithPrefix)
+      .def("relax.backend.GetPattern", GetPattern);
 });
 
 }  // namespace backend

@@ -21,9 +21,9 @@
  * \file Use external cblas library call.
  */
 #include <tvm/ffi/function.h>
+#include <tvm/ffi/reflection/reflection.h>
 #include <tvm/runtime/data_type.h>
 #include <tvm/runtime/logging.h>
-#include <tvm/ffi/reflection/reflection.h>
 
 extern "C" {
 #include <cblas.h>
@@ -127,33 +127,36 @@ struct CblasDgemmBatchIterativeOp {
 TVM_FFI_STATIC_INIT_BLOCK({
   namespace refl = tvm::ffi::reflection;
   refl::GlobalDef()
-    .def_packed("tvm.contrib.cblas.matmul", [](ffi::PackedArgs args, ffi::Any* ret) {
-      auto A = args[0].cast<DLTensor*>();
-      ICHECK(TypeMatch(A->dtype, kDLFloat, 32) || TypeMatch(A->dtype, kDLFloat, 64));
+      .def_packed("tvm.contrib.cblas.matmul",
+                  [](ffi::PackedArgs args, ffi::Any* ret) {
+                    auto A = args[0].cast<DLTensor*>();
+                    ICHECK(TypeMatch(A->dtype, kDLFloat, 32) || TypeMatch(A->dtype, kDLFloat, 64));
 
-      if (TypeMatch(A->dtype, kDLFloat, 32))
-        CallGemm(args, ret, CblasSgemmOp());
-      else
-        CallGemm(args, ret, CblasDgemmOp());
-    })
-    .def_packed("tvm.contrib.cblas.batch_matmul", [](ffi::PackedArgs args, ffi::Any* ret) {
-      auto A = args[0].cast<DLTensor*>();
-      ICHECK(TypeMatch(A->dtype, kDLFloat, 32) || TypeMatch(A->dtype, kDLFloat, 64));
-      if (TypeMatch(A->dtype, kDLFloat, 32)) {
-        CallBatchGemm(args, ret, CblasSgemmBatchOp());
-      } else {
-        CallBatchGemm(args, ret, CblasDgemmBatchOp());
-      }
-    })
-    .def_packed("tvm.contrib.cblas.batch_matmul_iterative", [](ffi::PackedArgs args, ffi::Any* ret) {
-      auto A = args[0].cast<DLTensor*>();
-      ICHECK(TypeMatch(A->dtype, kDLFloat, 32) || TypeMatch(A->dtype, kDLFloat, 64));
-      if (TypeMatch(A->dtype, kDLFloat, 32)) {
-        CallBatchGemm(args, ret, CblasSgemmBatchIterativeOp());
-      } else {
-        CallBatchGemm(args, ret, CblasDgemmBatchIterativeOp());
-      }
-    });
+                    if (TypeMatch(A->dtype, kDLFloat, 32))
+                      CallGemm(args, ret, CblasSgemmOp());
+                    else
+                      CallGemm(args, ret, CblasDgemmOp());
+                  })
+      .def_packed("tvm.contrib.cblas.batch_matmul",
+                  [](ffi::PackedArgs args, ffi::Any* ret) {
+                    auto A = args[0].cast<DLTensor*>();
+                    ICHECK(TypeMatch(A->dtype, kDLFloat, 32) || TypeMatch(A->dtype, kDLFloat, 64));
+                    if (TypeMatch(A->dtype, kDLFloat, 32)) {
+                      CallBatchGemm(args, ret, CblasSgemmBatchOp());
+                    } else {
+                      CallBatchGemm(args, ret, CblasDgemmBatchOp());
+                    }
+                  })
+      .def_packed("tvm.contrib.cblas.batch_matmul_iterative",
+                  [](ffi::PackedArgs args, ffi::Any* ret) {
+                    auto A = args[0].cast<DLTensor*>();
+                    ICHECK(TypeMatch(A->dtype, kDLFloat, 32) || TypeMatch(A->dtype, kDLFloat, 64));
+                    if (TypeMatch(A->dtype, kDLFloat, 32)) {
+                      CallBatchGemm(args, ret, CblasSgemmBatchIterativeOp());
+                    } else {
+                      CallBatchGemm(args, ret, CblasDgemmBatchIterativeOp());
+                    }
+                  });
 });
 }  // namespace contrib
 }  // namespace tvm

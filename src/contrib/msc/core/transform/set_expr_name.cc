@@ -22,10 +22,10 @@
  * \brief Pass for setting name for call and constant.
  */
 
+#include <tvm/ffi/reflection/reflection.h>
 #include <tvm/relax/expr.h>
 #include <tvm/relax/expr_functor.h>
 #include <tvm/relax/transform.h>
-#include <tvm/ffi/reflection/reflection.h>
 
 #include "../utils.h"
 
@@ -327,8 +327,7 @@ Pass SetRelaxExprName(const String& entry_name, const String& target,
 
 TVM_FFI_STATIC_INIT_BLOCK({
   namespace refl = tvm::ffi::reflection;
-  refl::GlobalDef()
-    .def("relax.transform.SetRelaxExprName", SetRelaxExprName);
+  refl::GlobalDef().def("relax.transform.SetRelaxExprName", SetRelaxExprName);
 });
 
 }  // namespace transform

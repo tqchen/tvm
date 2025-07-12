@@ -23,10 +23,10 @@
  */
 
 #include "../../tir/transforms/simplify.h"
-#include <tvm/ffi/reflection/reflection.h>
 
 #include <tvm/arith/analyzer.h>
 #include <tvm/ffi/function.h>
+#include <tvm/ffi/reflection/reflection.h>
 #include <tvm/tir/analysis.h>
 #include <tvm/tir/builtin.h>
 #include <tvm/tir/expr.h>
@@ -366,8 +366,7 @@ Pass Simplify() {
 
 TVM_FFI_STATIC_INIT_BLOCK({
   namespace refl = tvm::ffi::reflection;
-  refl::GlobalDef()
-    .def("tir.transform.Simplify", Simplify);
+  refl::GlobalDef().def("tir.transform.Simplify", Simplify);
 });
 
 }  // namespace transform

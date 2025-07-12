@@ -16,8 +16,8 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-#include <tvm/tir/transform.h>
 #include <tvm/ffi/reflection/reflection.h>
+#include <tvm/tir/transform.h>
 
 #include "../utils.h"
 
@@ -72,8 +72,7 @@ Postproc Postproc::VerifyVTCMLimit() {
 TVM_REGISTER_NODE_TYPE(VerifyVTCMLimitNode);
 TVM_FFI_STATIC_INIT_BLOCK({
   namespace refl = tvm::ffi::reflection;
-  refl::GlobalDef()
-    .def("meta_schedule.PostprocVerifyVTCMLimit", Postproc::VerifyVTCMLimit);
+  refl::GlobalDef().def("meta_schedule.PostprocVerifyVTCMLimit", Postproc::VerifyVTCMLimit);
 });
 
 }  // namespace meta_schedule

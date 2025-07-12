@@ -23,10 +23,10 @@
  */
 #include <dmlc/thread_local.h>
 #include <tvm/ffi/function.h>
+#include <tvm/ffi/reflection/reflection.h>
 #include <tvm/ir/instrument.h>
 #include <tvm/ir/transform.h>
 #include <tvm/node/repr_printer.h>
-#include <tvm/ffi/reflection/reflection.h>
 
 #include <stack>
 
@@ -180,15 +180,16 @@ TVM_REGISTER_NODE_TYPE(BasePassInstrumentNode);
 
 TVM_FFI_STATIC_INIT_BLOCK({
   namespace refl = tvm::ffi::reflection;
-  refl::GlobalDef()
-    .def("instrument.PassInstrument", [](String name, ffi::TypedFunction<void()> enter_pass_ctx,
-           ffi::TypedFunction<void()> exit_pass_ctx,
-           ffi::TypedFunction<bool(const IRModule&, const transform::PassInfo&)> should_run,
-           ffi::TypedFunction<void(const IRModule&, const transform::PassInfo&)> run_before_pass,
-           ffi::TypedFunction<void(const IRModule&, const transform::PassInfo&)> run_after_pass) {
-          return BasePassInstrument(name, enter_pass_ctx, exit_pass_ctx, should_run,
-                                    run_before_pass, run_after_pass);
-        });
+  refl::GlobalDef().def(
+      "instrument.PassInstrument",
+      [](String name, ffi::TypedFunction<void()> enter_pass_ctx,
+         ffi::TypedFunction<void()> exit_pass_ctx,
+         ffi::TypedFunction<bool(const IRModule&, const transform::PassInfo&)> should_run,
+         ffi::TypedFunction<void(const IRModule&, const transform::PassInfo&)> run_before_pass,
+         ffi::TypedFunction<void(const IRModule&, const transform::PassInfo&)> run_after_pass) {
+        return BasePassInstrument(name, enter_pass_ctx, exit_pass_ctx, should_run, run_before_pass,
+                                  run_after_pass);
+      });
 });
 
 TVM_STATIC_IR_FUNCTOR(ReprPrinter, vtable)
@@ -316,23 +317,23 @@ String RenderPassProfiles() {
 TVM_FFI_STATIC_INIT_BLOCK({
   namespace refl = tvm::ffi::reflection;
   refl::GlobalDef()
-    .def("instrument.RenderTimePassProfiles", RenderPassProfiles)
-    .def("instrument.MakePassTimingInstrument", []() {
-  auto run_before_pass = [](const IRModule&, const transform::PassInfo& pass_info) {
-    PassProfile::EnterPass(pass_info->name);
-    return true;
-  };
+      .def("instrument.RenderTimePassProfiles", RenderPassProfiles)
+      .def("instrument.MakePassTimingInstrument", []() {
+        auto run_before_pass = [](const IRModule&, const transform::PassInfo& pass_info) {
+          PassProfile::EnterPass(pass_info->name);
+          return true;
+        };
 
-  auto run_after_pass = [](const IRModule&, const transform::PassInfo& pass_info) {
-    PassProfile::ExitPass();
-  };
+        auto run_after_pass = [](const IRModule&, const transform::PassInfo& pass_info) {
+          PassProfile::ExitPass();
+        };
 
-  auto exit_pass_ctx = []() { PassProfileThreadLocalStore::Get()->root.children.clear(); };
+        auto exit_pass_ctx = []() { PassProfileThreadLocalStore::Get()->root.children.clear(); };
 
-  return BasePassInstrument("PassTimingInstrument",
-                            /* enter_pass_ctx */ nullptr, exit_pass_ctx, /* should_run */ nullptr,
-                            run_before_pass, run_after_pass);
-});
+        return BasePassInstrument("PassTimingInstrument",
+                                  /* enter_pass_ctx */ nullptr, exit_pass_ctx,
+                                  /* should_run */ nullptr, run_before_pass, run_after_pass);
+      });
 });
 
 }  // namespace instrument

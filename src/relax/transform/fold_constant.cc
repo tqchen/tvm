@@ -17,6 +17,7 @@
  * under the License.
  */
 
+#include <tvm/ffi/reflection/reflection.h>
 #include <tvm/ir/function.h>
 #include <tvm/relax/analysis.h>
 #include <tvm/relax/expr_functor.h>
@@ -26,7 +27,6 @@
 #include <tvm/runtime/module.h>
 #include <tvm/tir/function.h>
 #include <tvm/tir/op.h>
-#include <tvm/ffi/reflection/reflection.h>
 
 namespace tvm {
 namespace relax {
@@ -330,8 +330,7 @@ Pass FoldConstant() {
 
 TVM_FFI_STATIC_INIT_BLOCK({
   namespace refl = tvm::ffi::reflection;
-  refl::GlobalDef()
-    .def("relax.transform.FoldConstant", FoldConstant);
+  refl::GlobalDef().def("relax.transform.FoldConstant", FoldConstant);
 });
 
 }  // namespace transform

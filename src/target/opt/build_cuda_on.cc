@@ -175,8 +175,7 @@ runtime::Module BuildCUDA(IRModule mod, Target target) {
 
 TVM_FFI_STATIC_INIT_BLOCK({
   namespace refl = tvm::ffi::reflection;
-  refl::GlobalDef()
-    .def("target.build.cuda", BuildCUDA);
+  refl::GlobalDef().def("target.build.cuda", BuildCUDA);
 });
 TVM_REGISTER_PASS_CONFIG_OPTION("cuda.kernels_output_dir", String);
 }  // namespace codegen

@@ -22,11 +22,11 @@
  * \brief The pass injects permuted layout for shared memory buffers to avoid bank conflicts.
  */
 #include <tvm/arith/analyzer.h>
+#include <tvm/ffi/reflection/reflection.h>
 #include <tvm/tir/function.h>
 #include <tvm/tir/op.h>
 #include <tvm/tir/stmt_functor.h>
 #include <tvm/tir/transform.h>
-#include <tvm/ffi/reflection/reflection.h>
 
 #include "../../arith/ir_mutator_with_analyzer.h"
 #include "../../runtime/thread_storage_scope.h"
@@ -298,8 +298,7 @@ Pass InjectPermutedLayout() {
 
 TVM_FFI_STATIC_INIT_BLOCK({
   namespace refl = tvm::ffi::reflection;
-  refl::GlobalDef()
-    .def("tir.transform.InjectPermutedLayout", InjectPermutedLayout);
+  refl::GlobalDef().def("tir.transform.InjectPermutedLayout", InjectPermutedLayout);
 });
 
 }  // namespace transform

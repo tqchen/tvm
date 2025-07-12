@@ -22,6 +22,7 @@
  * \brief A simple JSON runtime for CLML.
  */
 #include "clml_runtime.h"
+
 #include <tvm/ffi/reflection/reflection.h>
 
 #include <unordered_map>
@@ -1834,8 +1835,8 @@ runtime::Module CLMLRuntimeCreate(const String& symbol_name, const String& graph
 TVM_FFI_STATIC_INIT_BLOCK({
   namespace refl = tvm::ffi::reflection;
   refl::GlobalDef()
-    .def("runtime.clml_runtime_create", CLMLRuntimeCreate)
-    .def("runtime.module.loadbinary_clml", JSONRuntimeBase::LoadFromBinary<CLMLRuntime>);
+      .def("runtime.clml_runtime_create", CLMLRuntimeCreate)
+      .def("runtime.module.loadbinary_clml", JSONRuntimeBase::LoadFromBinary<CLMLRuntime>);
 });
 }  //  namespace contrib
 }  //  namespace runtime

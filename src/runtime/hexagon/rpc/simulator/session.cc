@@ -1372,19 +1372,19 @@ std::optional<HEXAPI_Nullptr> SimulatorRPCChannel::to_nullptr(const detail::Mayb
 
 TVM_FFI_STATIC_INIT_BLOCK({
   namespace refl = tvm::ffi::reflection;
-  refl::GlobalDef()
-    .def_packed("tvm.contrib.hexagon.create_hexagon_session", [](ffi::PackedArgs args, ffi::Any* rv) {
-      ICHECK(args.size() >= 4) << args.size() << " is less than 4";
+  refl::GlobalDef().def_packed(
+      "tvm.contrib.hexagon.create_hexagon_session", [](ffi::PackedArgs args, ffi::Any* rv) {
+        ICHECK(args.size() >= 4) << args.size() << " is less than 4";
 
-      auto session_name = args[0].cast<std::string>();
-      int stack_size = args[1].cast<int>();
-      auto sim_args = args[2].cast<std::string>();
-      auto channel = std::make_unique<SimulatorRPCChannel>(stack_size, sim_args);
-      std::shared_ptr<RPCEndpoint> endpoint =
-          RPCEndpoint::Create(std::move(channel), session_name, "", nullptr);
-      std::shared_ptr<RPCSession> session = CreateClientSession(endpoint);
-      *rv = CreateRPCSessionModule(session);
-    });
+        auto session_name = args[0].cast<std::string>();
+        int stack_size = args[1].cast<int>();
+        auto sim_args = args[2].cast<std::string>();
+        auto channel = std::make_unique<SimulatorRPCChannel>(stack_size, sim_args);
+        std::shared_ptr<RPCEndpoint> endpoint =
+            RPCEndpoint::Create(std::move(channel), session_name, "", nullptr);
+        std::shared_ptr<RPCSession> session = CreateClientSession(endpoint);
+        *rv = CreateRPCSessionModule(session);
+      });
 });
 
 }  // namespace hexagon

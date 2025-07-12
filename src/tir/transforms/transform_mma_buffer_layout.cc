@@ -18,11 +18,11 @@
  */
 
 #include <tvm/arith/analyzer.h>
+#include <tvm/ffi/reflection/reflection.h>
 #include <tvm/tir/analysis.h>
 #include <tvm/tir/index_map.h>
 #include <tvm/tir/stmt_functor.h>
 #include <tvm/tir/transform.h>
-#include <tvm/ffi/reflection/reflection.h>
 
 #include "ir_utils.h"
 
@@ -189,8 +189,7 @@ Pass TransformMmaBufferLayout() {
 
 TVM_FFI_STATIC_INIT_BLOCK({
   namespace refl = tvm::ffi::reflection;
-  refl::GlobalDef()
-    .def("tir.transform.TransformMmaBufferLayout", TransformMmaBufferLayout);
+  refl::GlobalDef().def("tir.transform.TransformMmaBufferLayout", TransformMmaBufferLayout);
 });
 }  // namespace transform
 

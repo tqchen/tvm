@@ -831,42 +831,40 @@ TVM_REGISTER_NODE_TYPE(PyStmtExprMutatorNode);
 TVM_FFI_STATIC_INIT_BLOCK({
   namespace refl = tvm::ffi::reflection;
   refl::GlobalDef()
-    .def("tir.MakePyStmtExprVisitor", PyStmtExprVisitor::MakePyStmtExprVisitor)
-    .def("tir.MakePyStmtExprMutator", PyStmtExprMutator::MakePyStmtExprMutator);
+      .def("tir.MakePyStmtExprVisitor", PyStmtExprVisitor::MakePyStmtExprVisitor)
+      .def("tir.MakePyStmtExprMutator", PyStmtExprMutator::MakePyStmtExprMutator);
 });
 
 // StmtExprVisitor
 TVM_FFI_STATIC_INIT_BLOCK({
   namespace refl = tvm::ffi::reflection;
   refl::GlobalDef()
-    .def("tir.PyStmtExprVisitorDefaultVisitExpr", [](PyStmtExprVisitor visitor, const PrimExpr& expr) {
-      visitor->DefaultVisitExpr(expr);
-    })
-    .def("tir.PyStmtExprVisitorDefaultVisitStmt", [](PyStmtExprVisitor visitor, const Stmt& stmt) {
-      visitor->DefaultVisitStmt(stmt);
-    })
-    .def("tir.PyStmtExprVisitorVisitStmt", [](PyStmtExprVisitor visitor, const Stmt& stmt) { visitor->VisitStmt(stmt); })
-    .def("tir.PyStmtExprVisitorVisitExpr", [](PyStmtExprVisitor visitor, const PrimExpr& expr) {
-      visitor->VisitExpr(expr);
-    });
+      .def("tir.PyStmtExprVisitorDefaultVisitExpr",
+           [](PyStmtExprVisitor visitor, const PrimExpr& expr) { visitor->DefaultVisitExpr(expr); })
+      .def("tir.PyStmtExprVisitorDefaultVisitStmt",
+           [](PyStmtExprVisitor visitor, const Stmt& stmt) { visitor->DefaultVisitStmt(stmt); })
+      .def("tir.PyStmtExprVisitorVisitStmt",
+           [](PyStmtExprVisitor visitor, const Stmt& stmt) { visitor->VisitStmt(stmt); })
+      .def("tir.PyStmtExprVisitorVisitExpr",
+           [](PyStmtExprVisitor visitor, const PrimExpr& expr) { visitor->VisitExpr(expr); });
 });
 
 // StmtExprMutator
 TVM_FFI_STATIC_INIT_BLOCK({
   namespace refl = tvm::ffi::reflection;
   refl::GlobalDef()
-    .def("tir.PyStmtExprMutatorDefaultVisitExpr", [](PyStmtExprMutator mutator, const PrimExpr& expr) {
-      return mutator->DefaultVisitExpr(expr);
-    })
-    .def("tir.PyStmtExprMutatorDefaultVisitStmt", [](PyStmtExprMutator mutator, const Stmt& stmt) {
-      return mutator->DefaultVisitStmt(stmt);
-    })
-    .def("tir.PyStmtExprMutatorVisitExpr", [](PyStmtExprMutator mutator, const PrimExpr& expr) {
-      return mutator->VisitExpr(expr);
-    })
-    .def("tir.PyStmtExprMutatorVisitStmt", [](PyStmtExprMutator mutator, const Stmt& stmt) {
-      return mutator->VisitStmt(stmt);
-    });
+      .def("tir.PyStmtExprMutatorDefaultVisitExpr",
+           [](PyStmtExprMutator mutator, const PrimExpr& expr) {
+             return mutator->DefaultVisitExpr(expr);
+           })
+      .def("tir.PyStmtExprMutatorDefaultVisitStmt",
+           [](PyStmtExprMutator mutator, const Stmt& stmt) {
+             return mutator->DefaultVisitStmt(stmt);
+           })
+      .def("tir.PyStmtExprMutatorVisitExpr",
+           [](PyStmtExprMutator mutator, const PrimExpr& expr) { return mutator->VisitExpr(expr); })
+      .def("tir.PyStmtExprMutatorVisitStmt",
+           [](PyStmtExprMutator mutator, const Stmt& stmt) { return mutator->VisitStmt(stmt); });
 });
 
 }  // namespace tir

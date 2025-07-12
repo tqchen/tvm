@@ -16,8 +16,9 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-#include "../utils.h"
 #include <tvm/ffi/reflection/reflection.h>
+
+#include "../utils.h"
 
 namespace tvm {
 namespace meta_schedule {
@@ -68,9 +69,9 @@ TVM_REGISTER_NODE_TYPE(PyMeasureCallbackNode);
 TVM_FFI_STATIC_INIT_BLOCK({
   namespace refl = tvm::ffi::reflection;
   refl::GlobalDef()
-    .def_method("meta_schedule.MeasureCallbackApply", &MeasureCallbackNode::Apply)
-    .def("meta_schedule.MeasureCallbackPyMeasureCallback", MeasureCallback::PyMeasureCallback)
-    .def("meta_schedule.MeasureCallbackDefault", MeasureCallback::Default);
+      .def_method("meta_schedule.MeasureCallbackApply", &MeasureCallbackNode::Apply)
+      .def("meta_schedule.MeasureCallbackPyMeasureCallback", MeasureCallback::PyMeasureCallback)
+      .def("meta_schedule.MeasureCallbackDefault", MeasureCallback::Default);
 });
 
 }  // namespace meta_schedule

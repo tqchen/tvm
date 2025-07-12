@@ -17,10 +17,10 @@
  * under the License.
  */
 
+#include <tvm/ffi/reflection/reflection.h>
 #include <tvm/tir/builtin.h>
 #include <tvm/tir/stmt.h>
 #include <tvm/tir/transform.h>
-#include <tvm/ffi/reflection/reflection.h>
 
 #include "../../arith/ir_visitor_with_analyzer.h"
 
@@ -75,8 +75,7 @@ Pass LowerVtcmAlloc() {
 
 TVM_FFI_STATIC_INIT_BLOCK({
   namespace refl = tvm::ffi::reflection;
-  refl::GlobalDef()
-    .def("tir.transform.LowerVtcmAlloc", LowerVtcmAlloc);
+  refl::GlobalDef().def("tir.transform.LowerVtcmAlloc", LowerVtcmAlloc);
 });
 
 }  // namespace transform

@@ -22,9 +22,9 @@
  * \brief GlobalVarSupply that can be used to generate unique GlobalVars.
  */
 #include "tvm/ir/global_var_supply.h"
-#include <tvm/ffi/reflection/reflection.h>
 
 #include <tvm/ffi/function.h>
+#include <tvm/ffi/reflection/reflection.h>
 
 #include <utility>
 
@@ -99,14 +99,15 @@ TVM_REGISTER_NODE_TYPE(GlobalVarSupplyNode);
 TVM_FFI_STATIC_INIT_BLOCK({
   namespace refl = tvm::ffi::reflection;
   refl::GlobalDef()
-    .def("ir.GlobalVarSupply_NameSupply", [](const NameSupply& name_supply) { return GlobalVarSupply(name_supply); })
-    .def("ir.GlobalVarSupply_IRModule", [](IRModule mod) {
-  return GlobalVarSupply(std::move(mod));
-})
-    .def("ir.GlobalVarSupply_IRModules", [](const Array<IRModule>& mods) { return GlobalVarSupply(mods); })
-    .def_method("ir.GlobalVarSupply_FreshGlobal", &GlobalVarSupplyNode::FreshGlobal)
-    .def_method("ir.GlobalVarSupply_UniqueGlobalFor", &GlobalVarSupplyNode::UniqueGlobalFor)
-    .def_method("ir.GlobalVarSupply_ReserveGlobalVar", &GlobalVarSupplyNode::ReserveGlobalVar);
+      .def("ir.GlobalVarSupply_NameSupply",
+           [](const NameSupply& name_supply) { return GlobalVarSupply(name_supply); })
+      .def("ir.GlobalVarSupply_IRModule",
+           [](IRModule mod) { return GlobalVarSupply(std::move(mod)); })
+      .def("ir.GlobalVarSupply_IRModules",
+           [](const Array<IRModule>& mods) { return GlobalVarSupply(mods); })
+      .def_method("ir.GlobalVarSupply_FreshGlobal", &GlobalVarSupplyNode::FreshGlobal)
+      .def_method("ir.GlobalVarSupply_UniqueGlobalFor", &GlobalVarSupplyNode::UniqueGlobalFor)
+      .def_method("ir.GlobalVarSupply_ReserveGlobalVar", &GlobalVarSupplyNode::ReserveGlobalVar);
 });
 
 }  // namespace tvm

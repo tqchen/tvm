@@ -16,9 +16,10 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+#include <tvm/ffi/reflection/reflection.h>
+
 #include <optional>
 #include <unordered_set>
-#include <tvm/ffi/reflection/reflection.h>
 
 #include "../utils.h"
 
@@ -276,8 +277,7 @@ Postproc Postproc::RewriteLayout() {
 TVM_REGISTER_NODE_TYPE(RewriteLayoutNode);
 TVM_FFI_STATIC_INIT_BLOCK({
   namespace refl = tvm::ffi::reflection;
-  refl::GlobalDef()
-    .def("meta_schedule.PostprocRewriteLayout", Postproc::RewriteLayout);
+  refl::GlobalDef().def("meta_schedule.PostprocRewriteLayout", Postproc::RewriteLayout);
 });
 
 }  // namespace meta_schedule

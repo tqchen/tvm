@@ -19,9 +19,9 @@
 
 #include <cuda_runtime.h>
 #include <tvm/ffi/function.h>
+#include <tvm/ffi/reflection/reflection.h>
 #include <tvm/runtime/disco/cuda_ipc_memory.h>
 #include <tvm/runtime/memory/memory_manager.h>
-#include <tvm/ffi/reflection/reflection.h>
 
 #include "../../../../3rdparty/tensorrt_llm/custom_allreduce_kernels.h"
 #include "../../cuda/cuda_common.h"
@@ -216,8 +216,9 @@ memory::Storage IPCAllocStorage(ffi::Shape buffer_shape, DLDataType dtype_hint) 
 TVM_FFI_STATIC_INIT_BLOCK({
   namespace refl = tvm::ffi::reflection;
   refl::GlobalDef()
-    .def("runtime.disco.cuda_ipc.alloc_storage", IPCAllocStorage)
-    .def("runtime.disco.cuda_ipc.cuda_ipc_memory_allocator_clear", []() { CUDAIPCMemoryAllocator::Global()->Clear(); });
+      .def("runtime.disco.cuda_ipc.alloc_storage", IPCAllocStorage)
+      .def("runtime.disco.cuda_ipc.cuda_ipc_memory_allocator_clear",
+           []() { CUDAIPCMemoryAllocator::Global()->Clear(); });
 });
 
 /******************** CUDAIPCMemoryObj ********************/

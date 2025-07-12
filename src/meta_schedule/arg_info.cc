@@ -16,8 +16,9 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-#include "./utils.h"
 #include <tvm/ffi/reflection/reflection.h>
+
+#include "./utils.h"
 
 namespace tvm {
 namespace meta_schedule {
@@ -167,13 +168,13 @@ TVM_REGISTER_NODE_TYPE(TensorInfoNode);
 TVM_FFI_STATIC_INIT_BLOCK({
   namespace refl = tvm::ffi::reflection;
   refl::GlobalDef()
-    .def_method("meta_schedule.ArgInfoAsJSON", &ArgInfoNode::AsJSON)
-    .def("meta_schedule.ArgInfoFromPrimFunc", ArgInfo::FromPrimFunc)
-    .def("meta_schedule.ArgInfoFromEntryFunc", ArgInfo::FromEntryFunc)
-    .def("meta_schedule.ArgInfoFromJSON", ArgInfo::FromJSON)
-    .def("meta_schedule.TensorInfo", [](runtime::DataType dtype, ffi::Shape shape) -> TensorInfo {
-      return TensorInfo(dtype, shape);
-    });
+      .def_method("meta_schedule.ArgInfoAsJSON", &ArgInfoNode::AsJSON)
+      .def("meta_schedule.ArgInfoFromPrimFunc", ArgInfo::FromPrimFunc)
+      .def("meta_schedule.ArgInfoFromEntryFunc", ArgInfo::FromEntryFunc)
+      .def("meta_schedule.ArgInfoFromJSON", ArgInfo::FromJSON)
+      .def("meta_schedule.TensorInfo", [](runtime::DataType dtype, ffi::Shape shape) -> TensorInfo {
+        return TensorInfo(dtype, shape);
+      });
 });
 
 }  // namespace meta_schedule

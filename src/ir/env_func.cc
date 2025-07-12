@@ -21,9 +21,9 @@
  * \file env_func.cc
  */
 #include <tvm/ffi/function.h>
+#include <tvm/ffi/reflection/reflection.h>
 #include <tvm/ir/env_func.h>
 #include <tvm/tir/expr.h>
-#include <tvm/ffi/reflection/reflection.h>
 
 namespace tvm {
 
@@ -53,15 +53,14 @@ EnvFunc EnvFunc::Get(const String& name) { return EnvFunc(CreateEnvNode(name)); 
 TVM_FFI_STATIC_INIT_BLOCK({
   namespace refl = tvm::ffi::reflection;
   refl::GlobalDef()
-    .def("ir.EnvFuncGet", EnvFunc::Get)
-    .def_packed("ir.EnvFuncCall", [](ffi::PackedArgs args, ffi::Any* rv) {
-  EnvFunc env = args[0].cast<EnvFunc>();
-  ICHECK_GE(args.size(), 1);
-  env->func.CallPacked(args.Slice(1), rv);
-})
-    .def("ir.EnvFuncGetFunction", [](const EnvFunc& n) {
-  return n->func;
-});
+      .def("ir.EnvFuncGet", EnvFunc::Get)
+      .def_packed("ir.EnvFuncCall",
+                  [](ffi::PackedArgs args, ffi::Any* rv) {
+                    EnvFunc env = args[0].cast<EnvFunc>();
+                    ICHECK_GE(args.size(), 1);
+                    env->func.CallPacked(args.Slice(1), rv);
+                  })
+      .def("ir.EnvFuncGetFunction", [](const EnvFunc& n) { return n->func; });
 });
 
 TVM_REGISTER_NODE_TYPE(EnvFuncNode)

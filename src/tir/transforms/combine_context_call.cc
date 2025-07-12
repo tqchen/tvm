@@ -23,6 +23,7 @@
  * \file combine_context_call.cc
  */
 #include <tvm/ffi/function.h>
+#include <tvm/ffi/reflection/reflection.h>
 #include <tvm/node/structural_equal.h>
 #include <tvm/node/structural_hash.h>
 #include <tvm/tir/builtin.h>
@@ -30,7 +31,6 @@
 #include <tvm/tir/stmt.h>
 #include <tvm/tir/stmt_functor.h>
 #include <tvm/tir/transform.h>
-#include <tvm/ffi/reflection/reflection.h>
 
 #include <unordered_map>
 
@@ -115,8 +115,7 @@ Pass CombineContextCall() {
 
 TVM_FFI_STATIC_INIT_BLOCK({
   namespace refl = tvm::ffi::reflection;
-  refl::GlobalDef()
-    .def("tir.transform.CombineContextCall", CombineContextCall);
+  refl::GlobalDef().def("tir.transform.CombineContextCall", CombineContextCall);
 });
 
 }  // namespace transform

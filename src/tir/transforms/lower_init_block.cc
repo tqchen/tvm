@@ -21,10 +21,10 @@
  * Lower block init stmt into branch stmt
  * \file lower_reduction.cc
  */
+#include <tvm/ffi/reflection/reflection.h>
 #include <tvm/tir/op.h>
 #include <tvm/tir/stmt_functor.h>
 #include <tvm/tir/transform.h>
-#include <tvm/ffi/reflection/reflection.h>
 
 #include "ir_utils.h"
 
@@ -82,8 +82,7 @@ Pass LowerInitBlock() {
 
 TVM_FFI_STATIC_INIT_BLOCK({
   namespace refl = tvm::ffi::reflection;
-  refl::GlobalDef()
-    .def("tir.transform.LowerInitBlock", LowerInitBlock);
+  refl::GlobalDef().def("tir.transform.LowerInitBlock", LowerInitBlock);
 });
 
 }  // namespace transform

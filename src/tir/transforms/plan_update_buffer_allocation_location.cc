@@ -22,11 +22,11 @@
  * \file plan_update_buffer_allocation_location.cc
  */
 
+#include <tvm/ffi/reflection/reflection.h>
 #include <tvm/tir/analysis.h>
 #include <tvm/tir/stmt_functor.h>
 #include <tvm/tir/transform.h>
 #include <tvm/tir/var.h>
-#include <tvm/ffi/reflection/reflection.h>
 
 #include "ir_utils.h"
 
@@ -260,8 +260,8 @@ Pass PlanAndUpdateBufferAllocationLocation() {
 
 TVM_FFI_STATIC_INIT_BLOCK({
   namespace refl = tvm::ffi::reflection;
-  refl::GlobalDef()
-    .def("tir.transform.PlanAndUpdateBufferAllocationLocation", PlanAndUpdateBufferAllocationLocation);
+  refl::GlobalDef().def("tir.transform.PlanAndUpdateBufferAllocationLocation",
+                        PlanAndUpdateBufferAllocationLocation);
 });
 
 }  // namespace transform

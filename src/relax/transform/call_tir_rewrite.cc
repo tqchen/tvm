@@ -21,13 +21,13 @@
  * \brief Perform explicit tensor allocation for call_tir,
  *        call_tir_inplace, and call_dps_packed.
  */
+#include <tvm/ffi/reflection/reflection.h>
 #include <tvm/relax/attrs/op.h>
 #include <tvm/relax/expr_functor.h>
 #include <tvm/relax/struct_info.h>
 #include <tvm/relax/transform.h>
 #include <tvm/relax/type.h>
 #include <tvm/tir/op.h>
-#include <tvm/ffi/reflection/reflection.h>
 
 #include "utils.h"
 
@@ -186,8 +186,7 @@ Pass CallTIRRewrite() {
 
 TVM_FFI_STATIC_INIT_BLOCK({
   namespace refl = tvm::ffi::reflection;
-  refl::GlobalDef()
-    .def("relax.transform.CallTIRRewrite", CallTIRRewrite);
+  refl::GlobalDef().def("relax.transform.CallTIRRewrite", CallTIRRewrite);
 });
 
 }  // namespace transform

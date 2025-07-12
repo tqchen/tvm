@@ -16,11 +16,11 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+#include <tvm/ffi/reflection/reflection.h>
 #include <tvm/meta_schedule/extracted_task.h>
 #include <tvm/te/operation.h>
 #include <tvm/te/tensor.h>
 #include <tvm/tir/function.h>
-#include <tvm/ffi/reflection/reflection.h>
 
 #include "../te/operation/create_primfunc.h"
 #include "./utils.h"
@@ -44,11 +44,11 @@ TVM_FFI_STATIC_INIT_BLOCK({ ExtractedTaskNode::RegisterReflection(); });
 TVM_REGISTER_NODE_TYPE(ExtractedTaskNode);
 TVM_FFI_STATIC_INIT_BLOCK({
   namespace refl = tvm::ffi::reflection;
-  refl::GlobalDef()
-    .def("meta_schedule.ExtractedTask", [](String task_name, IRModule mod, Target target, Array<IRModule> dispatched,
-                       int weight) -> ExtractedTask {
-      return ExtractedTask(task_name, mod, target, dispatched, weight);
-    });
+  refl::GlobalDef().def("meta_schedule.ExtractedTask",
+                        [](String task_name, IRModule mod, Target target,
+                           Array<IRModule> dispatched, int weight) -> ExtractedTask {
+                          return ExtractedTask(task_name, mod, target, dispatched, weight);
+                        });
 });
 
 }  // namespace meta_schedule

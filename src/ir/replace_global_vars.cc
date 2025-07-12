@@ -23,8 +23,8 @@
  */
 
 #include <tvm/ffi/container/variant.h>
-#include <tvm/ir/replace_global_vars.h>
 #include <tvm/ffi/reflection/reflection.h>
+#include <tvm/ir/replace_global_vars.h>
 
 #include <vector>
 
@@ -65,8 +65,7 @@ IRModule ReplaceGlobalVars(IRModule mod, Map<GlobalVar, GlobalVar> replacements)
 
 TVM_FFI_STATIC_INIT_BLOCK({
   namespace refl = tvm::ffi::reflection;
-  refl::GlobalDef()
-    .def("transform.ReplaceGlobalVars", ReplaceGlobalVars);
+  refl::GlobalDef().def("transform.ReplaceGlobalVars", ReplaceGlobalVars);
 });
 
 IRModule ModuleReplaceGlobalVars(
@@ -100,8 +99,7 @@ IRModule ModuleReplaceGlobalVars(
 
 TVM_FFI_STATIC_INIT_BLOCK({
   namespace refl = tvm::ffi::reflection;
-  refl::GlobalDef()
-    .def("ir.Module_ReplaceGlobalVars", ModuleReplaceGlobalVars);
+  refl::GlobalDef().def("ir.Module_ReplaceGlobalVars", ModuleReplaceGlobalVars);
 });
 
 }  // namespace transform

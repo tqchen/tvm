@@ -24,13 +24,13 @@
  *        Ideally should be used before constant folding and eliminating unused bindings.
  */
 
+#include <tvm/ffi/reflection/reflection.h>
 #include <tvm/relax/analysis.h>
 #include <tvm/relax/expr.h>
 #include <tvm/relax/expr_functor.h>
 #include <tvm/relax/struct_info.h>
 #include <tvm/relax/transform.h>
 #include <tvm/tir/stmt_functor.h>
-#include <tvm/ffi/reflection/reflection.h>
 
 namespace tvm {
 namespace relax {
@@ -594,8 +594,7 @@ Pass CanonicalizeBindings() {
 
 TVM_FFI_STATIC_INIT_BLOCK({
   namespace refl = tvm::ffi::reflection;
-  refl::GlobalDef()
-    .def("relax.transform.CanonicalizeBindings", CanonicalizeBindings);
+  refl::GlobalDef().def("relax.transform.CanonicalizeBindings", CanonicalizeBindings);
 });
 
 }  // namespace transform

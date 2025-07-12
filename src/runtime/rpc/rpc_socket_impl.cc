@@ -125,20 +125,21 @@ void RPCServerLoop(ffi::Function fsend, ffi::Function frecv) {
 TVM_FFI_STATIC_INIT_BLOCK({
   namespace refl = tvm::ffi::reflection;
   refl::GlobalDef()
-    .def_packed("rpc.Connect", [](ffi::PackedArgs args, ffi::Any* rv) {
-  auto url = args[0].cast<std::string>();
-  int port = args[1].cast<int>();
-  auto key = args[2].cast<std::string>();
-  bool enable_logging = args[3].cast<bool>();
-  *rv = RPCClientConnect(url, port, key, enable_logging, args.Slice(4));
-})
-    .def_packed("rpc.ServerLoop", [](ffi::PackedArgs args, ffi::Any* rv) {
-  if (auto opt_int = args[0].as<int64_t>()) {
-    RPCServerLoop(opt_int.value());
-  } else {
-    RPCServerLoop(args[0].cast<tvm::ffi::Function>(), args[1].cast<tvm::ffi::Function>());
-  }
-});
+      .def_packed("rpc.Connect",
+                  [](ffi::PackedArgs args, ffi::Any* rv) {
+                    auto url = args[0].cast<std::string>();
+                    int port = args[1].cast<int>();
+                    auto key = args[2].cast<std::string>();
+                    bool enable_logging = args[3].cast<bool>();
+                    *rv = RPCClientConnect(url, port, key, enable_logging, args.Slice(4));
+                  })
+      .def_packed("rpc.ServerLoop", [](ffi::PackedArgs args, ffi::Any* rv) {
+        if (auto opt_int = args[0].as<int64_t>()) {
+          RPCServerLoop(opt_int.value());
+        } else {
+          RPCServerLoop(args[0].cast<tvm::ffi::Function>(), args[1].cast<tvm::ffi::Function>());
+        }
+      });
 });
 
 class SimpleSockHandler : public dmlc::Stream {
@@ -168,12 +169,11 @@ class SimpleSockHandler : public dmlc::Stream {
 
 TVM_FFI_STATIC_INIT_BLOCK({
   namespace refl = tvm::ffi::reflection;
-  refl::GlobalDef()
-    .def("rpc.ReturnException", [](int sockfd, String msg) {
-  auto handler = SimpleSockHandler(sockfd);
-  RPCReference::ReturnException(msg.c_str(), &handler);
-  return;
-});
+  refl::GlobalDef().def("rpc.ReturnException", [](int sockfd, String msg) {
+    auto handler = SimpleSockHandler(sockfd);
+    RPCReference::ReturnException(msg.c_str(), &handler);
+    return;
+  });
 });
 
 }  // namespace runtime

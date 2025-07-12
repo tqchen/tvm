@@ -24,11 +24,11 @@
  * available.
  */
 
+#include <tvm/ffi/reflection/reflection.h>
 #include <tvm/relax/expr.h>
 #include <tvm/relax/expr_functor.h>
 #include <tvm/relax/struct_info.h>
 #include <tvm/relax/transform.h>
-#include <tvm/ffi/reflection/reflection.h>
 
 namespace tvm {
 namespace relax {
@@ -282,8 +282,7 @@ Pass Normalize() {
 
 TVM_FFI_STATIC_INIT_BLOCK({
   namespace refl = tvm::ffi::reflection;
-  refl::GlobalDef()
-    .def("relax.transform.Normalize", Normalize);
+  refl::GlobalDef().def("relax.transform.Normalize", Normalize);
 });
 
 Pass NormalizeGlobalVar() {
@@ -297,8 +296,7 @@ Pass NormalizeGlobalVar() {
 }
 TVM_FFI_STATIC_INIT_BLOCK({
   namespace refl = tvm::ffi::reflection;
-  refl::GlobalDef()
-    .def("relax.transform.NormalizeGlobalVar", NormalizeGlobalVar);
+  refl::GlobalDef().def("relax.transform.NormalizeGlobalVar", NormalizeGlobalVar);
 });
 
 }  // namespace transform

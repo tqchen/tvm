@@ -22,9 +22,9 @@
  * \file scan_op.cc
  */
 #include <tvm/ffi/function.h>
+#include <tvm/ffi/reflection/reflection.h>
 #include <tvm/te/operation.h>
 #include <tvm/tir/expr.h>
-#include <tvm/ffi/reflection/reflection.h>
 
 namespace tvm {
 namespace te {
@@ -102,12 +102,12 @@ ScanOp::ScanOp(std::string name, std::string tag, Optional<Map<String, ffi::Any>
 
 TVM_FFI_STATIC_INIT_BLOCK({
   namespace refl = tvm::ffi::reflection;
-  refl::GlobalDef()
-    .def("te.ScanOp", [](std::string name, std::string tag, Optional<Map<String, ffi::Any>> attrs,
-                       IterVar axis, Array<Tensor> init, Array<Tensor> update,
-                       Array<Tensor> state_placeholder, Array<Tensor> inputs) {
-      return ScanOp(name, tag, attrs, axis, init, update, state_placeholder, inputs);
-    });
+  refl::GlobalDef().def(
+      "te.ScanOp", [](std::string name, std::string tag, Optional<Map<String, ffi::Any>> attrs,
+                      IterVar axis, Array<Tensor> init, Array<Tensor> update,
+                      Array<Tensor> state_placeholder, Array<Tensor> inputs) {
+        return ScanOp(name, tag, attrs, axis, init, update, state_placeholder, inputs);
+      });
 });
 
 Array<Tensor> scan(Array<Tensor> init, Array<Tensor> update, Array<Tensor> state_placeholder,

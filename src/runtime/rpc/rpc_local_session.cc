@@ -22,9 +22,9 @@
  * \brief Local session that directs requests to local API.
  */
 #include "rpc_local_session.h"
-#include <tvm/ffi/reflection/reflection.h>
 
 #include <tvm/ffi/function.h>
+#include <tvm/ffi/reflection/reflection.h>
 #include <tvm/runtime/device_api.h>
 #include <tvm/runtime/ndarray.h>
 
@@ -150,10 +150,8 @@ DeviceAPI* LocalSession::GetDeviceAPI(Device dev, bool allow_missing) {
 
 TVM_FFI_STATIC_INIT_BLOCK({
   namespace refl = tvm::ffi::reflection;
-  refl::GlobalDef()
-    .def("rpc.LocalSession", []() {
-  return CreateRPCSessionModule(std::make_shared<LocalSession>());
-});
+  refl::GlobalDef().def("rpc.LocalSession",
+                        []() { return CreateRPCSessionModule(std::make_shared<LocalSession>()); });
 });
 
 }  // namespace runtime

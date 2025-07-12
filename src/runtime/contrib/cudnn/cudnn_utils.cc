@@ -22,10 +22,10 @@
  */
 
 #include "cudnn_utils.h"
-#include <tvm/ffi/reflection/reflection.h>
 
 #include <dmlc/thread_local.h>
 #include <tvm/ffi/function.h>
+#include <tvm/ffi/reflection/reflection.h>
 #include <tvm/runtime/data_type.h>
 
 #include <string>
@@ -268,10 +268,8 @@ SoftmaxEntry::~SoftmaxEntry() { CUDNN_CALL(cudnnDestroyTensorDescriptor(shape_de
 
 TVM_FFI_STATIC_INIT_BLOCK({
   namespace refl = tvm::ffi::reflection;
-  refl::GlobalDef()
-    .def("tvm.contrib.cudnn.exists", []() -> bool {
-  return CuDNNThreadEntry::ThreadLocal(false)->exists();
-});
+  refl::GlobalDef().def("tvm.contrib.cudnn.exists",
+                        []() -> bool { return CuDNNThreadEntry::ThreadLocal(false)->exists(); });
 });
 
 }  // namespace contrib

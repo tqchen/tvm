@@ -24,12 +24,12 @@
 #include <tvm/arith/analyzer.h>
 #include <tvm/arith/bound.h>
 #include <tvm/arith/iter_affine_map.h>
+#include <tvm/ffi/reflection/reflection.h>
 #include <tvm/tir/analysis.h>
 #include <tvm/tir/buffer.h>
 #include <tvm/tir/stmt.h>
 #include <tvm/tir/stmt_functor.h>
 #include <tvm/tir/transform.h>
-#include <tvm/ffi/reflection/reflection.h>
 
 #include <optional>
 
@@ -178,8 +178,7 @@ Pass LowerAsyncDMA() {
 
 TVM_FFI_STATIC_INIT_BLOCK({
   namespace refl = tvm::ffi::reflection;
-  refl::GlobalDef()
-    .def("tir.transform.LowerAsyncDMA", LowerAsyncDMA);
+  refl::GlobalDef().def("tir.transform.LowerAsyncDMA", LowerAsyncDMA);
 });
 }  // namespace transform
 

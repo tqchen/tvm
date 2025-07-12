@@ -40,31 +40,30 @@ namespace hexagon {
 
 TVM_FFI_STATIC_INIT_BLOCK({
   namespace refl = tvm::ffi::reflection;
-  refl::GlobalDef()
-    .def_packed("hexagon.run_all_tests", [](ffi::PackedArgs args, ffi::Any* rv) {
-      // gtest args are passed into this packed func as a singular string
-      // split gtest args using <space> delimiter and build argument vector
-      std::vector<std::string> parsed_args = tvm::support::Split(args[0].cast<std::string>(), ' ');
-      std::vector<char*> argv;
+  refl::GlobalDef().def_packed("hexagon.run_all_tests", [](ffi::PackedArgs args, ffi::Any* rv) {
+    // gtest args are passed into this packed func as a singular string
+    // split gtest args using <space> delimiter and build argument vector
+    std::vector<std::string> parsed_args = tvm::support::Split(args[0].cast<std::string>(), ' ');
+    std::vector<char*> argv;
 
-      // add executable name
-      argv.push_back(const_cast<char*>("hexagon_run_all_tests"));
+    // add executable name
+    argv.push_back(const_cast<char*>("hexagon_run_all_tests"));
 
-      // add parsed arguments
-      for (int i = 0; i < parsed_args.size(); ++i) {
-        argv.push_back(const_cast<char*>(parsed_args[i].data()));
-      }
+    // add parsed arguments
+    for (int i = 0; i < parsed_args.size(); ++i) {
+      argv.push_back(const_cast<char*>(parsed_args[i].data()));
+    }
 
-      // end of parsed arguments
-      argv.push_back(nullptr);
+    // end of parsed arguments
+    argv.push_back(nullptr);
 
-      // set argument count
-      int argc = argv.size() - 1;
+    // set argument count
+    int argc = argv.size() - 1;
 
-      // initialize gtest with arguments and run
-      ::testing::InitGoogleTest(&argc, argv.data());
-      *rv = RUN_ALL_TESTS();
-    });
+    // initialize gtest with arguments and run
+    ::testing::InitGoogleTest(&argc, argv.data());
+    *rv = RUN_ALL_TESTS();
+  });
 });
 
 }  // namespace hexagon

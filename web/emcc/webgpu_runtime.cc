@@ -30,8 +30,8 @@
 #define DMLC_USE_LOGGING_LIBRARY <tvm/runtime/logging.h>
 
 #include <tvm/ffi/function.h>
-#include <tvm/runtime/device_api.h>
 #include <tvm/ffi/reflection/reflection.h>
+#include <tvm/runtime/device_api.h>
 
 #include <iostream>
 #include <string>
@@ -246,11 +246,11 @@ Module WebGPUModuleLoadBinary(void* strm) {
 TVM_FFI_STATIC_INIT_BLOCK({
   namespace refl = tvm::ffi::reflection;
   refl::GlobalDef()
-    .def("runtime.module.loadbinary_webgpu", WebGPUModuleLoadBinary)
-    .def_packed("device_api.webgpu", [](ffi::PackedArgs args, ffi::Any* rv) {
-      DeviceAPI* ptr = WebGPUDeviceAPI::Global();
-      *rv = static_cast<void*>(ptr);
-    });
+      .def("runtime.module.loadbinary_webgpu", WebGPUModuleLoadBinary)
+      .def_packed("device_api.webgpu", [](ffi::PackedArgs args, ffi::Any* rv) {
+        DeviceAPI* ptr = WebGPUDeviceAPI::Global();
+        *rv = static_cast<void*>(ptr);
+      });
 });
 
 }  // namespace runtime

@@ -25,13 +25,13 @@
  * with respect to the only return value of the function, which needs to be scalar.
  */
 
+#include <tvm/ffi/reflection/reflection.h>
 #include <tvm/relax/analysis.h>
 #include <tvm/relax/attrs/op.h>
 #include <tvm/relax/expr_functor.h>
 #include <tvm/relax/nested_msg.h>
 #include <tvm/relax/op_attr_types.h>
 #include <tvm/relax/transform.h>
-#include <tvm/ffi/reflection/reflection.h>
 
 #include <unordered_set>
 
@@ -790,8 +790,7 @@ Pass Gradient(String func_name, Optional<Array<Var>> require_grads, int target_i
 
 TVM_FFI_STATIC_INIT_BLOCK({
   namespace refl = tvm::ffi::reflection;
-  refl::GlobalDef()
-    .def("relax.transform.Gradient", Gradient);
+  refl::GlobalDef().def("relax.transform.Gradient", Gradient);
 });
 
 }  // namespace transform

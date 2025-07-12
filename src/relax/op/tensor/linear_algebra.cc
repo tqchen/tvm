@@ -23,8 +23,8 @@
  */
 
 #include "linear_algebra.h"
-#include <tvm/ffi/reflection/reflection.h>
 
+#include <tvm/ffi/reflection/reflection.h>
 #include <tvm/topi/einsum.h>
 
 #include <algorithm>
@@ -52,8 +52,7 @@ Expr matmul(Expr x1, Expr x2, Optional<DataType> out_dtype) {
 
 TVM_FFI_STATIC_INIT_BLOCK({
   namespace refl = tvm::ffi::reflection;
-  refl::GlobalDef()
-    .def("relax.op.matmul", matmul);
+  refl::GlobalDef().def("relax.op.matmul", matmul);
 });
 
 StructInfo InferStructInfoMatmul(const Call& call, const BlockBuilder& ctx) {
@@ -188,8 +187,7 @@ Expr einsum(Expr operands, String subscripts) {
 
 TVM_FFI_STATIC_INIT_BLOCK({
   namespace refl = tvm::ffi::reflection;
-  refl::GlobalDef()
-    .def("relax.op.einsum", einsum);
+  refl::GlobalDef().def("relax.op.einsum", einsum);
 });
 
 StructInfo InferStructInfoEinsum(const Call& call, const BlockBuilder& ctx) {
@@ -274,8 +272,7 @@ Expr outer(Expr x1, Expr x2) {
 
 TVM_FFI_STATIC_INIT_BLOCK({
   namespace refl = tvm::ffi::reflection;
-  refl::GlobalDef()
-    .def("relax.op.outer", outer);
+  refl::GlobalDef().def("relax.op.outer", outer);
 });
 
 StructInfo InferStructInfoOuter(const Call& call, const BlockBuilder& ctx) {

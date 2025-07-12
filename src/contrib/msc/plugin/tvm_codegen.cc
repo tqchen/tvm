@@ -21,6 +21,7 @@
  * \file src/contrib/msc/plugin/tvm_codegen.cc
  */
 #include "tvm_codegen.h"
+
 #include <tvm/ffi/reflection/reflection.h>
 
 namespace tvm {
@@ -396,18 +397,18 @@ void TVMPluginCodeGen::CodeGenCompute(const Plugin& plugin, const String& device
 
 TVM_FFI_STATIC_INIT_BLOCK({
   namespace refl = tvm::ffi::reflection;
-  refl::GlobalDef()
-    .def("msc.plugin.GetTVMPluginSources", [](const String& codegen_config, const String& print_config,
-                       const String& codegen_type) -> Map<String, String> {
-      TVMPluginCodeGen codegen = TVMPluginCodeGen(codegen_config);
-      if (codegen_type == "build") {
-        return codegen.GetBuildSources(print_config);
-      }
-      if (codegen_type == "manager") {
-        return codegen.GetManagerSources(print_config);
-      }
-      return Map<String, String>();
-    });
+  refl::GlobalDef().def("msc.plugin.GetTVMPluginSources",
+                        [](const String& codegen_config, const String& print_config,
+                           const String& codegen_type) -> Map<String, String> {
+                          TVMPluginCodeGen codegen = TVMPluginCodeGen(codegen_config);
+                          if (codegen_type == "build") {
+                            return codegen.GetBuildSources(print_config);
+                          }
+                          if (codegen_type == "manager") {
+                            return codegen.GetManagerSources(print_config);
+                          }
+                          return Map<String, String>();
+                        });
 });
 
 }  // namespace msc

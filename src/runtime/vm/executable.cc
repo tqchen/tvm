@@ -22,10 +22,10 @@
  */
 
 #include <dmlc/memory_io.h>
+#include <tvm/ffi/reflection/reflection.h>
 #include <tvm/runtime/logging.h>
 #include <tvm/runtime/vm/executable.h>
 #include <tvm/runtime/vm/vm.h>
-#include <tvm/ffi/reflection/reflection.h>
 
 #include <functional>
 #include <sstream>
@@ -213,8 +213,8 @@ Module VMExecutable::LoadFromBinary(void* stream) {
 
 TVM_FFI_STATIC_INIT_BLOCK({
   namespace refl = tvm::ffi::reflection;
-  refl::GlobalDef()
-    .def("runtime.module.loadbinary_relax.VMExecutable", VMExecutable::LoadFromBinary);
+  refl::GlobalDef().def("runtime.module.loadbinary_relax.VMExecutable",
+                        VMExecutable::LoadFromBinary);
 });
 
 Module VMExecutable::LoadFromFile(const String& file_name) {
@@ -227,8 +227,7 @@ Module VMExecutable::LoadFromFile(const String& file_name) {
 
 TVM_FFI_STATIC_INIT_BLOCK({
   namespace refl = tvm::ffi::reflection;
-  refl::GlobalDef()
-    .def("runtime.module.loadfile_relax.VMExecutable", VMExecutable::LoadFromFile);
+  refl::GlobalDef().def("runtime.module.loadfile_relax.VMExecutable", VMExecutable::LoadFromFile);
 });
 
 void VMFuncInfo::Save(dmlc::Stream* strm) const {
@@ -566,8 +565,7 @@ String VMExecutable::AsPython() const {
 
 TVM_FFI_STATIC_INIT_BLOCK({
   namespace refl = tvm::ffi::reflection;
-  refl::GlobalDef()
-    .def("relax.ExecutableLoadFromFile", VMExecutable::LoadFromFile);
+  refl::GlobalDef().def("relax.ExecutableLoadFromFile", VMExecutable::LoadFromFile);
 });
 
 }  // namespace vm

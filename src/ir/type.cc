@@ -22,8 +22,8 @@
  * \brief Common type system AST nodes throughout the IR.
  */
 #include <tvm/ffi/function.h>
-#include <tvm/ir/type.h>
 #include <tvm/ffi/reflection/reflection.h>
+#include <tvm/ir/type.h>
 namespace tvm {
 
 TVM_FFI_STATIC_INIT_BLOCK({
@@ -45,10 +45,7 @@ TVM_REGISTER_NODE_TYPE(PrimTypeNode);
 
 TVM_FFI_STATIC_INIT_BLOCK({
   namespace refl = tvm::ffi::reflection;
-  refl::GlobalDef()
-    .def("ir.PrimType", [](runtime::DataType dtype) {
-  return PrimType(dtype);
-});
+  refl::GlobalDef().def("ir.PrimType", [](runtime::DataType dtype) { return PrimType(dtype); });
 });
 
 PointerType::PointerType(Type element_type, String storage_scope) {
@@ -62,10 +59,9 @@ TVM_REGISTER_NODE_TYPE(PointerTypeNode);
 
 TVM_FFI_STATIC_INIT_BLOCK({
   namespace refl = tvm::ffi::reflection;
-  refl::GlobalDef()
-    .def("ir.PointerType", [](Type element_type, String storage_scope = "") {
-      return PointerType(element_type, storage_scope);
-    });
+  refl::GlobalDef().def("ir.PointerType", [](Type element_type, String storage_scope = "") {
+    return PointerType(element_type, storage_scope);
+  });
 });
 
 FuncType::FuncType(tvm::Array<Type> arg_types, Type ret_type, Span span) {
@@ -80,10 +76,9 @@ TVM_REGISTER_NODE_TYPE(FuncTypeNode);
 
 TVM_FFI_STATIC_INIT_BLOCK({
   namespace refl = tvm::ffi::reflection;
-  refl::GlobalDef()
-    .def("ir.FuncType", [](tvm::Array<Type> arg_types, Type ret_type) {
-      return FuncType(arg_types, ret_type);
-    });
+  refl::GlobalDef().def("ir.FuncType", [](tvm::Array<Type> arg_types, Type ret_type) {
+    return FuncType(arg_types, ret_type);
+  });
 });
 
 TupleType::TupleType(Array<Type> fields, Span span) {
@@ -100,12 +95,8 @@ TVM_REGISTER_NODE_TYPE(TupleTypeNode);
 TVM_FFI_STATIC_INIT_BLOCK({
   namespace refl = tvm::ffi::reflection;
   refl::GlobalDef()
-    .def("ir.TupleType", [](Array<Type> fields) {
-  return TupleType(fields);
-})
-    .def("ir.TensorMapType", [](Span span) {
-  return TensorMapType(span);
-});
+      .def("ir.TupleType", [](Array<Type> fields) { return TupleType(fields); })
+      .def("ir.TensorMapType", [](Span span) { return TensorMapType(span); });
 });
 
 TensorMapType::TensorMapType(Span span) {

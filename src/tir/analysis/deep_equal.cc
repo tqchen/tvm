@@ -22,11 +22,11 @@
  * \brief Deep equality checking.
  */
 #include <tvm/ffi/function.h>
+#include <tvm/ffi/reflection/reflection.h>
 #include <tvm/node/object_path.h>
 #include <tvm/node/reflection.h>
 #include <tvm/node/structural_equal.h>
 #include <tvm/tir/analysis.h>
-#include <tvm/ffi/reflection/reflection.h>
 
 namespace tvm {
 namespace tir {
@@ -71,10 +71,9 @@ bool ExprDeepEqual::operator()(const PrimExpr& lhs, const PrimExpr& rhs) const {
 
 TVM_FFI_STATIC_INIT_BLOCK({
   namespace refl = tvm::ffi::reflection;
-  refl::GlobalDef()
-    .def("tir.analysis.expr_deep_equal", [](const PrimExpr& lhs, const PrimExpr& rhs) {
-      return ExprDeepEqual()(lhs, rhs);
-    });
+  refl::GlobalDef().def(
+      "tir.analysis.expr_deep_equal",
+      [](const PrimExpr& lhs, const PrimExpr& rhs) { return ExprDeepEqual()(lhs, rhs); });
 });
 
 }  // namespace tir

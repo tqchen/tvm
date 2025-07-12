@@ -24,10 +24,10 @@
 
 #include <tvm/arith/int_set.h>
 #include <tvm/arith/int_solver.h>
+#include <tvm/ffi/reflection/reflection.h>
 #include <tvm/tir/op.h>
 #include <tvm/tir/stmt_functor.h>
 #include <tvm/tir/transform.h>
-#include <tvm/ffi/reflection/reflection.h>
 
 #include <numeric>
 #include <stack>
@@ -759,8 +759,7 @@ Pass CompactBufferAllocation(bool is_strict) {
 
 TVM_FFI_STATIC_INIT_BLOCK({
   namespace refl = tvm::ffi::reflection;
-  refl::GlobalDef()
-    .def("tir.transform.CompactBufferAllocation", CompactBufferAllocation);
+  refl::GlobalDef().def("tir.transform.CompactBufferAllocation", CompactBufferAllocation);
 });
 }  // namespace transform
 

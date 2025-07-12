@@ -24,12 +24,12 @@
 // these instruction can be replaced with a call to a target specific handler
 // and can be used to capture profiling information such as processor cycles.
 
+#include <tvm/ffi/reflection/reflection.h>
 #include <tvm/tir/builtin.h>
 #include <tvm/tir/expr.h>
 #include <tvm/tir/stmt.h>
 #include <tvm/tir/stmt_functor.h>
 #include <tvm/tir/transform.h>
-#include <tvm/ffi/reflection/reflection.h>
 
 namespace tvm {
 namespace tir {
@@ -286,8 +286,7 @@ Pass InstrumentProfileIntrinsics() {
 
 TVM_FFI_STATIC_INIT_BLOCK({
   namespace refl = tvm::ffi::reflection;
-  refl::GlobalDef()
-    .def("tir.transform.InstrumentProfileIntrinsics", InstrumentProfileIntrinsics);
+  refl::GlobalDef().def("tir.transform.InstrumentProfileIntrinsics", InstrumentProfileIntrinsics);
 });
 
 }  // namespace transform

@@ -25,10 +25,10 @@
 #include <tvm/arith/bound.h>
 #include <tvm/arith/iter_affine_map.h>
 #include <tvm/ffi/optional.h>
+#include <tvm/ffi/reflection/reflection.h>
 #include <tvm/tir/analysis.h>
 #include <tvm/tir/buffer.h>
 #include <tvm/tir/stmt.h>
-#include <tvm/ffi/reflection/reflection.h>
 
 #include <optional>
 #include <sstream>
@@ -285,36 +285,35 @@ std::optional<MemCpyDetails> IdentifyMemCpy(const For& loop, arith::Analyzer* an
 // Expose the IdentifyMemCpy functionality to Python API for purpose of unit testing.
 TVM_FFI_STATIC_INIT_BLOCK({
   namespace refl = tvm::ffi::reflection;
-  refl::GlobalDef()
-    .def("tir.analysis._identify_memcpy", [](const Stmt& stmt) {
-  Array<ObjectRef> output;
+  refl::GlobalDef().def("tir.analysis._identify_memcpy", [](const Stmt& stmt) {
+    Array<ObjectRef> output;
 
-  struct Visitor : arith::IRVisitorWithAnalyzer {
-    explicit Visitor(Array<ObjectRef>* output) : output(output) {}
-    Array<ObjectRef>* output;
+    struct Visitor : arith::IRVisitorWithAnalyzer {
+      explicit Visitor(Array<ObjectRef>* output) : output(output) {}
+      Array<ObjectRef>* output;
 
-   private:
-    using IRVisitorWithAnalyzer::VisitStmt_;
-    void VisitStmt_(const ForNode* op) override {
-      For loop = GetRef<For>(op);
-      auto result = IdentifyMemCpyImpl(loop, &(Visitor::analyzer_));
-      if (auto* ptr = std::get_if<MemCpyDetails>(&result)) {
-        output->push_back(Array{ptr->source, ptr->dest});
-      } else if (auto* ptr = std::get_if<std::string>(&result)) {
-        output->push_back(StringImm(*ptr));
-      } else {
-        LOG(FATAL) << "Internal error, unhandled std::variant type";
+     private:
+      using IRVisitorWithAnalyzer::VisitStmt_;
+      void VisitStmt_(const ForNode* op) override {
+        For loop = GetRef<For>(op);
+        auto result = IdentifyMemCpyImpl(loop, &(Visitor::analyzer_));
+        if (auto* ptr = std::get_if<MemCpyDetails>(&result)) {
+          output->push_back(Array{ptr->source, ptr->dest});
+        } else if (auto* ptr = std::get_if<std::string>(&result)) {
+          output->push_back(StringImm(*ptr));
+        } else {
+          LOG(FATAL) << "Internal error, unhandled std::variant type";
+        }
+
+        IRVisitorWithAnalyzer::VisitStmt_(op);
       }
+    };
 
-      IRVisitorWithAnalyzer::VisitStmt_(op);
-    }
-  };
+    Visitor visitor(&output);
+    visitor(stmt);
 
-  Visitor visitor(&output);
-  visitor(stmt);
-
-  return output;
-});
+    return output;
+  });
 });
 
 }  // namespace tir

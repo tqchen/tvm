@@ -22,10 +22,10 @@
  * \file inject_double_buffer.cc
  */
 #include <tvm/ffi/function.h>
+#include <tvm/ffi/reflection/reflection.h>
 #include <tvm/tir/op.h>
 #include <tvm/tir/stmt_functor.h>
 #include <tvm/tir/transform.h>
-#include <tvm/ffi/reflection/reflection.h>
 
 #include "ir_utils.h"
 
@@ -330,8 +330,7 @@ Pass InjectDoubleBuffer() {
 
 TVM_FFI_STATIC_INIT_BLOCK({
   namespace refl = tvm::ffi::reflection;
-  refl::GlobalDef()
-    .def("tir.transform.InjectDoubleBuffer", InjectDoubleBuffer);
+  refl::GlobalDef().def("tir.transform.InjectDoubleBuffer", InjectDoubleBuffer);
 });
 
 }  // namespace transform

@@ -22,6 +22,7 @@
  */
 #include <dmlc/thread_local.h>
 #include <tvm/ffi/function.h>
+#include <tvm/ffi/reflection/reflection.h>
 #include <tvm/ir/transform.h>
 #include <tvm/runtime/device_api.h>
 #include <tvm/runtime/logging.h>
@@ -29,7 +30,6 @@
 #include <tvm/target/target.h>
 #include <tvm/target/target_kind.h>
 #include <tvm/tir/expr.h>
-#include <tvm/ffi/reflection/reflection.h>
 
 #include <algorithm>
 #include <cctype>
@@ -1014,22 +1014,21 @@ std::unordered_map<String, ffi::Any> TargetInternal::QueryDevice(int device_id,
 TVM_FFI_STATIC_INIT_BLOCK({
   namespace refl = tvm::ffi::reflection;
   refl::GlobalDef()
-    .def_packed("target.Target", TargetInternal::ConstructorDispatcher)
-    .def("target.TargetEnterScope", TargetInternal::EnterScope)
-    .def("target.TargetExitScope", TargetInternal::ExitScope)
-    .def("target.TargetCurrent", Target::Current)
-    .def("target.TargetExport", TargetInternal::Export)
-    .def("target.WithHost", TargetInternal::WithHost)
-    .def("target.TargetGetDeviceType", [](const Target& target) {
-  return target->GetTargetDeviceType();
-})
-    .def("target.TargetGetFeature", [](const Target& target, const String& feature_key) -> Any {
-      if (auto opt_any = target->GetFeature<Any>(feature_key)) {
-        return opt_any.value();
-      } else {
-        return Any();
-      }
-    });
+      .def_packed("target.Target", TargetInternal::ConstructorDispatcher)
+      .def("target.TargetEnterScope", TargetInternal::EnterScope)
+      .def("target.TargetExitScope", TargetInternal::ExitScope)
+      .def("target.TargetCurrent", Target::Current)
+      .def("target.TargetExport", TargetInternal::Export)
+      .def("target.WithHost", TargetInternal::WithHost)
+      .def("target.TargetGetDeviceType",
+           [](const Target& target) { return target->GetTargetDeviceType(); })
+      .def("target.TargetGetFeature", [](const Target& target, const String& feature_key) -> Any {
+        if (auto opt_any = target->GetFeature<Any>(feature_key)) {
+          return opt_any.value();
+        } else {
+          return Any();
+        }
+      });
 });
 
 TVM_STATIC_IR_FUNCTOR(ReprPrinter, vtable)

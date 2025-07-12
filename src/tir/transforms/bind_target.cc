@@ -34,10 +34,10 @@
  * with appropriate targets and updates call sites accordingly.
  */
 
+#include <tvm/ffi/reflection/reflection.h>
 #include <tvm/ir/global_var_supply.h>
 #include <tvm/tir/stmt_functor.h>
 #include <tvm/tir/transform.h>
-#include <tvm/ffi/reflection/reflection.h>
 
 #include <unordered_set>
 
@@ -373,8 +373,7 @@ transform::Pass BindTarget(Target target) {
 
 TVM_FFI_STATIC_INIT_BLOCK({
   namespace refl = tvm::ffi::reflection;
-  refl::GlobalDef()
-    .def("tir.transform.BindTarget", BindTarget);
+  refl::GlobalDef().def("tir.transform.BindTarget", BindTarget);
 });
 
 }  // namespace transform

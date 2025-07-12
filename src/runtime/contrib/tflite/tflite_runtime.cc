@@ -21,12 +21,12 @@
  * \file tflite_runtime.cc
  */
 #include "tflite_runtime.h"
-#include <tvm/ffi/reflection/reflection.h>
 
 #include <tensorflow/lite/interpreter.h>
 #include <tensorflow/lite/kernels/register.h>
 #include <tensorflow/lite/model.h>
 #include <tvm/ffi/function.h>
+#include <tvm/ffi/reflection/reflection.h>
 
 namespace tvm {
 namespace runtime {
@@ -187,10 +187,11 @@ Module TFLiteRuntimeCreate(const std::string& tflite_model_bytes, Device dev) {
 TVM_FFI_STATIC_INIT_BLOCK({
   namespace refl = tvm::ffi::reflection;
   refl::GlobalDef()
-    .def_packed("tvm.tflite_runtime.create", [](ffi::PackedArgs args, ffi::Any* rv) {
-      *rv = TFLiteRuntimeCreate(args[0].cast<std::string>(), args[1].cast<Device>());
-    })
-    .def("target.runtime.tflite", TFLiteRuntimeCreate);
+      .def_packed("tvm.tflite_runtime.create",
+                  [](ffi::PackedArgs args, ffi::Any* rv) {
+                    *rv = TFLiteRuntimeCreate(args[0].cast<std::string>(), args[1].cast<Device>());
+                  })
+      .def("target.runtime.tflite", TFLiteRuntimeCreate);
 });
 }  // namespace runtime
 }  // namespace tvm

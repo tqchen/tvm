@@ -23,9 +23,9 @@
  */
 
 #include <tvm/ffi/function.h>
+#include <tvm/ffi/reflection/reflection.h>
 #include <tvm/tir/stmt.h>
 #include <tvm/tir/stmt_functor.h>
-#include <tvm/ffi/reflection/reflection.h>
 
 #include <exception>
 #include <optional>
@@ -371,17 +371,17 @@ bool VerifyWellFormed(const IRModule& mod, bool assert_mode) {
 
 TVM_FFI_STATIC_INIT_BLOCK({
   namespace refl = tvm::ffi::reflection;
-  refl::GlobalDef()
-    .def("tir.analysis.VerifyWellFormed", [](const ObjectRef& obj, bool assert_mode) {
-      if (auto opt = obj.as<PrimFunc>()) {
-        return VerifyWellFormed(opt.value(), assert_mode);
-      } else if (auto opt = obj.as<IRModule>()) {
-        return VerifyWellFormed(opt.value(), assert_mode);
-      } else {
-        LOG(FATAL) << "Expected VerifyWellFormed argument to be a PrimFunc or IRModule, but found "
-                   << obj->GetTypeKey();
-      }
-    });
+  refl::GlobalDef().def("tir.analysis.VerifyWellFormed", [](const ObjectRef& obj,
+                                                            bool assert_mode) {
+    if (auto opt = obj.as<PrimFunc>()) {
+      return VerifyWellFormed(opt.value(), assert_mode);
+    } else if (auto opt = obj.as<IRModule>()) {
+      return VerifyWellFormed(opt.value(), assert_mode);
+    } else {
+      LOG(FATAL) << "Expected VerifyWellFormed argument to be a PrimFunc or IRModule, but found "
+                 << obj->GetTypeKey();
+    }
+  });
 });
 
 }  // namespace tir

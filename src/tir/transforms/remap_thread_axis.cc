@@ -21,10 +21,10 @@
  * \file remap_thread_axis.cc
  */
 #include <tvm/ffi/function.h>
+#include <tvm/ffi/reflection/reflection.h>
 #include <tvm/tir/expr.h>
 #include <tvm/tir/stmt_functor.h>
 #include <tvm/tir/transform.h>
-#include <tvm/ffi/reflection/reflection.h>
 
 #include <unordered_map>
 
@@ -106,8 +106,7 @@ Pass RemapThreadAxis(Map<String, IterVar> thread_map) {
 
 TVM_FFI_STATIC_INIT_BLOCK({
   namespace refl = tvm::ffi::reflection;
-  refl::GlobalDef()
-    .def("tir.transform.RemapThreadAxis", RemapThreadAxis);
+  refl::GlobalDef().def("tir.transform.RemapThreadAxis", RemapThreadAxis);
 });
 
 }  // namespace transform

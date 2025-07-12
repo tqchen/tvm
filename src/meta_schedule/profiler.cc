@@ -16,9 +16,10 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+#include <tvm/ffi/reflection/reflection.h>
+
 #include <algorithm>
 #include <chrono>
-#include <tvm/ffi/reflection/reflection.h>
 
 #include "./utils.h"
 
@@ -127,15 +128,13 @@ TVM_REGISTER_NODE_TYPE(ProfilerNode);
 TVM_FFI_STATIC_INIT_BLOCK({
   namespace refl = tvm::ffi::reflection;
   refl::GlobalDef()
-    .def("meta_schedule.Profiler", []() -> Profiler {
-  return Profiler();
-})
-    .def_method("meta_schedule.ProfilerEnterWithScope", &Profiler::EnterWithScope)
-    .def_method("meta_schedule.ProfilerExitWithScope", &Profiler::ExitWithScope)
-    .def("meta_schedule.ProfilerCurrent", Profiler::Current)
-    .def_method("meta_schedule.ProfilerGet", &ProfilerNode::Get)
-    .def_method("meta_schedule.ProfilerTable", &ProfilerNode::Table)
-    .def("meta_schedule.ProfilerTimedScope", ProfilerTimedScope);
+      .def("meta_schedule.Profiler", []() -> Profiler { return Profiler(); })
+      .def_method("meta_schedule.ProfilerEnterWithScope", &Profiler::EnterWithScope)
+      .def_method("meta_schedule.ProfilerExitWithScope", &Profiler::ExitWithScope)
+      .def("meta_schedule.ProfilerCurrent", Profiler::Current)
+      .def_method("meta_schedule.ProfilerGet", &ProfilerNode::Get)
+      .def_method("meta_schedule.ProfilerTable", &ProfilerNode::Table)
+      .def("meta_schedule.ProfilerTimedScope", ProfilerTimedScope);
 });
 
 }  // namespace meta_schedule

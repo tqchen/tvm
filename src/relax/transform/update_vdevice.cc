@@ -23,10 +23,10 @@
  * \brief Update Virtual Device pass.
  */
 
+#include <tvm/ffi/reflection/reflection.h>
 #include <tvm/relax/expr.h>
 #include <tvm/relax/expr_functor.h>
 #include <tvm/relax/transform.h>
-#include <tvm/ffi/reflection/reflection.h>
 
 namespace tvm {
 namespace relax {
@@ -109,8 +109,7 @@ Pass UpdateVDevice(VDevice new_vdevice, int64_t index) {
 }
 TVM_FFI_STATIC_INIT_BLOCK({
   namespace refl = tvm::ffi::reflection;
-  refl::GlobalDef()
-    .def("relax.transform.UpdateVDevice", UpdateVDevice);
+  refl::GlobalDef().def("relax.transform.UpdateVDevice", UpdateVDevice);
 });
 
 }  // namespace transform

@@ -336,21 +336,24 @@ __attribute__((weak)) void _Parse_fde_instr() {}
 TVM_FFI_STATIC_INIT_BLOCK({
   namespace refl = tvm::ffi::reflection;
   refl::GlobalDef()
-    .def_packed("tvm.hexagon.load_module", [](tvm::ffi::PackedArgs args, tvm::ffi::Any* rv) {
-      auto soname = args[0].cast<std::string>();
-      tvm::ObjectPtr<tvm::runtime::Library> n = tvm::runtime::CreateDSOLibraryObject(soname);
-      *rv = CreateModuleFromLibrary(n);
-    })
-    .def_packed("tvm.hexagon.get_profile_output", [](tvm::ffi::PackedArgs args, tvm::ffi::Any* rv) {
-      auto profiling_mode = args[0].cast<std::string>();
-      auto out_file = args[1].cast<std::string>();
-      if (profiling_mode.compare("lwp") == 0) {
-        *rv = WriteLWPOutput(out_file);
-      } else {
-        HEXAGON_PRINT(ERROR, "ERROR: Unsupported profiling mode: %s", profiling_mode.c_str());
-        *rv = false;
-      }
-    });
+      .def_packed("tvm.hexagon.load_module",
+                  [](tvm::ffi::PackedArgs args, tvm::ffi::Any* rv) {
+                    auto soname = args[0].cast<std::string>();
+                    tvm::ObjectPtr<tvm::runtime::Library> n =
+                        tvm::runtime::CreateDSOLibraryObject(soname);
+                    *rv = CreateModuleFromLibrary(n);
+                  })
+      .def_packed(
+          "tvm.hexagon.get_profile_output", [](tvm::ffi::PackedArgs args, tvm::ffi::Any* rv) {
+            auto profiling_mode = args[0].cast<std::string>();
+            auto out_file = args[1].cast<std::string>();
+            if (profiling_mode.compare("lwp") == 0) {
+              *rv = WriteLWPOutput(out_file);
+            } else {
+              HEXAGON_PRINT(ERROR, "ERROR: Unsupported profiling mode: %s", profiling_mode.c_str());
+              *rv = false;
+            }
+          });
 });
 
 void SaveBinaryToFile(const std::string& file_name, const std::string& data) {
@@ -361,10 +364,10 @@ void SaveBinaryToFile(const std::string& file_name, const std::string& data) {
 
 TVM_FFI_STATIC_INIT_BLOCK({
   namespace refl = tvm::ffi::reflection;
-  refl::GlobalDef()
-    .def_packed("tvm.rpc.server.upload", [](tvm::ffi::PackedArgs args, tvm::ffi::Any* rv) {
-      auto file_name = args[0].cast<std::string>();
-      auto data = args[1].cast<std::string>();
-      SaveBinaryToFile(file_name, data);
-    });
+  refl::GlobalDef().def_packed("tvm.rpc.server.upload",
+                               [](tvm::ffi::PackedArgs args, tvm::ffi::Any* rv) {
+                                 auto file_name = args[0].cast<std::string>();
+                                 auto data = args[1].cast<std::string>();
+                                 SaveBinaryToFile(file_name, data);
+                               });
 });

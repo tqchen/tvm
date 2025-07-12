@@ -17,10 +17,10 @@
  * under the License.
  */
 #include <tvm/ffi/function.h>
+#include <tvm/ffi/reflection/reflection.h>
 #include <tvm/runtime/base.h>
 #include <tvm/runtime/disco/disco_worker.h>
 #include <tvm/runtime/object.h>
-#include <tvm/ffi/reflection/reflection.h>
 
 #include <memory>
 #include <sstream>
@@ -200,8 +200,8 @@ void WorkerProcess(int worker_id, int num_workers, int num_group, int64_t read_f
 TVM_FFI_STATIC_INIT_BLOCK({
   namespace refl = tvm::ffi::reflection;
   refl::GlobalDef()
-    .def("runtime.disco.SessionProcess", Session::ProcessSession)
-    .def("runtime.disco.WorkerProcess", WorkerProcess);
+      .def("runtime.disco.SessionProcess", Session::ProcessSession)
+      .def("runtime.disco.WorkerProcess", WorkerProcess);
 });
 
 }  // namespace runtime

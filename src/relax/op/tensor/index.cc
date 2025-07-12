@@ -23,8 +23,8 @@
  */
 
 #include "index.h"
-#include <tvm/ffi/reflection/reflection.h>
 
+#include <tvm/ffi/reflection/reflection.h>
 #include <tvm/relax/analysis.h>
 #include <tvm/topi/transform.h>
 
@@ -56,8 +56,7 @@ Expr take(Expr x, Expr indices, Optional<int64_t> axis, String mode) {
 
 TVM_FFI_STATIC_INIT_BLOCK({
   namespace refl = tvm::ffi::reflection;
-  refl::GlobalDef()
-    .def("relax.op.take", take);
+  refl::GlobalDef().def("relax.op.take", take);
 });
 
 StructInfo InferStructInfoTake(const Call& call, const BlockBuilder& ctx) {
@@ -184,8 +183,7 @@ Expr strided_slice(Expr x, Expr axes, Expr begin, Expr end, Optional<Expr> strid
 
 TVM_FFI_STATIC_INIT_BLOCK({
   namespace refl = tvm::ffi::reflection;
-  refl::GlobalDef()
-    .def("relax.op.strided_slice", strided_slice);
+  refl::GlobalDef().def("relax.op.strided_slice", strided_slice);
 });
 
 /* \brief Helper function to unpack a relax::Tuple
@@ -496,8 +494,7 @@ Expr dynamic_strided_slice(Expr x,      //
 
 TVM_FFI_STATIC_INIT_BLOCK({
   namespace refl = tvm::ffi::reflection;
-  refl::GlobalDef()
-    .def("relax.op.dynamic_strided_slice", dynamic_strided_slice);
+  refl::GlobalDef().def("relax.op.dynamic_strided_slice", dynamic_strided_slice);
 });
 
 StructInfo InferStructInfoDynStridedSlice(const Call& call, const BlockBuilder& ctx) {

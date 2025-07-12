@@ -23,6 +23,7 @@
 // Loop vectorizer as in Halide pipeline.
 #include <tvm/arith/analyzer.h>
 #include <tvm/ffi/function.h>
+#include <tvm/ffi/reflection/reflection.h>
 #include <tvm/tir/analysis.h>
 #include <tvm/tir/builtin.h>
 #include <tvm/tir/expr.h>
@@ -30,7 +31,6 @@
 #include <tvm/tir/op_attr_types.h>
 #include <tvm/tir/stmt_functor.h>
 #include <tvm/tir/transform.h>
-#include <tvm/ffi/reflection/reflection.h>
 
 #include <unordered_map>
 #include <vector>
@@ -1027,8 +1027,7 @@ Pass VectorizeLoop(bool enable_vectorize) {
 
 TVM_FFI_STATIC_INIT_BLOCK({
   namespace refl = tvm::ffi::reflection;
-  refl::GlobalDef()
-    .def("tir.transform.VectorizeLoop", VectorizeLoop);
+  refl::GlobalDef().def("tir.transform.VectorizeLoop", VectorizeLoop);
 });
 
 }  // namespace transform

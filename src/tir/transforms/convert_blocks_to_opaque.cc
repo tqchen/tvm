@@ -22,9 +22,9 @@
  * \brief Convert the blocks to opaque blocks which do not have block vars.
  */
 
+#include <tvm/ffi/reflection/reflection.h>
 #include <tvm/tir/stmt_functor.h>
 #include <tvm/tir/transform.h>
-#include <tvm/ffi/reflection/reflection.h>
 
 #include "ir_utils.h"
 
@@ -125,8 +125,7 @@ Pass ConvertBlocksToOpaque() {
 
 TVM_FFI_STATIC_INIT_BLOCK({
   namespace refl = tvm::ffi::reflection;
-  refl::GlobalDef()
-    .def("tir.transform.ConvertBlocksToOpaque", ConvertBlocksToOpaque);
+  refl::GlobalDef().def("tir.transform.ConvertBlocksToOpaque", ConvertBlocksToOpaque);
 });
 }  // namespace transform
 

@@ -16,8 +16,9 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-#include "./utils.h"
 #include <tvm/ffi/reflection/reflection.h>
+
+#include "./utils.h"
 
 namespace tvm {
 namespace script {
@@ -85,8 +86,7 @@ TVM_SCRIPT_REPR(relax::TensorTypeNode, ReprPrintRelax);
 TVM_SCRIPT_REPR(relax::PackedFuncTypeNode, ReprPrintRelax);
 TVM_FFI_STATIC_INIT_BLOCK({
   namespace refl = tvm::ffi::reflection;
-  refl::GlobalDef()
-    .def("script.printer.ReprPrintRelax", ReprPrintRelax);
+  refl::GlobalDef().def("script.printer.ReprPrintRelax", ReprPrintRelax);
 });
 
 }  // namespace printer

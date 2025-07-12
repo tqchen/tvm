@@ -21,9 +21,9 @@
  * \file src/relax/backend/contrib/tensorrt/codegen.cc
  * \brief Implementation of the TensorRT JSON serializer.
  */
+#include <tvm/ffi/reflection/reflection.h>
 #include <tvm/ir/module.h>
 #include <tvm/ir/transform.h>
-#include <tvm/ffi/reflection/reflection.h>
 // TODO(sunggg): add operator attribute when it's ready
 // #include <tvm/relax/attrs/nn.h>
 #include <tvm/relax/type.h>
@@ -246,8 +246,7 @@ Array<runtime::Module> TensorRTCompiler(Array<Function> functions, Map<String, f
 
 TVM_FFI_STATIC_INIT_BLOCK({
   namespace refl = tvm::ffi::reflection;
-  refl::GlobalDef()
-    .def("relax.ext.tensorrt", TensorRTCompiler);
+  refl::GlobalDef().def("relax.ext.tensorrt", TensorRTCompiler);
 });
 
 /*!
@@ -278,8 +277,8 @@ Array<Integer> GetTensorRTVersion() {
 TVM_FFI_STATIC_INIT_BLOCK({
   namespace refl = tvm::ffi::reflection;
   refl::GlobalDef()
-    .def("relax.is_tensorrt_runtime_enabled", IsTensorRTRuntimeEnabled)
-    .def("relax.get_tensorrt_version", GetTensorRTVersion);
+      .def("relax.is_tensorrt_runtime_enabled", IsTensorRTRuntimeEnabled)
+      .def("relax.get_tensorrt_version", GetTensorRTVersion);
 });
 
 }  // namespace contrib

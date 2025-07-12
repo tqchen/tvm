@@ -21,8 +21,8 @@
  * \file relax/src/ir/emit_te.cc
  */
 #include "./emit_te.h"
-#include <tvm/ffi/reflection/reflection.h>
 
+#include <tvm/ffi/reflection/reflection.h>
 #include <tvm/relax/struct_info.h>
 #include <tvm/tir/stmt_functor.h>
 
@@ -77,8 +77,7 @@ te::Tensor TETensor(Expr value, Map<tir::Var, PrimExpr> tir_var_map, std::string
 
 TVM_FFI_STATIC_INIT_BLOCK({
   namespace refl = tvm::ffi::reflection;
-  refl::GlobalDef()
-    .def("relax.TETensor", TETensor);
+  refl::GlobalDef().def("relax.TETensor", TETensor);
 });
 
 }  // namespace relax

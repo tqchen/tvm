@@ -23,11 +23,11 @@
  * \brief Run codegen for annotated relax functions.
  */
 
+#include <tvm/ffi/reflection/reflection.h>
 #include <tvm/relax/analysis.h>
 #include <tvm/relax/expr_functor.h>
 #include <tvm/relax/transform.h>
 #include <tvm/runtime/module.h>
-#include <tvm/ffi/reflection/reflection.h>
 
 #include "../../support/ordered_set.h"
 #include "utils.h"
@@ -223,8 +223,7 @@ Pass RunCodegen(Optional<Map<String, Map<String, ffi::Any>>> target_options,
 
 TVM_FFI_STATIC_INIT_BLOCK({
   namespace refl = tvm::ffi::reflection;
-  refl::GlobalDef()
-    .def("relax.transform.RunCodegen", RunCodegen);
+  refl::GlobalDef().def("relax.transform.RunCodegen", RunCodegen);
 });
 
 }  // namespace transform

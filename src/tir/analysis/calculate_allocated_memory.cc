@@ -23,12 +23,12 @@
  */
 #include <tvm/arith/analyzer.h>
 #include <tvm/ffi/container/map.h>
+#include <tvm/ffi/reflection/reflection.h>
 #include <tvm/runtime/device_api.h>
 #include <tvm/tir/analysis.h>
 #include <tvm/tir/function.h>
 #include <tvm/tir/stmt_functor.h>
 #include <tvm/tir/transform.h>
-#include <tvm/ffi/reflection/reflection.h>
 
 #include <algorithm>
 #include <map>
@@ -99,18 +99,19 @@ tvm::Map<String, tvm::Map<String, Integer> > CalculateAllocatedBytes(const IRMod
 
 TVM_FFI_STATIC_INIT_BLOCK({
   namespace refl = tvm::ffi::reflection;
-  refl::GlobalDef()
-    .def("tir.analysis.calculate_allocated_bytes", [](ObjectRef obj) -> tvm::Map<String, tvm::Map<String, Integer> > {
-      if (auto func = obj.as<PrimFunc>()) {
-        return CalculateAllocatedBytes(func.value());
-      } else if (auto mod = obj.as<IRModule>()) {
-        return CalculateAllocatedBytes(mod.value());
-      } else {
-        LOG(FATAL) << "TypeError: Expect the input to be either PrimFunc or IRModule, but gets: "
-                   << obj->GetTypeKey();
-        throw;
-      }
-    });
+  refl::GlobalDef().def(
+      "tir.analysis.calculate_allocated_bytes",
+      [](ObjectRef obj) -> tvm::Map<String, tvm::Map<String, Integer> > {
+        if (auto func = obj.as<PrimFunc>()) {
+          return CalculateAllocatedBytes(func.value());
+        } else if (auto mod = obj.as<IRModule>()) {
+          return CalculateAllocatedBytes(mod.value());
+        } else {
+          LOG(FATAL) << "TypeError: Expect the input to be either PrimFunc or IRModule, but gets: "
+                     << obj->GetTypeKey();
+          throw;
+        }
+      });
 });
 
 bool VerifyVTCMLimit(const IRModule& mod, Integer limit) {
@@ -161,10 +162,8 @@ Array<tvm::transform::Pass> GetVTCMCompactionPasses() {
 
 TVM_FFI_STATIC_INIT_BLOCK({
   namespace refl = tvm::ffi::reflection;
-  refl::GlobalDef()
-    .def("tir.analysis.get_vtcm_compaction_passes", []() {
-  return GetVTCMCompactionPasses();
-});
+  refl::GlobalDef().def("tir.analysis.get_vtcm_compaction_passes",
+                        []() { return GetVTCMCompactionPasses(); });
 });
 
 namespace transform {
@@ -201,8 +200,7 @@ Pass VerifyVTCMLimit(Optional<Target> default_target) {
 
 TVM_FFI_STATIC_INIT_BLOCK({
   namespace refl = tvm::ffi::reflection;
-  refl::GlobalDef()
-    .def("tir.transform.VerifyVTCMLimit", VerifyVTCMLimit);
+  refl::GlobalDef().def("tir.transform.VerifyVTCMLimit", VerifyVTCMLimit);
 });
 
 }  // namespace transform

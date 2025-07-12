@@ -22,10 +22,10 @@
  * \brief Helper functions to construct and compose IR nodes.
  */
 #include "ir_utils.h"
-#include <tvm/ffi/reflection/reflection.h>
 
 #include <tvm/arith/analyzer.h>
 #include <tvm/arith/int_solver.h>
+#include <tvm/ffi/reflection/reflection.h>
 #include <tvm/tir/stmt_functor.h>
 #include <tvm/tir/transform.h>
 
@@ -853,8 +853,7 @@ Pass ConvertSSA() {
 
 TVM_FFI_STATIC_INIT_BLOCK({
   namespace refl = tvm::ffi::reflection;
-  refl::GlobalDef()
-    .def("tir.transform.ConvertSSA", ConvertSSA);
+  refl::GlobalDef().def("tir.transform.ConvertSSA", ConvertSSA);
 });
 
 }  // namespace transform

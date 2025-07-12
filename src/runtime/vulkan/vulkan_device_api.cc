@@ -18,6 +18,7 @@
  */
 
 #include "vulkan_device_api.h"
+
 #include <tvm/ffi/reflection/reflection.h>
 
 #include <algorithm>
@@ -459,15 +460,16 @@ VulkanDevice& VulkanDeviceAPI::device(size_t device_id) {
 TVM_FFI_STATIC_INIT_BLOCK({
   namespace refl = tvm::ffi::reflection;
   refl::GlobalDef()
-    .def_packed("device_api.vulkan", [](ffi::PackedArgs args, ffi::Any* rv) {
-      DeviceAPI* ptr = VulkanDeviceAPI::Global();
-      *rv = static_cast<void*>(ptr);
-    })
-    .def("device_api.vulkan.get_target_property", [](Device dev, const std::string& property) {
-      ffi::Any rv;
-      VulkanDeviceAPI::Global()->GetTargetProperty(dev, property, &rv);
-      return rv;
-    });
+      .def_packed("device_api.vulkan",
+                  [](ffi::PackedArgs args, ffi::Any* rv) {
+                    DeviceAPI* ptr = VulkanDeviceAPI::Global();
+                    *rv = static_cast<void*>(ptr);
+                  })
+      .def("device_api.vulkan.get_target_property", [](Device dev, const std::string& property) {
+        ffi::Any rv;
+        VulkanDeviceAPI::Global()->GetTargetProperty(dev, property, &rv);
+        return rv;
+      });
 });
 
 }  // namespace vulkan

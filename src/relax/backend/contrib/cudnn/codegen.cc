@@ -21,8 +21,8 @@
  * \file src/relax/backend/contrib/cudnn/codegen.cc
  * \brief Implementation of the cuDNN JSON serializer.
  */
-#include <tvm/ir/module.h>
 #include <tvm/ffi/reflection/reflection.h>
+#include <tvm/ir/module.h>
 
 #include <string>
 
@@ -152,8 +152,7 @@ Array<runtime::Module> cuDNNCompiler(Array<Function> functions, Map<String, ffi:
 
 TVM_FFI_STATIC_INIT_BLOCK({
   namespace refl = tvm::ffi::reflection;
-  refl::GlobalDef()
-    .def("relax.ext.cudnn", cuDNNCompiler);
+  refl::GlobalDef().def("relax.ext.cudnn", cuDNNCompiler);
 });
 
 }  // namespace contrib

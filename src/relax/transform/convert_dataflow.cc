@@ -23,11 +23,11 @@
  *   dataflow into dataflow blocks.
  */
 
+#include <tvm/ffi/reflection/reflection.h>
 #include <tvm/relax/expr.h>
 #include <tvm/relax/expr_functor.h>
 #include <tvm/relax/transform.h>
 #include <tvm/relax/utils.h>
-#include <tvm/ffi/reflection/reflection.h>
 
 #include <optional>
 
@@ -162,8 +162,7 @@ Pass ConvertToDataflow(int min_size) {
 
 TVM_FFI_STATIC_INIT_BLOCK({
   namespace refl = tvm::ffi::reflection;
-  refl::GlobalDef()
-    .def("relax.transform.ConvertToDataflow", ConvertToDataflow);
+  refl::GlobalDef().def("relax.transform.ConvertToDataflow", ConvertToDataflow);
 });
 
 }  // namespace transform

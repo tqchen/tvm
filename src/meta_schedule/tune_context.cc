@@ -16,8 +16,9 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-#include <utility>
 #include <tvm/ffi/reflection/reflection.h>
+
+#include <utility>
 
 #include "./utils.h"
 
@@ -69,17 +70,17 @@ TVM_REGISTER_NODE_TYPE(TuneContextNode);
 TVM_FFI_STATIC_INIT_BLOCK({
   namespace refl = tvm::ffi::reflection;
   refl::GlobalDef()
-    .def("meta_schedule.TuneContext", [](Optional<IRModule> mod, Optional<Target> target,
-                       Optional<SpaceGenerator> space_generator,
-                       Optional<SearchStrategy> search_strategy, Optional<String> task_name,
-                       int num_threads, TRandState rand_state,
-                       ffi::Function logger) -> TuneContext {
-      return TuneContext(mod, target, space_generator, search_strategy, task_name, num_threads,
-                         rand_state, logger);
-    })
-    .def("meta_schedule._SHash2Hex", SHash2Hex)
-    .def_method("meta_schedule.TuneContextInitialize", &TuneContextNode::Initialize)
-    .def_method("meta_schedule.TuneContextClone", &TuneContextNode::Clone);
+      .def("meta_schedule.TuneContext",
+           [](Optional<IRModule> mod, Optional<Target> target,
+              Optional<SpaceGenerator> space_generator, Optional<SearchStrategy> search_strategy,
+              Optional<String> task_name, int num_threads, TRandState rand_state,
+              ffi::Function logger) -> TuneContext {
+             return TuneContext(mod, target, space_generator, search_strategy, task_name,
+                                num_threads, rand_state, logger);
+           })
+      .def("meta_schedule._SHash2Hex", SHash2Hex)
+      .def_method("meta_schedule.TuneContextInitialize", &TuneContextNode::Initialize)
+      .def_method("meta_schedule.TuneContextClone", &TuneContextNode::Clone);
 });
 
 }  // namespace meta_schedule

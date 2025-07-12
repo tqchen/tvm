@@ -22,6 +22,7 @@
  */
 
 #include "graph.h"
+
 #include <tvm/ffi/reflection/reflection.h>
 
 #include <algorithm>
@@ -1450,166 +1451,192 @@ TVM_REGISTER_NODE_TYPE(WeightGraphNode);
 TVM_FFI_STATIC_INIT_BLOCK({
   namespace refl = tvm::ffi::reflection;
   refl::GlobalDef()
-    .def("msc.core.MSCTensor", [](const String& name, const DataType& dtype, const String& layout,
-                       const Array<Integer>& shape, const String& alias,
-                       const Array<String>& prims) -> MSCTensor {
-      return MSCTensor(name, dtype, layout, shape, alias, prims);
-    })
-    .def("msc.core.MSCTensorToJson", [](const MSCTensor& tensor) -> String {
-      const auto& tensor_json = tensor->ToJson();
-      std::ostringstream os;
-      dmlc::JSONWriter writer(&os);
-      tensor_json.Save(&writer);
-      return os.str();
-    })
-    .def("msc.core.MSCTensorFromJson", [](const String& tensor_json) -> MSCTensor { return MSCTensor(tensor_json); })
-    .def("msc.core.MSCJoint", [](Integer index, const String& name, const String& shared_ref,
-                       const String& optype, const Map<String, String>& attrs,
-                       const Array<String>& scope, const Array<MSCJoint>& parents,
-                       const Array<Integer> out_indices, const Array<MSCTensor>& outputs,
-                       const Map<String, MSCTensor>& weights) -> MSCJoint {
-      std::vector<std::pair<BaseJoint, size_t>> inputs;
-      for (size_t i = 0; i < parents.size(); i++) {
-        inputs.push_back(std::make_pair(parents[i], out_indices[i]->value));
-      }
-      return MSCJoint(index->value, name, shared_ref, optype, attrs, scope, inputs, outputs,
-                      weights);
-    })
-    .def("msc.core.MSCPrim", [](Integer index, const String& name, const String& optype,
-                       const Map<String, String>& attrs, const Array<MSCPrim>& parents) -> MSCPrim {
-      Array<BaseJoint> b_parents;
-      for (const auto& p : parents) {
-        b_parents.push_back(p);
-      }
-      return MSCPrim(index->value, name, optype, b_parents, attrs);
-    })
-    .def("msc.core.WeightJoint", [](Integer index, const String& name, const String& shared_ref,
-                       const String& weight_type, const MSCTensor& weight,
-                       const Array<BaseJoint> parents, const Map<String, String>& attrs,
-                       const Array<BaseJoint>& friends) -> WeightJoint {
-      Array<BaseJoint> b_parents, b_friends;
-      for (const auto& p : parents) {
-        b_parents.push_back(p);
-      }
-      for (const auto& f : friends) {
-        b_friends.push_back(f);
-      }
-      return WeightJoint(index->value, name, shared_ref, weight_type, weight, b_parents, attrs,
-                         b_friends);
-    })
-    .def("msc.core.WeightJointSetAttr", [](const WeightJoint& node, const String& key, const String& value) {
-      node->attrs.Set(key, value);
-    })
-    .def("msc.core.MSCGraph", [](const String& name, const Array<MSCJoint>& nodes,
-                       const Array<String>& input_names, const Array<String>& output_names,
-                       const Array<MSCPrim>& prims) -> MSCGraph {
-      return MSCGraph(name, nodes, input_names, output_names, prims);
-    })
-    .def("msc.core.WeightGraph", [](const MSCGraph& graph, const Map<String, Array<String>>& main_wtypes,
-                       const Map<String, String>& relation_wtypes) -> WeightGraph {
-      return WeightGraph(graph, main_wtypes, relation_wtypes);
-    });
+      .def("msc.core.MSCTensor",
+           [](const String& name, const DataType& dtype, const String& layout,
+              const Array<Integer>& shape, const String& alias,
+              const Array<String>& prims) -> MSCTensor {
+             return MSCTensor(name, dtype, layout, shape, alias, prims);
+           })
+      .def("msc.core.MSCTensorToJson",
+           [](const MSCTensor& tensor) -> String {
+             const auto& tensor_json = tensor->ToJson();
+             std::ostringstream os;
+             dmlc::JSONWriter writer(&os);
+             tensor_json.Save(&writer);
+             return os.str();
+           })
+      .def("msc.core.MSCTensorFromJson",
+           [](const String& tensor_json) -> MSCTensor { return MSCTensor(tensor_json); })
+      .def("msc.core.MSCJoint",
+           [](Integer index, const String& name, const String& shared_ref, const String& optype,
+              const Map<String, String>& attrs, const Array<String>& scope,
+              const Array<MSCJoint>& parents, const Array<Integer> out_indices,
+              const Array<MSCTensor>& outputs, const Map<String, MSCTensor>& weights) -> MSCJoint {
+             std::vector<std::pair<BaseJoint, size_t>> inputs;
+             for (size_t i = 0; i < parents.size(); i++) {
+               inputs.push_back(std::make_pair(parents[i], out_indices[i]->value));
+             }
+             return MSCJoint(index->value, name, shared_ref, optype, attrs, scope, inputs, outputs,
+                             weights);
+           })
+      .def("msc.core.MSCPrim",
+           [](Integer index, const String& name, const String& optype,
+              const Map<String, String>& attrs, const Array<MSCPrim>& parents) -> MSCPrim {
+             Array<BaseJoint> b_parents;
+             for (const auto& p : parents) {
+               b_parents.push_back(p);
+             }
+             return MSCPrim(index->value, name, optype, b_parents, attrs);
+           })
+      .def("msc.core.WeightJoint",
+           [](Integer index, const String& name, const String& shared_ref,
+              const String& weight_type, const MSCTensor& weight, const Array<BaseJoint> parents,
+              const Map<String, String>& attrs, const Array<BaseJoint>& friends) -> WeightJoint {
+             Array<BaseJoint> b_parents, b_friends;
+             for (const auto& p : parents) {
+               b_parents.push_back(p);
+             }
+             for (const auto& f : friends) {
+               b_friends.push_back(f);
+             }
+             return WeightJoint(index->value, name, shared_ref, weight_type, weight, b_parents,
+                                attrs, b_friends);
+           })
+      .def("msc.core.WeightJointSetAttr", [](const WeightJoint& node, const String& key,
+                                             const String& value) { node->attrs.Set(key, value); })
+      .def("msc.core.MSCGraph",
+           [](const String& name, const Array<MSCJoint>& nodes, const Array<String>& input_names,
+              const Array<String>& output_names, const Array<MSCPrim>& prims) -> MSCGraph {
+             return MSCGraph(name, nodes, input_names, output_names, prims);
+           })
+      .def("msc.core.WeightGraph",
+           [](const MSCGraph& graph, const Map<String, Array<String>>& main_wtypes,
+              const Map<String, String>& relation_wtypes) -> WeightGraph {
+             return WeightGraph(graph, main_wtypes, relation_wtypes);
+           });
 });
 
 // MSC Graph APIS
 TVM_FFI_STATIC_INIT_BLOCK({
   namespace refl = tvm::ffi::reflection;
   refl::GlobalDef()
-    .def("msc.core.MSCGraphHasNode", [](const MSCGraph& graph, const String& name) -> Bool {
-      return Bool(graph->HasNode(name));
-    })
-    .def("msc.core.MSCGraphFindNode", [](const MSCGraph& graph, const String& name) -> MSCJoint {
-      return graph->FindNode(name);
-    })
-    .def("msc.core.MSCGraphFindPrim", [](const MSCGraph& graph, const String& name) -> MSCPrim {
-      return graph->FindPrim(name);
-    })
-    .def("msc.core.MSCGraphHasTensor", [](const MSCGraph& graph, const String& name) -> Bool {
-      return Bool(graph->HasTensor(name));
-    })
-    .def("msc.core.MSCGraphFindTensor", [](const MSCGraph& graph, const String& name) -> MSCTensor {
-      return graph->FindTensor(name);
-    })
-    .def("msc.core.MSCGraphSetTensorAlias", [](const MSCGraph& graph, const MSCTensor& tensor, const String& alias) {
-      tensor->alias = alias;
-      graph->tensor_alias.Set(alias, tensor->name);
-    })
-    .def("msc.core.MSCGraphFindProducer", [](const MSCGraph& graph, const String& name) -> MSCJoint {
-      return graph->FindProducer(name);
-    })
-    .def("msc.core.MSCGraphFindConsumers", [](const MSCGraph& graph, const String& name) -> Array<MSCJoint> {
-      return graph->FindConsumers(name);
-    })
-    .def("msc.core.MSCGraphInputAt", [](const MSCGraph& graph, int index) -> MSCTensor {
-      return graph->InputAt(index);
-    })
-    .def("msc.core.MSCGraphOutputAt", [](const MSCGraph& graph, int index) -> MSCTensor {
-      return graph->OutputAt(index);
-    })
-    .def("msc.core.MSCGraphGetInputs", [](const MSCGraph& graph) -> Array<MSCTensor> { return graph->GetInputs(); })
-    .def("msc.core.MSCGraphGetOutputs", [](const MSCGraph& graph) -> Array<MSCTensor> { return graph->GetOutputs(); })
-    .def("msc.core.MSCGraphToJson", [](const MSCGraph& graph) -> String {
-      const auto& graph_json = graph->ToJson();
-      std::ostringstream os;
-      dmlc::JSONWriter writer(&os);
-      graph_json.Save(&writer);
-      return os.str();
-    })
-    .def("msc.core.MSCGraphFromJson", [](const String& graph_json) -> MSCGraph { return MSCGraph(graph_json); })
-    .def("msc.core.MSCGraphToPrototxt", [](const MSCGraph& graph) -> String { return graph->ToPrototxt(); });
+      .def("msc.core.MSCGraphHasNode",
+           [](const MSCGraph& graph, const String& name) -> Bool {
+             return Bool(graph->HasNode(name));
+           })
+      .def("msc.core.MSCGraphFindNode",
+           [](const MSCGraph& graph, const String& name) -> MSCJoint {
+             return graph->FindNode(name);
+           })
+      .def("msc.core.MSCGraphFindPrim",
+           [](const MSCGraph& graph, const String& name) -> MSCPrim {
+             return graph->FindPrim(name);
+           })
+      .def("msc.core.MSCGraphHasTensor",
+           [](const MSCGraph& graph, const String& name) -> Bool {
+             return Bool(graph->HasTensor(name));
+           })
+      .def("msc.core.MSCGraphFindTensor",
+           [](const MSCGraph& graph, const String& name) -> MSCTensor {
+             return graph->FindTensor(name);
+           })
+      .def("msc.core.MSCGraphSetTensorAlias",
+           [](const MSCGraph& graph, const MSCTensor& tensor, const String& alias) {
+             tensor->alias = alias;
+             graph->tensor_alias.Set(alias, tensor->name);
+           })
+      .def("msc.core.MSCGraphFindProducer",
+           [](const MSCGraph& graph, const String& name) -> MSCJoint {
+             return graph->FindProducer(name);
+           })
+      .def("msc.core.MSCGraphFindConsumers",
+           [](const MSCGraph& graph, const String& name) -> Array<MSCJoint> {
+             return graph->FindConsumers(name);
+           })
+      .def("msc.core.MSCGraphInputAt",
+           [](const MSCGraph& graph, int index) -> MSCTensor { return graph->InputAt(index); })
+      .def("msc.core.MSCGraphOutputAt",
+           [](const MSCGraph& graph, int index) -> MSCTensor { return graph->OutputAt(index); })
+      .def("msc.core.MSCGraphGetInputs",
+           [](const MSCGraph& graph) -> Array<MSCTensor> { return graph->GetInputs(); })
+      .def("msc.core.MSCGraphGetOutputs",
+           [](const MSCGraph& graph) -> Array<MSCTensor> { return graph->GetOutputs(); })
+      .def("msc.core.MSCGraphToJson",
+           [](const MSCGraph& graph) -> String {
+             const auto& graph_json = graph->ToJson();
+             std::ostringstream os;
+             dmlc::JSONWriter writer(&os);
+             graph_json.Save(&writer);
+             return os.str();
+           })
+      .def("msc.core.MSCGraphFromJson",
+           [](const String& graph_json) -> MSCGraph { return MSCGraph(graph_json); })
+      .def("msc.core.MSCGraphToPrototxt",
+           [](const MSCGraph& graph) -> String { return graph->ToPrototxt(); });
 });
 
 // Weight Graph APIS
 TVM_FFI_STATIC_INIT_BLOCK({
   namespace refl = tvm::ffi::reflection;
   refl::GlobalDef()
-    .def("msc.core.WeightGraphHasNode", [](const WeightGraph& graph, const String& name) -> Bool {
-      return Bool(graph->HasNode(name));
-    })
-    .def("msc.core.WeightGraphFindNode", [](const WeightGraph& graph, const String& name) -> WeightJoint {
-      return graph->FindNode(name);
-    })
-    .def("msc.core.WeightGraphToJson", [](const WeightGraph& graph) -> String {
-      const auto& graph_json = graph->ToJson();
-      std::ostringstream os;
-      dmlc::JSONWriter writer(&os);
-      graph_json.Save(&writer);
-      return os.str();
-    })
-    .def("msc.core.WeightGraphFromJson", [](const String& graph_json) -> WeightGraph {
-      return WeightGraph(graph_json);
-    })
-    .def("msc.core.WeightGraphToPrototxt", [](const WeightGraph& graph) -> String { return graph->ToPrototxt(); })
-    .def("msc.core.MSCJointInputAt", [](const MSCJoint& node, int index) -> MSCTensor {
-      return node->InputAt(index);
-    })
-    .def("msc.core.MSCJointOutputAt", [](const MSCJoint& node, int index) -> MSCTensor {
-      return node->OutputAt(index);
-    })
-    .def("msc.core.MSCJointWeightAt", [](const MSCJoint& node, const String& wtype) -> MSCTensor {
-      return node->WeightAt(wtype);
-    })
-    .def("msc.core.MSCJointGetInputs", [](const MSCJoint& node) -> Array<MSCTensor> { return node->GetInputs(); })
-    .def("msc.core.MSCJointGetOutputs", [](const MSCJoint& node) -> Array<MSCTensor> { return node->GetOutputs(); })
-    .def("msc.core.MSCJointGetWeights", [](const MSCJoint& node) -> Map<String, MSCTensor> { return node->weights; })
-    .def("msc.core.MSCJointHasAttr", [](const MSCJoint& node, const String& key) -> Bool {
-      return Bool(node->HasAttr(key));
-    })
-    .def("msc.core.MSCJointGetAttrs", [](const MSCJoint& node) -> Map<String, String> { return node->attrs; })
-    .def("msc.core.WeightJointHasAttr", [](const WeightJoint& node, const String& key) -> Bool {
-      return Bool(node->HasAttr(key));
-    })
-    .def("msc.core.WeightJointGetAttrs", [](const WeightJoint& node) -> Map<String, String> { return node->attrs; })
-    .def("msc.core.MSCTensorDTypeName", [](const MSCTensor& tensor) -> String { return tensor->DTypeName(); })
-    .def("msc.core.MSCTensorDimAt", [](const MSCTensor& tensor, const String& axis) -> Integer {
-      return tensor->DimAt(axis);
-    })
-    .def("msc.core.MSCTensorGetSize", [](const MSCTensor& tensor) -> Integer { return tensor->GetSize(); })
-    .def("msc.core.MSCTensorSetAlias", [](const MSCTensor& tensor, const String& alias) { tensor->alias = alias; })
-    .def("msc.core.PruneWeights", [](const MSCGraph& graph,
-                       const Map<String, MSCTensor>& pruned_tensors) -> MSCGraph {
-      return PruneWeights(graph, pruned_tensors);
-    });
+      .def("msc.core.WeightGraphHasNode",
+           [](const WeightGraph& graph, const String& name) -> Bool {
+             return Bool(graph->HasNode(name));
+           })
+      .def("msc.core.WeightGraphFindNode",
+           [](const WeightGraph& graph, const String& name) -> WeightJoint {
+             return graph->FindNode(name);
+           })
+      .def("msc.core.WeightGraphToJson",
+           [](const WeightGraph& graph) -> String {
+             const auto& graph_json = graph->ToJson();
+             std::ostringstream os;
+             dmlc::JSONWriter writer(&os);
+             graph_json.Save(&writer);
+             return os.str();
+           })
+      .def("msc.core.WeightGraphFromJson",
+           [](const String& graph_json) -> WeightGraph { return WeightGraph(graph_json); })
+      .def("msc.core.WeightGraphToPrototxt",
+           [](const WeightGraph& graph) -> String { return graph->ToPrototxt(); })
+      .def("msc.core.MSCJointInputAt",
+           [](const MSCJoint& node, int index) -> MSCTensor { return node->InputAt(index); })
+      .def("msc.core.MSCJointOutputAt",
+           [](const MSCJoint& node, int index) -> MSCTensor { return node->OutputAt(index); })
+      .def("msc.core.MSCJointWeightAt",
+           [](const MSCJoint& node, const String& wtype) -> MSCTensor {
+             return node->WeightAt(wtype);
+           })
+      .def("msc.core.MSCJointGetInputs",
+           [](const MSCJoint& node) -> Array<MSCTensor> { return node->GetInputs(); })
+      .def("msc.core.MSCJointGetOutputs",
+           [](const MSCJoint& node) -> Array<MSCTensor> { return node->GetOutputs(); })
+      .def("msc.core.MSCJointGetWeights",
+           [](const MSCJoint& node) -> Map<String, MSCTensor> { return node->weights; })
+      .def("msc.core.MSCJointHasAttr",
+           [](const MSCJoint& node, const String& key) -> Bool { return Bool(node->HasAttr(key)); })
+      .def("msc.core.MSCJointGetAttrs",
+           [](const MSCJoint& node) -> Map<String, String> { return node->attrs; })
+      .def("msc.core.WeightJointHasAttr",
+           [](const WeightJoint& node, const String& key) -> Bool {
+             return Bool(node->HasAttr(key));
+           })
+      .def("msc.core.WeightJointGetAttrs",
+           [](const WeightJoint& node) -> Map<String, String> { return node->attrs; })
+      .def("msc.core.MSCTensorDTypeName",
+           [](const MSCTensor& tensor) -> String { return tensor->DTypeName(); })
+      .def("msc.core.MSCTensorDimAt",
+           [](const MSCTensor& tensor, const String& axis) -> Integer {
+             return tensor->DimAt(axis);
+           })
+      .def("msc.core.MSCTensorGetSize",
+           [](const MSCTensor& tensor) -> Integer { return tensor->GetSize(); })
+      .def("msc.core.MSCTensorSetAlias",
+           [](const MSCTensor& tensor, const String& alias) { tensor->alias = alias; })
+      .def("msc.core.PruneWeights",
+           [](const MSCGraph& graph, const Map<String, MSCTensor>& pruned_tensors) -> MSCGraph {
+             return PruneWeights(graph, pruned_tensors);
+           });
 });
 
 }  // namespace msc

@@ -25,9 +25,9 @@
 #include <assert.h>
 #include <ctype.h>
 #include <tvm/ffi/function.h>
+#include <tvm/ffi/reflection/reflection.h>
 #include <tvm/runtime/module.h>
 #include <tvm/runtime/ndarray.h>
-#include <tvm/ffi/reflection/reflection.h>
 
 #include <cstddef>
 #include <fstream>
@@ -153,8 +153,8 @@ runtime::Module MarvellSimulatorModuleRuntimeCreate(const String& symbol_name,
 TVM_FFI_STATIC_INIT_BLOCK({
   namespace refl = tvm::ffi::reflection;
   refl::GlobalDef()
-    .def("runtime.mrvl_runtime_create", MarvellSimulatorModuleRuntimeCreate)
-    .def("runtime.module.loadbinary_mrvl_sim", MarvellSimulatorModuleNode::LoadFromBinary);
+      .def("runtime.mrvl_runtime_create", MarvellSimulatorModuleRuntimeCreate)
+      .def("runtime.module.loadbinary_mrvl_sim", MarvellSimulatorModuleNode::LoadFromBinary);
 });
 }  // namespace contrib
 }  // namespace runtime

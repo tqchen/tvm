@@ -17,9 +17,9 @@
  * under the License.
  */
 #include <tvm/ffi/function.h>
+#include <tvm/ffi/reflection/reflection.h>
 #include <tvm/runtime/logging.h>
 #include <tvm/script/printer/doc.h>
-#include <tvm/ffi/reflection/reflection.h>
 
 #include <algorithm>
 #include <cmath>
@@ -730,8 +730,7 @@ String DocToPythonScript(Doc doc, const PrinterConfig& cfg) {
 
 TVM_FFI_STATIC_INIT_BLOCK({
   namespace refl = tvm::ffi::reflection;
-  refl::GlobalDef()
-    .def("script.printer.DocToPythonScript", DocToPythonScript);
+  refl::GlobalDef().def("script.printer.DocToPythonScript", DocToPythonScript);
 });
 
 }  // namespace printer

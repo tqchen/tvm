@@ -23,10 +23,10 @@
  */
 #include <tvm/arith/analyzer.h>
 #include <tvm/ffi/function.h>
+#include <tvm/ffi/reflection/reflection.h>
 #include <tvm/tir/builtin.h>
 #include <tvm/tir/expr_functor.h>
 #include <tvm/tir/op.h>
-#include <tvm/ffi/reflection/reflection.h>
 
 #include <limits>
 #include <unordered_map>
@@ -62,8 +62,7 @@ ModularSet MakeModularSet(int64_t coeff, int64_t base) { return ModularSet(coeff
 
 TVM_FFI_STATIC_INIT_BLOCK({
   namespace refl = tvm::ffi::reflection;
-  refl::GlobalDef()
-    .def("arith.ModularSet", MakeModularSet);
+  refl::GlobalDef().def("arith.ModularSet", MakeModularSet);
 });
 
 // internal entry for const int bound

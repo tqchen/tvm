@@ -21,8 +21,8 @@
  * \file src/relax/backend/contrib/hipblas/codegen.cc
  * \brief Implementation of the HIPBLAS JSON serializer.
  */
-#include <tvm/ir/module.h>
 #include <tvm/ffi/reflection/reflection.h>
+#include <tvm/ir/module.h>
 
 #include <string>
 
@@ -105,8 +105,7 @@ Array<runtime::Module> HipblasCompiler(Array<Function> functions, Map<String, ff
 
 TVM_FFI_STATIC_INIT_BLOCK({
   namespace refl = tvm::ffi::reflection;
-  refl::GlobalDef()
-    .def("relax.ext.hipblas", HipblasCompiler);
+  refl::GlobalDef().def("relax.ext.hipblas", HipblasCompiler);
 });
 
 }  // namespace contrib

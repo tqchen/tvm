@@ -23,9 +23,9 @@
  */
 #include <tvm/arith/analyzer.h>
 #include <tvm/ffi/function.h>
+#include <tvm/ffi/reflection/reflection.h>
 #include <tvm/te/operation.h>
 #include <tvm/tir/expr.h>
-#include <tvm/ffi/reflection/reflection.h>
 
 namespace tvm {
 namespace te {
@@ -76,13 +76,13 @@ ExternOp::ExternOp(std::string name, std::string tag, Map<String, ffi::Any> attr
 
 TVM_FFI_STATIC_INIT_BLOCK({
   namespace refl = tvm::ffi::reflection;
-  refl::GlobalDef()
-    .def("te.ExternOp", [](std::string name, std::string tag, Optional<Map<String, ffi::Any>> attrs,
-                       Array<Tensor> inputs, Array<Buffer> input_placeholders,
-                       Array<Buffer> output_placeholders, Stmt body) {
-      return ExternOp(name, tag, attrs.value_or({}), inputs, input_placeholders,
-                      output_placeholders, body);
-    });
+  refl::GlobalDef().def("te.ExternOp",
+                        [](std::string name, std::string tag, Optional<Map<String, ffi::Any>> attrs,
+                           Array<Tensor> inputs, Array<Buffer> input_placeholders,
+                           Array<Buffer> output_placeholders, Stmt body) {
+                          return ExternOp(name, tag, attrs.value_or({}), inputs, input_placeholders,
+                                          output_placeholders, body);
+                        });
 });
 
 Array<Tensor> ExternOpNode::InputTensors() const { return inputs; }

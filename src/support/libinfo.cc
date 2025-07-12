@@ -18,9 +18,9 @@
  */
 #include <tvm/ffi/container/map.h>
 #include <tvm/ffi/function.h>
+#include <tvm/ffi/reflection/reflection.h>
 #include <tvm/ffi/string.h>
 #include <tvm/runtime/object.h>
-#include <tvm/ffi/reflection/reflection.h>
 
 #ifndef TVM_INFO_GIT_COMMIT_HASH
 #define TVM_INFO_GIT_COMMIT_HASH "NOT-FOUND"
@@ -368,8 +368,7 @@ TVM_DLL ffi::Map<ffi::String, ffi::String> GetLibInfo() {
 
 TVM_FFI_STATIC_INIT_BLOCK({
   namespace refl = tvm::ffi::reflection;
-  refl::GlobalDef()
-    .def("support.GetLibInfo", GetLibInfo);
+  refl::GlobalDef().def("support.GetLibInfo", GetLibInfo);
 });
 
 }  // namespace tvm

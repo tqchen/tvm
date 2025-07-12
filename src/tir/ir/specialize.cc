@@ -22,11 +22,11 @@
  * \brief Specialize parameters of PrimFunc.
  */
 #include <tvm/ffi/function.h>
+#include <tvm/ffi/reflection/reflection.h>
 #include <tvm/tir/analysis.h>
 #include <tvm/tir/function.h>
 #include <tvm/tir/op.h>
 #include <tvm/tir/stmt_functor.h>
-#include <tvm/ffi/reflection/reflection.h>
 
 #include <functional>
 
@@ -435,8 +435,7 @@ PrimFunc Specialize(PrimFunc func, const Map<Var, Variant<Buffer, PrimExpr>>& pa
 
 TVM_FFI_STATIC_INIT_BLOCK({
   namespace refl = tvm::ffi::reflection;
-  refl::GlobalDef()
-    .def("tir.Specialize", Specialize);
+  refl::GlobalDef().def("tir.Specialize", Specialize);
 });
 
 }  // namespace tir

@@ -22,6 +22,7 @@
  */
 
 #include "utils.h"
+
 #include <tvm/ffi/reflection/reflection.h>
 
 #include <algorithm>
@@ -527,21 +528,23 @@ const DataType ExprUtils::GetDataType(const Expr& expr) {
 TVM_FFI_STATIC_INIT_BLOCK({
   namespace refl = tvm::ffi::reflection;
   refl::GlobalDef()
-    .def("msc.core.SpanGetAttr", SpanUtils::GetAttr)
-    .def("msc.core.SpanGetAttrs", SpanUtils::GetAttrs)
-    .def("msc.core.SpanCreateWithAttr", [](const String& key, const String& value) -> Span {
-      return SpanUtils::CreateWithAttr(key, value);
-    })
-    .def("msc.core.SpanSetAttr", [](const Span& span, const String& key, const String& value) -> Span {
-      return SpanUtils::SetAttr(span, key, value);
-    })
-    .def("msc.core.CompareVersion", [](const Array<Integer>& given_version,
-                       const Array<Integer>& target_version) -> Integer {
-      return Integer(CommonUtils::CompareVersion(given_version, target_version));
-    })
-    .def("msc.core.ToAttrKey", [](const String& key) -> String {
-  return CommonUtils::ToAttrKey(key);
-});
+      .def("msc.core.SpanGetAttr", SpanUtils::GetAttr)
+      .def("msc.core.SpanGetAttrs", SpanUtils::GetAttrs)
+      .def("msc.core.SpanCreateWithAttr",
+           [](const String& key, const String& value) -> Span {
+             return SpanUtils::CreateWithAttr(key, value);
+           })
+      .def("msc.core.SpanSetAttr",
+           [](const Span& span, const String& key, const String& value) -> Span {
+             return SpanUtils::SetAttr(span, key, value);
+           })
+      .def(
+          "msc.core.CompareVersion",
+          [](const Array<Integer>& given_version, const Array<Integer>& target_version) -> Integer {
+            return Integer(CommonUtils::CompareVersion(given_version, target_version));
+          })
+      .def("msc.core.ToAttrKey",
+           [](const String& key) -> String { return CommonUtils::ToAttrKey(key); });
 });
 
 }  // namespace msc

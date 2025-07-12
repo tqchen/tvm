@@ -22,6 +22,7 @@
  */
 #include <tvm/arith/analyzer.h>
 #include <tvm/ffi/function.h>
+#include <tvm/ffi/reflection/reflection.h>
 #include <tvm/relax/analysis.h>
 #include <tvm/relax/block_builder.h>
 #include <tvm/relax/expr_functor.h>
@@ -31,7 +32,6 @@
 #include <tvm/relax/transform.h>
 #include <tvm/relax/type.h>
 #include <tvm/tir/function.h>
-#include <tvm/ffi/reflection/reflection.h>
 
 #include <memory>
 #include <unordered_map>
@@ -1058,37 +1058,40 @@ TVM_REGISTER_OBJECT_TYPE(BlockBuilderNode);
 TVM_FFI_STATIC_INIT_BLOCK({
   namespace refl = tvm::ffi::reflection;
   refl::GlobalDef()
-    .def("relax.BlockBuilderCreate", [](Optional<IRModule> mod) {
-  return BlockBuilder::Create(mod);
-})
-    .def_method("relax.BlockBuilderBeginDataflowBlock", &BlockBuilderNode::BeginDataflowBlock)
-    .def_method("relax.BlockBuilderBeginBindingBlock", &BlockBuilderNode::BeginBindingBlock)
-    .def_method("relax.BlockBuilderEndBlock", &BlockBuilderNode::EndBlock)
-    .def_method("relax.BlockBuilderNormalize", &BlockBuilderNode::Normalize)
-    .def("relax.BlockBuilderEmit", [](BlockBuilder builder, Expr expr, String name_hint) {
-      return builder->Emit(expr, name_hint);
-    })
-    .def("relax.BlockBuilderEmitMatchCast", [](BlockBuilder builder, Expr value, StructInfo struct_info, String name_hint) {
-      return builder->EmitMatchCast(value, struct_info, name_hint);
-    })
-    .def("relax.BlockBuilderEmitOutput", [](BlockBuilder builder, const Expr& output, String name_hint) {
-      return builder->EmitOutput(output, name_hint);
-    })
-    .def("relax.BlockBuilderEmitNormalized", [](BlockBuilder builder, Binding binding) {
-      return builder->EmitNormalized(binding);
-    })
-    .def("relax.BlockBuilderGetUniqueName", [](BlockBuilder builder, String name_hint) {
-      return builder->name_supply()->FreshName(name_hint, /*add_prefix*/ false,
-                                               /*add_underscore*/ false);
-    })
-    .def_method("relax.BlockBuilderAddFunction", &BlockBuilderNode::AddFunction)
-    .def_method("relax.BlockBuilderUpdateFunction", &BlockBuilderNode::UpdateFunction)
-    .def_method("relax.BlockBuilderGetContextIRModule", &BlockBuilderNode::GetContextIRModule)
-    .def_method("relax.BlockBuilderFinalize", &BlockBuilderNode::Finalize)
-    .def_method("relax.BlockBuilderCurrentBlockIsDataFlow", &BlockBuilderNode::CurrentBlockIsDataFlow)
-    .def_method("relax.BlockBuilderLookupBinding", &BlockBuilderNode::LookupBinding)
-    .def_method("relax.BlockBuilderBeginScope", &BlockBuilderNode::BeginScope)
-    .def_method("relax.BlockBuilderEndScope", &BlockBuilderNode::EndScope);
+      .def("relax.BlockBuilderCreate",
+           [](Optional<IRModule> mod) { return BlockBuilder::Create(mod); })
+      .def_method("relax.BlockBuilderBeginDataflowBlock", &BlockBuilderNode::BeginDataflowBlock)
+      .def_method("relax.BlockBuilderBeginBindingBlock", &BlockBuilderNode::BeginBindingBlock)
+      .def_method("relax.BlockBuilderEndBlock", &BlockBuilderNode::EndBlock)
+      .def_method("relax.BlockBuilderNormalize", &BlockBuilderNode::Normalize)
+      .def("relax.BlockBuilderEmit",
+           [](BlockBuilder builder, Expr expr, String name_hint) {
+             return builder->Emit(expr, name_hint);
+           })
+      .def("relax.BlockBuilderEmitMatchCast",
+           [](BlockBuilder builder, Expr value, StructInfo struct_info, String name_hint) {
+             return builder->EmitMatchCast(value, struct_info, name_hint);
+           })
+      .def("relax.BlockBuilderEmitOutput",
+           [](BlockBuilder builder, const Expr& output, String name_hint) {
+             return builder->EmitOutput(output, name_hint);
+           })
+      .def("relax.BlockBuilderEmitNormalized",
+           [](BlockBuilder builder, Binding binding) { return builder->EmitNormalized(binding); })
+      .def("relax.BlockBuilderGetUniqueName",
+           [](BlockBuilder builder, String name_hint) {
+             return builder->name_supply()->FreshName(name_hint, /*add_prefix*/ false,
+                                                      /*add_underscore*/ false);
+           })
+      .def_method("relax.BlockBuilderAddFunction", &BlockBuilderNode::AddFunction)
+      .def_method("relax.BlockBuilderUpdateFunction", &BlockBuilderNode::UpdateFunction)
+      .def_method("relax.BlockBuilderGetContextIRModule", &BlockBuilderNode::GetContextIRModule)
+      .def_method("relax.BlockBuilderFinalize", &BlockBuilderNode::Finalize)
+      .def_method("relax.BlockBuilderCurrentBlockIsDataFlow",
+                  &BlockBuilderNode::CurrentBlockIsDataFlow)
+      .def_method("relax.BlockBuilderLookupBinding", &BlockBuilderNode::LookupBinding)
+      .def_method("relax.BlockBuilderBeginScope", &BlockBuilderNode::BeginScope)
+      .def_method("relax.BlockBuilderEndScope", &BlockBuilderNode::EndScope);
 });
 }  // namespace relax
 }  // namespace tvm

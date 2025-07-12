@@ -22,12 +22,12 @@
  * \brief Lift local functions into global functions.
  */
 
+#include <tvm/ffi/reflection/reflection.h>
 #include <tvm/relax/analysis.h>
 #include <tvm/relax/expr.h>
 #include <tvm/relax/expr_functor.h>
 #include <tvm/relax/transform.h>
 #include <tvm/runtime/logging.h>
-#include <tvm/ffi/reflection/reflection.h>
 
 #include "utils.h"
 
@@ -118,8 +118,7 @@ Pass BundleModelParams(Optional<String> param_tuple_name) {
 
 TVM_FFI_STATIC_INIT_BLOCK({
   namespace refl = tvm::ffi::reflection;
-  refl::GlobalDef()
-    .def("relax.transform.BundleModelParams", BundleModelParams);
+  refl::GlobalDef().def("relax.transform.BundleModelParams", BundleModelParams);
 });
 
 }  // namespace transform

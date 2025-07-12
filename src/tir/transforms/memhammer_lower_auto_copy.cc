@@ -19,12 +19,12 @@
 
 #include <tvm/arith/iter_affine_map.h>
 #include <tvm/ffi/function.h>
+#include <tvm/ffi/reflection/reflection.h>
 #include <tvm/target/target.h>
 #include <tvm/tir/expr.h>
 #include <tvm/tir/op.h>
 #include <tvm/tir/stmt_functor.h>
 #include <tvm/tir/transform.h>
-#include <tvm/ffi/reflection/reflection.h>
 
 #include <array>
 #include <stack>
@@ -779,8 +779,7 @@ Pass LowerAutoCopy() {
 
 TVM_FFI_STATIC_INIT_BLOCK({
   namespace refl = tvm::ffi::reflection;
-  refl::GlobalDef()
-    .def("tir.transform.LowerAutoCopy", LowerAutoCopy);
+  refl::GlobalDef().def("tir.transform.LowerAutoCopy", LowerAutoCopy);
 });
 
 }  // namespace transform

@@ -21,12 +21,12 @@
  * \brief Attach global_symbol to Relax functions and TIR Primfuncs for codegen.
  */
 
+#include <tvm/ffi/reflection/reflection.h>
 #include <tvm/ir/module.h>
 #include <tvm/ir/replace_global_vars.h>
 #include <tvm/relax/struct_info.h>
 #include <tvm/relax/transform.h>
 #include <tvm/tir/function.h>
-#include <tvm/ffi/reflection/reflection.h>
 
 namespace tvm {
 namespace relax {
@@ -82,8 +82,7 @@ Pass AttachGlobalSymbol() {
 
 TVM_FFI_STATIC_INIT_BLOCK({
   namespace refl = tvm::ffi::reflection;
-  refl::GlobalDef()
-    .def("relax.transform.AttachGlobalSymbol", AttachGlobalSymbol);
+  refl::GlobalDef().def("relax.transform.AttachGlobalSymbol", AttachGlobalSymbol);
 });
 }  // namespace transform
 }  // namespace relax

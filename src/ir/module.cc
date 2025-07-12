@@ -22,12 +22,12 @@
  */
 #include <tvm/ffi/container/variant.h>
 #include <tvm/ffi/function.h>
+#include <tvm/ffi/reflection/reflection.h>
 #include <tvm/ffi/rvalue_ref.h>
 #include <tvm/ir/global_var_supply.h>
 #include <tvm/ir/module.h>
 #include <tvm/ir/type_functor.h>
 #include <tvm/node/structural_equal.h>
-#include <tvm/ffi/reflection/reflection.h>
 
 #include <algorithm>
 #include <fstream>
@@ -248,88 +248,90 @@ TVM_REGISTER_NODE_TYPE(IRModuleNode);
 TVM_FFI_STATIC_INIT_BLOCK({
   namespace refl = tvm::ffi::reflection;
   refl::GlobalDef()
-    .def("ir.IRModule", [](tvm::Map<GlobalVar, BaseFunc> funcs, tvm::ObjectRef attrs,
-                       Map<String, Array<GlobalInfo>> global_infos) {
-      auto dict_attrs = [&attrs]() {
-        if (!attrs.defined()) {
-          return DictAttrs();
-        } else if (auto* as_dict_attrs = attrs.as<tvm::DictAttrsNode>()) {
-          return GetRef<tvm::DictAttrs>(as_dict_attrs);
-        } else if (attrs.as<ffi::MapObj>()) {
-          return tvm::DictAttrs(Downcast<Map<String, Any>>(attrs));
-        } else {
-          LOG(FATAL) << "Expected attrs argument to be either DictAttrs or Map<String,ObjectRef>";
-        }
-      }();
+      .def("ir.IRModule",
+           [](tvm::Map<GlobalVar, BaseFunc> funcs, tvm::ObjectRef attrs,
+              Map<String, Array<GlobalInfo>> global_infos) {
+             auto dict_attrs = [&attrs]() {
+               if (!attrs.defined()) {
+                 return DictAttrs();
+               } else if (auto* as_dict_attrs = attrs.as<tvm::DictAttrsNode>()) {
+                 return GetRef<tvm::DictAttrs>(as_dict_attrs);
+               } else if (attrs.as<ffi::MapObj>()) {
+                 return tvm::DictAttrs(Downcast<Map<String, Any>>(attrs));
+               } else {
+                 LOG(FATAL)
+                     << "Expected attrs argument to be either DictAttrs or Map<String,ObjectRef>";
+               }
+             }();
 
-      return IRModule(funcs, {}, dict_attrs, global_infos);
-    })
-    .def("ir.Module_Clone", [](IRModule mod) -> IRModule {
-  IRModule clone = mod;
-  clone.CopyOnWrite();
-  return clone;
-})
-    .def("ir.Module_Add", [](IRModule mod, GlobalVar var, ObjectRef val, bool update) -> IRModule {
-      ICHECK(val->IsInstance<RelaxExprNode>());
-      mod->Add(var, Downcast<BaseFunc>(val), update);
-      return mod;
-    })
-    .def("ir.Module_Remove", [](IRModule mod, Variant<String, GlobalVar> var) -> IRModule {
-      GlobalVar gvar = [&]() {
-        if (auto opt = var.as<GlobalVar>()) {
-          return opt.value();
-        } else if (auto opt = var.as<String>()) {
-          return mod->GetGlobalVar(opt.value());
-        } else {
-          LOG(FATAL) << "InternalError: "
-                     << "Variant didn't contain any of the allowed types";
-        }
-      }();
-      mod->Remove(gvar);
-      return mod;
-    })
-    .def("ir.Module_Contains", [](IRModule mod, Variant<String, GlobalVar> var) -> bool {
-      if (auto opt = var.as<GlobalVar>()) {
-        return mod->functions.count(opt.value());
-      } else if (auto opt = var.as<String>()) {
-        return mod->global_var_map_.count(opt.value());
-      } else {
-        LOG(FATAL) << "InternalError: "
-                   << "Variant didn't contain any of the allowed types";
-      }
-    })
-    .def_method("ir.Module_GetGlobalVar", &IRModuleNode::GetGlobalVar)
-    .def_method("ir.Module_GetGlobalVars", &IRModuleNode::GetGlobalVars)
-    .def_method("ir.Module_ContainGlobalVar", &IRModuleNode::ContainGlobalVar)
-    .def("ir.Module_Lookup", [](IRModule mod, GlobalVar var) {
-  return mod->Lookup(var);
-})
-    .def("ir.Module_Lookup_str", [](IRModule mod, String var) {
-  return mod->Lookup(var);
-})
-    .def("ir.Module_FromExpr", &IRModule::FromExpr)
-    .def("ir.Module_Update", [](IRModule mod, IRModule from) {
-  mod->Update(from);
-})
-    .def("ir.Module_UpdateFunction", [](IRModule mod, GlobalVar gv, BaseFunc func) { mod->Update(gv, func); })
-    .def("ir.Module_UpdateGlobalInfo", [](IRModule mod, String name, Array<GlobalInfo> global_info) {
-      mod->UpdateGlobalInfo(name, global_info);
-    })
-    .def("ir.Module_GetAttrs", [](IRModule mod) -> ObjectRef {
-  return mod->GetAttrs();
-})
-    .def("ir.Module_WithAttr", [](ffi::RValueRef<IRModule> mod, String key, ffi::Any value) -> IRModule {
-      return WithAttr(*std::move(mod), key, value);
-    })
-    .def("ir.Module_WithoutAttr", [](ffi::RValueRef<IRModule> mod, String key) -> IRModule {
-      return WithoutAttr(*std::move(mod), key);
-    })
-    .def("ir.Module_WithAttrs", [](ffi::RValueRef<IRModule> mod, Map<String, ffi::Any> attr_map) -> IRModule {
-      return WithAttrs(*std::move(mod), attr_map);
-    })
-    .def("ir.Module_GetAttr", [](IRModule mod, String key) -> ObjectRef {
-      return mod->GetAttr<ObjectRef>(key);
-    });
+             return IRModule(funcs, {}, dict_attrs, global_infos);
+           })
+      .def("ir.Module_Clone",
+           [](IRModule mod) -> IRModule {
+             IRModule clone = mod;
+             clone.CopyOnWrite();
+             return clone;
+           })
+      .def("ir.Module_Add",
+           [](IRModule mod, GlobalVar var, ObjectRef val, bool update) -> IRModule {
+             ICHECK(val->IsInstance<RelaxExprNode>());
+             mod->Add(var, Downcast<BaseFunc>(val), update);
+             return mod;
+           })
+      .def("ir.Module_Remove",
+           [](IRModule mod, Variant<String, GlobalVar> var) -> IRModule {
+             GlobalVar gvar = [&]() {
+               if (auto opt = var.as<GlobalVar>()) {
+                 return opt.value();
+               } else if (auto opt = var.as<String>()) {
+                 return mod->GetGlobalVar(opt.value());
+               } else {
+                 LOG(FATAL) << "InternalError: "
+                            << "Variant didn't contain any of the allowed types";
+               }
+             }();
+             mod->Remove(gvar);
+             return mod;
+           })
+      .def("ir.Module_Contains",
+           [](IRModule mod, Variant<String, GlobalVar> var) -> bool {
+             if (auto opt = var.as<GlobalVar>()) {
+               return mod->functions.count(opt.value());
+             } else if (auto opt = var.as<String>()) {
+               return mod->global_var_map_.count(opt.value());
+             } else {
+               LOG(FATAL) << "InternalError: "
+                          << "Variant didn't contain any of the allowed types";
+             }
+           })
+      .def_method("ir.Module_GetGlobalVar", &IRModuleNode::GetGlobalVar)
+      .def_method("ir.Module_GetGlobalVars", &IRModuleNode::GetGlobalVars)
+      .def_method("ir.Module_ContainGlobalVar", &IRModuleNode::ContainGlobalVar)
+      .def("ir.Module_Lookup", [](IRModule mod, GlobalVar var) { return mod->Lookup(var); })
+      .def("ir.Module_Lookup_str", [](IRModule mod, String var) { return mod->Lookup(var); })
+      .def("ir.Module_FromExpr", &IRModule::FromExpr)
+      .def("ir.Module_Update", [](IRModule mod, IRModule from) { mod->Update(from); })
+      .def("ir.Module_UpdateFunction",
+           [](IRModule mod, GlobalVar gv, BaseFunc func) { mod->Update(gv, func); })
+      .def("ir.Module_UpdateGlobalInfo",
+           [](IRModule mod, String name, Array<GlobalInfo> global_info) {
+             mod->UpdateGlobalInfo(name, global_info);
+           })
+      .def("ir.Module_GetAttrs", [](IRModule mod) -> ObjectRef { return mod->GetAttrs(); })
+      .def("ir.Module_WithAttr",
+           [](ffi::RValueRef<IRModule> mod, String key, ffi::Any value) -> IRModule {
+             return WithAttr(*std::move(mod), key, value);
+           })
+      .def("ir.Module_WithoutAttr",
+           [](ffi::RValueRef<IRModule> mod, String key) -> IRModule {
+             return WithoutAttr(*std::move(mod), key);
+           })
+      .def("ir.Module_WithAttrs",
+           [](ffi::RValueRef<IRModule> mod, Map<String, ffi::Any> attr_map) -> IRModule {
+             return WithAttrs(*std::move(mod), attr_map);
+           })
+      .def("ir.Module_GetAttr",
+           [](IRModule mod, String key) -> ObjectRef { return mod->GetAttr<ObjectRef>(key); });
 });
 
 }  // namespace tvm

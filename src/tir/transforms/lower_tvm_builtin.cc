@@ -22,11 +22,11 @@
  * \file tir/transforms/lower_tvm_buildin.cc
  */
 #include <tvm/ffi/function.h>
+#include <tvm/ffi/reflection/reflection.h>
 #include <tvm/tir/builtin.h>
 #include <tvm/tir/expr.h>
 #include <tvm/tir/stmt_functor.h>
 #include <tvm/tir/transform.h>
-#include <tvm/ffi/reflection/reflection.h>
 
 #include <unordered_set>
 
@@ -676,8 +676,7 @@ Pass LowerTVMBuiltin() {
 
 TVM_FFI_STATIC_INIT_BLOCK({
   namespace refl = tvm::ffi::reflection;
-  refl::GlobalDef()
-    .def("tir.transform.LowerTVMBuiltin", LowerTVMBuiltin);
+  refl::GlobalDef().def("tir.transform.LowerTVMBuiltin", LowerTVMBuiltin);
 });
 
 }  // namespace transform

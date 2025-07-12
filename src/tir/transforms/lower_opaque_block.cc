@@ -21,9 +21,9 @@
  * \file lower_opaque_block.cc
  */
 
+#include <tvm/ffi/reflection/reflection.h>
 #include <tvm/tir/stmt_functor.h>
 #include <tvm/tir/transform.h>
-#include <tvm/ffi/reflection/reflection.h>
 
 #include "ir_utils.h"
 
@@ -217,8 +217,7 @@ Pass LowerOpaqueBlock() {
 
 TVM_FFI_STATIC_INIT_BLOCK({
   namespace refl = tvm::ffi::reflection;
-  refl::GlobalDef()
-    .def("tir.transform.LowerOpaqueBlock", LowerOpaqueBlock);
+  refl::GlobalDef().def("tir.transform.LowerOpaqueBlock", LowerOpaqueBlock);
 });
 }  // namespace transform
 

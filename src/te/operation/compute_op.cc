@@ -24,12 +24,12 @@
 
 #include <tvm/arith/analyzer.h>
 #include <tvm/ffi/function.h>
+#include <tvm/ffi/reflection/reflection.h>
 #include <tvm/te/operation.h>
 #include <tvm/tir/analysis.h>
 #include <tvm/tir/builtin.h>
 #include <tvm/tir/expr.h>
 #include <tvm/tir/stmt_functor.h>
-#include <tvm/ffi/reflection/reflection.h>
 
 #include <string>
 #include <unordered_set>
@@ -157,11 +157,11 @@ ComputeOp::ComputeOp(std::string name, std::string tag, Map<String, ffi::Any> at
 
 TVM_FFI_STATIC_INIT_BLOCK({
   namespace refl = tvm::ffi::reflection;
-  refl::GlobalDef()
-    .def("te.ComputeOp", [](std::string name, std::string tag, Optional<Map<String, ffi::Any>> attrs,
-                       Array<IterVar> axis, Array<PrimExpr> body) {
-      return ComputeOp(name, tag, attrs.value_or({}), axis, body);
-    });
+  refl::GlobalDef().def("te.ComputeOp",
+                        [](std::string name, std::string tag, Optional<Map<String, ffi::Any>> attrs,
+                           Array<IterVar> axis, Array<PrimExpr> body) {
+                          return ComputeOp(name, tag, attrs.value_or({}), axis, body);
+                        });
 });
 
 // The schedule related logics

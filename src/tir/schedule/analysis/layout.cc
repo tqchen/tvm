@@ -16,8 +16,9 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-#include "../utils.h"
 #include <tvm/ffi/reflection/reflection.h>
+
+#include "../utils.h"
 
 namespace tvm {
 namespace tir {
@@ -241,12 +242,11 @@ Optional<IndexMap> SuggestIndexMap(const Buffer& buffer, const Array<PrimExpr>& 
 
 TVM_FFI_STATIC_INIT_BLOCK({
   namespace refl = tvm::ffi::reflection;
-  refl::GlobalDef()
-    .def("tir.schedule.SuggestIndexMap", [](Buffer buffer, Array<PrimExpr> indices, Array<For> loops,
-                       PrimExpr predicate) {
-      arith::Analyzer analyzer;
-      return SuggestIndexMap(buffer, indices, loops, predicate, &analyzer);
-    });
+  refl::GlobalDef().def("tir.schedule.SuggestIndexMap", [](Buffer buffer, Array<PrimExpr> indices,
+                                                           Array<For> loops, PrimExpr predicate) {
+    arith::Analyzer analyzer;
+    return SuggestIndexMap(buffer, indices, loops, predicate, &analyzer);
+  });
 });
 
 }  // namespace tir

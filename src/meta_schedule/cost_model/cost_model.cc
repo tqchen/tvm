@@ -16,8 +16,9 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-#include "../utils.h"
 #include <tvm/ffi/reflection/reflection.h>
+
+#include "../utils.h"
 
 namespace tvm {
 namespace meta_schedule {
@@ -75,17 +76,18 @@ TVM_REGISTER_NODE_TYPE(PyCostModelNode);
 TVM_FFI_STATIC_INIT_BLOCK({
   namespace refl = tvm::ffi::reflection;
   refl::GlobalDef()
-    .def_method("meta_schedule.CostModelLoad", &CostModelNode::Load)
-    .def_method("meta_schedule.CostModelSave", &CostModelNode::Save)
-    .def_method("meta_schedule.CostModelUpdate", &CostModelNode::Update)
-    .def("meta_schedule.CostModelPredict", [](CostModel model,                     //
-                       const TuneContext& context,          //
-                       Array<MeasureCandidate> candidates,  //
-                       void* p_addr) -> void {
-      std::vector<double> result = model->Predict(context, candidates);
-      std::copy(result.begin(), result.end(), static_cast<double*>(p_addr));
-    })
-    .def("meta_schedule.CostModelPyCostModel", CostModel::PyCostModel);
+      .def_method("meta_schedule.CostModelLoad", &CostModelNode::Load)
+      .def_method("meta_schedule.CostModelSave", &CostModelNode::Save)
+      .def_method("meta_schedule.CostModelUpdate", &CostModelNode::Update)
+      .def("meta_schedule.CostModelPredict",
+           [](CostModel model,                     //
+              const TuneContext& context,          //
+              Array<MeasureCandidate> candidates,  //
+              void* p_addr) -> void {
+             std::vector<double> result = model->Predict(context, candidates);
+             std::copy(result.begin(), result.end(), static_cast<double*>(p_addr));
+           })
+      .def("meta_schedule.CostModelPyCostModel", CostModel::PyCostModel);
 });
 
 }  // namespace meta_schedule

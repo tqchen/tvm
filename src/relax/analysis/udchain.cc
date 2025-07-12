@@ -22,10 +22,10 @@
  * \brief Implementation of use-def analysis.
  */
 
+#include <tvm/ffi/reflection/reflection.h>
 #include <tvm/relax/analysis.h>
 #include <tvm/relax/expr.h>
 #include <tvm/relax/expr_functor.h>
-#include <tvm/ffi/reflection/reflection.h>
 
 #include <cstddef>
 #include <limits>
@@ -121,8 +121,7 @@ Map<Var, Array<Var>> DataflowBlockUseDef(const DataflowBlock& dfb) {
 
 TVM_FFI_STATIC_INIT_BLOCK({
   namespace refl = tvm::ffi::reflection;
-  refl::GlobalDef()
-    .def("relax.analysis.udchain", DataflowBlockUseDef);
+  refl::GlobalDef().def("relax.analysis.udchain", DataflowBlockUseDef);
 });
 
 VarUsageInfo CollectVarUsage(const Expr& expr) { return UDChain::Collect(expr); }

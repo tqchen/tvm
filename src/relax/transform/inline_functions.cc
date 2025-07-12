@@ -17,11 +17,11 @@
  * under the License.
  */
 
+#include <tvm/ffi/reflection/reflection.h>
 #include <tvm/relax/analysis.h>
 #include <tvm/relax/expr.h>
 #include <tvm/relax/expr_functor.h>
 #include <tvm/relax/transform.h>
-#include <tvm/ffi/reflection/reflection.h>
 
 #include <utility>
 
@@ -167,8 +167,7 @@ Function FunctionInlineFunctions(Function func,
 
 TVM_FFI_STATIC_INIT_BLOCK({
   namespace refl = tvm::ffi::reflection;
-  refl::GlobalDef()
-    .def("relax.FunctionInlineFunctions", FunctionInlineFunctions);
+  refl::GlobalDef().def("relax.FunctionInlineFunctions", FunctionInlineFunctions);
 });
 
 namespace transform {
@@ -226,8 +225,7 @@ Pass InlinePrivateFunctions() {
 
 TVM_FFI_STATIC_INIT_BLOCK({
   namespace refl = tvm::ffi::reflection;
-  refl::GlobalDef()
-    .def("relax.transform.InlinePrivateFunctions", InlinePrivateFunctions);
+  refl::GlobalDef().def("relax.transform.InlinePrivateFunctions", InlinePrivateFunctions);
 });
 
 }  // namespace transform

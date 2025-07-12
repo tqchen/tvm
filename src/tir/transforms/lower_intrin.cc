@@ -22,11 +22,11 @@
  * \file lower_intrin.cc
  */
 #include <tvm/ffi/function.h>
+#include <tvm/ffi/reflection/reflection.h>
 #include <tvm/target/target.h>
 #include <tvm/tir/expr.h>
 #include <tvm/tir/op.h>
 #include <tvm/tir/transform.h>
-#include <tvm/ffi/reflection/reflection.h>
 
 #include <limits>
 #include <unordered_set>
@@ -397,8 +397,7 @@ Pass LowerIntrin() {
 
 TVM_FFI_STATIC_INIT_BLOCK({
   namespace refl = tvm::ffi::reflection;
-  refl::GlobalDef()
-    .def("tir.transform.LowerIntrin", LowerIntrin);
+  refl::GlobalDef().def("tir.transform.LowerIntrin", LowerIntrin);
 });
 
 }  // namespace transform

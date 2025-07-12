@@ -25,11 +25,11 @@
  */
 
 #include <tvm/ffi/function.h>
+#include <tvm/ffi/reflection/reflection.h>
 #include <tvm/tir/analysis.h>
 #include <tvm/tir/expr.h>
 #include <tvm/tir/stmt.h>
 #include <tvm/tir/stmt_functor.h>
-#include <tvm/ffi/reflection/reflection.h>
 
 #include "../../runtime/thread_storage_scope.h"
 #include "../transforms/ir_utils.h"
@@ -324,8 +324,7 @@ bool VerifyGPUCode(const PrimFunc& func, Map<String, PrimExpr> constraints) {
 
 TVM_FFI_STATIC_INIT_BLOCK({
   namespace refl = tvm::ffi::reflection;
-  refl::GlobalDef()
-    .def("tir.analysis.verify_gpu_code", VerifyGPUCode);
+  refl::GlobalDef().def("tir.analysis.verify_gpu_code", VerifyGPUCode);
 });
 
 namespace transform {
@@ -353,8 +352,7 @@ Pass VerifyGPUCode(Map<String, PrimExpr> constraints) {
 
 TVM_FFI_STATIC_INIT_BLOCK({
   namespace refl = tvm::ffi::reflection;
-  refl::GlobalDef()
-    .def("tir.transform.VerifyGPUCode", VerifyGPUCode);
+  refl::GlobalDef().def("tir.transform.VerifyGPUCode", VerifyGPUCode);
 });
 
 }  // namespace transform

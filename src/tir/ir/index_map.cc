@@ -425,28 +425,33 @@ TVM_REGISTER_NODE_TYPE(IndexMapNode);
 TVM_FFI_STATIC_INIT_BLOCK({
   namespace refl = tvm::ffi::reflection;
   refl::GlobalDef()
-    .def("tir.IndexMap", [](Array<Var> initial_indices, Array<PrimExpr> final_indices,
-                       Optional<IndexMap> inverse_index_map) {
-      return IndexMap(initial_indices, final_indices, inverse_index_map);
-    })
-    .def("tir.IndexMapMapIndices", [](IndexMap map, Array<PrimExpr> indices) {
-      arith::Analyzer analyzer;
-      return map->MapIndices(indices, &analyzer);
-    })
-    .def("tir.IndexMapMapShape", [](IndexMap map, Array<PrimExpr> shape) {
-      arith::Analyzer analyzer;
-      return map->MapShape(shape, &analyzer);
-    })
-    .def("tir.IndexMapInverse", [](IndexMap map, Array<Range> initial_ranges) {
-      arith::Analyzer analyzer;
-      return map.Inverse(initial_ranges, &analyzer);
-    })
-    .def("tir.IndexMapMapNDArray", [](IndexMap map, runtime::NDArray arr) { return map->MapNDArray(arr); })
-    .def("tir.IndexMapNonSurjectiveInverse", [](IndexMap forward, Array<Range> initial_ranges) {
-      arith::Analyzer analyzer;
-      auto result = forward.NonSurjectiveInverse(initial_ranges, &analyzer);
-      return Array<ObjectRef>{result.first, result.second};
-    });
+      .def("tir.IndexMap",
+           [](Array<Var> initial_indices, Array<PrimExpr> final_indices,
+              Optional<IndexMap> inverse_index_map) {
+             return IndexMap(initial_indices, final_indices, inverse_index_map);
+           })
+      .def("tir.IndexMapMapIndices",
+           [](IndexMap map, Array<PrimExpr> indices) {
+             arith::Analyzer analyzer;
+             return map->MapIndices(indices, &analyzer);
+           })
+      .def("tir.IndexMapMapShape",
+           [](IndexMap map, Array<PrimExpr> shape) {
+             arith::Analyzer analyzer;
+             return map->MapShape(shape, &analyzer);
+           })
+      .def("tir.IndexMapInverse",
+           [](IndexMap map, Array<Range> initial_ranges) {
+             arith::Analyzer analyzer;
+             return map.Inverse(initial_ranges, &analyzer);
+           })
+      .def("tir.IndexMapMapNDArray",
+           [](IndexMap map, runtime::NDArray arr) { return map->MapNDArray(arr); })
+      .def("tir.IndexMapNonSurjectiveInverse", [](IndexMap forward, Array<Range> initial_ranges) {
+        arith::Analyzer analyzer;
+        auto result = forward.NonSurjectiveInverse(initial_ranges, &analyzer);
+        return Array<ObjectRef>{result.first, result.second};
+      });
 });
 
 }  // namespace tir

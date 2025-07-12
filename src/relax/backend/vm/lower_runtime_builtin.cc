@@ -20,6 +20,7 @@
  * \file src/relax/backend/vm/lower_runtime_builtin.cc
  * \brief Lowers most builtin functions and packed calls.
  */
+#include <tvm/ffi/reflection/reflection.h>
 #include <tvm/relax/analysis.h>
 #include <tvm/relax/attrs/op.h>
 #include <tvm/relax/backend.h>
@@ -28,7 +29,6 @@
 #include <tvm/relax/type.h>
 #include <tvm/runtime/data_type.h>
 #include <tvm/tir/op.h>
-#include <tvm/ffi/reflection/reflection.h>
 
 namespace tvm {
 namespace relax {
@@ -234,8 +234,7 @@ Pass LowerRuntimeBuiltin() {
 
 TVM_FFI_STATIC_INIT_BLOCK({
   namespace refl = tvm::ffi::reflection;
-  refl::GlobalDef()
-    .def("relax.transform.LowerRuntimeBuiltin", LowerRuntimeBuiltin);
+  refl::GlobalDef().def("relax.transform.LowerRuntimeBuiltin", LowerRuntimeBuiltin);
 });
 
 }  // namespace transform

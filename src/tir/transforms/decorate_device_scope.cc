@@ -21,10 +21,10 @@
  * \file decorate_device_scope.cc
  */
 #include <tvm/ffi/function.h>
+#include <tvm/ffi/reflection/reflection.h>
 #include <tvm/tir/op.h>
 #include <tvm/tir/stmt.h>
 #include <tvm/tir/transform.h>
-#include <tvm/ffi/reflection/reflection.h>
 
 namespace tvm {
 namespace tir {
@@ -47,8 +47,7 @@ Pass DecorateDeviceScope() {
 
 TVM_FFI_STATIC_INIT_BLOCK({
   namespace refl = tvm::ffi::reflection;
-  refl::GlobalDef()
-    .def("tir.transform.DecorateDeviceScope", DecorateDeviceScope);
+  refl::GlobalDef().def("tir.transform.DecorateDeviceScope", DecorateDeviceScope);
 });
 
 }  // namespace transform

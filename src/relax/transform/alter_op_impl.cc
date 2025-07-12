@@ -24,6 +24,7 @@
  * true.
  */
 #include <tvm/arith/analyzer.h>
+#include <tvm/ffi/reflection/reflection.h>
 #include <tvm/ir/attrs.h>
 #include <tvm/node/serialization.h>
 #include <tvm/relax/analysis.h>
@@ -33,7 +34,6 @@
 #include <tvm/te/operation.h>
 #include <tvm/tir/transform.h>
 #include <tvm/topi/tags.h>
-#include <tvm/ffi/reflection/reflection.h>
 
 #include "../../te/operation/create_primfunc.h"
 namespace tvm {
@@ -441,8 +441,7 @@ Pass AlterOpImpl(const Map<String, tir::PrimFunc>& op_impl_map,
 
 TVM_FFI_STATIC_INIT_BLOCK({
   namespace refl = tvm::ffi::reflection;
-  refl::GlobalDef()
-    .def("relax.transform.AlterOpImpl", AlterOpImpl);
+  refl::GlobalDef().def("relax.transform.AlterOpImpl", AlterOpImpl);
 });
 
 }  // namespace transform

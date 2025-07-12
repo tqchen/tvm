@@ -23,11 +23,11 @@
 #ifdef TVM_LLVM_VERSION
 // Part of the code are adapted from Halide's CodeGen_LLVM
 #include "codegen_llvm.h"
-#include <tvm/ffi/reflection/reflection.h>
 
 #include <llvm/ADT/ArrayRef.h>
 #include <llvm/ADT/SmallVector.h>
 #include <llvm/ADT/StringRef.h>
+#include <tvm/ffi/reflection/reflection.h>
 #if LLVM_VERSION_MAJOR >= 17
 #include <llvm/TargetParser/Triple.h>
 #else
@@ -2354,23 +2354,22 @@ llvm::DIType* CodeGenLLVM::GetDebugType(const Type& ty_tir, llvm::Type* ty_llvm)
 TVM_FFI_STATIC_INIT_BLOCK({
   namespace refl = tvm::ffi::reflection;
   refl::GlobalDef()
-    .def("tvm.codegen.llvm.GetDefaultTargetTriple", []() -> std::string { return llvm::sys::getDefaultTargetTriple(); })
-    .def("tvm.codegen.llvm.GetProcessTriple", []() -> std::string {
-  return llvm::sys::getProcessTriple();
-})
-    .def("tvm.codegen.llvm.GetHostCPUName", []() -> std::string {
-  return llvm::sys::getHostCPUName().str();
-})
-    .def("tvm.codegen.llvm.GetHostCPUFeatures", []() -> Map<String, IntImm> {
+      .def("tvm.codegen.llvm.GetDefaultTargetTriple",
+           []() -> std::string { return llvm::sys::getDefaultTargetTriple(); })
+      .def("tvm.codegen.llvm.GetProcessTriple",
+           []() -> std::string { return llvm::sys::getProcessTriple(); })
+      .def("tvm.codegen.llvm.GetHostCPUName",
+           []() -> std::string { return llvm::sys::getHostCPUName().str(); })
+      .def("tvm.codegen.llvm.GetHostCPUFeatures", []() -> Map<String, IntImm> {
 #if TVM_LLVM_VERSION >= 190
-      Map<String, IntImm> ret;
-      auto features = llvm::sys::getHostCPUFeatures();
-      for (auto it = features.begin(); it != features.end(); ++it) {
-        std::string name = it->getKey().str();
-        bool value = it->getValue();
-        ret.Set(name, IntImm(DataType::Bool(), value));
-      }
-      return ret;
+        Map<String, IntImm> ret;
+        auto features = llvm::sys::getHostCPUFeatures();
+        for (auto it = features.begin(); it != features.end(); ++it) {
+          std::string name = it->getKey().str();
+          bool value = it->getValue();
+          ret.Set(name, IntImm(DataType::Bool(), value));
+        }
+        return ret;
 #else
       llvm::StringMap<bool> features;
       if (llvm::sys::getHostCPUFeatures(features)) {
@@ -2383,9 +2382,9 @@ TVM_FFI_STATIC_INIT_BLOCK({
         return ret;
       }
 #endif
-      LOG(WARNING) << "Current version of LLVM does not support feature detection on your CPU";
-      return {};
-    });
+        LOG(WARNING) << "Current version of LLVM does not support feature detection on your CPU";
+        return {};
+      });
 });
 
 }  // namespace codegen

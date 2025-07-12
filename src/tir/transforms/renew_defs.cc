@@ -22,9 +22,9 @@
  * \brief Renew the definition nodes for a TIR, including Var, Buffer and IterVar.
  */
 
+#include <tvm/ffi/reflection/reflection.h>
 #include <tvm/tir/stmt_functor.h>
 #include <tvm/tir/transform.h>
-#include <tvm/ffi/reflection/reflection.h>
 
 #include "../ir/functor_common.h"
 
@@ -293,8 +293,7 @@ PrimFunc RenewDefs(const PrimFunc& func) { return RenewDefMutator::Transform(fun
 
 TVM_FFI_STATIC_INIT_BLOCK({
   namespace refl = tvm::ffi::reflection;
-  refl::GlobalDef()
-    .def("tir.RenewDefs", RenewDefs);
+  refl::GlobalDef().def("tir.RenewDefs", RenewDefs);
 });
 
 }  // namespace tir

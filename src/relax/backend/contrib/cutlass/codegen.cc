@@ -109,10 +109,9 @@ TVM_REGISTER_NODE_TYPE(CodegenResultNode);
 
 TVM_FFI_STATIC_INIT_BLOCK({
   namespace refl = tvm::ffi::reflection;
-  refl::GlobalDef()
-    .def("contrib.cutlass.CodegenResult", [](String code, Array<String> headers) {
-      return CodegenResult(code, headers);
-    });
+  refl::GlobalDef().def("contrib.cutlass.CodegenResult", [](String code, Array<String> headers) {
+    return CodegenResult(code, headers);
+  });
 });
 
 GenerateBodyOutput GenerateBody(const std::string& func_name, const std::string& ext_func_id,
@@ -396,8 +395,7 @@ Array<runtime::Module> CUTLASSCompiler(Array<Function> functions, Map<String, ff
 
 TVM_FFI_STATIC_INIT_BLOCK({
   namespace refl = tvm::ffi::reflection;
-  refl::GlobalDef()
-    .def("relax.ext.cutlass", CUTLASSCompiler);
+  refl::GlobalDef().def("relax.ext.cutlass", CUTLASSCompiler);
 });
 
 }  // namespace contrib

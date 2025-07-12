@@ -21,8 +21,8 @@
  * \file src/relax/backend/contrib/dnnl/codegen.cc
  * \brief Implementation of the DNNL JSON serializer.
  */
-#include <tvm/ir/module.h>
 #include <tvm/ffi/reflection/reflection.h>
+#include <tvm/ir/module.h>
 
 #include <string>
 
@@ -100,8 +100,7 @@ Array<runtime::Module> DNNLCompiler(Array<Function> functions, Map<String, ffi::
 
 TVM_FFI_STATIC_INIT_BLOCK({
   namespace refl = tvm::ffi::reflection;
-  refl::GlobalDef()
-    .def("relax.ext.dnnl", DNNLCompiler);
+  refl::GlobalDef().def("relax.ext.dnnl", DNNLCompiler);
 });
 
 }  // namespace contrib

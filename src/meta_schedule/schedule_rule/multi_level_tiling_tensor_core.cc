@@ -16,9 +16,9 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+#include <tvm/ffi/reflection/reflection.h>
 #include <tvm/meta_schedule/schedule_rule.h>
 #include <tvm/tir/op.h>
-#include <tvm/ffi/reflection/reflection.h>
 
 #include <algorithm>
 #include <utility>
@@ -926,8 +926,8 @@ ScheduleRule ScheduleRule::MultiLevelTilingTensorCore(
 TVM_REGISTER_NODE_TYPE(MultiLevelTilingTensorCoreNode);
 TVM_FFI_STATIC_INIT_BLOCK({
   namespace refl = tvm::ffi::reflection;
-  refl::GlobalDef()
-    .def("meta_schedule.ScheduleRuleMultiLevelTilingTensorCore", ScheduleRule::MultiLevelTilingTensorCore);
+  refl::GlobalDef().def("meta_schedule.ScheduleRuleMultiLevelTilingTensorCore",
+                        ScheduleRule::MultiLevelTilingTensorCore);
 });
 
 }  // namespace meta_schedule

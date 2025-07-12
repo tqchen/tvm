@@ -55,35 +55,36 @@ void LogMessageImpl(const std::string& file, int lineno, int level, const std::s
 TVM_FFI_STATIC_INIT_BLOCK({
   namespace refl = tvm::ffi::reflection;
   refl::GlobalDef()
-    .def_packed("tvm.rpc.server.workpath", [](ffi::PackedArgs args, ffi::Any* rv) {
-      static const std::string base_ = NSTemporaryDirectory().UTF8String;
-      const auto path = args[0].cast<std::string>();
-      *rv = base_ + "/" + path;
-    })
-    .def_packed("tvm.rpc.server.load_module", [](ffi::PackedArgs args, ffi::Any* rv) {
-      auto name = args[0].cast<std::string>();
-      std::string fmt = GetFileFormat(name, "");
-      NSString* base;
-      if (fmt == "dylib") {
-        // only load dylib from frameworks.
-        NSBundle* bundle = [NSBundle mainBundle];
-        base = [[bundle privateFrameworksPath] stringByAppendingPathComponent:@"tvm"];
+      .def_packed("tvm.rpc.server.workpath",
+                  [](ffi::PackedArgs args, ffi::Any* rv) {
+                    static const std::string base_ = NSTemporaryDirectory().UTF8String;
+                    const auto path = args[0].cast<std::string>();
+                    *rv = base_ + "/" + path;
+                  })
+      .def_packed("tvm.rpc.server.load_module", [](ffi::PackedArgs args, ffi::Any* rv) {
+        auto name = args[0].cast<std::string>();
+        std::string fmt = GetFileFormat(name, "");
+        NSString* base;
+        if (fmt == "dylib") {
+          // only load dylib from frameworks.
+          NSBundle* bundle = [NSBundle mainBundle];
+          base = [[bundle privateFrameworksPath] stringByAppendingPathComponent:@"tvm"];
 
-        if (tvm::ffi::Function::GetGlobal("runtime.module.loadfile_dylib_custom")) {
-          // Custom dso loader is present. Will use it.
+          if (tvm::ffi::Function::GetGlobal("runtime.module.loadfile_dylib_custom")) {
+            // Custom dso loader is present. Will use it.
+            base = NSTemporaryDirectory();
+            fmt = "dylib_custom";
+          }
+        } else {
+          // Load other modules in tempdir.
           base = NSTemporaryDirectory();
-          fmt = "dylib_custom";
         }
-      } else {
-        // Load other modules in tempdir.
-        base = NSTemporaryDirectory();
-      }
-      NSString* path =
-          [base stringByAppendingPathComponent:[NSString stringWithUTF8String:name.c_str()]];
-      name = [path UTF8String];
-      *rv = Module::LoadFromFile(name, fmt);
-      LOG(INFO) << "Load module from " << name << " ...";
-    });
+        NSString* path =
+            [base stringByAppendingPathComponent:[NSString stringWithUTF8String:name.c_str()]];
+        name = [path UTF8String];
+        *rv = Module::LoadFromFile(name, fmt);
+        LOG(INFO) << "Load module from " << name << " ...";
+      });
 });
 
 #if defined(USE_CUSTOM_DSO_LOADER) && USE_CUSTOM_DSO_LOADER == 1
@@ -113,12 +114,12 @@ class UnsignedDSOLoader final : public Library {
 // Add UnsignedDSOLoader plugin in global registry
 TVM_FFI_STATIC_INIT_BLOCK({
   namespace refl = tvm::ffi::reflection;
-  refl::GlobalDef()
-    .def_packed("runtime.module.loadfile_dylib_custom", [](ffi::PackedArgs args, ffi::Any* rv) {
-      auto n = make_object<UnsignedDSOLoader>();
-      n->Init(args[0]);
-      *rv = CreateModuleFromLibrary(n);
-    });
+  refl::GlobalDef().def_packed("runtime.module.loadfile_dylib_custom",
+                               [](ffi::PackedArgs args, ffi::Any* rv) {
+                                 auto n = make_object<UnsignedDSOLoader>();
+                                 n->Init(args[0]);
+                                 *rv = CreateModuleFromLibrary(n);
+                               });
 });
 
 #endif

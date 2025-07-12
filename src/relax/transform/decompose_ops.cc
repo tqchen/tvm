@@ -19,11 +19,11 @@
 
 /*! \file src/relax/transform/decompose_ops.cc */
 
+#include <tvm/ffi/reflection/reflection.h>
 #include <tvm/relax/analysis.h>
 #include <tvm/relax/attrs/nn.h>
 #include <tvm/relax/struct_info.h>
 #include <tvm/relax/transform.h>
-#include <tvm/ffi/reflection/reflection.h>
 
 #include "utils.h"
 
@@ -254,8 +254,8 @@ Pass DecomposeOpsForTraining(Optional<String> func_name) {
 TVM_FFI_STATIC_INIT_BLOCK({
   namespace refl = tvm::ffi::reflection;
   refl::GlobalDef()
-    .def("relax.transform.DecomposeOpsForInference", DecomposeOpsForInference)
-    .def("relax.transform.DecomposeOpsForTraining", DecomposeOpsForTraining);
+      .def("relax.transform.DecomposeOpsForInference", DecomposeOpsForInference)
+      .def("relax.transform.DecomposeOpsForTraining", DecomposeOpsForTraining);
 });
 
 }  // namespace transform

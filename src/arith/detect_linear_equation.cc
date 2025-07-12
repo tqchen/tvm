@@ -23,12 +23,12 @@
  */
 #include <tvm/arith/analyzer.h>
 #include <tvm/ffi/function.h>
+#include <tvm/ffi/reflection/reflection.h>
 #include <tvm/tir/analysis.h>
 #include <tvm/tir/expr.h>
 #include <tvm/tir/expr_functor.h>
 #include <tvm/tir/op.h>
 #include <tvm/tir/stmt_functor.h>
-#include <tvm/ffi/reflection/reflection.h>
 
 namespace tvm {
 namespace arith {
@@ -294,10 +294,9 @@ Array<PrimExpr> DetectClipBound(const PrimExpr& e, const Array<Var>& vars) {
 TVM_FFI_STATIC_INIT_BLOCK({
   namespace refl = tvm::ffi::reflection;
   refl::GlobalDef()
-    .def("arith.DetectLinearEquation", DetectLinearEquation)
-    .def("arith.DetectClipBound", [](const PrimExpr& e, const Array<Var>& vars) {
-      return DetectClipBound(e, vars);
-    });
+      .def("arith.DetectLinearEquation", DetectLinearEquation)
+      .def("arith.DetectClipBound",
+           [](const PrimExpr& e, const Array<Var>& vars) { return DetectClipBound(e, vars); });
 });
 }  // namespace arith
 }  // namespace tvm

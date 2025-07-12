@@ -22,12 +22,12 @@
  * \brief Expand `matmul(x, A+B)` to `matmul(x, A) + matmul(x,B)`
  */
 
+#include <tvm/ffi/reflection/reflection.h>
 #include <tvm/relax/analysis.h>
 #include <tvm/relax/dataflow_matcher.h>
 #include <tvm/relax/expr.h>
 #include <tvm/relax/expr_functor.h>
 #include <tvm/relax/transform.h>
-#include <tvm/ffi/reflection/reflection.h>
 
 #include <optional>
 #include <unordered_set>
@@ -107,8 +107,7 @@ Pass ExpandMatmulOfSum() {
 
 TVM_FFI_STATIC_INIT_BLOCK({
   namespace refl = tvm::ffi::reflection;
-  refl::GlobalDef()
-    .def("relax.transform.ExpandMatmulOfSum", ExpandMatmulOfSum);
+  refl::GlobalDef().def("relax.transform.ExpandMatmulOfSum", ExpandMatmulOfSum);
 });
 
 }  // namespace transform

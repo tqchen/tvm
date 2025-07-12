@@ -16,8 +16,9 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-#include "../utils.h"
 #include <tvm/ffi/reflection/reflection.h>
+
+#include "../utils.h"
 
 namespace tvm {
 namespace meta_schedule {
@@ -49,8 +50,8 @@ MeasureCallback MeasureCallback::RemoveBuildArtifact() {
 TVM_REGISTER_NODE_TYPE(RemoveBuildArtifactNode);
 TVM_FFI_STATIC_INIT_BLOCK({
   namespace refl = tvm::ffi::reflection;
-  refl::GlobalDef()
-    .def("meta_schedule.MeasureCallbackRemoveBuildArtifact", MeasureCallback::RemoveBuildArtifact);
+  refl::GlobalDef().def("meta_schedule.MeasureCallbackRemoveBuildArtifact",
+                        MeasureCallback::RemoveBuildArtifact);
 });
 
 }  // namespace meta_schedule

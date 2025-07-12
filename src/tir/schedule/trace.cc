@@ -570,25 +570,26 @@ TVM_REGISTER_NODE_TYPE(TraceNode);
 TVM_FFI_STATIC_INIT_BLOCK({
   namespace refl = tvm::ffi::reflection;
   refl::GlobalDef()
-    .def("tir.schedule.Trace", [](Optional<Array<Instruction>> insts,
-                       Optional<Map<Instruction, Any>> decisions) {
-      return Trace(insts.value_or(Array<Instruction>()), decisions.value_or({}));
-    })
-    .def_method("tir.schedule.TraceGetDecision", &TraceNode::GetDecision)
-    .def("tir.schedule.TraceAppend", [](Trace self, Instruction inst, Optional<ObjectRef> decision) {
-      if (decision.defined()) {
-        return self->Append(inst, decision.value());
-      } else {
-        return self->Append(inst);
-      }
-    })
-    .def_method("tir.schedule.TracePop", &TraceNode::Pop)
-    .def_method("tir.schedule.TraceApplyToSchedule", &TraceNode::ApplyToSchedule)
-    .def_method("tir.schedule.TraceAsJSON", &TraceNode::AsJSON)
-    .def_method("tir.schedule.TraceAsPython", &TraceNode::AsPython)
-    .def_method("tir.schedule.TraceWithDecision", &TraceNode::WithDecision)
-    .def_method("tir.schedule.TraceSimplified", &TraceNode::Simplified)
-    .def("tir.schedule.TraceApplyJSONToSchedule", Trace::ApplyJSONToSchedule);
+      .def("tir.schedule.Trace",
+           [](Optional<Array<Instruction>> insts, Optional<Map<Instruction, Any>> decisions) {
+             return Trace(insts.value_or(Array<Instruction>()), decisions.value_or({}));
+           })
+      .def_method("tir.schedule.TraceGetDecision", &TraceNode::GetDecision)
+      .def("tir.schedule.TraceAppend",
+           [](Trace self, Instruction inst, Optional<ObjectRef> decision) {
+             if (decision.defined()) {
+               return self->Append(inst, decision.value());
+             } else {
+               return self->Append(inst);
+             }
+           })
+      .def_method("tir.schedule.TracePop", &TraceNode::Pop)
+      .def_method("tir.schedule.TraceApplyToSchedule", &TraceNode::ApplyToSchedule)
+      .def_method("tir.schedule.TraceAsJSON", &TraceNode::AsJSON)
+      .def_method("tir.schedule.TraceAsPython", &TraceNode::AsPython)
+      .def_method("tir.schedule.TraceWithDecision", &TraceNode::WithDecision)
+      .def_method("tir.schedule.TraceSimplified", &TraceNode::Simplified)
+      .def("tir.schedule.TraceApplyJSONToSchedule", Trace::ApplyJSONToSchedule);
 });
 
 }  // namespace tir

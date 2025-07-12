@@ -125,8 +125,7 @@ TVM_FFI_STATIC_INIT_BLOCK({ AddRFactorNode::RegisterReflection(); });
 TVM_REGISTER_NODE_TYPE(AddRFactorNode);
 TVM_FFI_STATIC_INIT_BLOCK({
   namespace refl = tvm::ffi::reflection;
-  refl::GlobalDef()
-    .def("meta_schedule.ScheduleRuleAddRFactor", ScheduleRule::AddRFactor);
+  refl::GlobalDef().def("meta_schedule.ScheduleRuleAddRFactor", ScheduleRule::AddRFactor);
 });
 
 }  // namespace meta_schedule

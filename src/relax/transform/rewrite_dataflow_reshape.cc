@@ -21,12 +21,12 @@
  * \brief Transform all reshape within dataflow block to a relax.reshape operator
  */
 #include <tvm/arith/analyzer.h>
+#include <tvm/ffi/reflection/reflection.h>
 #include <tvm/relax/analysis.h>
 #include <tvm/relax/expr_functor.h>
 #include <tvm/relax/transform.h>
 #include <tvm/tir/analysis.h>
 #include <tvm/tir/function.h>
-#include <tvm/ffi/reflection/reflection.h>
 
 #include <vector>
 
@@ -168,8 +168,7 @@ Pass RewriteDataflowReshape() {
 
 TVM_FFI_STATIC_INIT_BLOCK({
   namespace refl = tvm::ffi::reflection;
-  refl::GlobalDef()
-    .def("relax.transform.RewriteDataflowReshape", RewriteDataflowReshape);
+  refl::GlobalDef().def("relax.transform.RewriteDataflowReshape", RewriteDataflowReshape);
 });
 
 }  // namespace transform

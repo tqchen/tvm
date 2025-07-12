@@ -337,10 +337,10 @@ bool IsReductionBlock(const ScheduleState& self, const StmtSRef& block_sref,
 
 TVM_FFI_STATIC_INIT_BLOCK({
   namespace refl = tvm::ffi::reflection;
-  refl::GlobalDef()
-    .def("tir.schedule.IsReductionBlock", [](Schedule sch, BlockRV block_rv, BlockRV scope_block_rv) {
-      return IsReductionBlock(sch->state(), sch->GetSRef(block_rv), sch->GetSRef(scope_block_rv));
-    });
+  refl::GlobalDef().def(
+      "tir.schedule.IsReductionBlock", [](Schedule sch, BlockRV block_rv, BlockRV scope_block_rv) {
+        return IsReductionBlock(sch->state(), sch->GetSRef(block_rv), sch->GetSRef(scope_block_rv));
+      });
 });
 
 void CheckReductionBlock(const ScheduleState& self, const StmtSRef& block_sref,
@@ -876,10 +876,9 @@ BlockRealize GetBlockRealize(const ScheduleState& self, const StmtSRef& block_sr
 
 TVM_FFI_STATIC_INIT_BLOCK({
   namespace refl = tvm::ffi::reflection;
-  refl::GlobalDef()
-    .def("tir.schedule.GetBlockRealize", [](Schedule sch, BlockRV block_rv) {
-      return GetBlockRealize(sch->state(), sch->GetSRef(block_rv));
-    });
+  refl::GlobalDef().def("tir.schedule.GetBlockRealize", [](Schedule sch, BlockRV block_rv) {
+    return GetBlockRealize(sch->state(), sch->GetSRef(block_rv));
+  });
 });
 
 IterVarType GetLoopIterType(const StmtSRef& loop_sref) {
@@ -1498,10 +1497,9 @@ bool IsTrivialBinding(const ScheduleState& self, const StmtSRef& block_sref) {
 
 TVM_FFI_STATIC_INIT_BLOCK({
   namespace refl = tvm::ffi::reflection;
-  refl::GlobalDef()
-    .def("tir.schedule.IsTrivialBinding", [](Schedule sch, BlockRV block_rv) {
-      return IsTrivialBinding(sch->state(), sch->GetSRef(block_rv));
-    });
+  refl::GlobalDef().def("tir.schedule.IsTrivialBinding", [](Schedule sch, BlockRV block_rv) {
+    return IsTrivialBinding(sch->state(), sch->GetSRef(block_rv));
+  });
 });
 
 bool NeedsMultiLevelTiling(const ScheduleState& self, const StmtSRef& block_sref) {
@@ -1910,10 +1908,11 @@ Optional<TensorizeInfo> GetTensorizeLoopMapping(const tir::ScheduleState& self,
 TVM_FFI_STATIC_INIT_BLOCK({
   namespace refl = tvm::ffi::reflection;
   refl::GlobalDef()
-    .def("tir.schedule.IsSpatialPrimFunc", IsSpatialPrimFunc)
-    .def("tir.schedule.GetTensorizeLoopMapping", [](Schedule sch, BlockRV block, PrimFunc desc_func, bool allow_padding) {
-      return GetTensorizeLoopMapping(sch->state(), sch->GetSRef(block), desc_func, allow_padding);
-    });
+      .def("tir.schedule.IsSpatialPrimFunc", IsSpatialPrimFunc)
+      .def("tir.schedule.GetTensorizeLoopMapping", [](Schedule sch, BlockRV block,
+                                                      PrimFunc desc_func, bool allow_padding) {
+        return GetTensorizeLoopMapping(sch->state(), sch->GetSRef(block), desc_func, allow_padding);
+      });
 });
 
 /******** Auto Tensorization ********/
@@ -2143,25 +2142,27 @@ TVM_REGISTER_NODE_TYPE(AutoTensorizeMappingInfoNode);
 TVM_FFI_STATIC_INIT_BLOCK({
   namespace refl = tvm::ffi::reflection;
   refl::GlobalDef()
-    .def("tir.schedule.GetAutoTensorizeMappingInfo", [](Schedule sch, BlockRV block, PrimFunc desc_func) {
-      return GetAutoTensorizeMappingInfo(sch->state(), sch->GetSRef(block), desc_func);
-    })
-    .def("tir.schedule.HasBlock", HasBlock)
-    .def("tir.schedule.IsOutputBlock", [](Schedule sch, BlockRV block) {
-      auto state = sch->state();
-      auto block_sref = sch->GetSRef(block);
-      return IsOutputBlock(state, block_sref, GetScopeRoot(state, block_sref, false));
-    })
-    .def("tir.schedule.GetLoopIterType", [](Schedule sch, LoopRV loop) -> String {
-      IterVarType kind = GetLoopIterType(sch->GetSRef(loop));
-      if (kind == kDataPar) {
-        return "S";
-      } else if (kind == kCommReduce) {
-        return "R";
-      } else {
-        return "O";
-      }
-    });
+      .def("tir.schedule.GetAutoTensorizeMappingInfo",
+           [](Schedule sch, BlockRV block, PrimFunc desc_func) {
+             return GetAutoTensorizeMappingInfo(sch->state(), sch->GetSRef(block), desc_func);
+           })
+      .def("tir.schedule.HasBlock", HasBlock)
+      .def("tir.schedule.IsOutputBlock",
+           [](Schedule sch, BlockRV block) {
+             auto state = sch->state();
+             auto block_sref = sch->GetSRef(block);
+             return IsOutputBlock(state, block_sref, GetScopeRoot(state, block_sref, false));
+           })
+      .def("tir.schedule.GetLoopIterType", [](Schedule sch, LoopRV loop) -> String {
+        IterVarType kind = GetLoopIterType(sch->GetSRef(loop));
+        if (kind == kDataPar) {
+          return "S";
+        } else if (kind == kCommReduce) {
+          return "R";
+        } else {
+          return "O";
+        }
+      });
 });
 
 }  // namespace tir

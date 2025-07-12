@@ -23,8 +23,8 @@
 #include <dmlc/parameter.h>
 #include <dmlc/thread_local.h>
 #include <tvm/ffi/function.h>
-#include <tvm/runtime/profiling.h>
 #include <tvm/ffi/reflection/reflection.h>
+#include <tvm/runtime/profiling.h>
 
 #include <sstream>
 
@@ -764,59 +764,59 @@ void OpenCLWorkspace::Init(const std::string& type_key, const std::string& devic
 TVM_FFI_STATIC_INIT_BLOCK({
   namespace refl = tvm::ffi::reflection;
   refl::GlobalDef()
-    .def_packed("device_api.opencl.alloc_nd", [](ffi::PackedArgs args, ffi::Any* rv) {
-      int32_t device_type = args[0].cast<int32_t>();
-      int32_t device_id = args[1].cast<int32_t>();
-      int32_t dtype_code_hint = args[2].cast<int32_t>();
-      int32_t dtype_bits_hint = args[3].cast<int32_t>();
-      auto scope = args[4].cast<std::string>();
-      CHECK(scope.find("texture") != std::string::npos);
-      int64_t ndim = args[5].cast<int64_t>();
-      CHECK_EQ(ndim, 2);
-      int64_t* shape = static_cast<int64_t*>(args[6].cast<void*>());
-      int64_t width = shape[0];
-      int64_t height = shape[1];
+      .def_packed("device_api.opencl.alloc_nd",
+                  [](ffi::PackedArgs args, ffi::Any* rv) {
+                    int32_t device_type = args[0].cast<int32_t>();
+                    int32_t device_id = args[1].cast<int32_t>();
+                    int32_t dtype_code_hint = args[2].cast<int32_t>();
+                    int32_t dtype_bits_hint = args[3].cast<int32_t>();
+                    auto scope = args[4].cast<std::string>();
+                    CHECK(scope.find("texture") != std::string::npos);
+                    int64_t ndim = args[5].cast<int64_t>();
+                    CHECK_EQ(ndim, 2);
+                    int64_t* shape = static_cast<int64_t*>(args[6].cast<void*>());
+                    int64_t width = shape[0];
+                    int64_t height = shape[1];
 
-      Device dev;
-      dev.device_type = static_cast<DLDeviceType>(device_type);
-      dev.device_id = device_id;
+                    Device dev;
+                    dev.device_type = static_cast<DLDeviceType>(device_type);
+                    dev.device_id = device_id;
 
-      DLDataType type_hint;
-      type_hint.code = static_cast<decltype(type_hint.code)>(dtype_code_hint);
-      type_hint.bits = static_cast<decltype(type_hint.bits)>(dtype_bits_hint);
-      type_hint.lanes = 1;
+                    DLDataType type_hint;
+                    type_hint.code = static_cast<decltype(type_hint.code)>(dtype_code_hint);
+                    type_hint.bits = static_cast<decltype(type_hint.bits)>(dtype_bits_hint);
+                    type_hint.lanes = 1;
 
-      *rv = OpenCLWorkspace::Global()->AllocDataSpace(dev, static_cast<size_t>(width),
-                                                      static_cast<size_t>(height), type_hint,
-                                                      String("global.texture"));
-    })
-    .def_packed("device_api.opencl.free_nd", [](ffi::PackedArgs args, ffi::Any* rv) {
-      int32_t device_type = args[0].cast<int32_t>();
-      int32_t device_id = args[1].cast<int32_t>();
-      auto scope = args[2].cast<std::string>();
-      CHECK(scope.find("texture") != std::string::npos);
-      void* data = args[3].cast<void*>();
-      OpenCLWorkspace* ptr = OpenCLWorkspace::Global();
-      Device dev;
-      dev.device_type = static_cast<DLDeviceType>(device_type);
-      dev.device_id = device_id;
-      ptr->FreeDataSpace(dev, data);
-      *rv = static_cast<int32_t>(0);
-    })
-    .def_packed("device_api.opencl", [](ffi::PackedArgs args, ffi::Any* rv) {
-      DeviceAPI* ptr = OpenCLWorkspace::Global();
-      *rv = static_cast<void*>(ptr);
-    });
+                    *rv = OpenCLWorkspace::Global()->AllocDataSpace(
+                        dev, static_cast<size_t>(width), static_cast<size_t>(height), type_hint,
+                        String("global.texture"));
+                  })
+      .def_packed("device_api.opencl.free_nd",
+                  [](ffi::PackedArgs args, ffi::Any* rv) {
+                    int32_t device_type = args[0].cast<int32_t>();
+                    int32_t device_id = args[1].cast<int32_t>();
+                    auto scope = args[2].cast<std::string>();
+                    CHECK(scope.find("texture") != std::string::npos);
+                    void* data = args[3].cast<void*>();
+                    OpenCLWorkspace* ptr = OpenCLWorkspace::Global();
+                    Device dev;
+                    dev.device_type = static_cast<DLDeviceType>(device_type);
+                    dev.device_id = device_id;
+                    ptr->FreeDataSpace(dev, data);
+                    *rv = static_cast<int32_t>(0);
+                  })
+      .def_packed("device_api.opencl", [](ffi::PackedArgs args, ffi::Any* rv) {
+        DeviceAPI* ptr = OpenCLWorkspace::Global();
+        *rv = static_cast<void*>(ptr);
+      });
 });
 
 TVM_REGISTER_OBJECT_TYPE(OpenCLTimerNode);
 
 TVM_FFI_STATIC_INIT_BLOCK({
   namespace refl = tvm::ffi::reflection;
-  refl::GlobalDef()
-    .def("profiling.timer.opencl", [](Device dev) {
-  return Timer(make_object<OpenCLTimerNode>(dev));
-});
+  refl::GlobalDef().def("profiling.timer.opencl",
+                        [](Device dev) { return Timer(make_object<OpenCLTimerNode>(dev)); });
 });
 
 class OpenCLPooledAllocator final : public memory::PooledAllocator {
@@ -900,11 +900,10 @@ class OpenCLPooledAllocator final : public memory::PooledAllocator {
 
 TVM_FFI_STATIC_INIT_BLOCK({
   namespace refl = tvm::ffi::reflection;
-  refl::GlobalDef()
-    .def_packed("DeviceAllocator.opencl", [](ffi::PackedArgs args, ffi::Any* rv) {
-      Allocator* alloc = new OpenCLPooledAllocator();
-      *rv = static_cast<void*>(alloc);
-    });
+  refl::GlobalDef().def_packed("DeviceAllocator.opencl", [](ffi::PackedArgs args, ffi::Any* rv) {
+    Allocator* alloc = new OpenCLPooledAllocator();
+    *rv = static_cast<void*>(alloc);
+  });
 });
 
 }  // namespace cl

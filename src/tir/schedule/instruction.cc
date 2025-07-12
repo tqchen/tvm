@@ -16,8 +16,9 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-#include "./utils.h"
 #include <tvm/ffi/reflection/reflection.h>
+
+#include "./utils.h"
 
 namespace tvm {
 namespace tir {
@@ -109,11 +110,10 @@ TVM_REGISTER_NODE_TYPE(InstructionKindNode);
 TVM_FFI_STATIC_INIT_BLOCK({
   namespace refl = tvm::ffi::reflection;
   refl::GlobalDef()
-    .def("tir.schedule.InstructionKindGet", InstructionKind::Get)
-    .def("tir.schedule.Instruction", [](InstructionKind kind, Array<Any> inputs, Array<Any> attrs,
-                       Array<Any> outputs) -> Instruction {
-      return Instruction(kind, inputs, attrs, outputs);
-    });
+      .def("tir.schedule.InstructionKindGet", InstructionKind::Get)
+      .def("tir.schedule.Instruction",
+           [](InstructionKind kind, Array<Any> inputs, Array<Any> attrs, Array<Any> outputs)
+               -> Instruction { return Instruction(kind, inputs, attrs, outputs); });
 });
 
 }  // namespace tir

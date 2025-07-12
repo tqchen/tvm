@@ -21,9 +21,9 @@
  * \brief The implementation of the source map data structure.
  */
 #include <tvm/ffi/function.h>
+#include <tvm/ffi/reflection/reflection.h>
 #include <tvm/ir/source_map.h>
 #include <tvm/ir/transform.h>
-#include <tvm/ffi/reflection/reflection.h>
 
 #include <algorithm>
 
@@ -61,8 +61,7 @@ SourceName SourceName::Get(const String& name) { return SourceName(GetSourceName
 
 TVM_FFI_STATIC_INIT_BLOCK({
   namespace refl = tvm::ffi::reflection;
-  refl::GlobalDef()
-    .def("ir.SourceName", SourceName::Get);
+  refl::GlobalDef().def("ir.SourceName", SourceName::Get);
 });
 
 TVM_STATIC_IR_FUNCTOR(ReprPrinter, vtable)
@@ -145,13 +144,11 @@ TVM_REGISTER_NODE_TYPE(SequentialSpanNode);
 TVM_FFI_STATIC_INIT_BLOCK({
   namespace refl = tvm::ffi::reflection;
   refl::GlobalDef()
-    .def("ir.Span", [](SourceName source_name, int line, int end_line,
-                                                     int column, int end_column) {
-  return Span(source_name, line, end_line, column, end_column);
-})
-    .def("ir.SequentialSpan", [](tvm::Array<Span> spans) {
-  return SequentialSpan(spans);
-});
+      .def("ir.Span",
+           [](SourceName source_name, int line, int end_line, int column, int end_column) {
+             return Span(source_name, line, end_line, column, end_column);
+           })
+      .def("ir.SequentialSpan", [](tvm::Array<Span> spans) { return SequentialSpan(spans); });
 });
 
 TVM_STATIC_IR_FUNCTOR(ReprPrinter, vtable)
@@ -236,13 +233,12 @@ void SourceMap::Add(const Source& source) { (*this)->source_map.Set(source->sour
 
 TVM_FFI_STATIC_INIT_BLOCK({
   namespace refl = tvm::ffi::reflection;
-  refl::GlobalDef()
-    .def("SourceMapAdd", [](SourceMap map, String name, String content) {
-      auto src_name = SourceName::Get(name);
-      Source source(src_name, content);
-      map.Add(source);
-      return src_name;
-    });
+  refl::GlobalDef().def("SourceMapAdd", [](SourceMap map, String name, String content) {
+    auto src_name = SourceName::Get(name);
+    Source source(src_name, content);
+    map.Add(source);
+    return src_name;
+  });
 });
 
 }  // namespace tvm

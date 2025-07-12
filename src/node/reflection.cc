@@ -178,9 +178,9 @@ void MakeNode(const ffi::PackedArgs& args, ffi::Any* rv) {
 TVM_FFI_STATIC_INIT_BLOCK({
   namespace refl = tvm::ffi::reflection;
   refl::GlobalDef()
-    .def_packed("node.NodeGetAttr", NodeGetAttr)
-    .def_packed("node.NodeListAttrNames", NodeListAttrNames)
-    .def_packed("node.MakeNode", MakeNode);
+      .def_packed("node.NodeGetAttr", NodeGetAttr)
+      .def_packed("node.NodeListAttrNames", NodeListAttrNames)
+      .def_packed("node.MakeNode", MakeNode);
 });
 
 Optional<String> GetAttrKeyByAddress(const Object* object, const void* attr_address) {

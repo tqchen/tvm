@@ -23,8 +23,8 @@
  */
 
 #include "distributed.h"
-#include <tvm/ffi/reflection/reflection.h>
 
+#include <tvm/ffi/reflection/reflection.h>
 #include <tvm/relax/attrs/ccl.h>
 #include <tvm/topi/einsum.h>
 
@@ -53,8 +53,7 @@ Expr annotate_sharding(Expr input, distributed::DeviceMesh device_mesh,
 
 TVM_FFI_STATIC_INIT_BLOCK({
   namespace refl = tvm::ffi::reflection;
-  refl::GlobalDef()
-    .def("relax.op.dist.annotate_sharding", annotate_sharding);
+  refl::GlobalDef().def("relax.op.dist.annotate_sharding", annotate_sharding);
 });
 
 StructInfo InferStructInfoAnnotateSharding(const Call& call, const BlockBuilder& ctx) {
@@ -82,8 +81,7 @@ Expr redistribute(Expr input, distributed::DeviceMesh device_mesh,
 
 TVM_FFI_STATIC_INIT_BLOCK({
   namespace refl = tvm::ffi::reflection;
-  refl::GlobalDef()
-    .def("relax.op.dist.redistribute", redistribute);
+  refl::GlobalDef().def("relax.op.dist.redistribute", redistribute);
 });
 
 StructInfo InferDistStructInfoRedistribute(const Call& call, const BlockBuilder& ctx) {
@@ -152,8 +150,7 @@ Expr MakeCallTIRLocalView(Expr func, Tuple args,
 
 TVM_FFI_STATIC_INIT_BLOCK({
   namespace refl = tvm::ffi::reflection;
-  refl::GlobalDef()
-    .def("relax.op.dist.call_tir_local_view", MakeCallTIRLocalView);
+  refl::GlobalDef().def("relax.op.dist.call_tir_local_view", MakeCallTIRLocalView);
 });
 
 StructInfo InferStructInfoRtoS(const Call& call, const BlockBuilder& ctx) {
@@ -225,8 +222,8 @@ Expr redistribute_replica_to_shard(Expr input, int num_workers, int axis) {
 
 TVM_FFI_STATIC_INIT_BLOCK({
   namespace refl = tvm::ffi::reflection;
-  refl::GlobalDef()
-    .def("relax.op.dist.redistribute_replica_to_shard", redistribute_replica_to_shard);
+  refl::GlobalDef().def("relax.op.dist.redistribute_replica_to_shard",
+                        redistribute_replica_to_shard);
 });
 
 TVM_REGISTER_OP("relax.dist.redistribute_replica_to_shard")

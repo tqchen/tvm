@@ -17,9 +17,10 @@
  * under the License.
  */
 
+#include <tvm/ffi/reflection/reflection.h>
+
 #include "../transforms/ir_utils.h"
 #include "./utils.h"
-#include <tvm/ffi/reflection/reflection.h>
 
 namespace tvm {
 namespace tir {
@@ -442,8 +443,7 @@ Optional<LoopRV> TileWithTensorIntrin(const tir::Schedule& sch, const tir::Block
 
 TVM_FFI_STATIC_INIT_BLOCK({
   namespace refl = tvm::ffi::reflection;
-  refl::GlobalDef()
-    .def("tir.schedule.TileWithTensorIntrin", TileWithTensorIntrin);
+  refl::GlobalDef().def("tir.schedule.TileWithTensorIntrin", TileWithTensorIntrin);
 });
 
 /******** BlockBufferAccessSimplifier ********/
@@ -564,8 +564,7 @@ Optional<ObjectRef> NormalizePrimFunc(Schedule sch) {
 
 TVM_FFI_STATIC_INIT_BLOCK({
   namespace refl = tvm::ffi::reflection;
-  refl::GlobalDef()
-    .def("tir.schedule.NormalizePrimFunc", NormalizePrimFunc);
+  refl::GlobalDef().def("tir.schedule.NormalizePrimFunc", NormalizePrimFunc);
 });
 
 }  // namespace tir

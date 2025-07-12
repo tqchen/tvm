@@ -18,10 +18,10 @@
  */
 
 #include <tvm/ffi/function.h>
+#include <tvm/ffi/reflection/reflection.h>
 #include <tvm/tir/expr.h>
 #include <tvm/tir/stmt_functor.h>
 #include <tvm/tir/transform.h>
-#include <tvm/ffi/reflection/reflection.h>
 
 namespace tvm {
 namespace tir {
@@ -50,8 +50,7 @@ Pass SkipAssert() {
 
 TVM_FFI_STATIC_INIT_BLOCK({
   namespace refl = tvm::ffi::reflection;
-  refl::GlobalDef()
-    .def("tir.transform.SkipAssert", SkipAssert);
+  refl::GlobalDef().def("tir.transform.SkipAssert", SkipAssert);
 });
 
 }  // namespace transform

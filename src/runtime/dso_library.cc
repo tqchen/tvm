@@ -23,8 +23,8 @@
  */
 #include <tvm/ffi/function.h>
 #include <tvm/ffi/memory.h>
-#include <tvm/runtime/module.h>
 #include <tvm/ffi/reflection/reflection.h>
+#include <tvm/runtime/module.h>
 
 #include "library_module.h"
 
@@ -151,11 +151,10 @@ ObjectPtr<Library> CreateDSOLibraryObject(std::string library_path) {
 
 TVM_FFI_STATIC_INIT_BLOCK({
   namespace refl = tvm::ffi::reflection;
-  refl::GlobalDef()
-    .def("runtime.module.loadfile_so", [](std::string library_path, std::string) {
-      ObjectPtr<Library> n = CreateDSOLibraryObject(library_path);
-      return CreateModuleFromLibrary(n);
-    });
+  refl::GlobalDef().def("runtime.module.loadfile_so", [](std::string library_path, std::string) {
+    ObjectPtr<Library> n = CreateDSOLibraryObject(library_path);
+    return CreateModuleFromLibrary(n);
+  });
 });
 }  // namespace runtime
 }  // namespace tvm

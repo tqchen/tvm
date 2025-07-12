@@ -21,6 +21,7 @@
  * \file src/contrib/msc/framework/tvm/codegen.cc
  */
 #include "codegen.h"
+
 #include <tvm/ffi/reflection/reflection.h>
 
 namespace tvm {
@@ -213,13 +214,13 @@ const Array<Doc> RelaxCodeGen::GetOpCodes(const MSCJoint& node) {
 
 TVM_FFI_STATIC_INIT_BLOCK({
   namespace refl = tvm::ffi::reflection;
-  refl::GlobalDef()
-    .def("msc.framework.tvm.GetRelaxSources", [](const MSCGraph& graph, const String& codegen_config,
-                       const String& print_config) -> Map<String, String> {
-      RelaxCodeGen codegen = RelaxCodeGen(graph, codegen_config);
-      codegen.Init();
-      return codegen.GetSources(print_config);
-    });
+  refl::GlobalDef().def("msc.framework.tvm.GetRelaxSources",
+                        [](const MSCGraph& graph, const String& codegen_config,
+                           const String& print_config) -> Map<String, String> {
+                          RelaxCodeGen codegen = RelaxCodeGen(graph, codegen_config);
+                          codegen.Init();
+                          return codegen.GetSources(print_config);
+                        });
 });
 
 }  // namespace msc

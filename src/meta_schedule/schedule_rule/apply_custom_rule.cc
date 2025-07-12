@@ -95,8 +95,7 @@ TVM_FFI_STATIC_INIT_BLOCK({ ApplyCustomRuleNode::RegisterReflection(); });
 TVM_REGISTER_NODE_TYPE(ApplyCustomRuleNode);
 TVM_FFI_STATIC_INIT_BLOCK({
   namespace refl = tvm::ffi::reflection;
-  refl::GlobalDef()
-    .def("meta_schedule.ScheduleRuleApplyCustomRule", ScheduleRule::ApplyCustomRule);
+  refl::GlobalDef().def("meta_schedule.ScheduleRuleApplyCustomRule", ScheduleRule::ApplyCustomRule);
 });
 
 }  // namespace meta_schedule

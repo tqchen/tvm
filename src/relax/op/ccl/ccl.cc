@@ -18,6 +18,7 @@
  */
 
 #include "ccl.h"
+
 #include <tvm/ffi/reflection/reflection.h>
 
 #include <utility>
@@ -45,8 +46,7 @@ Expr allreduce(Expr x, String op_type, bool in_group) {
 
 TVM_FFI_STATIC_INIT_BLOCK({
   namespace refl = tvm::ffi::reflection;
-  refl::GlobalDef()
-    .def("relax.op.ccl.allreduce", allreduce);
+  refl::GlobalDef().def("relax.op.ccl.allreduce", allreduce);
 });
 
 StructInfo InferStructInfoAllReduce(const Call& call, const BlockBuilder& ctx) {
@@ -76,8 +76,7 @@ Expr allgather(Expr x, int num_workers, bool in_group) {
 
 TVM_FFI_STATIC_INIT_BLOCK({
   namespace refl = tvm::ffi::reflection;
-  refl::GlobalDef()
-    .def("relax.op.ccl.allgather", allgather);
+  refl::GlobalDef().def("relax.op.ccl.allgather", allgather);
 });
 
 StructInfo InferStructInfoAllGather(const Call& call, const BlockBuilder& ctx) {
@@ -111,8 +110,7 @@ Expr broadcast_from_worker0(Expr x) {
 
 TVM_FFI_STATIC_INIT_BLOCK({
   namespace refl = tvm::ffi::reflection;
-  refl::GlobalDef()
-    .def("relax.op.ccl.broadcast_from_worker0", broadcast_from_worker0);
+  refl::GlobalDef().def("relax.op.ccl.broadcast_from_worker0", broadcast_from_worker0);
 });
 
 StructInfo InferStructInfoBroadcastFromZero(const Call& call, const BlockBuilder& ctx) {
@@ -141,8 +139,7 @@ Expr scatter_from_worker0(Expr data, int num_workers, int axis) {
 
 TVM_FFI_STATIC_INIT_BLOCK({
   namespace refl = tvm::ffi::reflection;
-  refl::GlobalDef()
-    .def("relax.op.ccl.scatter_from_worker0", scatter_from_worker0);
+  refl::GlobalDef().def("relax.op.ccl.scatter_from_worker0", scatter_from_worker0);
 });
 
 StructInfo InferStructInfoScatter(const Call& call, const BlockBuilder& ctx) {

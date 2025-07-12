@@ -16,12 +16,12 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+#include <tvm/ffi/reflection/reflection.h>
 #include <tvm/relax/analysis.h>
 #include <tvm/relax/expr.h>
 #include <tvm/relax/struct_info.h>
 #include <tvm/relax/transform.h>
 #include <tvm/relax/type.h>
-#include <tvm/ffi/reflection/reflection.h>
 
 #include <string>
 #include <unordered_map>
@@ -151,8 +151,7 @@ IRModule ModuleBindSymbolicVars(IRModule mod, Map<ObjectRef, PrimExpr> binding_m
 
 TVM_FFI_STATIC_INIT_BLOCK({
   namespace refl = tvm::ffi::reflection;
-  refl::GlobalDef()
-    .def("relax.FunctionBindSymbolicVars", FunctionBindSymbolicVars);
+  refl::GlobalDef().def("relax.FunctionBindSymbolicVars", FunctionBindSymbolicVars);
 });
 
 namespace transform {
@@ -177,8 +176,7 @@ Pass BindSymbolicVars(Map<ObjectRef, PrimExpr> binding_map, Optional<String> fun
 
 TVM_FFI_STATIC_INIT_BLOCK({
   namespace refl = tvm::ffi::reflection;
-  refl::GlobalDef()
-    .def("relax.transform.BindSymbolicVars", BindSymbolicVars);
+  refl::GlobalDef().def("relax.transform.BindSymbolicVars", BindSymbolicVars);
 });
 
 }  // namespace transform

@@ -16,9 +16,10 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+#include <tvm/ffi/reflection/reflection.h>
+
 #include "../module_equality.h"
 #include "../utils.h"
-#include <tvm/ffi/reflection/reflection.h>
 
 namespace tvm {
 namespace meta_schedule {
@@ -292,32 +293,32 @@ TVM_REGISTER_NODE_TYPE(PyDatabaseNode);
 TVM_FFI_STATIC_INIT_BLOCK({
   namespace refl = tvm::ffi::reflection;
   refl::GlobalDef()
-    .def("meta_schedule.Workload", [](IRModule mod) {
-  return Workload(mod);
-})
-    .def_method("meta_schedule.WorkloadAsJSON", &WorkloadNode::AsJSON)
-    .def("meta_schedule.WorkloadFromJSON", &Workload::FromJSON)
-    .def("meta_schedule.TuningRecord", [](tir::Trace trace, Workload workload, Optional<Array<FloatImm>> run_secs,
-                       Optional<Target> target, Optional<Array<ArgInfo>> args_info) {
-      return TuningRecord(trace, workload, run_secs, target, args_info);
-    })
-    .def_method("meta_schedule.TuningRecordAsMeasureCandidate", &TuningRecordNode::AsMeasureCandidate)
-    .def_method("meta_schedule.TuningRecordAsJSON", &TuningRecordNode::AsJSON)
-    .def("meta_schedule.TuningRecordFromJSON", TuningRecord::FromJSON)
-    .def_method("meta_schedule.DatabaseEnterWithScope", &Database::EnterWithScope)
-    .def_method("meta_schedule.DatabaseExitWithScope", &Database::ExitWithScope)
-    .def("meta_schedule.DatabaseCurrent", Database::Current)
-    .def_method("meta_schedule.DatabaseHasWorkload", &DatabaseNode::HasWorkload)
-    .def_method("meta_schedule.DatabaseCommitWorkload", &DatabaseNode::CommitWorkload)
-    .def_method("meta_schedule.DatabaseCommitTuningRecord", &DatabaseNode::CommitTuningRecord)
-    .def_method("meta_schedule.DatabaseGetTopK", &DatabaseNode::GetTopK)
-    .def_method("meta_schedule.DatabaseGetAllTuningRecords", &DatabaseNode::GetAllTuningRecords)
-    .def_method("meta_schedule.DatabaseSize", &DatabaseNode::Size)
-    .def_method("meta_schedule.DatabaseQueryTuningRecord", &DatabaseNode::QueryTuningRecord)
-    .def_method("meta_schedule.DatabaseQuerySchedule", &DatabaseNode::QuerySchedule)
-    .def_method("meta_schedule.DatabaseQueryIRModule", &DatabaseNode::QueryIRModule)
-    .def_method("meta_schedule.DatabaseDumpPruned", &DatabaseNode::DumpPruned)
-    .def("meta_schedule.DatabasePyDatabase", Database::PyDatabase);
+      .def("meta_schedule.Workload", [](IRModule mod) { return Workload(mod); })
+      .def_method("meta_schedule.WorkloadAsJSON", &WorkloadNode::AsJSON)
+      .def("meta_schedule.WorkloadFromJSON", &Workload::FromJSON)
+      .def("meta_schedule.TuningRecord",
+           [](tir::Trace trace, Workload workload, Optional<Array<FloatImm>> run_secs,
+              Optional<Target> target, Optional<Array<ArgInfo>> args_info) {
+             return TuningRecord(trace, workload, run_secs, target, args_info);
+           })
+      .def_method("meta_schedule.TuningRecordAsMeasureCandidate",
+                  &TuningRecordNode::AsMeasureCandidate)
+      .def_method("meta_schedule.TuningRecordAsJSON", &TuningRecordNode::AsJSON)
+      .def("meta_schedule.TuningRecordFromJSON", TuningRecord::FromJSON)
+      .def_method("meta_schedule.DatabaseEnterWithScope", &Database::EnterWithScope)
+      .def_method("meta_schedule.DatabaseExitWithScope", &Database::ExitWithScope)
+      .def("meta_schedule.DatabaseCurrent", Database::Current)
+      .def_method("meta_schedule.DatabaseHasWorkload", &DatabaseNode::HasWorkload)
+      .def_method("meta_schedule.DatabaseCommitWorkload", &DatabaseNode::CommitWorkload)
+      .def_method("meta_schedule.DatabaseCommitTuningRecord", &DatabaseNode::CommitTuningRecord)
+      .def_method("meta_schedule.DatabaseGetTopK", &DatabaseNode::GetTopK)
+      .def_method("meta_schedule.DatabaseGetAllTuningRecords", &DatabaseNode::GetAllTuningRecords)
+      .def_method("meta_schedule.DatabaseSize", &DatabaseNode::Size)
+      .def_method("meta_schedule.DatabaseQueryTuningRecord", &DatabaseNode::QueryTuningRecord)
+      .def_method("meta_schedule.DatabaseQuerySchedule", &DatabaseNode::QuerySchedule)
+      .def_method("meta_schedule.DatabaseQueryIRModule", &DatabaseNode::QueryIRModule)
+      .def_method("meta_schedule.DatabaseDumpPruned", &DatabaseNode::DumpPruned)
+      .def("meta_schedule.DatabasePyDatabase", Database::PyDatabase);
 });
 
 }  // namespace meta_schedule

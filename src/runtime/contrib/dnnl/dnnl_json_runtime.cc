@@ -23,8 +23,8 @@
  */
 
 #include <tvm/ffi/function.h>
-#include <tvm/runtime/ndarray.h>
 #include <tvm/ffi/reflection/reflection.h>
+#include <tvm/runtime/ndarray.h>
 
 #include <cstddef>
 #include <string>
@@ -931,8 +931,8 @@ runtime::Module DNNLJSONRuntimeCreate(String symbol_name, String graph_json,
 TVM_FFI_STATIC_INIT_BLOCK({
   namespace refl = tvm::ffi::reflection;
   refl::GlobalDef()
-    .def("runtime.DNNLJSONRuntimeCreate", DNNLJSONRuntimeCreate)
-    .def("runtime.module.loadbinary_dnnl_json", JSONRuntimeBase::LoadFromBinary<DNNLJSONRuntime>);
+      .def("runtime.DNNLJSONRuntimeCreate", DNNLJSONRuntimeCreate)
+      .def("runtime.module.loadbinary_dnnl_json", JSONRuntimeBase::LoadFromBinary<DNNLJSONRuntime>);
 });
 
 }  // namespace contrib

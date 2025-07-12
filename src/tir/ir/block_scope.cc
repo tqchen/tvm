@@ -200,16 +200,16 @@ TVM_REGISTER_NODE_TYPE(BlockScopeNode);
 TVM_FFI_STATIC_INIT_BLOCK({
   namespace refl = tvm::ffi::reflection;
   refl::GlobalDef()
-    .def("tir.StmtSRefStmt", [](StmtSRef sref) -> Optional<Stmt> {
-  return GetRef<Optional<Stmt>>(sref->stmt);
-})
-    .def("tir.StmtSRefParent", [](StmtSRef sref) -> Optional<StmtSRef> {
-      return GetRef<Optional<StmtSRef>>(sref->parent);
-    })
-    .def("tir.StmtSRefRootMark", StmtSRef::RootMark)
-    .def("tir.StmtSRefInlineMark", StmtSRef::InlineMark)
-    .def_method("tir.BlockScopeGetDepsBySrc", &BlockScopeNode::GetDepsBySrc)
-    .def_method("tir.BlockScopeGetDepsByDst", &BlockScopeNode::GetDepsByDst);
+      .def("tir.StmtSRefStmt",
+           [](StmtSRef sref) -> Optional<Stmt> { return GetRef<Optional<Stmt>>(sref->stmt); })
+      .def("tir.StmtSRefParent",
+           [](StmtSRef sref) -> Optional<StmtSRef> {
+             return GetRef<Optional<StmtSRef>>(sref->parent);
+           })
+      .def("tir.StmtSRefRootMark", StmtSRef::RootMark)
+      .def("tir.StmtSRefInlineMark", StmtSRef::InlineMark)
+      .def_method("tir.BlockScopeGetDepsBySrc", &BlockScopeNode::GetDepsBySrc)
+      .def_method("tir.BlockScopeGetDepsByDst", &BlockScopeNode::GetDepsByDst);
 });
 
 }  // namespace tir

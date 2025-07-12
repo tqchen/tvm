@@ -23,6 +23,7 @@
  */
 
 #include "set.h"
+
 #include <tvm/ffi/reflection/reflection.h>
 
 #include <algorithm>
@@ -49,8 +50,7 @@ Expr unique(Expr x, PrimValue sorted, PrimValue return_index, PrimValue return_i
 
 TVM_FFI_STATIC_INIT_BLOCK({
   namespace refl = tvm::ffi::reflection;
-  refl::GlobalDef()
-    .def("relax.op.unique", unique);
+  refl::GlobalDef().def("relax.op.unique", unique);
 });
 
 StructInfo InferStructInfoUnique(const Call& call, const BlockBuilder& ctx) {
@@ -151,8 +151,7 @@ Expr nonzero(Expr x) {
 
 TVM_FFI_STATIC_INIT_BLOCK({
   namespace refl = tvm::ffi::reflection;
-  refl::GlobalDef()
-    .def("relax.op.nonzero", nonzero);
+  refl::GlobalDef().def("relax.op.nonzero", nonzero);
 });
 
 StructInfo InferStructInfoNonzero(const Call& call, const BlockBuilder& ctx) {

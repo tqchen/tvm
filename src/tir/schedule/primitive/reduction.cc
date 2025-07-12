@@ -16,8 +16,9 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-#include "../utils.h"
 #include <tvm/ffi/reflection/reflection.h>
+
+#include "../utils.h"
 
 namespace tvm {
 namespace tir {
@@ -1347,12 +1348,12 @@ TVM_REGISTER_INST_KIND_TRAITS(DecomposeReductionTraits);
 
 TVM_FFI_STATIC_INIT_BLOCK({
   namespace refl = tvm::ffi::reflection;
-  refl::GlobalDef()
-    .def("tir.schedule.RegisterReducer", [](int n_buffers, ffi::Function combiner_getter,
-                       ffi::Function identity_getter) {
-      ReducerRegistry::RegisterReducer(n_buffers, std::move(combiner_getter),
-                                       std::move(identity_getter));
-    });
+  refl::GlobalDef().def(
+      "tir.schedule.RegisterReducer",
+      [](int n_buffers, ffi::Function combiner_getter, ffi::Function identity_getter) {
+        ReducerRegistry::RegisterReducer(n_buffers, std::move(combiner_getter),
+                                         std::move(identity_getter));
+      });
 });
 
 }  // namespace tir

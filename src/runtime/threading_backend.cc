@@ -23,9 +23,9 @@
  */
 #include <tvm/ffi/container/shape.h>
 #include <tvm/ffi/function.h>
+#include <tvm/ffi/reflection/reflection.h>
 #include <tvm/runtime/logging.h>
 #include <tvm/runtime/threading_backend.h>
-#include <tvm/ffi/reflection/reflection.h>
 
 #if defined(__linux__) || defined(__ANDROID__)
 #if __ANDROID_API__ >= 21
@@ -440,11 +440,11 @@ int MaxConcurrency() {
 // to CPUs.
 TVM_FFI_STATIC_INIT_BLOCK({
   namespace refl = tvm::ffi::reflection;
-  refl::GlobalDef()
-    .def("tvm.runtime.threading.set_current_thread_affinity", [](ffi::Shape cpu_ids) {
-      SetThreadAffinity(CURRENT_THREAD_HANDLE,
-                        std::vector<unsigned int>{cpu_ids.begin(), cpu_ids.end()});
-    });
+  refl::GlobalDef().def(
+      "tvm.runtime.threading.set_current_thread_affinity", [](ffi::Shape cpu_ids) {
+        SetThreadAffinity(CURRENT_THREAD_HANDLE,
+                          std::vector<unsigned int>{cpu_ids.begin(), cpu_ids.end()});
+      });
 });
 
 }  // namespace threading

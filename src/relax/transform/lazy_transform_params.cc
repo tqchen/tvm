@@ -19,11 +19,11 @@
 
 /*! \file src/relax/transform/lazy_transform_params.cc */
 
+#include <tvm/ffi/reflection/reflection.h>
 #include <tvm/relax/analysis.h>
 #include <tvm/relax/expr.h>
 #include <tvm/relax/expr_functor.h>
 #include <tvm/relax/transform.h>
-#include <tvm/ffi/reflection/reflection.h>
 
 #include <optional>
 #include <unordered_map>
@@ -262,8 +262,7 @@ Pass LazyGetInput() {
 
 TVM_FFI_STATIC_INIT_BLOCK({
   namespace refl = tvm::ffi::reflection;
-  refl::GlobalDef()
-    .def("relax.transform.LazyGetInput", LazyGetInput);
+  refl::GlobalDef().def("relax.transform.LazyGetInput", LazyGetInput);
 });
 
 Pass LazySetOutput() {
@@ -281,8 +280,7 @@ Pass LazySetOutput() {
 
 TVM_FFI_STATIC_INIT_BLOCK({
   namespace refl = tvm::ffi::reflection;
-  refl::GlobalDef()
-    .def("relax.transform.LazySetOutput", LazySetOutput);
+  refl::GlobalDef().def("relax.transform.LazySetOutput", LazySetOutput);
 });
 
 }  // namespace transform

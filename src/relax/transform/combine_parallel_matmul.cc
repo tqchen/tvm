@@ -18,13 +18,13 @@
  */
 
 #include <tvm/arith/analyzer.h>
+#include <tvm/ffi/reflection/reflection.h>
 #include <tvm/relax/analysis.h>
 #include <tvm/relax/dataflow_matcher.h>
 #include <tvm/relax/dataflow_pattern.h>
 #include <tvm/relax/expr_functor.h>
 #include <tvm/relax/struct_info.h>
 #include <tvm/relax/transform.h>
-#include <tvm/ffi/reflection/reflection.h>
 
 #include <optional>
 #include <unordered_map>
@@ -390,8 +390,7 @@ Pass CombineParallelMatmul(FCheck check) {
 
 TVM_FFI_STATIC_INIT_BLOCK({
   namespace refl = tvm::ffi::reflection;
-  refl::GlobalDef()
-    .def("relax.transform.CombineParallelMatmul", CombineParallelMatmul);
+  refl::GlobalDef().def("relax.transform.CombineParallelMatmul", CombineParallelMatmul);
 });
 
 }  // namespace transform

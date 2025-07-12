@@ -17,9 +17,9 @@
  * under the License.
  */
 #include <tvm/ffi/function.h>
+#include <tvm/ffi/reflection/reflection.h>
 #include <tvm/runtime/disco/disco_worker.h>
 #include <tvm/runtime/disco/session.h>
-#include <tvm/ffi/reflection/reflection.h>
 
 namespace tvm {
 namespace runtime {
@@ -35,20 +35,21 @@ TVM_REGISTER_OBJECT_TYPE(SessionObj);
 TVM_FFI_STATIC_INIT_BLOCK({
   namespace refl = tvm::ffi::reflection;
   refl::GlobalDef()
-    .def("runtime.disco.SessionThreaded", Session::ThreadedSession)
-    .def_method("runtime.disco.DRefDebugGetFromRemote", &DRefObj::DebugGetFromRemote)
-    .def_method("runtime.disco.DRefDebugCopyFrom", &DRefObj::DebugCopyFrom)
-    .def_method("runtime.disco.SessionGetNumWorkers", &SessionObj::GetNumWorkers)
-    .def_method("runtime.disco.SessionGetGlobalFunc", &SessionObj::GetGlobalFunc)
-    .def_method("runtime.disco.SessionCopyFromWorker0", &SessionObj::CopyFromWorker0)
-    .def_method("runtime.disco.SessionCopyToWorker0", &SessionObj::CopyToWorker0)
-    .def_method("runtime.disco.SessionSyncWorker", &SessionObj::SyncWorker)
-    .def_method("runtime.disco.SessionInitCCL", &SessionObj::InitCCL)
-    .def_packed("runtime.disco.SessionCallPacked", [](ffi::PackedArgs args, ffi::Any* rv) {
-      Session self = args[0].cast<Session>();
-      *rv = SessionObj::FFI::CallWithPacked(self, args.Slice(1));
-    })
-    .def_method("runtime.disco.SessionShutdown", &SessionObj::Shutdown);
+      .def("runtime.disco.SessionThreaded", Session::ThreadedSession)
+      .def_method("runtime.disco.DRefDebugGetFromRemote", &DRefObj::DebugGetFromRemote)
+      .def_method("runtime.disco.DRefDebugCopyFrom", &DRefObj::DebugCopyFrom)
+      .def_method("runtime.disco.SessionGetNumWorkers", &SessionObj::GetNumWorkers)
+      .def_method("runtime.disco.SessionGetGlobalFunc", &SessionObj::GetGlobalFunc)
+      .def_method("runtime.disco.SessionCopyFromWorker0", &SessionObj::CopyFromWorker0)
+      .def_method("runtime.disco.SessionCopyToWorker0", &SessionObj::CopyToWorker0)
+      .def_method("runtime.disco.SessionSyncWorker", &SessionObj::SyncWorker)
+      .def_method("runtime.disco.SessionInitCCL", &SessionObj::InitCCL)
+      .def_packed("runtime.disco.SessionCallPacked",
+                  [](ffi::PackedArgs args, ffi::Any* rv) {
+                    Session self = args[0].cast<Session>();
+                    *rv = SessionObj::FFI::CallWithPacked(self, args.Slice(1));
+                  })
+      .def_method("runtime.disco.SessionShutdown", &SessionObj::Shutdown);
 });
 
 }  // namespace runtime

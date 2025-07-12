@@ -24,11 +24,11 @@
  */
 #include <tvm/arith/analyzer.h>
 #include <tvm/arith/iter_affine_map.h>
+#include <tvm/ffi/reflection/reflection.h>
 #include <tvm/relax/analysis.h>
 #include <tvm/tir/analysis.h>
 #include <tvm/tir/index_map.h>
 #include <tvm/tir/stmt_functor.h>
-#include <tvm/ffi/reflection/reflection.h>
 
 #include "../../support/array.h"
 
@@ -617,10 +617,10 @@ Map<tir::Block, Map<ObjectRef, tir::IndexMap>> SuggestLayoutTransforms(
 
 TVM_FFI_STATIC_INIT_BLOCK({
   namespace refl = tvm::ffi::reflection;
-  refl::GlobalDef()
-    .def("relax.analysis.suggest_layout_transforms", [](PrimFunc fn, Array<tir::IndexMap> write_buffer_transformations) {
-      return SuggestLayoutTransforms(fn, write_buffer_transformations);
-    });
+  refl::GlobalDef().def("relax.analysis.suggest_layout_transforms",
+                        [](PrimFunc fn, Array<tir::IndexMap> write_buffer_transformations) {
+                          return SuggestLayoutTransforms(fn, write_buffer_transformations);
+                        });
 });
 
 }  // namespace relax

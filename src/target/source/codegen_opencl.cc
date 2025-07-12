@@ -21,6 +21,7 @@
  * \file codegen_opencl.cc
  */
 #include "codegen_opencl.h"
+
 #include <tvm/ffi/reflection/reflection.h>
 
 #include <cmath>
@@ -675,8 +676,7 @@ runtime::Module BuildOpenCL(IRModule mod, Target target) {
 
 TVM_FFI_STATIC_INIT_BLOCK({
   namespace refl = tvm::ffi::reflection;
-  refl::GlobalDef()
-    .def("target.build.opencl", BuildOpenCL);
+  refl::GlobalDef().def("target.build.opencl", BuildOpenCL);
 });
 
 String DeviceScopeCompatibilityFromTarget(Target target, String memory_scope) {
@@ -691,8 +691,7 @@ String DeviceScopeCompatibilityFromTarget(Target target, String memory_scope) {
 
 TVM_FFI_STATIC_INIT_BLOCK({
   namespace refl = tvm::ffi::reflection;
-  refl::GlobalDef()
-    .def("DeviceScopeCompatibility.opencl", DeviceScopeCompatibilityFromTarget);
+  refl::GlobalDef().def("DeviceScopeCompatibility.opencl", DeviceScopeCompatibilityFromTarget);
 });
 
 }  // namespace codegen

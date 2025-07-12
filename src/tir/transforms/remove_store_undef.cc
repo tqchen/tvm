@@ -22,13 +22,13 @@
  * \brief Remove stores of tir::builtin::undef
  */
 #include <tvm/ffi/function.h>
+#include <tvm/ffi/reflection/reflection.h>
 #include <tvm/tir/analysis.h>
 #include <tvm/tir/builtin.h>
 #include <tvm/tir/op.h>
 #include <tvm/tir/stmt.h>
 #include <tvm/tir/stmt_functor.h>
 #include <tvm/tir/transform.h>
-#include <tvm/ffi/reflection/reflection.h>
 
 namespace tvm {
 namespace tir {
@@ -174,8 +174,7 @@ Pass RemoveStoreUndef() {
 
 TVM_FFI_STATIC_INIT_BLOCK({
   namespace refl = tvm::ffi::reflection;
-  refl::GlobalDef()
-    .def("tir.transform.RemoveStoreUndef", RemoveStoreUndef);
+  refl::GlobalDef().def("tir.transform.RemoveStoreUndef", RemoveStoreUndef);
 });
 
 }  // namespace transform

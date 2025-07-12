@@ -22,11 +22,11 @@
  * \brief legalize bf16/fp8 type by adding cast_to_fp32
  */
 #include <tvm/ffi/function.h>
+#include <tvm/ffi/reflection/reflection.h>
 #include <tvm/tir/builtin.h>
 #include <tvm/tir/op.h>
 #include <tvm/tir/stmt_functor.h>
 #include <tvm/tir/transform.h>
-#include <tvm/ffi/reflection/reflection.h>
 
 #include <cmath>
 #include <tuple>
@@ -761,8 +761,7 @@ Pass BF16ComputeLegalize() {
 
 TVM_FFI_STATIC_INIT_BLOCK({
   namespace refl = tvm::ffi::reflection;
-  refl::GlobalDef()
-    .def("tir.transform.BF16ComputeLegalize", BF16ComputeLegalize);
+  refl::GlobalDef().def("tir.transform.BF16ComputeLegalize", BF16ComputeLegalize);
 });
 
 Pass BF16StorageLegalize() {
@@ -778,8 +777,7 @@ Pass BF16StorageLegalize() {
 
 TVM_FFI_STATIC_INIT_BLOCK({
   namespace refl = tvm::ffi::reflection;
-  refl::GlobalDef()
-    .def("tir.transform.BF16StorageLegalize", BF16StorageLegalize);
+  refl::GlobalDef().def("tir.transform.BF16StorageLegalize", BF16StorageLegalize);
 });
 
 Pass FP8ComputeLegalize(String promote_dtype_str) {
@@ -795,8 +793,7 @@ Pass FP8ComputeLegalize(String promote_dtype_str) {
 
 TVM_FFI_STATIC_INIT_BLOCK({
   namespace refl = tvm::ffi::reflection;
-  refl::GlobalDef()
-    .def("tir.transform.FP8ComputeLegalize", FP8ComputeLegalize);
+  refl::GlobalDef().def("tir.transform.FP8ComputeLegalize", FP8ComputeLegalize);
 });
 
 Pass FP8StorageLegalize() {
@@ -812,8 +809,7 @@ Pass FP8StorageLegalize() {
 
 TVM_FFI_STATIC_INIT_BLOCK({
   namespace refl = tvm::ffi::reflection;
-  refl::GlobalDef()
-    .def("tir.transform.FP8StorageLegalize", FP8StorageLegalize);
+  refl::GlobalDef().def("tir.transform.FP8StorageLegalize", FP8StorageLegalize);
 });
 
 }  // namespace transform

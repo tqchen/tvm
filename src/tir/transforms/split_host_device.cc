@@ -22,6 +22,7 @@
  * \brief Split device function from host.
  */
 #include <tvm/ffi/function.h>
+#include <tvm/ffi/reflection/reflection.h>
 #include <tvm/ir/global_var_supply.h>
 #include <tvm/ir/transform.h>
 #include <tvm/target/target.h>
@@ -31,7 +32,6 @@
 #include <tvm/tir/op.h>
 #include <tvm/tir/stmt_functor.h>
 #include <tvm/tir/transform.h>
-#include <tvm/ffi/reflection/reflection.h>
 
 #include "../analysis/var_use_def_analysis.h"
 
@@ -168,8 +168,7 @@ Pass SplitHostDevice() {
 
 TVM_FFI_STATIC_INIT_BLOCK({
   namespace refl = tvm::ffi::reflection;
-  refl::GlobalDef()
-    .def("tir.transform.SplitHostDevice", SplitHostDevice);
+  refl::GlobalDef().def("tir.transform.SplitHostDevice", SplitHostDevice);
 });
 
 }  // namespace transform

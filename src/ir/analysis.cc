@@ -21,8 +21,8 @@
  * \file src/ir/analysis.cc
  * \brief Analysis functions that must span multiple IR types
  */
-#include <tvm/ir/analysis.h>
 #include <tvm/ffi/reflection/reflection.h>
+#include <tvm/ir/analysis.h>
 
 #include "../support/ordered_set.h"
 
@@ -46,8 +46,7 @@ Map<GlobalVar, Array<GlobalVar>> CollectCallMap(const IRModule& mod) {
 
 TVM_FFI_STATIC_INIT_BLOCK({
   namespace refl = tvm::ffi::reflection;
-  refl::GlobalDef()
-    .def("ir.analysis.CollectCallMap", CollectCallMap);
+  refl::GlobalDef().def("ir.analysis.CollectCallMap", CollectCallMap);
 });
 
 }  // namespace ir

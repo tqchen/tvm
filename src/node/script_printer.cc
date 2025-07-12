@@ -17,10 +17,10 @@
  * under the License.
  */
 #include <tvm/ffi/function.h>
+#include <tvm/ffi/reflection/reflection.h>
 #include <tvm/ir/expr.h>
 #include <tvm/node/repr_printer.h>
 #include <tvm/node/script_printer.h>
-#include <tvm/ffi/reflection/reflection.h>
 
 #include <algorithm>
 
@@ -144,10 +144,9 @@ TVM_REGISTER_NODE_TYPE(PrinterConfigNode);
 TVM_FFI_STATIC_INIT_BLOCK({
   namespace refl = tvm::ffi::reflection;
   refl::GlobalDef()
-    .def("node.PrinterConfig", [](Map<String, Any> config_dict) {
-  return PrinterConfig(config_dict);
-})
-    .def("node.TVMScriptPrinterScript", TVMScriptPrinter::Script);
+      .def("node.PrinterConfig",
+           [](Map<String, Any> config_dict) { return PrinterConfig(config_dict); })
+      .def("node.TVMScriptPrinterScript", TVMScriptPrinter::Script);
 });
 
 }  // namespace tvm

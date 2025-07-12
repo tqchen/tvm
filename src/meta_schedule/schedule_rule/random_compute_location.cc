@@ -131,8 +131,8 @@ TVM_FFI_STATIC_INIT_BLOCK({ RandomComputeLocationNode::RegisterReflection(); });
 TVM_REGISTER_NODE_TYPE(RandomComputeLocationNode);
 TVM_FFI_STATIC_INIT_BLOCK({
   namespace refl = tvm::ffi::reflection;
-  refl::GlobalDef()
-    .def("meta_schedule.ScheduleRuleRandomComputeLocation", ScheduleRule::RandomComputeLocation);
+  refl::GlobalDef().def("meta_schedule.ScheduleRuleRandomComputeLocation",
+                        ScheduleRule::RandomComputeLocation);
 });
 }  // namespace meta_schedule
 }  // namespace tvm

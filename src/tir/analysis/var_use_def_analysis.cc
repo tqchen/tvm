@@ -22,6 +22,7 @@
  * \brief Classes and functions to analyze var defition and usage.
  */
 #include "var_use_def_analysis.h"
+
 #include <tvm/ffi/reflection/reflection.h>
 namespace tvm {
 namespace tir {
@@ -202,16 +203,16 @@ Array<Var> UndefinedVars(const PrimExpr& expr, const Array<Var>& args) {
 
 TVM_FFI_STATIC_INIT_BLOCK({
   namespace refl = tvm::ffi::reflection;
-  refl::GlobalDef()
-    .def_packed("tir.analysis.UndefinedVars", [](ffi::PackedArgs args, ffi::Any* rv) {
-      if (auto opt_stmt = args[0].as<Stmt>()) {
-        *rv = UndefinedVars(opt_stmt.value(), args[1].cast<Array<Var>>());
-      } else if (auto opt_expr = args[0].as<PrimExpr>()) {
-        *rv = UndefinedVars(opt_expr.value(), args[1].cast<Array<Var>>());
-      } else {
-        LOG(FATAL) << "either UndefinedVars(stmt, args) or UndefinedVars(expr, args) is expected";
-      }
-    });
+  refl::GlobalDef().def_packed(
+      "tir.analysis.UndefinedVars", [](ffi::PackedArgs args, ffi::Any* rv) {
+        if (auto opt_stmt = args[0].as<Stmt>()) {
+          *rv = UndefinedVars(opt_stmt.value(), args[1].cast<Array<Var>>());
+        } else if (auto opt_expr = args[0].as<PrimExpr>()) {
+          *rv = UndefinedVars(opt_expr.value(), args[1].cast<Array<Var>>());
+        } else {
+          LOG(FATAL) << "either UndefinedVars(stmt, args) or UndefinedVars(expr, args) is expected";
+        }
+      });
 });
 }  // namespace tir
 }  // namespace tvm

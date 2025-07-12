@@ -23,11 +23,11 @@
  */
 #include <tvm/arith/int_solver.h>
 #include <tvm/ffi/function.h>
+#include <tvm/ffi/reflection/reflection.h>
 #include <tvm/tir/analysis.h>
 #include <tvm/tir/expr.h>
 #include <tvm/tir/op.h>
 #include <tvm/tir/stmt_functor.h>
-#include <tvm/ffi/reflection/reflection.h>
 
 namespace tvm {
 namespace arith {
@@ -216,8 +216,7 @@ PrimExpr NarrowPredicateExpression(PrimExpr expr, Map<Var, Range> free_parameter
 
 TVM_FFI_STATIC_INIT_BLOCK({
   namespace refl = tvm::ffi::reflection;
-  refl::GlobalDef()
-    .def("arith.NarrowPredicateExpression", NarrowPredicateExpression);
+  refl::GlobalDef().def("arith.NarrowPredicateExpression", NarrowPredicateExpression);
 });
 
 }  // namespace arith

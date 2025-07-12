@@ -23,11 +23,11 @@
  */
 
 #include <dmlc/json.h>
+#include <tvm/ffi/reflection/reflection.h>
 #include <tvm/relax/attrs/sorting.h>
 #include <tvm/relax/expr.h>
 #include <tvm/relax/expr_functor.h>
 #include <tvm/relax/transform.h>
-#include <tvm/ffi/reflection/reflection.h>
 
 #include "../../../../relax/transform/utils.h"
 #include "../../../../support/scalars.h"
@@ -916,8 +916,7 @@ Pass TransformTensorRT(const String& config) {
 
 TVM_FFI_STATIC_INIT_BLOCK({
   namespace refl = tvm::ffi::reflection;
-  refl::GlobalDef()
-    .def("relax.transform.TransformTensorRT", TransformTensorRT);
+  refl::GlobalDef().def("relax.transform.TransformTensorRT", TransformTensorRT);
 });
 
 }  // namespace transform

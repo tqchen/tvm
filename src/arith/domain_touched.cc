@@ -22,10 +22,10 @@
  * \brief Utility to deduce bound of expression
  */
 #include <tvm/ffi/function.h>
+#include <tvm/ffi/reflection/reflection.h>
 #include <tvm/te/tensor.h>
 #include <tvm/tir/expr.h>
 #include <tvm/tir/stmt_functor.h>
-#include <tvm/ffi/reflection/reflection.h>
 
 #include <tuple>
 #include <unordered_map>
@@ -166,8 +166,8 @@ Map<Buffer, Array<ObjectRef>> DomainTouchedAccessMap(const PrimFunc& func) {
 TVM_FFI_STATIC_INIT_BLOCK({
   namespace refl = tvm::ffi::reflection;
   refl::GlobalDef()
-    .def("arith.DomainTouched", DomainTouched)
-    .def("arith.DomainTouchedAccessMap", DomainTouchedAccessMap);
+      .def("arith.DomainTouched", DomainTouched)
+      .def("arith.DomainTouchedAccessMap", DomainTouchedAccessMap);
 });
 
 }  // namespace arith

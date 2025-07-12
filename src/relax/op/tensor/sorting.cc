@@ -23,6 +23,7 @@
  */
 
 #include "sorting.h"
+
 #include <tvm/ffi/reflection/reflection.h>
 
 #include <vector>
@@ -50,8 +51,7 @@ Expr sort(Expr data, int axis, bool descending) {
 
 TVM_FFI_STATIC_INIT_BLOCK({
   namespace refl = tvm::ffi::reflection;
-  refl::GlobalDef()
-    .def("relax.op.sort", sort);
+  refl::GlobalDef().def("relax.op.sort", sort);
 });
 
 StructInfo InferStructInfoSort(const Call& call, const BlockBuilder& ctx) {
@@ -80,8 +80,7 @@ Expr argsort(Expr data, int axis, bool descending, DataType dtype) {
 
 TVM_FFI_STATIC_INIT_BLOCK({
   namespace refl = tvm::ffi::reflection;
-  refl::GlobalDef()
-    .def("relax.op.argsort", argsort);
+  refl::GlobalDef().def("relax.op.argsort", argsort);
 });
 
 StructInfo InferStructInfoArgsort(const Call& call, const BlockBuilder& ctx) {
@@ -118,8 +117,7 @@ Expr topk(Expr data, int k, int axis, String ret_type, bool largest, DataType dt
 
 TVM_FFI_STATIC_INIT_BLOCK({
   namespace refl = tvm::ffi::reflection;
-  refl::GlobalDef()
-    .def("relax.op.topk", topk);
+  refl::GlobalDef().def("relax.op.topk", topk);
 });
 
 StructInfo InferStructInfoTopK(const Call& call, const BlockBuilder& ctx) {

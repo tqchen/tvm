@@ -23,10 +23,10 @@
  */
 
 #include <tvm/ffi/function.h>
+#include <tvm/ffi/reflection/reflection.h>
 #include <tvm/ir/expr.h>
 #include <tvm/target/tag.h>
 #include <tvm/target/target.h>
-#include <tvm/ffi/reflection/reflection.h>
 
 #include "../node/attr_registry.h"
 
@@ -39,8 +39,8 @@ TVM_REGISTER_NODE_TYPE(TargetTagNode);
 TVM_FFI_STATIC_INIT_BLOCK({
   namespace refl = tvm::ffi::reflection;
   refl::GlobalDef()
-    .def("target.TargetTagListTags", TargetTag::ListTags)
-    .def("target.TargetTagAddTag", TargetTag::AddTag);
+      .def("target.TargetTagListTags", TargetTag::ListTags)
+      .def("target.TargetTagAddTag", TargetTag::AddTag);
 });
 
 /**********  Registry-related code  **********/

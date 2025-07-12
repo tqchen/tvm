@@ -23,6 +23,7 @@
  */
 
 #include "statistical.h"
+
 #include <tvm/ffi/reflection/reflection.h>
 
 #include <string>
@@ -194,8 +195,7 @@ Expr cumprod(Expr data, Optional<int64_t> axis, Optional<DataType> dtype, Bool e
 
 TVM_FFI_STATIC_INIT_BLOCK({
   namespace refl = tvm::ffi::reflection;
-  refl::GlobalDef()
-    .def("relax.op.cumprod", cumprod);
+  refl::GlobalDef().def("relax.op.cumprod", cumprod);
 });
 
 TVM_REGISTER_OP("relax.cumprod")
@@ -218,8 +218,7 @@ Expr cumsum(Expr data, Optional<int64_t> axis, Optional<DataType> dtype, Bool ex
 
 TVM_FFI_STATIC_INIT_BLOCK({
   namespace refl = tvm::ffi::reflection;
-  refl::GlobalDef()
-    .def("relax.op.cumsum", cumsum);
+  refl::GlobalDef().def("relax.op.cumsum", cumsum);
 });
 
 TVM_REGISTER_OP("relax.cumsum")

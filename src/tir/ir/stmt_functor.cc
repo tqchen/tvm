@@ -20,11 +20,11 @@
  * \file stmt_functor.cc
  */
 #include <tvm/ffi/function.h>
+#include <tvm/ffi/reflection/reflection.h>
 #include <tvm/ir/module.h>
 #include <tvm/tir/data_type_rewriter.h>
 #include <tvm/tir/function.h>
 #include <tvm/tir/stmt_functor.h>
-#include <tvm/ffi/reflection/reflection.h>
 
 #include <functional>
 
@@ -836,20 +836,22 @@ PrimExpr SubstituteWithDataTypeLegalization(PrimExpr expr,
 TVM_FFI_STATIC_INIT_BLOCK({
   namespace refl = tvm::ffi::reflection;
   refl::GlobalDef()
-    .def("tir.IRTransform", IRTransform)
-    .def("tir.PostOrderVisit", [](ObjectRef node, ffi::Function f) {
-  tir::PostOrderVisit(node, [f](const ObjectRef& n) { f(n); });
-})
-    .def("tir.PreOrderVisit", [](ObjectRef node, ffi::Function f) {
-  tir::PreOrderVisit(node, [f](const ObjectRef& n) { return f(n).cast<bool>(); });
-})
-    .def("tir.Substitute", [](ObjectRef node, Map<Var, PrimExpr> vmap) -> ObjectRef {
-      if (node->IsInstance<StmtNode>()) {
-        return Substitute(Downcast<Stmt>(node), vmap);
-      } else {
-        return Substitute(Downcast<PrimExpr>(node), vmap);
-      }
-    });
+      .def("tir.IRTransform", IRTransform)
+      .def("tir.PostOrderVisit",
+           [](ObjectRef node, ffi::Function f) {
+             tir::PostOrderVisit(node, [f](const ObjectRef& n) { f(n); });
+           })
+      .def("tir.PreOrderVisit",
+           [](ObjectRef node, ffi::Function f) {
+             tir::PreOrderVisit(node, [f](const ObjectRef& n) { return f(n).cast<bool>(); });
+           })
+      .def("tir.Substitute", [](ObjectRef node, Map<Var, PrimExpr> vmap) -> ObjectRef {
+        if (node->IsInstance<StmtNode>()) {
+          return Substitute(Downcast<Stmt>(node), vmap);
+        } else {
+          return Substitute(Downcast<PrimExpr>(node), vmap);
+        }
+      });
 });
 
 }  // namespace tir

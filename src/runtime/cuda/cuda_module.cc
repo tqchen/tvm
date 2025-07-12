@@ -21,11 +21,11 @@
  * \file cuda_module.cc
  */
 #include "cuda_module.h"
-#include <tvm/ffi/reflection/reflection.h>
 
 #include <cuda.h>
 #include <cuda_runtime.h>
 #include <tvm/ffi/function.h>
+#include <tvm/ffi/reflection/reflection.h>
 
 #include <array>
 #include <mutex>
@@ -302,9 +302,9 @@ Module CUDAModuleLoadBinary(void* strm) {
 TVM_FFI_STATIC_INIT_BLOCK({
   namespace refl = tvm::ffi::reflection;
   refl::GlobalDef()
-    .def("runtime.module.loadfile_cubin", CUDAModuleLoadFile)
-    .def("runtime.module.loadfile_ptx", CUDAModuleLoadFile)
-    .def("runtime.module.loadbinary_cuda", CUDAModuleLoadBinary);
+      .def("runtime.module.loadfile_cubin", CUDAModuleLoadFile)
+      .def("runtime.module.loadfile_ptx", CUDAModuleLoadFile)
+      .def("runtime.module.loadbinary_cuda", CUDAModuleLoadBinary);
 });
 }  // namespace runtime
 }  // namespace tvm

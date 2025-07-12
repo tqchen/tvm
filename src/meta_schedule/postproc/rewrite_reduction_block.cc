@@ -179,8 +179,8 @@ Postproc Postproc::RewriteReductionBlock() {
 TVM_REGISTER_NODE_TYPE(RewriteReductionBlockNode);
 TVM_FFI_STATIC_INIT_BLOCK({
   namespace refl = tvm::ffi::reflection;
-  refl::GlobalDef()
-    .def("meta_schedule.PostprocRewriteReductionBlock", Postproc::RewriteReductionBlock);
+  refl::GlobalDef().def("meta_schedule.PostprocRewriteReductionBlock",
+                        Postproc::RewriteReductionBlock);
 });
 
 TVM_FFI_STATIC_INIT_BLOCK({ RewriteReductionBlockNode::RegisterReflection(); });

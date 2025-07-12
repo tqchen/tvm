@@ -21,12 +21,12 @@
  * \file tvm/relax/distributed/transform/lower_global_view_to_local_view.cc
  * \brief Pass for lowering global view TensorIR into local view
  */
+#include <tvm/ffi/reflection/reflection.h>
 #include <tvm/relax/attrs/ccl.h>
 #include <tvm/relax/distributed/axis_group_graph.h>
 #include <tvm/relax/distributed/transform.h>
 #include <tvm/relax/expr_functor.h>
 #include <tvm/tir/stmt_functor.h>
-#include <tvm/ffi/reflection/reflection.h>
 
 #include "../../../tir/schedule/transform.h"
 #include "utils.h"
@@ -435,8 +435,8 @@ Pass LowerGlobalViewToLocalView() {
 }
 TVM_FFI_STATIC_INIT_BLOCK({
   namespace refl = tvm::ffi::reflection;
-  refl::GlobalDef()
-    .def("relax.distributed.transform.LowerGlobalViewToLocalView", LowerGlobalViewToLocalView);
+  refl::GlobalDef().def("relax.distributed.transform.LowerGlobalViewToLocalView",
+                        LowerGlobalViewToLocalView);
 });
 }  // namespace transform
 

@@ -17,13 +17,13 @@
  * under the License.
  */
 
+#include <tvm/ffi/reflection/reflection.h>
 #include <tvm/meta_schedule/extracted_task.h>
 #include <tvm/relax/expr.h>
 #include <tvm/relax/expr_functor.h>
 #include <tvm/target/target.h>
 #include <tvm/tir/function.h>
 #include <tvm/tir/stmt_functor.h>
-#include <tvm/ffi/reflection/reflection.h>
 
 #include "../../meta_schedule/module_equality.h"
 
@@ -142,10 +142,10 @@ class TaskExtractor : public ExprVisitor {
 
 TVM_FFI_STATIC_INIT_BLOCK({
   namespace refl = tvm::ffi::reflection;
-  refl::GlobalDef()
-    .def("relax.backend.MetaScheduleExtractTask", [](IRModule mod, Target target, String mod_eq_name) {
-      return TaskExtractor::ExtractTask(std::move(mod), std::move(target), std::move(mod_eq_name));
-    });
+  refl::GlobalDef().def("relax.backend.MetaScheduleExtractTask", [](IRModule mod, Target target,
+                                                                    String mod_eq_name) {
+    return TaskExtractor::ExtractTask(std::move(mod), std::move(target), std::move(mod_eq_name));
+  });
 });
 
 }  // namespace backend

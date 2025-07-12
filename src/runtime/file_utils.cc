@@ -21,11 +21,11 @@
  * \file file_utils.cc
  */
 #include "file_utils.h"
-#include <tvm/ffi/reflection/reflection.h>
 
 #include <dmlc/json.h>
 #include <dmlc/memory_io.h>
 #include <tvm/ffi/function.h>
+#include <tvm/ffi/reflection/reflection.h>
 #include <tvm/runtime/logging.h>
 #include <tvm/runtime/serializer.h>
 
@@ -254,21 +254,21 @@ std::string SaveParams(const Map<String, NDArray>& params) {
 TVM_FFI_STATIC_INIT_BLOCK({
   namespace refl = tvm::ffi::reflection;
   refl::GlobalDef()
-    .def("runtime.SaveParams", [](const Map<String, NDArray>& params) {
-      std::string s = ::tvm::runtime::SaveParams(params);
-      return ffi::Bytes(std::move(s));
-    })
-    .def("runtime.SaveParamsToFile", [](const Map<String, NDArray>& params, const String& path) {
-      tvm::runtime::SimpleBinaryFileStream strm(path, "wb");
-      SaveParams(&strm, params);
-    })
-    .def("runtime.LoadParams", [](const ffi::Bytes& s) {
-  return ::tvm::runtime::LoadParams(s);
-})
-    .def("runtime.LoadParamsFromFile", [](const String& path) {
-  tvm::runtime::SimpleBinaryFileStream strm(path, "rb");
-  return LoadParams(&strm);
-});
+      .def("runtime.SaveParams",
+           [](const Map<String, NDArray>& params) {
+             std::string s = ::tvm::runtime::SaveParams(params);
+             return ffi::Bytes(std::move(s));
+           })
+      .def("runtime.SaveParamsToFile",
+           [](const Map<String, NDArray>& params, const String& path) {
+             tvm::runtime::SimpleBinaryFileStream strm(path, "wb");
+             SaveParams(&strm, params);
+           })
+      .def("runtime.LoadParams", [](const ffi::Bytes& s) { return ::tvm::runtime::LoadParams(s); })
+      .def("runtime.LoadParamsFromFile", [](const String& path) {
+        tvm::runtime::SimpleBinaryFileStream strm(path, "rb");
+        return LoadParams(&strm);
+      });
 });
 
 }  // namespace runtime

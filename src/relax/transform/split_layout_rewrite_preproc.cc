@@ -21,11 +21,11 @@
  * \file src/relax/transform/split_tir_layout_rewrite.cc
  * \brief Use for rewriting the TIRs after meta_schedule layout rewrite post process.
  */
+#include <tvm/ffi/reflection/reflection.h>
 #include <tvm/ir/transform.h>
 #include <tvm/relax/expr_functor.h>
 #include <tvm/relax/transform.h>
 #include <tvm/tir/stmt_functor.h>
-#include <tvm/ffi/reflection/reflection.h>
 
 #include <algorithm>
 #include <cstddef>
@@ -343,8 +343,7 @@ Pass SplitLayoutRewritePreproc() {
 }
 TVM_FFI_STATIC_INIT_BLOCK({
   namespace refl = tvm::ffi::reflection;
-  refl::GlobalDef()
-    .def("relax.transform.SplitLayoutRewritePreproc", SplitLayoutRewritePreproc);
+  refl::GlobalDef().def("relax.transform.SplitLayoutRewritePreproc", SplitLayoutRewritePreproc);
 });
 }  // namespace transform
 }  // namespace tvm

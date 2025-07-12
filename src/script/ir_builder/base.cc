@@ -17,9 +17,9 @@
  * under the License.
  */
 #include <tvm/ffi/function.h>
+#include <tvm/ffi/reflection/reflection.h>
 #include <tvm/ir/module.h>
 #include <tvm/script/ir_builder/base.h>
-#include <tvm/ffi/reflection/reflection.h>
 
 namespace tvm {
 namespace script {
@@ -110,16 +110,16 @@ TVM_REGISTER_NODE_TYPE(IRBuilderNode);
 TVM_FFI_STATIC_INIT_BLOCK({
   namespace refl = tvm::ffi::reflection;
   refl::GlobalDef()
-    .def_method("script.ir_builder.IRBuilderFrameEnter", &IRBuilderFrameNode::EnterWithScope)
-    .def_method("script.ir_builder.IRBuilderFrameExit", &IRBuilderFrameNode::ExitWithScope)
-    .def_method("script.ir_builder.IRBuilderFrameAddCallback", &IRBuilderFrameNode::AddCallback)
-    .def("script.ir_builder.IRBuilder", []() { return IRBuilder(); })
-    .def_method("script.ir_builder.IRBuilderEnter", &IRBuilder::EnterWithScope)
-    .def_method("script.ir_builder.IRBuilderExit", &IRBuilder::ExitWithScope)
-    .def("script.ir_builder.IRBuilderCurrent", IRBuilder::Current)
-    .def("script.ir_builder.IRBuilderIsInScope", IRBuilder::IsInScope)
-    .def_method("script.ir_builder.IRBuilderGet", &IRBuilderNode::Get<ObjectRef>)
-    .def("script.ir_builder.IRBuilderName", IRBuilder::Name<ObjectRef>);
+      .def_method("script.ir_builder.IRBuilderFrameEnter", &IRBuilderFrameNode::EnterWithScope)
+      .def_method("script.ir_builder.IRBuilderFrameExit", &IRBuilderFrameNode::ExitWithScope)
+      .def_method("script.ir_builder.IRBuilderFrameAddCallback", &IRBuilderFrameNode::AddCallback)
+      .def("script.ir_builder.IRBuilder", []() { return IRBuilder(); })
+      .def_method("script.ir_builder.IRBuilderEnter", &IRBuilder::EnterWithScope)
+      .def_method("script.ir_builder.IRBuilderExit", &IRBuilder::ExitWithScope)
+      .def("script.ir_builder.IRBuilderCurrent", IRBuilder::Current)
+      .def("script.ir_builder.IRBuilderIsInScope", IRBuilder::IsInScope)
+      .def_method("script.ir_builder.IRBuilderGet", &IRBuilderNode::Get<ObjectRef>)
+      .def("script.ir_builder.IRBuilderName", IRBuilder::Name<ObjectRef>);
 });
 
 }  // namespace ir_builder

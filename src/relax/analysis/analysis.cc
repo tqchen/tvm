@@ -24,10 +24,10 @@
  * \brief Analysis functions for Relax.
  */
 
+#include <tvm/ffi/reflection/reflection.h>
 #include <tvm/relax/analysis.h>
 #include <tvm/relax/expr_functor.h>
 #include <tvm/tir/expr_functor.h>
-#include <tvm/ffi/reflection/reflection.h>
 
 namespace tvm {
 namespace relax {
@@ -201,11 +201,11 @@ bool ContainsImpureCall(const Expr& expr, const Optional<Expr>& own_name) {
 TVM_FFI_STATIC_INIT_BLOCK({
   namespace refl = tvm::ffi::reflection;
   refl::GlobalDef()
-    .def("relax.analysis.free_vars", FreeVars)
-    .def("relax.analysis.bound_vars", BoundVars)
-    .def("relax.analysis.all_vars", AllVars)
-    .def("relax.analysis.all_global_vars", AllGlobalVars)
-    .def("relax.analysis.contains_impure_call", ContainsImpureCall);
+      .def("relax.analysis.free_vars", FreeVars)
+      .def("relax.analysis.bound_vars", BoundVars)
+      .def("relax.analysis.all_vars", AllVars)
+      .def("relax.analysis.all_global_vars", AllGlobalVars)
+      .def("relax.analysis.contains_impure_call", ContainsImpureCall);
 });
 
 }  // namespace relax

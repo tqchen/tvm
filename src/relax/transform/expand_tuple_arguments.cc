@@ -17,9 +17,9 @@
  * under the License.
  */
 
+#include <tvm/ffi/reflection/reflection.h>
 #include <tvm/relax/expr_functor.h>
 #include <tvm/relax/transform.h>
-#include <tvm/ffi/reflection/reflection.h>
 
 #include <algorithm>
 #include <tuple>
@@ -181,8 +181,7 @@ Pass ExpandTupleArguments() {
 
 TVM_FFI_STATIC_INIT_BLOCK({
   namespace refl = tvm::ffi::reflection;
-  refl::GlobalDef()
-    .def("relax.transform.ExpandTupleArguments", ExpandTupleArguments);
+  refl::GlobalDef().def("relax.transform.ExpandTupleArguments", ExpandTupleArguments);
 });
 
 }  // namespace transform

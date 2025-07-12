@@ -21,9 +21,9 @@
  * \file tensor.cc
  */
 #include <tvm/ffi/function.h>
+#include <tvm/ffi/reflection/reflection.h>
 #include <tvm/te/operation.h>
 #include <tvm/te/tensor.h>
-#include <tvm/ffi/reflection/reflection.h>
 
 namespace tvm {
 namespace te {
@@ -112,10 +112,10 @@ Tensor::Tensor(Array<PrimExpr> shape, DataType dtype, Operation op, int value_in
 
 TVM_FFI_STATIC_INIT_BLOCK({
   namespace refl = tvm::ffi::reflection;
-  refl::GlobalDef()
-    .def("te.Tensor", [](Array<PrimExpr> shape, DataType dtype, Operation op, int value_index) {
-      return Tensor(shape, dtype, op, value_index);
-    });
+  refl::GlobalDef().def("te.Tensor",
+                        [](Array<PrimExpr> shape, DataType dtype, Operation op, int value_index) {
+                          return Tensor(shape, dtype, op, value_index);
+                        });
 });
 
 TVM_REGISTER_NODE_TYPE(TensorNode);
@@ -130,15 +130,15 @@ TVM_STATIC_IR_FUNCTOR(ReprPrinter, vtable)
 TVM_FFI_STATIC_INIT_BLOCK({
   namespace refl = tvm::ffi::reflection;
   refl::GlobalDef()
-    .def_method("te.TensorEqual", &Tensor::operator==)
-    .def("te.TensorHash", [](Tensor tensor) -> int64_t {
-  return static_cast<int64_t>(std::hash<Tensor>()(tensor));
-})
-    .def("te.OpGetOutput", [](Operation op, int64_t output) {
-  return op.output(static_cast<size_t>(output));
-})
-    .def_method("te.OpNumOutputs", &OperationNode::num_outputs)
-    .def_method("te.OpInputTensors", &OperationNode::InputTensors);
+      .def_method("te.TensorEqual", &Tensor::operator==)
+      .def("te.TensorHash",
+           [](Tensor tensor) -> int64_t {
+             return static_cast<int64_t>(std::hash<Tensor>()(tensor));
+           })
+      .def("te.OpGetOutput",
+           [](Operation op, int64_t output) { return op.output(static_cast<size_t>(output)); })
+      .def_method("te.OpNumOutputs", &OperationNode::num_outputs)
+      .def_method("te.OpInputTensors", &OperationNode::InputTensors);
 });
 
 }  // namespace te

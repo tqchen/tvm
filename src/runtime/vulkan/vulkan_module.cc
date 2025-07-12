@@ -18,10 +18,10 @@
  */
 
 #include "vulkan_module.h"
-#include <tvm/ffi/reflection/reflection.h>
 
 #include <dmlc/memory_io.h>
 #include <tvm/ffi/function.h>
+#include <tvm/ffi/reflection/reflection.h>
 
 #include "../file_utils.h"
 #include "vulkan_wrapped_func.h"
@@ -68,8 +68,8 @@ Module VulkanModuleLoadBinary(void* strm) {
 TVM_FFI_STATIC_INIT_BLOCK({
   namespace refl = tvm::ffi::reflection;
   refl::GlobalDef()
-    .def("runtime.module.loadfile_vulkan", VulkanModuleLoadFile)
-    .def("runtime.module.loadbinary_vulkan", VulkanModuleLoadBinary);
+      .def("runtime.module.loadfile_vulkan", VulkanModuleLoadFile)
+      .def("runtime.module.loadbinary_vulkan", VulkanModuleLoadBinary);
 });
 
 }  // namespace vulkan

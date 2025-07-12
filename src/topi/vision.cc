@@ -22,8 +22,8 @@
  * \file vision.cc
  */
 #include <tvm/ffi/function.h>
-#include <tvm/topi/vision/reorg.h>
 #include <tvm/ffi/reflection/reflection.h>
+#include <tvm/topi/vision/reorg.h>
 
 namespace tvm {
 namespace topi {
@@ -33,10 +33,9 @@ using namespace tvm::runtime;
 
 TVM_FFI_STATIC_INIT_BLOCK({
   namespace refl = tvm::ffi::reflection;
-  refl::GlobalDef()
-    .def_packed("topi.vision.reorg", [](ffi::PackedArgs args, ffi::Any* rv) {
-      *rv = vision::reorg(args[0].cast<te::Tensor>(), args[1].cast<int>());
-    });
+  refl::GlobalDef().def_packed("topi.vision.reorg", [](ffi::PackedArgs args, ffi::Any* rv) {
+    *rv = vision::reorg(args[0].cast<te::Tensor>(), args[1].cast<int>());
+  });
 });
 
 }  // namespace topi

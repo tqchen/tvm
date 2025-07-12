@@ -30,10 +30,10 @@
 #include <tvm/ffi/container/array.h>
 #include <tvm/ffi/container/map.h>
 #include <tvm/ffi/function.h>
+#include <tvm/ffi/reflection/reflection.h>
 #include <tvm/ffi/string.h>
 #include <tvm/runtime/module.h>
 #include <tvm/runtime/ndarray.h>
-#include <tvm/ffi/reflection/reflection.h>
 
 #include <cstdint>
 
@@ -250,8 +250,8 @@ Module ConstLoaderModuleCreate(
 
 TVM_FFI_STATIC_INIT_BLOCK({
   namespace refl = tvm::ffi::reflection;
-  refl::GlobalDef()
-    .def("runtime.module.loadbinary_const_loader", ConstLoaderModuleNode::LoadFromBinary);
+  refl::GlobalDef().def("runtime.module.loadbinary_const_loader",
+                        ConstLoaderModuleNode::LoadFromBinary);
 });
 
 }  // namespace runtime

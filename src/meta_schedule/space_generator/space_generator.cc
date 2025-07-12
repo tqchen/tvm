@@ -16,9 +16,10 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+#include <tvm/ffi/reflection/reflection.h>
+
 #include "../../target/parsers/aprofile.h"
 #include "../utils.h"
-#include <tvm/ffi/reflection/reflection.h>
 
 namespace tvm {
 namespace meta_schedule {
@@ -199,10 +200,12 @@ TVM_REGISTER_NODE_TYPE(PySpaceGeneratorNode);
 TVM_FFI_STATIC_INIT_BLOCK({
   namespace refl = tvm::ffi::reflection;
   refl::GlobalDef()
-    .def_method("meta_schedule.SpaceGeneratorInitializeWithTuneContext", &SpaceGeneratorNode::InitializeWithTuneContext)
-    .def_method("meta_schedule.SpaceGeneratorGenerateDesignSpace", &SpaceGeneratorNode::GenerateDesignSpace)
-    .def("meta_schedule.SpaceGeneratorPySpaceGenerator", SpaceGenerator::PySpaceGenerator)
-    .def_method("meta_schedule.SpaceGeneratorClone", &SpaceGeneratorNode::Clone);
+      .def_method("meta_schedule.SpaceGeneratorInitializeWithTuneContext",
+                  &SpaceGeneratorNode::InitializeWithTuneContext)
+      .def_method("meta_schedule.SpaceGeneratorGenerateDesignSpace",
+                  &SpaceGeneratorNode::GenerateDesignSpace)
+      .def("meta_schedule.SpaceGeneratorPySpaceGenerator", SpaceGenerator::PySpaceGenerator)
+      .def_method("meta_schedule.SpaceGeneratorClone", &SpaceGeneratorNode::Clone);
 });
 
 }  // namespace meta_schedule

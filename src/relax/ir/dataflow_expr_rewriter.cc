@@ -197,21 +197,24 @@ TVM_REGISTER_NODE_TYPE(PatternMatchingRewriterNode);
 TVM_FFI_STATIC_INIT_BLOCK({
   namespace refl = tvm::ffi::reflection;
   refl::GlobalDef()
-    .def("relax.dpl.PatternMatchingRewriterFromPattern", [](DFPattern pattern,
-                       ffi::TypedFunction<Optional<Expr>(Expr, Map<DFPattern, Expr>)> func) {
-      return PatternMatchingRewriter::FromPattern(pattern, func);
-    })
-    .def("relax.dpl.PatternMatchingRewriterFromModule", [](IRModule mod) { return PatternMatchingRewriter::FromModule(mod); })
-    .def("relax.dpl.PatternMatchingRewriterApply", [](PatternMatchingRewriter rewriter,
-                       Variant<Expr, IRModule> obj) -> Variant<Expr, IRModule> {
-      if (auto expr = obj.as<Expr>()) {
-        return rewriter(expr.value());
-      } else if (auto mod = obj.as<IRModule>()) {
-        return rewriter(mod.value());
-      } else {
-        LOG(FATAL) << "Unreachable: object does not contain either variant type";
-      }
-    });
+      .def("relax.dpl.PatternMatchingRewriterFromPattern",
+           [](DFPattern pattern,
+              ffi::TypedFunction<Optional<Expr>(Expr, Map<DFPattern, Expr>)> func) {
+             return PatternMatchingRewriter::FromPattern(pattern, func);
+           })
+      .def("relax.dpl.PatternMatchingRewriterFromModule",
+           [](IRModule mod) { return PatternMatchingRewriter::FromModule(mod); })
+      .def("relax.dpl.PatternMatchingRewriterApply",
+           [](PatternMatchingRewriter rewriter,
+              Variant<Expr, IRModule> obj) -> Variant<Expr, IRModule> {
+             if (auto expr = obj.as<Expr>()) {
+               return rewriter(expr.value());
+             } else if (auto mod = obj.as<IRModule>()) {
+               return rewriter(mod.value());
+             } else {
+               LOG(FATAL) << "Unreachable: object does not contain either variant type";
+             }
+           });
 });
 
 TVM_REGISTER_NODE_TYPE(ExprPatternRewriterNode);
@@ -260,11 +263,11 @@ Optional<Expr> ExprPatternRewriterNode::RewriteExpr(const Expr& expr,
 
 TVM_FFI_STATIC_INIT_BLOCK({
   namespace refl = tvm::ffi::reflection;
-  refl::GlobalDef()
-    .def("relax.dpl.PatternRewriter", [](DFPattern pattern,
-                       ffi::TypedFunction<Optional<Expr>(Expr, Map<DFPattern, Expr>)> func) {
-      return ExprPatternRewriter(pattern, func);
-    });
+  refl::GlobalDef().def(
+      "relax.dpl.PatternRewriter",
+      [](DFPattern pattern, ffi::TypedFunction<Optional<Expr>(Expr, Map<DFPattern, Expr>)> func) {
+        return ExprPatternRewriter(pattern, func);
+      });
 });
 
 ExprPatternRewriter::ExprPatternRewriter(
@@ -312,10 +315,10 @@ RewriteSpec OrRewriterNode::RewriteBindings(const Array<Binding>& bindings) cons
 
 TVM_FFI_STATIC_INIT_BLOCK({
   namespace refl = tvm::ffi::reflection;
-  refl::GlobalDef()
-    .def("relax.dpl.OrRewriter", [](PatternMatchingRewriter lhs, PatternMatchingRewriter rhs) {
-      return OrRewriter(lhs, rhs);
-    });
+  refl::GlobalDef().def("relax.dpl.OrRewriter",
+                        [](PatternMatchingRewriter lhs, PatternMatchingRewriter rhs) {
+                          return OrRewriter(lhs, rhs);
+                        });
 });
 
 OrRewriter::OrRewriter(PatternMatchingRewriter lhs, PatternMatchingRewriter rhs) {
@@ -610,11 +613,11 @@ std::optional<std::vector<Expr>> TupleRewriterNode::TryMatchByBindingIndex(
 
 TVM_FFI_STATIC_INIT_BLOCK({
   namespace refl = tvm::ffi::reflection;
-  refl::GlobalDef()
-    .def("relax.dpl.TupleRewriter", [](Array<DFPattern> patterns,
-                       ffi::TypedFunction<Optional<Expr>(Expr, Map<DFPattern, Expr>)> func) {
-      return TupleRewriter(patterns, func);
-    });
+  refl::GlobalDef().def("relax.dpl.TupleRewriter",
+                        [](Array<DFPattern> patterns,
+                           ffi::TypedFunction<Optional<Expr>(Expr, Map<DFPattern, Expr>)> func) {
+                          return TupleRewriter(patterns, func);
+                        });
 });
 
 TupleRewriter::TupleRewriter(Array<DFPattern> patterns,
@@ -805,8 +808,7 @@ Optional<Map<DFPattern, Expr>> ExtractMatchedExpr(DFPattern pattern, Expr expr,
 
 TVM_FFI_STATIC_INIT_BLOCK({
   namespace refl = tvm::ffi::reflection;
-  refl::GlobalDef()
-    .def("relax.dpl.extract_matched_expr", ExtractMatchedExpr);
+  refl::GlobalDef().def("relax.dpl.extract_matched_expr", ExtractMatchedExpr);
 });
 
 bool MatchExpr(DFPattern pattern, Expr expr, Optional<Map<Var, Expr>> bindings_opt) {
@@ -815,8 +817,7 @@ bool MatchExpr(DFPattern pattern, Expr expr, Optional<Map<Var, Expr>> bindings_o
 
 TVM_FFI_STATIC_INIT_BLOCK({
   namespace refl = tvm::ffi::reflection;
-  refl::GlobalDef()
-    .def("relax.dpl.match_expr", MatchExpr);
+  refl::GlobalDef().def("relax.dpl.match_expr", MatchExpr);
 });
 
 /*!
@@ -1091,8 +1092,7 @@ Function RewriteCall(const DFPattern& pat,
 
 TVM_FFI_STATIC_INIT_BLOCK({
   namespace refl = tvm::ffi::reflection;
-  refl::GlobalDef()
-    .def("relax.dpl.rewrite_call", RewriteCall);
+  refl::GlobalDef().def("relax.dpl.rewrite_call", RewriteCall);
 });
 
 TVM_FFI_STATIC_INIT_BLOCK({

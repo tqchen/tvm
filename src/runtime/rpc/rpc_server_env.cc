@@ -39,22 +39,24 @@ std::string RPCGetPath(const std::string& name) {
 TVM_FFI_STATIC_INIT_BLOCK({
   namespace refl = tvm::ffi::reflection;
   refl::GlobalDef()
-    .def_packed("tvm.rpc.server.upload", [](ffi::PackedArgs args, ffi::Any* rv) {
-      std::string file_name = RPCGetPath(args[0].cast<std::string>());
-      auto data = args[1].cast<std::string>();
-      SaveBinaryToFile(file_name, data);
-    })
-    .def_packed("tvm.rpc.server.download", [](ffi::PackedArgs args, ffi::Any* rv) {
-      std::string file_name = RPCGetPath(args[0].cast<std::string>());
-      std::string data;
-      LoadBinaryFromFile(file_name, &data);
-      LOG(INFO) << "Download " << file_name << "... nbytes=" << data.size();
-      *rv = ffi::Bytes(data);
-    })
-    .def_packed("tvm.rpc.server.remove", [](ffi::PackedArgs args, ffi::Any* rv) {
-      std::string file_name = RPCGetPath(args[0].cast<std::string>());
-      RemoveFile(file_name);
-    });
+      .def_packed("tvm.rpc.server.upload",
+                  [](ffi::PackedArgs args, ffi::Any* rv) {
+                    std::string file_name = RPCGetPath(args[0].cast<std::string>());
+                    auto data = args[1].cast<std::string>();
+                    SaveBinaryToFile(file_name, data);
+                  })
+      .def_packed("tvm.rpc.server.download",
+                  [](ffi::PackedArgs args, ffi::Any* rv) {
+                    std::string file_name = RPCGetPath(args[0].cast<std::string>());
+                    std::string data;
+                    LoadBinaryFromFile(file_name, &data);
+                    LOG(INFO) << "Download " << file_name << "... nbytes=" << data.size();
+                    *rv = ffi::Bytes(data);
+                  })
+      .def_packed("tvm.rpc.server.remove", [](ffi::PackedArgs args, ffi::Any* rv) {
+        std::string file_name = RPCGetPath(args[0].cast<std::string>());
+        RemoveFile(file_name);
+      });
 });
 
 }  // namespace runtime

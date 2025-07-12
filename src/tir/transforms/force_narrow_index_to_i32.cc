@@ -23,10 +23,10 @@
  * \note This pass is not used in default cases.
  */
 
+#include <tvm/ffi/reflection/reflection.h>
 #include <tvm/tir/data_type_rewriter.h>
 #include <tvm/tir/op.h>
 #include <tvm/tir/transform.h>
-#include <tvm/ffi/reflection/reflection.h>
 
 namespace tvm {
 namespace tir {
@@ -89,8 +89,7 @@ Pass ForceNarrowIndexToInt32() {
 
 TVM_FFI_STATIC_INIT_BLOCK({
   namespace refl = tvm::ffi::reflection;
-  refl::GlobalDef()
-    .def("tir.transform.ForceNarrowIndexToInt32", ForceNarrowIndexToInt32);
+  refl::GlobalDef().def("tir.transform.ForceNarrowIndexToInt32", ForceNarrowIndexToInt32);
 });
 
 }  // namespace transform

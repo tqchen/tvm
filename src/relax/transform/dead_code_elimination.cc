@@ -32,12 +32,12 @@
  * Any binding blocks that are left empty will be removed by the normalizer.
  */
 
+#include <tvm/ffi/reflection/reflection.h>
 #include <tvm/ir/analysis.h>
 #include <tvm/relax/analysis.h>
 #include <tvm/relax/expr.h>
 #include <tvm/relax/expr_functor.h>
 #include <tvm/relax/transform.h>
-#include <tvm/ffi/reflection/reflection.h>
 
 #include "utils.h"
 
@@ -143,8 +143,7 @@ Pass DeadCodeElimination(Array<String> entry_functions) {
 
 TVM_FFI_STATIC_INIT_BLOCK({
   namespace refl = tvm::ffi::reflection;
-  refl::GlobalDef()
-    .def("relax.transform.DeadCodeElimination", DeadCodeElimination);
+  refl::GlobalDef().def("relax.transform.DeadCodeElimination", DeadCodeElimination);
 });
 
 }  // namespace transform

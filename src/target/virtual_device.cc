@@ -22,10 +22,10 @@
  * \brief A compile time representation for where data is to be stored at runtime, and how to
  * compile code to compute it.
  */
+#include <tvm/ffi/reflection/reflection.h>
 #include <tvm/node/reflection.h>
 #include <tvm/runtime/device_api.h>
 #include <tvm/target/virtual_device.h>
-#include <tvm/ffi/reflection/reflection.h>
 
 namespace tvm {
 
@@ -196,8 +196,8 @@ VirtualDevice VirtualDeviceCache::Unique(const VirtualDevice& virtual_device) {
 
 TVM_FFI_STATIC_INIT_BLOCK({
   namespace refl = tvm::ffi::reflection;
-  refl::GlobalDef()
-    .def("target.VirtualDevice_ForDeviceTargetAndMemoryScope", VirtualDevice::ForDeviceTargetAndMemoryScope);
+  refl::GlobalDef().def("target.VirtualDevice_ForDeviceTargetAndMemoryScope",
+                        VirtualDevice::ForDeviceTargetAndMemoryScope);
 });
 
 }  // namespace tvm

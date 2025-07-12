@@ -23,6 +23,7 @@
  */
 
 #include "search.h"
+
 #include <tvm/ffi/reflection/reflection.h>
 
 #include <algorithm>
@@ -49,8 +50,7 @@ Expr bucketize(Expr input_tensor, Expr boundaries, bool out_int32, bool right) {
 
 TVM_FFI_STATIC_INIT_BLOCK({
   namespace refl = tvm::ffi::reflection;
-  refl::GlobalDef()
-    .def("relax.op.bucketize", bucketize);
+  refl::GlobalDef().def("relax.op.bucketize", bucketize);
 });
 
 StructInfo InferStructInfoBucketize(const Call& call, const BlockBuilder& ctx) {
@@ -96,8 +96,7 @@ Expr where(Expr condition, Expr x1, Expr x2) {
 
 TVM_FFI_STATIC_INIT_BLOCK({
   namespace refl = tvm::ffi::reflection;
-  refl::GlobalDef()
-    .def("relax.op.where", where);
+  refl::GlobalDef().def("relax.op.where", where);
 });
 
 StructInfo InferStructInfoWhere(const Call& call, const BlockBuilder& ctx) {

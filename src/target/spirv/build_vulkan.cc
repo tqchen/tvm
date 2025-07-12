@@ -22,11 +22,12 @@
  * \brief Build SPIRV block
  */
 
+#include <tvm/ffi/reflection/reflection.h>
+
 #include "../../runtime/spirv/spirv_shader.h"
 #include "../../runtime/vulkan/vulkan_module.h"
 #include "../build_common.h"
 #include "spirv_utils.h"
-#include <tvm/ffi/reflection/reflection.h>
 
 namespace tvm {
 namespace codegen {
@@ -38,10 +39,8 @@ runtime::Module BuildSPIRV(IRModule mod, Target target) {
 
 TVM_FFI_STATIC_INIT_BLOCK({
   namespace refl = tvm::ffi::reflection;
-  refl::GlobalDef()
-    .def("target.build.vulkan", [](IRModule mod, Target target) {
-  return BuildSPIRV(mod, target);
-});
+  refl::GlobalDef().def("target.build.vulkan",
+                        [](IRModule mod, Target target) { return BuildSPIRV(mod, target); });
 });
 
 }  // namespace codegen

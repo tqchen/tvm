@@ -21,10 +21,10 @@
  * \file rocm_module.cc
  */
 #include "rocm_module.h"
-#include <tvm/ffi/reflection/reflection.h>
 
 #include <hip/hip_runtime_api.h>
 #include <tvm/ffi/function.h>
+#include <tvm/ffi/reflection/reflection.h>
 
 #include <array>
 #include <mutex>
@@ -235,10 +235,10 @@ Module ROCMModuleLoadBinary(void* strm) {
 TVM_FFI_STATIC_INIT_BLOCK({
   namespace refl = tvm::ffi::reflection;
   refl::GlobalDef()
-    .def("runtime.module.loadbinary_hsaco", ROCMModuleLoadBinary)
-    .def("runtime.module.loadbinary_hip", ROCMModuleLoadBinary)
-    .def("runtime.module.loadfile_hsaco", ROCMModuleLoadFile)
-    .def("runtime.module.loadfile_hip", ROCMModuleLoadFile);
+      .def("runtime.module.loadbinary_hsaco", ROCMModuleLoadBinary)
+      .def("runtime.module.loadbinary_hip", ROCMModuleLoadBinary)
+      .def("runtime.module.loadfile_hsaco", ROCMModuleLoadFile)
+      .def("runtime.module.loadfile_hip", ROCMModuleLoadFile);
 });
 }  // namespace runtime
 }  // namespace tvm

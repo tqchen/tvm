@@ -23,9 +23,9 @@
  * \brief Utilities for identifying potentially compile-time variables
  */
 
+#include <tvm/ffi/reflection/reflection.h>
 #include <tvm/relax/analysis.h>
 #include <tvm/relax/expr_functor.h>
-#include <tvm/ffi/reflection/reflection.h>
 
 #include "../../support/ordered_set.h"
 
@@ -95,8 +95,7 @@ Array<Var> ComputableAtCompileTime(const Function& func) {
 
 TVM_FFI_STATIC_INIT_BLOCK({
   namespace refl = tvm::ffi::reflection;
-  refl::GlobalDef()
-    .def("relax.analysis.computable_at_compile_time", ComputableAtCompileTime);
+  refl::GlobalDef().def("relax.analysis.computable_at_compile_time", ComputableAtCompileTime);
 });
 
 }  // namespace relax

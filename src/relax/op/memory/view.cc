@@ -23,6 +23,7 @@
  */
 
 #include "view.h"
+
 #include <tvm/ffi/reflection/reflection.h>
 
 namespace tvm {
@@ -43,8 +44,7 @@ Expr view(Expr x, Optional<Expr> shape, Optional<Expr> dtype, Optional<Expr> rel
 
 TVM_FFI_STATIC_INIT_BLOCK({
   namespace refl = tvm::ffi::reflection;
-  refl::GlobalDef()
-    .def("relax.op.memory.view", view);
+  refl::GlobalDef().def("relax.op.memory.view", view);
 });
 
 StructInfo InferStructInfoView(const Call& call, const BlockBuilder& ctx) {
@@ -296,8 +296,7 @@ StructInfo InferStructInfoView(const Call& call, const BlockBuilder& ctx) {
 
 TVM_FFI_STATIC_INIT_BLOCK({
   namespace refl = tvm::ffi::reflection;
-  refl::GlobalDef()
-    .def("tvm.relax.struct_info.infer_view_sinfo", InferStructInfoView);
+  refl::GlobalDef().def("tvm.relax.struct_info.infer_view_sinfo", InferStructInfoView);
 });
 
 Expr LowerBuiltinView(const BlockBuilder& bb, const Call& call) {
@@ -371,8 +370,7 @@ Expr ensure_zero_offset(const Expr& x) {
 
 TVM_FFI_STATIC_INIT_BLOCK({
   namespace refl = tvm::ffi::reflection;
-  refl::GlobalDef()
-    .def("relax.op.memory.ensure_zero_offset", ensure_zero_offset);
+  refl::GlobalDef().def("relax.op.memory.ensure_zero_offset", ensure_zero_offset);
 });
 
 StructInfo InferStructInfoEnsureZeroOffset(const Call& call, const BlockBuilder& ctx) {

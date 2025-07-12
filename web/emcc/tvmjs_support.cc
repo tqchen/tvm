@@ -32,8 +32,8 @@
 #define DMLC_USE_LOGGING_LIBRARY <tvm/runtime/logging.h>
 
 #include <tvm/ffi/function.h>
-#include <tvm/runtime/device_api.h>
 #include <tvm/ffi/reflection/reflection.h>
+#include <tvm/runtime/device_api.h>
 
 #include "../../src/runtime/rpc/rpc_local_session.h"
 
@@ -304,10 +304,9 @@ class AsyncLocalSession : public LocalSession {
 
 TVM_FFI_STATIC_INIT_BLOCK({
   namespace refl = tvm::ffi::reflection;
-  refl::GlobalDef()
-    .def("wasm.LocalSession", []() {
-  return CreateRPCSessionModule(std::make_shared<AsyncLocalSession>());
-});
+  refl::GlobalDef().def("wasm.LocalSession", []() {
+    return CreateRPCSessionModule(std::make_shared<AsyncLocalSession>());
+  });
 });
 
 }  // namespace runtime

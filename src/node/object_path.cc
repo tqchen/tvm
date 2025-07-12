@@ -19,9 +19,9 @@
 
 #include <tvm/ffi/function.h>
 #include <tvm/ffi/memory.h>
+#include <tvm/ffi/reflection/reflection.h>
 #include <tvm/node/object_path.h>
 #include <tvm/node/repr_printer.h>
-#include <tvm/ffi/reflection/reflection.h>
 
 #include <algorithm>
 #include <cstring>
@@ -43,8 +43,7 @@ Optional<ObjectPath> ObjectPathNode::GetParent() const {
 
 TVM_FFI_STATIC_INIT_BLOCK({
   namespace refl = tvm::ffi::reflection;
-  refl::GlobalDef()
-    .def_method("node.ObjectPathGetParent", &ObjectPathNode::GetParent);
+  refl::GlobalDef().def_method("node.ObjectPathGetParent", &ObjectPathNode::GetParent);
 });
 
 // --- Length ---
@@ -53,8 +52,7 @@ int32_t ObjectPathNode::Length() const { return length_; }
 
 TVM_FFI_STATIC_INIT_BLOCK({
   namespace refl = tvm::ffi::reflection;
-  refl::GlobalDef()
-    .def_method("node.ObjectPathLength", &ObjectPathNode::Length);
+  refl::GlobalDef().def_method("node.ObjectPathLength", &ObjectPathNode::Length);
 });
 
 // --- GetPrefix ---
@@ -74,8 +72,7 @@ ObjectPath ObjectPathNode::GetPrefix(int32_t length) const {
 
 TVM_FFI_STATIC_INIT_BLOCK({
   namespace refl = tvm::ffi::reflection;
-  refl::GlobalDef()
-    .def_method("node.ObjectPathGetPrefix", &ObjectPathNode::GetPrefix);
+  refl::GlobalDef().def_method("node.ObjectPathGetPrefix", &ObjectPathNode::GetPrefix);
 });
 
 // --- IsPrefixOf ---
@@ -90,8 +87,7 @@ bool ObjectPathNode::IsPrefixOf(const ObjectPath& other) const {
 
 TVM_FFI_STATIC_INIT_BLOCK({
   namespace refl = tvm::ffi::reflection;
-  refl::GlobalDef()
-    .def_method("node.ObjectPathIsPrefixOf", &ObjectPathNode::IsPrefixOf);
+  refl::GlobalDef().def_method("node.ObjectPathIsPrefixOf", &ObjectPathNode::IsPrefixOf);
 });
 
 // --- Attr ---
@@ -114,10 +110,10 @@ ObjectPath ObjectPathNode::Attr(Optional<String> attr_key) const {
 
 TVM_FFI_STATIC_INIT_BLOCK({
   namespace refl = tvm::ffi::reflection;
-  refl::GlobalDef()
-    .def("node.ObjectPathAttr", [](const ObjectPath& object_path, Optional<String> attr_key) {
-      return object_path->Attr(attr_key);
-    });
+  refl::GlobalDef().def("node.ObjectPathAttr",
+                        [](const ObjectPath& object_path, Optional<String> attr_key) {
+                          return object_path->Attr(attr_key);
+                        });
 });
 
 // --- ArrayIndex ---
@@ -128,8 +124,7 @@ ObjectPath ObjectPathNode::ArrayIndex(int32_t index) const {
 
 TVM_FFI_STATIC_INIT_BLOCK({
   namespace refl = tvm::ffi::reflection;
-  refl::GlobalDef()
-    .def_method("node.ObjectPathArrayIndex", &ObjectPathNode::ArrayIndex);
+  refl::GlobalDef().def_method("node.ObjectPathArrayIndex", &ObjectPathNode::ArrayIndex);
 });
 
 // --- MissingArrayElement ---
@@ -140,8 +135,8 @@ ObjectPath ObjectPathNode::MissingArrayElement(int32_t index) const {
 
 TVM_FFI_STATIC_INIT_BLOCK({
   namespace refl = tvm::ffi::reflection;
-  refl::GlobalDef()
-    .def_method("node.ObjectPathMissingArrayElement", &ObjectPathNode::MissingArrayElement);
+  refl::GlobalDef().def_method("node.ObjectPathMissingArrayElement",
+                               &ObjectPathNode::MissingArrayElement);
 });
 
 // --- MapValue ---
@@ -152,8 +147,7 @@ ObjectPath ObjectPathNode::MapValue(Any key) const {
 
 TVM_FFI_STATIC_INIT_BLOCK({
   namespace refl = tvm::ffi::reflection;
-  refl::GlobalDef()
-    .def_method("node.ObjectPathMapValue", &ObjectPathNode::MapValue);
+  refl::GlobalDef().def_method("node.ObjectPathMapValue", &ObjectPathNode::MapValue);
 });
 
 // --- MissingMapEntry ---
@@ -164,8 +158,7 @@ ObjectPath ObjectPathNode::MissingMapEntry() const {
 
 TVM_FFI_STATIC_INIT_BLOCK({
   namespace refl = tvm::ffi::reflection;
-  refl::GlobalDef()
-    .def_method("node.ObjectPathMissingMapEntry", &ObjectPathNode::MissingMapEntry);
+  refl::GlobalDef().def_method("node.ObjectPathMissingMapEntry", &ObjectPathNode::MissingMapEntry);
 });
 
 // --- PathsEqual ----
@@ -194,8 +187,7 @@ bool ObjectPathNode::PathsEqual(const ObjectPath& other) const {
 
 TVM_FFI_STATIC_INIT_BLOCK({
   namespace refl = tvm::ffi::reflection;
-  refl::GlobalDef()
-    .def_method("node.ObjectPathEqual", &ObjectPathNode::PathsEqual);
+  refl::GlobalDef().def_method("node.ObjectPathEqual", &ObjectPathNode::PathsEqual);
 });
 
 // --- Repr ---
@@ -231,8 +223,7 @@ const ObjectPathNode* ObjectPathNode::ParentNode() const {
 
 TVM_FFI_STATIC_INIT_BLOCK({
   namespace refl = tvm::ffi::reflection;
-  refl::GlobalDef()
-    .def("node.ObjectPathRoot", ObjectPath::Root);
+  refl::GlobalDef().def("node.ObjectPathRoot", ObjectPath::Root);
 });
 
 // ============== Individual path classes ==============

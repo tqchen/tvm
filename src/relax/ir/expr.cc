@@ -123,9 +123,9 @@ TVM_REGISTER_NODE_TYPE(CallNode);
 
 TVM_FFI_STATIC_INIT_BLOCK({
   namespace refl = tvm::ffi::reflection;
-  refl::GlobalDef()
-    .def("relax.Call", [](Expr op, Array<Expr> args, Attrs attrs, Array<StructInfo> sinfo_args,
-                       Span span) { return Call(op, args, attrs, sinfo_args, span); });
+  refl::GlobalDef().def("relax.Call",
+                        [](Expr op, Array<Expr> args, Attrs attrs, Array<StructInfo> sinfo_args,
+                           Span span) { return Call(op, args, attrs, sinfo_args, span); });
 });
 
 If::If(Expr cond, Expr true_branch, Expr false_branch, Span span) {
@@ -161,10 +161,9 @@ TVM_REGISTER_NODE_TYPE(IfNode);
 
 TVM_FFI_STATIC_INIT_BLOCK({
   namespace refl = tvm::ffi::reflection;
-  refl::GlobalDef()
-    .def("relax.If", [](Expr cond, Expr true_branch, Expr false_branch, Span span) {
-      return If(cond, true_branch, false_branch, span);
-    });
+  refl::GlobalDef().def("relax.If", [](Expr cond, Expr true_branch, Expr false_branch, Span span) {
+    return If(cond, true_branch, false_branch, span);
+  });
 });
 
 Tuple::Tuple(tvm::Array<Expr> fields, Span span) {
@@ -191,10 +190,8 @@ TVM_REGISTER_NODE_TYPE(TupleNode);
 
 TVM_FFI_STATIC_INIT_BLOCK({
   namespace refl = tvm::ffi::reflection;
-  refl::GlobalDef()
-    .def("relax.Tuple", [](tvm::Array<Expr> fields, Span span) {
-  return Tuple(fields, span);
-});
+  refl::GlobalDef().def("relax.Tuple",
+                        [](tvm::Array<Expr> fields, Span span) { return Tuple(fields, span); });
 });
 
 Tuple WithFields(Tuple tuple, Optional<Array<Expr>> opt_fields, Optional<Span> opt_span) {
@@ -258,10 +255,9 @@ TVM_REGISTER_NODE_TYPE(TupleGetItemNode);
 
 TVM_FFI_STATIC_INIT_BLOCK({
   namespace refl = tvm::ffi::reflection;
-  refl::GlobalDef()
-    .def("relax.TupleGetItem", [](Expr tuple, int index, Span span) {
-  return TupleGetItem(tuple, index, span);
-});
+  refl::GlobalDef().def("relax.TupleGetItem", [](Expr tuple, int index, Span span) {
+    return TupleGetItem(tuple, index, span);
+  });
 });
 
 TVM_REGISTER_NODE_TYPE(ShapeExprNode);
@@ -284,10 +280,8 @@ ShapeExpr::ShapeExpr(Array<PrimExpr> values, Span span) {
 
 TVM_FFI_STATIC_INIT_BLOCK({
   namespace refl = tvm::ffi::reflection;
-  refl::GlobalDef()
-    .def("relax.ShapeExpr", [](Array<PrimExpr> values, Span span) {
-  return ShapeExpr(values, span);
-});
+  refl::GlobalDef().def("relax.ShapeExpr",
+                        [](Array<PrimExpr> values, Span span) { return ShapeExpr(values, span); });
 });
 
 TVM_REGISTER_NODE_TYPE(VarNode);
@@ -322,12 +316,11 @@ VarNode* Var::CopyOnWrite() {
 TVM_FFI_STATIC_INIT_BLOCK({
   namespace refl = tvm::ffi::reflection;
   refl::GlobalDef()
-    .def("relax.Var", [](String name_hint, Optional<StructInfo> struct_info_annotation, Span span) {
-      return Var(name_hint, struct_info_annotation, span);
-    })
-    .def("relax.VarFromId", [](Id vid, Optional<StructInfo> struct_info_annotation, Span span) {
-      return Var(vid, struct_info_annotation, span);
-    });
+      .def("relax.Var", [](String name_hint, Optional<StructInfo> struct_info_annotation,
+                           Span span) { return Var(name_hint, struct_info_annotation, span); })
+      .def("relax.VarFromId", [](Id vid, Optional<StructInfo> struct_info_annotation, Span span) {
+        return Var(vid, struct_info_annotation, span);
+      });
 });
 
 TVM_REGISTER_NODE_TYPE(DataflowVarNode);
@@ -344,12 +337,14 @@ DataflowVar::DataflowVar(Id vid, Optional<StructInfo> struct_info_annotation, Sp
 TVM_FFI_STATIC_INIT_BLOCK({
   namespace refl = tvm::ffi::reflection;
   refl::GlobalDef()
-    .def("relax.DataflowVar", [](String name_hint, Optional<StructInfo> struct_info_annotation, Span span) {
-      return DataflowVar(name_hint, struct_info_annotation, span);
-    })
-    .def("relax.DataflowVarFromId", [](Id vid, Optional<StructInfo> struct_info_annotation, Span span) {
-      return DataflowVar(vid, struct_info_annotation, span);
-    });
+      .def("relax.DataflowVar",
+           [](String name_hint, Optional<StructInfo> struct_info_annotation, Span span) {
+             return DataflowVar(name_hint, struct_info_annotation, span);
+           })
+      .def("relax.DataflowVarFromId",
+           [](Id vid, Optional<StructInfo> struct_info_annotation, Span span) {
+             return DataflowVar(vid, struct_info_annotation, span);
+           });
 });
 
 Constant::Constant(runtime::NDArray data, Optional<StructInfo> struct_info_annotation, Span span) {
@@ -377,12 +372,10 @@ TVM_REGISTER_NODE_TYPE(ConstantNode);
 
 TVM_FFI_STATIC_INIT_BLOCK({
   namespace refl = tvm::ffi::reflection;
-  refl::GlobalDef()
-    .def("relax.Constant", [](runtime::NDArray data,
-                       Optional<StructInfo> struct_info_annotation = std::nullopt,
-                       Span span = Span()) {
-      return Constant(data, struct_info_annotation, span);
-    });
+  refl::GlobalDef().def(
+      "relax.Constant",
+      [](runtime::NDArray data, Optional<StructInfo> struct_info_annotation = std::nullopt,
+         Span span = Span()) { return Constant(data, struct_info_annotation, span); });
 });
 
 PrimValue::PrimValue(PrimExpr value, Span span) {
@@ -401,10 +394,8 @@ TVM_REGISTER_NODE_TYPE(PrimValueNode);
 
 TVM_FFI_STATIC_INIT_BLOCK({
   namespace refl = tvm::ffi::reflection;
-  refl::GlobalDef()
-    .def("relax.PrimValue", [](PrimExpr value, Span span) {
-  return PrimValue(value, span);
-});
+  refl::GlobalDef().def("relax.PrimValue",
+                        [](PrimExpr value, Span span) { return PrimValue(value, span); });
 });
 
 StringImm::StringImm(String value, Span span) {
@@ -419,10 +410,8 @@ TVM_REGISTER_NODE_TYPE(StringImmNode);
 
 TVM_FFI_STATIC_INIT_BLOCK({
   namespace refl = tvm::ffi::reflection;
-  refl::GlobalDef()
-    .def("relax.StringImm", [](String value, Span span) {
-  return StringImm(value, span);
-});
+  refl::GlobalDef().def("relax.StringImm",
+                        [](String value, Span span) { return StringImm(value, span); });
 });
 
 DataTypeImm::DataTypeImm(DataType value, Span span) {
@@ -437,10 +426,8 @@ TVM_REGISTER_NODE_TYPE(DataTypeImmNode);
 
 TVM_FFI_STATIC_INIT_BLOCK({
   namespace refl = tvm::ffi::reflection;
-  refl::GlobalDef()
-    .def("relax.DataTypeImm", [](DataType value, Span span) {
-  return DataTypeImm(value, span);
-});
+  refl::GlobalDef().def("relax.DataTypeImm",
+                        [](DataType value, Span span) { return DataTypeImm(value, span); });
 });
 
 TVM_REGISTER_NODE_TYPE(MatchCastNode);
@@ -457,10 +444,10 @@ MatchCast::MatchCast(Var var, Expr value, StructInfo struct_info, Span span) {
 
 TVM_FFI_STATIC_INIT_BLOCK({
   namespace refl = tvm::ffi::reflection;
-  refl::GlobalDef()
-    .def("relax.MatchCast", [](Var var, Expr value, StructInfo struct_info, Span span) {
-      return MatchCast(var, value, struct_info, span);
-    });
+  refl::GlobalDef().def("relax.MatchCast",
+                        [](Var var, Expr value, StructInfo struct_info, Span span) {
+                          return MatchCast(var, value, struct_info, span);
+                        });
 });
 
 bool MatchCastNode::SEqualReduce(const MatchCastNode* other, SEqualReducer equal) const {
@@ -502,10 +489,9 @@ VarBinding::VarBinding(Var var, Expr value, Span span) {
 
 TVM_FFI_STATIC_INIT_BLOCK({
   namespace refl = tvm::ffi::reflection;
-  refl::GlobalDef()
-    .def("relax.VarBinding", [](Var var, Expr value, Span span) {
-  return VarBinding(var, value, span);
-});
+  refl::GlobalDef().def("relax.VarBinding", [](Var var, Expr value, Span span) {
+    return VarBinding(var, value, span);
+  });
 });
 
 bool VarBindingNode::SEqualReduce(const VarBindingNode* other, SEqualReducer equal) const {
@@ -561,10 +547,9 @@ BindingBlockNode* BindingBlock::CopyOnWrite() {
 
 TVM_FFI_STATIC_INIT_BLOCK({
   namespace refl = tvm::ffi::reflection;
-  refl::GlobalDef()
-    .def("relax.BindingBlock", [](Array<Binding> bindings, Span span) {
-      return BindingBlock(bindings, span);
-    });
+  refl::GlobalDef().def("relax.BindingBlock", [](Array<Binding> bindings, Span span) {
+    return BindingBlock(bindings, span);
+  });
 });
 
 TVM_REGISTER_NODE_TYPE(DataflowBlockNode);
@@ -578,10 +563,9 @@ DataflowBlock::DataflowBlock(Array<Binding> bindings, Span span) {
 
 TVM_FFI_STATIC_INIT_BLOCK({
   namespace refl = tvm::ffi::reflection;
-  refl::GlobalDef()
-    .def("relax.DataflowBlock", [](Array<Binding> bindings, Span span) {
-      return DataflowBlock(bindings, span);
-    });
+  refl::GlobalDef().def("relax.DataflowBlock", [](Array<Binding> bindings, Span span) {
+    return DataflowBlock(bindings, span);
+  });
 });
 
 TVM_REGISTER_NODE_TYPE(SeqExprNode);
@@ -604,10 +588,9 @@ SeqExpr::SeqExpr(Array<BindingBlock> blocks, Expr body, Span span) {
 
 TVM_FFI_STATIC_INIT_BLOCK({
   namespace refl = tvm::ffi::reflection;
-  refl::GlobalDef()
-    .def("relax.SeqExpr", [](Array<BindingBlock> blocks, Expr body, Span span) {
-      return SeqExpr(blocks, body, span);
-    });
+  refl::GlobalDef().def("relax.SeqExpr", [](Array<BindingBlock> blocks, Expr body, Span span) {
+    return SeqExpr(blocks, body, span);
+  });
 });
 
 TVM_REGISTER_NODE_TYPE(FunctionNode);
@@ -682,11 +665,11 @@ Function::Function(Array<Var> params, Expr body, Optional<StructInfo> ret_struct
 
 TVM_FFI_STATIC_INIT_BLOCK({
   namespace refl = tvm::ffi::reflection;
-  refl::GlobalDef()
-    .def("relax.Function", [](Array<Var> params, Expr body, Optional<StructInfo> ret_struct_info,
-                       bool is_pure, DictAttrs attrs, Span span) {
-      return Function(params, body, ret_struct_info, is_pure, attrs, span);
-    });
+  refl::GlobalDef().def("relax.Function",
+                        [](Array<Var> params, Expr body, Optional<StructInfo> ret_struct_info,
+                           bool is_pure, DictAttrs attrs, Span span) {
+                          return Function(params, body, ret_struct_info, is_pure, attrs, span);
+                        });
 });
 
 Function Function::CreateEmpty(Array<Var> params, StructInfo ret_struct_info, bool is_pure,
@@ -722,28 +705,29 @@ Function Function::CreateEmpty(Array<Var> params, StructInfo ret_struct_info, bo
 
 TVM_FFI_STATIC_INIT_BLOCK({
   namespace refl = tvm::ffi::reflection;
-  refl::GlobalDef()
-    .def("relax.FunctionCreateEmpty", [](Array<Var> params, StructInfo ret_struct_info, bool is_pure, DictAttrs attrs,
-                       Span span) {
-      return Function::CreateEmpty(params, ret_struct_info, is_pure, attrs, span);
-    });
+  refl::GlobalDef().def(
+      "relax.FunctionCreateEmpty",
+      [](Array<Var> params, StructInfo ret_struct_info, bool is_pure, DictAttrs attrs, Span span) {
+        return Function::CreateEmpty(params, ret_struct_info, is_pure, attrs, span);
+      });
 });
 
 // Special opaque derivation function for ExternFunc
 // Take look at sinfo_args to figure out the return StructInfo.
 TVM_FFI_STATIC_INIT_BLOCK({
   namespace refl = tvm::ffi::reflection;
-  refl::GlobalDef()
-    .def("tvm.relax.struct_info.infer_by_sinfo_args", [](const Call& call, const BlockBuilder& ctx) -> StructInfo {
-      ICHECK(call->sinfo_args.defined()) << "sinfo_args field of CallNode should always be defined";
-      if (call->sinfo_args.empty()) {
-        return ObjectStructInfo();
-      } else if (call->sinfo_args.size() == 1) {
-        return call->sinfo_args[0];
-      } else {
-        return TupleStructInfo(call->sinfo_args);
-      }
-    });
+  refl::GlobalDef().def("tvm.relax.struct_info.infer_by_sinfo_args",
+                        [](const Call& call, const BlockBuilder& ctx) -> StructInfo {
+                          ICHECK(call->sinfo_args.defined())
+                              << "sinfo_args field of CallNode should always be defined";
+                          if (call->sinfo_args.empty()) {
+                            return ObjectStructInfo();
+                          } else if (call->sinfo_args.size() == 1) {
+                            return call->sinfo_args[0];
+                          } else {
+                            return TupleStructInfo(call->sinfo_args);
+                          }
+                        });
 });
 
 // Get the derive function.
@@ -773,14 +757,14 @@ ExternFunc::ExternFunc(String global_symbol, StructInfo struct_info, Span span) 
 
 TVM_FFI_STATIC_INIT_BLOCK({
   namespace refl = tvm::ffi::reflection;
-  refl::GlobalDef()
-    .def("relax.ExternFunc", [](String global_symbol, Optional<StructInfo> struct_info, Span span) {
-      if (struct_info.defined()) {
-        return ExternFunc(global_symbol, struct_info.value(), span);
-      } else {
-        return ExternFunc(global_symbol, span);
-      }
-    });
+  refl::GlobalDef().def("relax.ExternFunc",
+                        [](String global_symbol, Optional<StructInfo> struct_info, Span span) {
+                          if (struct_info.defined()) {
+                            return ExternFunc(global_symbol, struct_info.value(), span);
+                          } else {
+                            return ExternFunc(global_symbol, span);
+                          }
+                        });
 });
 
 Expr GetShapeOf(const Expr& expr) {
@@ -801,27 +785,27 @@ Expr GetShapeOf(const Expr& expr) {
 TVM_FFI_STATIC_INIT_BLOCK({
   namespace refl = tvm::ffi::reflection;
   refl::GlobalDef()
-    .def("relax.GetShapeOf", [](const Expr& expr) {
-  return GetShapeOf(expr);
-})
-    .def("relax.FuncWithAttr", [](BaseFunc func, String key, ObjectRef value) -> Optional<Function> {
-      if (func->IsInstance<relax::FunctionNode>()) {
-        return WithAttr(Downcast<relax::Function>(std::move(func)), key, value);
-      }
-      return std::nullopt;
-    })
-    .def("relax.FuncWithAttrs", [](BaseFunc func, Map<String, ffi::Any> attr_map) -> Optional<Function> {
-      if (func->IsInstance<relax::FunctionNode>()) {
-        return WithAttrs(Downcast<relax::Function>(std::move(func)), attr_map);
-      }
-      return std::nullopt;
-    })
-    .def("relax.FuncWithoutAttr", [](BaseFunc func, String key) -> Optional<Function> {
-      if (func->IsInstance<relax::FunctionNode>()) {
-        return WithoutAttr(Downcast<relax::Function>(std::move(func)), key);
-      }
-      return std::nullopt;
-    });
+      .def("relax.GetShapeOf", [](const Expr& expr) { return GetShapeOf(expr); })
+      .def("relax.FuncWithAttr",
+           [](BaseFunc func, String key, ObjectRef value) -> Optional<Function> {
+             if (func->IsInstance<relax::FunctionNode>()) {
+               return WithAttr(Downcast<relax::Function>(std::move(func)), key, value);
+             }
+             return std::nullopt;
+           })
+      .def("relax.FuncWithAttrs",
+           [](BaseFunc func, Map<String, ffi::Any> attr_map) -> Optional<Function> {
+             if (func->IsInstance<relax::FunctionNode>()) {
+               return WithAttrs(Downcast<relax::Function>(std::move(func)), attr_map);
+             }
+             return std::nullopt;
+           })
+      .def("relax.FuncWithoutAttr", [](BaseFunc func, String key) -> Optional<Function> {
+        if (func->IsInstance<relax::FunctionNode>()) {
+          return WithoutAttr(Downcast<relax::Function>(std::move(func)), key);
+        }
+        return std::nullopt;
+      });
 });
 
 }  // namespace relax

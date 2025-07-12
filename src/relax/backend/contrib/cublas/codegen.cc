@@ -21,9 +21,9 @@
  * \file src/relax/backend/contrib/cublas/codegen.cc
  * \brief Implementation of the CUBLAS JSON serializer.
  */
+#include <tvm/ffi/reflection/reflection.h>
 #include <tvm/ir/module.h>
 #include <tvm/runtime/builtin_fp16.h>
-#include <tvm/ffi/reflection/reflection.h>
 
 #include <string>
 
@@ -128,8 +128,7 @@ Array<runtime::Module> CublasCompiler(Array<Function> functions, Map<String, ffi
 
 TVM_FFI_STATIC_INIT_BLOCK({
   namespace refl = tvm::ffi::reflection;
-  refl::GlobalDef()
-    .def("relax.ext.cublas", CublasCompiler);
+  refl::GlobalDef().def("relax.ext.cublas", CublasCompiler);
 });
 
 }  // namespace contrib

@@ -21,6 +21,7 @@
  * \file src/relax/backend/vm/codegen_tir.cc
  * \brief A codegen to generate VMTIR function(that can be compiled) from executable.
  */
+#include <tvm/ffi/reflection/reflection.h>
 #include <tvm/ir/module.h>
 #include <tvm/relax/exec_builder.h>
 #include <tvm/relax/expr_functor.h>
@@ -31,7 +32,6 @@
 #include <tvm/tir/expr.h>
 #include <tvm/tir/function.h>
 #include <tvm/tir/stmt.h>
-#include <tvm/ffi/reflection/reflection.h>
 
 #include <cctype>
 #include <string>
@@ -533,8 +533,7 @@ IRModule VMTIRCodeGen(ExecBuilder exec_builder, IRModule mod) {
 
 TVM_FFI_STATIC_INIT_BLOCK({
   namespace refl = tvm::ffi::reflection;
-  refl::GlobalDef()
-    .def("relax.VMTIRCodeGen", VMTIRCodeGen);
+  refl::GlobalDef().def("relax.VMTIRCodeGen", VMTIRCodeGen);
 });
 
 }  // namespace codegen_vm

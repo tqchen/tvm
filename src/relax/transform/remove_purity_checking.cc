@@ -20,11 +20,11 @@
  * \file src/relax/transform/remove_purity_checking.cc
  * \brief Apply kForcePure in all pure functions and unwrap all calls to pure overrides
  */
+#include <tvm/ffi/reflection/reflection.h>
 #include <tvm/relax/expr_functor.h>
 #include <tvm/relax/struct_info.h>
 #include <tvm/relax/transform.h>
 #include <tvm/relax/utils.h>
-#include <tvm/ffi/reflection/reflection.h>
 
 namespace tvm {
 namespace relax {
@@ -91,8 +91,7 @@ Pass RemovePurityChecking() {
 
 TVM_FFI_STATIC_INIT_BLOCK({
   namespace refl = tvm::ffi::reflection;
-  refl::GlobalDef()
-    .def("relax.transform.RemovePurityChecking", RemovePurityChecking);
+  refl::GlobalDef().def("relax.transform.RemovePurityChecking", RemovePurityChecking);
 });
 
 }  // namespace transform

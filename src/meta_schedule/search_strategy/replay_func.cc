@@ -16,8 +16,9 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-#include "../utils.h"
 #include <tvm/ffi/reflection/reflection.h>
+
+#include "../utils.h"
 
 namespace tvm {
 namespace meta_schedule {
@@ -164,8 +165,7 @@ TVM_FFI_STATIC_INIT_BLOCK({ ReplayFuncNode::RegisterReflection(); });
 TVM_REGISTER_NODE_TYPE(ReplayFuncNode);
 TVM_FFI_STATIC_INIT_BLOCK({
   namespace refl = tvm::ffi::reflection;
-  refl::GlobalDef()
-    .def("meta_schedule.SearchStrategyReplayFunc", SearchStrategy::ReplayFunc);
+  refl::GlobalDef().def("meta_schedule.SearchStrategyReplayFunc", SearchStrategy::ReplayFunc);
 });
 
 }  // namespace meta_schedule

@@ -21,9 +21,9 @@
  * \file topi/einsum.cc
  * \brief Einstein summation op
  */
+#include <tvm/ffi/reflection/reflection.h>
 #include <tvm/topi/broadcast.h>
 #include <tvm/topi/einsum.h>
-#include <tvm/ffi/reflection/reflection.h>
 
 namespace tvm {
 namespace topi {
@@ -358,10 +358,9 @@ Array<PrimExpr> InferEinsumShape(const std::string& subscripts,
 
 TVM_FFI_STATIC_INIT_BLOCK({
   namespace refl = tvm::ffi::reflection;
-  refl::GlobalDef()
-    .def_packed("topi.einsum", [](ffi::PackedArgs args, ffi::Any* rv) {
-  *rv = einsum(args[0].cast<std::string>(), args[1].cast<Array<Tensor>>());
-});
+  refl::GlobalDef().def_packed("topi.einsum", [](ffi::PackedArgs args, ffi::Any* rv) {
+    *rv = einsum(args[0].cast<std::string>(), args[1].cast<Array<Tensor>>());
+  });
 });
 
 }  // namespace topi

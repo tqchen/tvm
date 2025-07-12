@@ -22,10 +22,10 @@
 #endif
 #include <picojson.h>
 #include <tvm/ffi/function.h>
+#include <tvm/ffi/reflection/reflection.h>
 #include <tvm/runtime/data_type.h>
 #include <tvm/runtime/disco/builtin.h>
 #include <tvm/runtime/vm/ndarray_cache_support.h>
-#include <tvm/ffi/reflection/reflection.h>
 
 #include <functional>
 #include <numeric>
@@ -409,37 +409,42 @@ Array<NDArray> ShardLoaderObj::LoadAllPresharded() const {
 TVM_FFI_STATIC_INIT_BLOCK({
   namespace refl = tvm::ffi::reflection;
   refl::GlobalDef()
-    .def("runtime.disco.ShardLoader", ShardLoaderObj::Create)
-    .def("runtime.disco.ShardLoaderLoad", [](ObjectRef loader_obj, ffi::Shape weight_index) {
-      const auto* loader = loader_obj.as<ShardLoaderObj>();
-      CHECK(loader != nullptr) << "TypeError: Expected ShardLoaderObj, but gets: "
-                               << loader_obj->GetTypeKey();
-      return loader->Load(IntegerFromShape(weight_index));
-    })
-    .def("runtime.disco.ShardLoaderLoadPresharded", [](ObjectRef loader_obj, ffi::Shape weight_index) {
-      const auto* loader = loader_obj.as<ShardLoaderObj>();
-      CHECK(loader != nullptr) << "TypeError: Expected ShardLoaderObj, but gets: "
-                               << loader_obj->GetTypeKey();
-      return loader->LoadPresharded(IntegerFromShape(weight_index));
-    })
-    .def("runtime.disco.ShardLoaderLoadAll", [](ObjectRef loader_obj) {
-      const auto* loader = loader_obj.as<ShardLoaderObj>();
-      CHECK(loader != nullptr) << "TypeError: Expected ShardLoaderObj, but gets: "
-                               << loader_obj->GetTypeKey();
-      return loader->LoadAll();
-    })
-    .def("runtime.disco.ShardLoaderLoadAllPresharded", [](ObjectRef loader_obj) {
-      const auto* loader = loader_obj.as<ShardLoaderObj>();
-      CHECK(loader != nullptr) << "TypeError: Expected ShardLoaderObj, but gets: "
-                               << loader_obj->GetTypeKey();
-      return loader->LoadAllPresharded();
-    })
-    .def("runtime.disco.ShardLoaderLoadParamOnWorker0", [](ObjectRef loader_obj, int param_index) {
-      const auto* loader = loader_obj.as<ShardLoaderObj>();
-      CHECK(loader != nullptr) << "TypeError: Expected ShardLoaderObj, but gets: "
-                               << loader_obj->GetTypeKey();
-      return loader->LoadParamOnWorker0(param_index);
-    });
+      .def("runtime.disco.ShardLoader", ShardLoaderObj::Create)
+      .def("runtime.disco.ShardLoaderLoad",
+           [](ObjectRef loader_obj, ffi::Shape weight_index) {
+             const auto* loader = loader_obj.as<ShardLoaderObj>();
+             CHECK(loader != nullptr)
+                 << "TypeError: Expected ShardLoaderObj, but gets: " << loader_obj->GetTypeKey();
+             return loader->Load(IntegerFromShape(weight_index));
+           })
+      .def("runtime.disco.ShardLoaderLoadPresharded",
+           [](ObjectRef loader_obj, ffi::Shape weight_index) {
+             const auto* loader = loader_obj.as<ShardLoaderObj>();
+             CHECK(loader != nullptr)
+                 << "TypeError: Expected ShardLoaderObj, but gets: " << loader_obj->GetTypeKey();
+             return loader->LoadPresharded(IntegerFromShape(weight_index));
+           })
+      .def("runtime.disco.ShardLoaderLoadAll",
+           [](ObjectRef loader_obj) {
+             const auto* loader = loader_obj.as<ShardLoaderObj>();
+             CHECK(loader != nullptr)
+                 << "TypeError: Expected ShardLoaderObj, but gets: " << loader_obj->GetTypeKey();
+             return loader->LoadAll();
+           })
+      .def("runtime.disco.ShardLoaderLoadAllPresharded",
+           [](ObjectRef loader_obj) {
+             const auto* loader = loader_obj.as<ShardLoaderObj>();
+             CHECK(loader != nullptr)
+                 << "TypeError: Expected ShardLoaderObj, but gets: " << loader_obj->GetTypeKey();
+             return loader->LoadAllPresharded();
+           })
+      .def("runtime.disco.ShardLoaderLoadParamOnWorker0",
+           [](ObjectRef loader_obj, int param_index) {
+             const auto* loader = loader_obj.as<ShardLoaderObj>();
+             CHECK(loader != nullptr)
+                 << "TypeError: Expected ShardLoaderObj, but gets: " << loader_obj->GetTypeKey();
+             return loader->LoadParamOnWorker0(param_index);
+           });
 });
 
 }  // namespace runtime

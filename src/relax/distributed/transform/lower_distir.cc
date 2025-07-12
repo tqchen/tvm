@@ -25,12 +25,12 @@
  *  inserting necessary broadcast and scatter for inputs.
  */
 
+#include <tvm/ffi/reflection/reflection.h>
 #include <tvm/relax/attrs/ccl.h>
 #include <tvm/relax/distributed/axis_group_graph.h>
 #include <tvm/relax/distributed/transform.h>
 #include <tvm/relax/expr_functor.h>
 #include <tvm/tir/stmt_functor.h>
-#include <tvm/ffi/reflection/reflection.h>
 
 #include "../../../tir/schedule/transform.h"
 #include "../../op/ccl/ccl.h"
@@ -265,8 +265,7 @@ Pass LowerDistIR() {
 }
 TVM_FFI_STATIC_INIT_BLOCK({
   namespace refl = tvm::ffi::reflection;
-  refl::GlobalDef()
-    .def("relax.distributed.transform.LowerDistIR", LowerDistIR);
+  refl::GlobalDef().def("relax.distributed.transform.LowerDistIR", LowerDistIR);
 });
 }  // namespace transform
 

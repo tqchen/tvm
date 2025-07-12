@@ -23,8 +23,8 @@
  */
 
 #include <tvm/ffi/function.h>
-#include <tvm/runtime/ndarray.h>
 #include <tvm/ffi/reflection/reflection.h>
+#include <tvm/runtime/ndarray.h>
 
 #include "../json/json_node.h"
 #include "../json/json_runtime.h"
@@ -597,8 +597,9 @@ runtime::Module ACLRuntimeCreate(const String& symbol_name, const String& graph_
 TVM_FFI_STATIC_INIT_BLOCK({
   namespace refl = tvm::ffi::reflection;
   refl::GlobalDef()
-    .def("runtime.arm_compute_lib_runtime_create", ACLRuntimeCreate)
-    .def("runtime.module.loadbinary_arm_compute_lib", JSONRuntimeBase::LoadFromBinary<ACLRuntime>);
+      .def("runtime.arm_compute_lib_runtime_create", ACLRuntimeCreate)
+      .def("runtime.module.loadbinary_arm_compute_lib",
+           JSONRuntimeBase::LoadFromBinary<ACLRuntime>);
 });
 }  //  namespace contrib
 }  //  namespace runtime

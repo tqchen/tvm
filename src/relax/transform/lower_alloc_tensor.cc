@@ -20,9 +20,9 @@
  * \file src/relax/transform/lower_alloc_tensor.cc
  * \brief Lower any relax.builtin.alloc_tensor remaining after static planning
  */
+#include <tvm/ffi/reflection/reflection.h>
 #include <tvm/relax/expr_functor.h>
 #include <tvm/relax/transform.h>
-#include <tvm/ffi/reflection/reflection.h>
 
 namespace tvm {
 namespace relax {
@@ -102,8 +102,7 @@ Pass LowerAllocTensor() {
 
 TVM_FFI_STATIC_INIT_BLOCK({
   namespace refl = tvm::ffi::reflection;
-  refl::GlobalDef()
-    .def("relax.transform.LowerAllocTensor", LowerAllocTensor);
+  refl::GlobalDef().def("relax.transform.LowerAllocTensor", LowerAllocTensor);
 });
 
 }  // namespace transform

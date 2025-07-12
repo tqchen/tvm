@@ -69,8 +69,7 @@ TVM_FFI_STATIC_INIT_BLOCK({ RoundRobinNode::RegisterReflection(); });
 TVM_REGISTER_NODE_TYPE(RoundRobinNode);
 TVM_FFI_STATIC_INIT_BLOCK({
   namespace refl = tvm::ffi::reflection;
-  refl::GlobalDef()
-    .def("meta_schedule.TaskSchedulerRoundRobin", TaskScheduler::RoundRobin);
+  refl::GlobalDef().def("meta_schedule.TaskSchedulerRoundRobin", TaskScheduler::RoundRobin);
 });
 
 }  // namespace meta_schedule

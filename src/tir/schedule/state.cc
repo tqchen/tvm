@@ -1018,16 +1018,18 @@ TVM_REGISTER_NODE_TYPE(ScheduleStateNode);
 TVM_FFI_STATIC_INIT_BLOCK({
   namespace refl = tvm::ffi::reflection;
   refl::GlobalDef()
-    .def("tir.schedule.ScheduleState", [](IRModule mod, int debug_mask, bool enable_check) -> ScheduleState {
-      return ScheduleState(mod, debug_mask, enable_check);
-    })
-    .def_method("tir.schedule.ScheduleStateGetBlockScope", &ScheduleStateNode::GetBlockScope)
-    .def_method("tir.schedule.ScheduleStateReplace", &ScheduleStateNode::Replace)
-    .def("tir.schedule.ScheduleStateGetSRef", [](ScheduleState self, Stmt stmt) -> Optional<StmtSRef> {
-      auto it = self->stmt2ref.find(stmt.get());
-      return it != self->stmt2ref.end() ? it->second : Optional<StmtSRef>(std::nullopt);
-    })
-    .def("tir.schedule.ScheduleStateGetCachedFlags", GetCachedFlags);
+      .def("tir.schedule.ScheduleState",
+           [](IRModule mod, int debug_mask, bool enable_check) -> ScheduleState {
+             return ScheduleState(mod, debug_mask, enable_check);
+           })
+      .def_method("tir.schedule.ScheduleStateGetBlockScope", &ScheduleStateNode::GetBlockScope)
+      .def_method("tir.schedule.ScheduleStateReplace", &ScheduleStateNode::Replace)
+      .def("tir.schedule.ScheduleStateGetSRef",
+           [](ScheduleState self, Stmt stmt) -> Optional<StmtSRef> {
+             auto it = self->stmt2ref.find(stmt.get());
+             return it != self->stmt2ref.end() ? it->second : Optional<StmtSRef>(std::nullopt);
+           })
+      .def("tir.schedule.ScheduleStateGetCachedFlags", GetCachedFlags);
 });
 
 }  // namespace tir

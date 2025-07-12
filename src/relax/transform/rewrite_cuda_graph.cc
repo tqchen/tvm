@@ -49,13 +49,13 @@
  * 2. Lift the regions identified in step 1 to a separate function and rewrite the original function
  * with `CUDAGraphRewriter`.
  */
+#include <tvm/ffi/reflection/reflection.h>
 #include <tvm/relax/analysis.h>
 #include <tvm/relax/backend.h>
 #include <tvm/relax/expr_functor.h>
 #include <tvm/tir/expr.h>
 #include <tvm/tir/expr_functor.h>
 #include <tvm/tir/stmt_functor.h>
-#include <tvm/ffi/reflection/reflection.h>
 
 #include <unordered_map>
 #include <vector>
@@ -900,8 +900,7 @@ Pass RewriteCUDAGraph() {
 
 TVM_FFI_STATIC_INIT_BLOCK({
   namespace refl = tvm::ffi::reflection;
-  refl::GlobalDef()
-    .def("relax.transform.RewriteCUDAGraph", RewriteCUDAGraph);
+  refl::GlobalDef().def("relax.transform.RewriteCUDAGraph", RewriteCUDAGraph);
 });
 
 }  // namespace transform

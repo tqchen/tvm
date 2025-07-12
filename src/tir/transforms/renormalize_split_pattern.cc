@@ -22,12 +22,12 @@
  * \brief Renormalize the split pattern from floordiv(floormod()) to floormod(floordiv())
  */
 #include <tvm/ffi/function.h>
+#include <tvm/ffi/reflection/reflection.h>
 #include <tvm/tir/analysis.h>
 #include <tvm/tir/op.h>
 #include <tvm/tir/stmt.h>
 #include <tvm/tir/stmt_functor.h>
 #include <tvm/tir/transform.h>
-#include <tvm/ffi/reflection/reflection.h>
 
 #include "../../arith/ir_mutator_with_analyzer.h"
 #include "../../arith/pattern_match.h"
@@ -208,8 +208,7 @@ Pass RenormalizeSplitPattern() {
 
 TVM_FFI_STATIC_INIT_BLOCK({
   namespace refl = tvm::ffi::reflection;
-  refl::GlobalDef()
-    .def("tir.transform.RenormalizeSplitPattern", RenormalizeSplitPattern);
+  refl::GlobalDef().def("tir.transform.RenormalizeSplitPattern", RenormalizeSplitPattern);
 });
 
 }  // namespace transform

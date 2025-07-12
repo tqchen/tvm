@@ -21,9 +21,9 @@
  * \file Use external miopen utils function
  */
 #include <tvm/ffi/function.h>
+#include <tvm/ffi/reflection/reflection.h>
 #include <tvm/runtime/data_type.h>
 #include <tvm/runtime/device_api.h>
-#include <tvm/ffi/reflection/reflection.h>
 
 #include <cassert>
 
@@ -144,85 +144,85 @@ TVM_FFI_STATIC_INIT_BLOCK({
                 << fwd_algo_names[best_algo];
       for (int i = 0; i < returned_algo_count; ++i) {
         LOG(INFO) << "\t\t" << i << ");
-});
+      });
       }
       // Set Algo
       ret[0] = static_cast<int>(best_algo);
-    });
+});
 
 TVM_FFI_STATIC_INIT_BLOCK({
   namespace refl = tvm::ffi::reflection;
-  refl::GlobalDef()
-    .def_packed("tvm.contrib.miopen.conv2d.forward", [](ffi::PackedArgs args, ffi::Any* ret) {
-      const int mode = args[0].cast<int>();
-      const int dtype = args[1].cast<int>();
-      const int pad_h = args[2].cast<int>();
-      const int pad_w = args[3].cast<int>();
-      const int stride_h = args[4].cast<int>();
-      const int stride_w = args[5].cast<int>();
-      const int dilation_h = args[6].cast<int>();
-      const int dilation_w = args[7].cast<int>();
-      const int algo = args[8].cast<int>();
-      const auto x = args[9].cast<DLTensor*>();
-      const auto w = args[10].cast<DLTensor*>();
-      const auto y = args[11].cast<DLTensor*>();
+  refl::GlobalDef().def_packed(
+      "tvm.contrib.miopen.conv2d.forward", [](ffi::PackedArgs args, ffi::Any* ret) {
+        const int mode = args[0].cast<int>();
+        const int dtype = args[1].cast<int>();
+        const int pad_h = args[2].cast<int>();
+        const int pad_w = args[3].cast<int>();
+        const int stride_h = args[4].cast<int>();
+        const int stride_w = args[5].cast<int>();
+        const int dilation_h = args[6].cast<int>();
+        const int dilation_w = args[7].cast<int>();
+        const int algo = args[8].cast<int>();
+        const auto x = args[9].cast<DLTensor*>();
+        const auto w = args[10].cast<DLTensor*>();
+        const auto y = args[11].cast<DLTensor*>();
 
-      MIOpenThreadEntry* entry_ptr = MIOpenThreadEntry::ThreadLocal();
-      entry_ptr->conv_entry.fwd_algo = static_cast<miopenConvFwdAlgorithm_t>(algo);
-      // Set Mode
-      entry_ptr->conv_entry.mode = static_cast<miopenConvolutionMode_t>(mode);
-      // Set Device
-      entry_ptr->conv_entry.device = x->device;
-      // Set Data Type
-      entry_ptr->conv_entry.data_type =
-          static_cast<miopenDataType_t>(dtype);  // MIOpen supports fp32(miopenFloat),
-                                                 // fp16(miopenHalf) at this moment.
-      // Set Desc
-      MIOPEN_CALL(miopenInitConvolutionDescriptor(entry_ptr->conv_entry.conv_desc,
-                                                  entry_ptr->conv_entry.mode, pad_h, pad_w,
-                                                  stride_h, stride_w, dilation_h, dilation_w));
-      // Set Filter
-      MIOPEN_CALL(miopenSet4dTensorDescriptor(entry_ptr->conv_entry.filter_desc,
-                                              entry_ptr->conv_entry.data_type, w->shape[0],
-                                              w->shape[1], w->shape[2], w->shape[3]));
-      // Set Input
-      MIOPEN_CALL(miopenSet4dTensorDescriptor(entry_ptr->conv_entry.input_desc,
-                                              entry_ptr->conv_entry.data_type, x->shape[0],
-                                              x->shape[1], x->shape[2], x->shape[3]));
-      // Set Output
-      MIOPEN_CALL(miopenSet4dTensorDescriptor(entry_ptr->conv_entry.output_desc,
-                                              entry_ptr->conv_entry.data_type, y->shape[0],
-                                              y->shape[1], y->shape[2], y->shape[3]));
+        MIOpenThreadEntry* entry_ptr = MIOpenThreadEntry::ThreadLocal();
+        entry_ptr->conv_entry.fwd_algo = static_cast<miopenConvFwdAlgorithm_t>(algo);
+        // Set Mode
+        entry_ptr->conv_entry.mode = static_cast<miopenConvolutionMode_t>(mode);
+        // Set Device
+        entry_ptr->conv_entry.device = x->device;
+        // Set Data Type
+        entry_ptr->conv_entry.data_type =
+            static_cast<miopenDataType_t>(dtype);  // MIOpen supports fp32(miopenFloat),
+                                                   // fp16(miopenHalf) at this moment.
+        // Set Desc
+        MIOPEN_CALL(miopenInitConvolutionDescriptor(entry_ptr->conv_entry.conv_desc,
+                                                    entry_ptr->conv_entry.mode, pad_h, pad_w,
+                                                    stride_h, stride_w, dilation_h, dilation_w));
+        // Set Filter
+        MIOPEN_CALL(miopenSet4dTensorDescriptor(entry_ptr->conv_entry.filter_desc,
+                                                entry_ptr->conv_entry.data_type, w->shape[0],
+                                                w->shape[1], w->shape[2], w->shape[3]));
+        // Set Input
+        MIOPEN_CALL(miopenSet4dTensorDescriptor(entry_ptr->conv_entry.input_desc,
+                                                entry_ptr->conv_entry.data_type, x->shape[0],
+                                                x->shape[1], x->shape[2], x->shape[3]));
+        // Set Output
+        MIOPEN_CALL(miopenSet4dTensorDescriptor(entry_ptr->conv_entry.output_desc,
+                                                entry_ptr->conv_entry.data_type, y->shape[0],
+                                                y->shape[1], y->shape[2], y->shape[3]));
 
-      // Set workspace
-      size_t workspace_size = 0;
-      MIOPEN_CALL(miopenConvolutionForwardGetWorkSpaceSize(
-          entry_ptr->handle, entry_ptr->conv_entry.filter_desc, entry_ptr->conv_entry.input_desc,
-          entry_ptr->conv_entry.conv_desc, entry_ptr->conv_entry.output_desc, &workspace_size));
-      entry_ptr->conv_entry.UpdateWorkspace(workspace_size);
+        // Set workspace
+        size_t workspace_size = 0;
+        MIOPEN_CALL(miopenConvolutionForwardGetWorkSpaceSize(
+            entry_ptr->handle, entry_ptr->conv_entry.filter_desc, entry_ptr->conv_entry.input_desc,
+            entry_ptr->conv_entry.conv_desc, entry_ptr->conv_entry.output_desc, &workspace_size));
+        entry_ptr->conv_entry.UpdateWorkspace(workspace_size);
 
-      const float alpha = 1.f;
-      const float beta = 0.f;
+        const float alpha = 1.f;
+        const float beta = 0.f;
 
-      const int request_algo_count = 4;
-      const bool exhaustive_search = true;
-      void* workspace = entry_ptr->conv_entry.workspace;
-      if (workspace_size == 0) workspace = nullptr;
-      int returned_algo_count = 0;
-      miopenConvAlgoPerf_t perfs[4];
+        const int request_algo_count = 4;
+        const bool exhaustive_search = true;
+        void* workspace = entry_ptr->conv_entry.workspace;
+        if (workspace_size == 0) workspace = nullptr;
+        int returned_algo_count = 0;
+        miopenConvAlgoPerf_t perfs[4];
 
-      MIOPEN_CALL(miopenFindConvolutionForwardAlgorithm(
-          entry_ptr->handle, entry_ptr->conv_entry.input_desc, x->data,
-          entry_ptr->conv_entry.filter_desc, w->data, entry_ptr->conv_entry.conv_desc,
-          entry_ptr->conv_entry.output_desc, y->data, request_algo_count, &returned_algo_count,
-          perfs, workspace, workspace_size, exhaustive_search));
+        MIOPEN_CALL(miopenFindConvolutionForwardAlgorithm(
+            entry_ptr->handle, entry_ptr->conv_entry.input_desc, x->data,
+            entry_ptr->conv_entry.filter_desc, w->data, entry_ptr->conv_entry.conv_desc,
+            entry_ptr->conv_entry.output_desc, y->data, request_algo_count, &returned_algo_count,
+            perfs, workspace, workspace_size, exhaustive_search));
 
-      MIOPEN_CALL(miopenConvolutionForward(
-          entry_ptr->handle, &alpha, entry_ptr->conv_entry.input_desc, x->data,
-          entry_ptr->conv_entry.filter_desc, w->data, entry_ptr->conv_entry.conv_desc,
-          entry_ptr->conv_entry.fwd_algo, &beta, entry_ptr->conv_entry.output_desc, y->data,
-          entry_ptr->conv_entry.workspace, entry_ptr->conv_entry.workspace_size));
-    });
+        MIOPEN_CALL(miopenConvolutionForward(
+            entry_ptr->handle, &alpha, entry_ptr->conv_entry.input_desc, x->data,
+            entry_ptr->conv_entry.filter_desc, w->data, entry_ptr->conv_entry.conv_desc,
+            entry_ptr->conv_entry.fwd_algo, &beta, entry_ptr->conv_entry.output_desc, y->data,
+            entry_ptr->conv_entry.workspace, entry_ptr->conv_entry.workspace_size));
+      });
 });
 
 }  // namespace miopen

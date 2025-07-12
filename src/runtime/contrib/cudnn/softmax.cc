@@ -22,8 +22,8 @@
  * \brief Use external cudnn softmax function
  */
 #include <tvm/ffi/function.h>
-#include <tvm/runtime/device_api.h>
 #include <tvm/ffi/reflection/reflection.h>
+#include <tvm/runtime/device_api.h>
 
 #include "cudnn_utils.h"
 
@@ -81,12 +81,13 @@ void softmax_impl(cudnnSoftmaxAlgorithm_t alg, ffi::PackedArgs args, ffi::Any* r
 TVM_FFI_STATIC_INIT_BLOCK({
   namespace refl = tvm::ffi::reflection;
   refl::GlobalDef()
-    .def_packed("tvm.contrib.cudnn.softmax.forward", [](ffi::PackedArgs args, ffi::Any* ret) {
-      softmax_impl(CUDNN_SOFTMAX_ACCURATE, args, ret);
-    })
-    .def_packed("tvm.contrib.cudnn.log_softmax.forward", [](ffi::PackedArgs args, ffi::Any* ret) {
-      softmax_impl(CUDNN_SOFTMAX_LOG, args, ret);
-    });
+      .def_packed("tvm.contrib.cudnn.softmax.forward",
+                  [](ffi::PackedArgs args, ffi::Any* ret) {
+                    softmax_impl(CUDNN_SOFTMAX_ACCURATE, args, ret);
+                  })
+      .def_packed("tvm.contrib.cudnn.log_softmax.forward", [](ffi::PackedArgs args, ffi::Any* ret) {
+        softmax_impl(CUDNN_SOFTMAX_LOG, args, ret);
+      });
 });
 
 }  // namespace contrib

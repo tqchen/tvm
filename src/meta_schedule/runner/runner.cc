@@ -16,8 +16,9 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-#include "../utils.h"
 #include <tvm/ffi/reflection/reflection.h>
+
+#include "../utils.h"
 
 namespace tvm {
 namespace meta_schedule {
@@ -67,21 +68,22 @@ TVM_REGISTER_NODE_TYPE(PyRunnerNode);
 TVM_FFI_STATIC_INIT_BLOCK({
   namespace refl = tvm::ffi::reflection;
   refl::GlobalDef()
-    .def("meta_schedule.RunnerInput", [](String artifact_path, String device_type,
-                       Array<ArgInfo> args_info) -> RunnerInput {
-      return RunnerInput(artifact_path, device_type, args_info);
-    })
-    .def("meta_schedule.RunnerResult", [](Optional<Array<FloatImm>> run_secs,
-                       Optional<String> error_msg) -> RunnerResult {
-      return RunnerResult(run_secs, error_msg);
-    })
-    .def("meta_schedule.RunnerFuture", [](RunnerFuture::FDone f_done, RunnerFuture::FResult f_result) -> RunnerFuture {
-      return RunnerFuture(f_done, f_result);
-    })
-    .def_method("meta_schedule.RunnerFutureDone", &RunnerFutureNode::Done)
-    .def_method("meta_schedule.RunnerFutureResult", &RunnerFutureNode::Result)
-    .def_method("meta_schedule.RunnerRun", &RunnerNode::Run)
-    .def("meta_schedule.RunnerPyRunner", Runner::PyRunner);
+      .def("meta_schedule.RunnerInput",
+           [](String artifact_path, String device_type, Array<ArgInfo> args_info) -> RunnerInput {
+             return RunnerInput(artifact_path, device_type, args_info);
+           })
+      .def("meta_schedule.RunnerResult",
+           [](Optional<Array<FloatImm>> run_secs, Optional<String> error_msg) -> RunnerResult {
+             return RunnerResult(run_secs, error_msg);
+           })
+      .def("meta_schedule.RunnerFuture",
+           [](RunnerFuture::FDone f_done, RunnerFuture::FResult f_result) -> RunnerFuture {
+             return RunnerFuture(f_done, f_result);
+           })
+      .def_method("meta_schedule.RunnerFutureDone", &RunnerFutureNode::Done)
+      .def_method("meta_schedule.RunnerFutureResult", &RunnerFutureNode::Result)
+      .def_method("meta_schedule.RunnerRun", &RunnerNode::Run)
+      .def("meta_schedule.RunnerPyRunner", Runner::PyRunner);
 });
 
 }  // namespace meta_schedule

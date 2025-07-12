@@ -17,8 +17,8 @@
  * under the License.
  */
 #include "./multi_level_tiling.h"
-#include <tvm/ffi/reflection/reflection.h>
 
+#include <tvm/ffi/reflection/reflection.h>
 #include <tvm/meta_schedule/schedule_rule.h>
 
 #include <algorithm>
@@ -410,8 +410,8 @@ ScheduleRule ScheduleRule::MultiLevelTiling(String structure, Optional<Array<Str
 TVM_REGISTER_NODE_TYPE(MultiLevelTilingNode);
 TVM_FFI_STATIC_INIT_BLOCK({
   namespace refl = tvm::ffi::reflection;
-  refl::GlobalDef()
-    .def("meta_schedule.ScheduleRuleMultiLevelTiling", ScheduleRule::MultiLevelTiling);
+  refl::GlobalDef().def("meta_schedule.ScheduleRuleMultiLevelTiling",
+                        ScheduleRule::MultiLevelTiling);
 });
 
 }  // namespace meta_schedule

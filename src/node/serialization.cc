@@ -787,8 +787,6 @@ Any LoadJSON(std::string json_str) {
 
 TVM_FFI_STATIC_INIT_BLOCK({
   namespace refl = tvm::ffi::reflection;
-  refl::GlobalDef()
-    .def("node.SaveJSON", SaveJSON)
-    .def("node.LoadJSON", LoadJSON);
+  refl::GlobalDef().def("node.SaveJSON", SaveJSON).def("node.LoadJSON", LoadJSON);
 });
 }  // namespace tvm

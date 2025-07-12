@@ -22,8 +22,8 @@
  * \brief Passes that serve as helper functions.
  */
 
-#include <tvm/tir/transform.h>
 #include <tvm/ffi/reflection/reflection.h>
+#include <tvm/tir/transform.h>
 
 namespace tvm {
 namespace tir {
@@ -82,8 +82,8 @@ transform::Pass Filter(ffi::TypedFunction<bool(PrimFunc)> fcond) {
 TVM_FFI_STATIC_INIT_BLOCK({
   namespace refl = tvm::ffi::reflection;
   refl::GlobalDef()
-    .def("tir.transform.AnnotateEntryFunc", AnnotateEntryFunc)
-    .def("tir.transform.Filter", Filter);
+      .def("tir.transform.AnnotateEntryFunc", AnnotateEntryFunc)
+      .def("tir.transform.Filter", Filter);
 });
 
 }  // namespace transform

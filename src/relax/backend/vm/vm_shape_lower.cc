@@ -20,6 +20,7 @@
  * \file src/relax/backend/vm/vm_shape_lower.cc
  * \brief Lower the function boundary type checks and symbolic shape computations.
  */
+#include <tvm/ffi/reflection/reflection.h>
 #include <tvm/relax/analysis.h>
 #include <tvm/relax/backend.h>
 #include <tvm/relax/expr_functor.h>
@@ -30,7 +31,6 @@
 #include <tvm/tir/function.h>
 #include <tvm/tir/op.h>
 #include <tvm/tir/stmt_functor.h>
-#include <tvm/ffi/reflection/reflection.h>
 
 namespace tvm {
 namespace relax {
@@ -816,10 +816,8 @@ Pass VMShapeLower(bool emit_err_ctx) {
 
 TVM_FFI_STATIC_INIT_BLOCK({
   namespace refl = tvm::ffi::reflection;
-  refl::GlobalDef()
-    .def("relax.transform.VMShapeLower", [](bool emit_err_ctx) {
-  return VMShapeLower(emit_err_ctx);
-});
+  refl::GlobalDef().def("relax.transform.VMShapeLower",
+                        [](bool emit_err_ctx) { return VMShapeLower(emit_err_ctx); });
 });
 
 }  // namespace transform

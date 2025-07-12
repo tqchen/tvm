@@ -22,11 +22,11 @@
  */
 #include <tvm/arith/analyzer.h>
 #include <tvm/ffi/function.h>
+#include <tvm/ffi/reflection/reflection.h>
 #include <tvm/tir/analysis.h>
 #include <tvm/tir/expr.h>
 #include <tvm/tir/stmt_functor.h>
 #include <tvm/tir/transform.h>
-#include <tvm/ffi/reflection/reflection.h>
 
 #include <queue>
 #include <unordered_map>
@@ -566,8 +566,7 @@ Pass HoistExpression() {
 
 TVM_FFI_STATIC_INIT_BLOCK({
   namespace refl = tvm::ffi::reflection;
-  refl::GlobalDef()
-    .def("tir.transform.HoistExpression", HoistExpression);
+  refl::GlobalDef().def("tir.transform.HoistExpression", HoistExpression);
 });
 
 Pass HoistIfThenElse() {
@@ -605,8 +604,7 @@ Pass HoistIfThenElse() {
 
 TVM_FFI_STATIC_INIT_BLOCK({
   namespace refl = tvm::ffi::reflection;
-  refl::GlobalDef()
-    .def("tir.transform.HoistIfThenElse", HoistIfThenElse);
+  refl::GlobalDef().def("tir.transform.HoistIfThenElse", HoistIfThenElse);
 });
 
 Pass HoistIfThenElseBasic() {
@@ -629,8 +627,7 @@ Pass HoistIfThenElseBasic() {
 
 TVM_FFI_STATIC_INIT_BLOCK({
   namespace refl = tvm::ffi::reflection;
-  refl::GlobalDef()
-    .def("tir.transform.HoistIfThenElseBasic", HoistIfThenElseBasic);
+  refl::GlobalDef().def("tir.transform.HoistIfThenElseBasic", HoistIfThenElseBasic);
 });
 
 }  // namespace transform

@@ -18,8 +18,8 @@
  */
 #include <curand.h>
 #include <tvm/ffi/function.h>
-#include <tvm/runtime/base.h>
 #include <tvm/ffi/reflection/reflection.h>
+#include <tvm/runtime/base.h>
 
 #include "../../cuda/cuda_common.h"
 #include "./helper_cuda_kernels.h"
@@ -115,8 +115,7 @@ void RandomFill(DLTensor* tensor) {
 
 TVM_FFI_STATIC_INIT_BLOCK({
   namespace refl = tvm::ffi::reflection;
-  refl::GlobalDef()
-    .def("runtime.contrib.curand.RandomFill", RandomFill);
+  refl::GlobalDef().def("runtime.contrib.curand.RandomFill", RandomFill);
 });
 
 }  // namespace curand

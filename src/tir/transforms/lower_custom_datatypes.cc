@@ -22,11 +22,11 @@
  */
 
 #include <tvm/ffi/function.h>
+#include <tvm/ffi/reflection/reflection.h>
 #include <tvm/target/target.h>
 #include <tvm/tir/op.h>
 #include <tvm/tir/stmt_functor.h>
 #include <tvm/tir/transform.h>
-#include <tvm/ffi/reflection/reflection.h>
 
 #include "../../target/datatype/registry.h"
 
@@ -253,8 +253,7 @@ Pass LowerCustomDatatypes() {
 
 TVM_FFI_STATIC_INIT_BLOCK({
   namespace refl = tvm::ffi::reflection;
-  refl::GlobalDef()
-    .def("tir.transform.LowerCustomDatatypes", LowerCustomDatatypes);
+  refl::GlobalDef().def("tir.transform.LowerCustomDatatypes", LowerCustomDatatypes);
 });
 
 }  // namespace transform

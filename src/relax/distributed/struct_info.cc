@@ -22,8 +22,8 @@
  * \brief Relax dtensor struct info.
  */
 
-#include <tvm/relax/distributed/struct_info.h>
 #include <tvm/ffi/reflection/reflection.h>
+#include <tvm/relax/distributed/struct_info.h>
 namespace tvm {
 namespace relax {
 namespace distributed {
@@ -53,12 +53,8 @@ TVM_REGISTER_NODE_TYPE(PlacementSpecNode);
 TVM_FFI_STATIC_INIT_BLOCK({
   namespace refl = tvm::ffi::reflection;
   refl::GlobalDef()
-    .def("relax.distributed.Sharding", [](int axis) {
-  return PlacementSpec::Sharding(axis);
-})
-    .def("relax.distributed.Replica", []() {
-  return PlacementSpec::Replica();
-});
+      .def("relax.distributed.Sharding", [](int axis) { return PlacementSpec::Sharding(axis); })
+      .def("relax.distributed.Replica", []() { return PlacementSpec::Replica(); });
 });
 
 String PlacementNode::ToString() const {
@@ -119,8 +115,9 @@ TVM_REGISTER_NODE_TYPE(PlacementNode);
 TVM_FFI_STATIC_INIT_BLOCK({
   namespace refl = tvm::ffi::reflection;
   refl::GlobalDef()
-    .def("relax.distributed.PlacementFromText", Placement::FromText)
-    .def("relax.distributed.Placement", [](Array<PlacementSpec> dim_specs) { return Placement(dim_specs); });
+      .def("relax.distributed.PlacementFromText", Placement::FromText)
+      .def("relax.distributed.Placement",
+           [](Array<PlacementSpec> dim_specs) { return Placement(dim_specs); });
 });
 
 // DTensor
@@ -145,11 +142,11 @@ TVM_REGISTER_NODE_TYPE(DTensorStructInfoNode);
 
 TVM_FFI_STATIC_INIT_BLOCK({
   namespace refl = tvm::ffi::reflection;
-  refl::GlobalDef()
-    .def("relax.distributed.DTensorStructInfo", [](TensorStructInfo tensor_sinfo, DeviceMesh device_mesh, Placement placement,
-                       Span span) {
-      return DTensorStructInfo(tensor_sinfo, device_mesh, placement, span);
-    });
+  refl::GlobalDef().def(
+      "relax.distributed.DTensorStructInfo",
+      [](TensorStructInfo tensor_sinfo, DeviceMesh device_mesh, Placement placement, Span span) {
+        return DTensorStructInfo(tensor_sinfo, device_mesh, placement, span);
+      });
 });
 
 }  // namespace distributed

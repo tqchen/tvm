@@ -23,8 +23,8 @@
  */
 #include <tvm/ffi/container/variant.h>
 #include <tvm/ffi/function.h>
-#include <tvm/te/operation.h>
 #include <tvm/ffi/reflection/reflection.h>
+#include <tvm/te/operation.h>
 
 namespace tvm {
 namespace te {
@@ -66,20 +66,19 @@ Tensor placeholder(Array<PrimExpr> shape, DataType dtype, std::string name) {
 
 TVM_FFI_STATIC_INIT_BLOCK({
   namespace refl = tvm::ffi::reflection;
-  refl::GlobalDef()
-    .def("te.Placeholder", [](Variant<PrimExpr, Array<PrimExpr>> shape_arg, DataType dtype,
-                       std::string name) {
-      auto shape = [&]() -> Array<PrimExpr> {
-        if (auto arg_expr = shape_arg.as<PrimExpr>()) {
-          return {arg_expr.value()};
-        } else if (auto arg_array = shape_arg.as<Array<PrimExpr>>()) {
-          return arg_array.value();
-        } else {
-          LOG(FATAL) << "Variant did not contain either allowed type";
-        }
-      }();
-      return placeholder(shape, dtype, name);
-    });
+  refl::GlobalDef().def("te.Placeholder", [](Variant<PrimExpr, Array<PrimExpr>> shape_arg,
+                                             DataType dtype, std::string name) {
+    auto shape = [&]() -> Array<PrimExpr> {
+      if (auto arg_expr = shape_arg.as<PrimExpr>()) {
+        return {arg_expr.value()};
+      } else if (auto arg_array = shape_arg.as<Array<PrimExpr>>()) {
+        return arg_array.value();
+      } else {
+        LOG(FATAL) << "Variant did not contain either allowed type";
+      }
+    }();
+    return placeholder(shape, dtype, name);
+  });
 });
 
 Array<Tensor> PlaceholderOpNode::InputTensors() const { return {}; }

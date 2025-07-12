@@ -21,10 +21,10 @@
  * \file opencl_module.cc
  */
 #include "opencl_module.h"
-#include <tvm/ffi/reflection/reflection.h>
 
 #include <dmlc/memory_io.h>
 #include <tvm/ffi/function.h>
+#include <tvm/ffi/reflection/reflection.h>
 
 #include <string>
 #include <unordered_map>
@@ -393,9 +393,9 @@ Module OpenCLModuleLoadBinary(void* strm) {
 TVM_FFI_STATIC_INIT_BLOCK({
   namespace refl = tvm::ffi::reflection;
   refl::GlobalDef()
-    .def("runtime.module.loadfile_cl", OpenCLModuleLoadFile)
-    .def("runtime.module.loadfile_clbin", OpenCLModuleLoadFile)
-    .def("runtime.module.loadbinary_opencl", OpenCLModuleLoadBinary);
+      .def("runtime.module.loadfile_cl", OpenCLModuleLoadFile)
+      .def("runtime.module.loadfile_clbin", OpenCLModuleLoadFile)
+      .def("runtime.module.loadbinary_opencl", OpenCLModuleLoadBinary);
 });
 }  // namespace runtime
 }  // namespace tvm

@@ -21,8 +21,8 @@
  * \file codegen_metal.cc
  */
 #include "codegen_metal.h"
-#include <tvm/ffi/reflection/reflection.h>
 
+#include <tvm/ffi/reflection/reflection.h>
 #include <tvm/tir/transform.h>
 
 #include <algorithm>
@@ -469,8 +469,7 @@ runtime::Module BuildMetal(IRModule mod, Target target) {
 
 TVM_FFI_STATIC_INIT_BLOCK({
   namespace refl = tvm::ffi::reflection;
-  refl::GlobalDef()
-    .def("target.build.metal", BuildMetal);
+  refl::GlobalDef().def("target.build.metal", BuildMetal);
 });
 }  // namespace codegen
 }  // namespace tvm

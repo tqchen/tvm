@@ -22,6 +22,7 @@
  */
 
 #include "plugin.h"
+
 #include <tvm/ffi/reflection/reflection.h>
 
 #include <algorithm>
@@ -316,18 +317,13 @@ TVM_FFI_STATIC_INIT_BLOCK({
 TVM_FFI_STATIC_INIT_BLOCK({
   namespace refl = tvm::ffi::reflection;
   refl::GlobalDef()
-    .def("msc.core.RegisterPlugin", [](const String& name, const String& json_str) {
-      PluginRegistry::Global()->Register(name, json_str);
-    })
-    .def("msc.core.ListPluginNames", []() -> Array<String> {
-  return ListPluginNames();
-})
-    .def("msc.core.GetPlugin", [](const String& name) -> Plugin {
-  return GetPlugin(name);
-})
-    .def("msc.core.IsPlugin", [](const String& name) -> Bool {
-  return Bool(IsPlugin(name));
-});
+      .def("msc.core.RegisterPlugin",
+           [](const String& name, const String& json_str) {
+             PluginRegistry::Global()->Register(name, json_str);
+           })
+      .def("msc.core.ListPluginNames", []() -> Array<String> { return ListPluginNames(); })
+      .def("msc.core.GetPlugin", [](const String& name) -> Plugin { return GetPlugin(name); })
+      .def("msc.core.IsPlugin", [](const String& name) -> Bool { return Bool(IsPlugin(name)); });
 });
 
 }  // namespace msc

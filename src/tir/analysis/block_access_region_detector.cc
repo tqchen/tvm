@@ -23,9 +23,9 @@
  */
 
 #include <tvm/arith/analyzer.h>
+#include <tvm/ffi/reflection/reflection.h>
 #include <tvm/tir/op.h>
 #include <tvm/tir/stmt_functor.h>
-#include <tvm/ffi/reflection/reflection.h>
 
 #include <unordered_map>
 
@@ -414,8 +414,8 @@ Array<Array<BufferRegion>> GetBlockReadWriteRegion(const Block& block,
 TVM_FFI_STATIC_INIT_BLOCK({
   namespace refl = tvm::ffi::reflection;
   refl::GlobalDef()
-    .def("tir.analysis.GetBlockAccessRegion", GetBlockAccessRegion)
-    .def("tir.analysis.GetBlockReadWriteRegion", GetBlockReadWriteRegion);
+      .def("tir.analysis.GetBlockAccessRegion", GetBlockAccessRegion)
+      .def("tir.analysis.GetBlockReadWriteRegion", GetBlockReadWriteRegion);
 });
 
 }  // namespace tir

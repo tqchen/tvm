@@ -24,10 +24,10 @@
  * \file verify_ssa.cc
  */
 #include <tvm/ffi/function.h>
+#include <tvm/ffi/reflection/reflection.h>
 #include <tvm/tir/analysis.h>
 #include <tvm/tir/expr.h>
 #include <tvm/tir/stmt_functor.h>
-#include <tvm/ffi/reflection/reflection.h>
 
 #include <unordered_map>
 #include <unordered_set>
@@ -142,8 +142,7 @@ bool VerifySSA(const PrimFunc& func) {
 
 TVM_FFI_STATIC_INIT_BLOCK({
   namespace refl = tvm::ffi::reflection;
-  refl::GlobalDef()
-    .def("tir.analysis.verify_ssa", VerifySSA);
+  refl::GlobalDef().def("tir.analysis.verify_ssa", VerifySSA);
 });
 
 namespace transform {
@@ -162,8 +161,7 @@ Pass VerifySSA() {
 
 TVM_FFI_STATIC_INIT_BLOCK({
   namespace refl = tvm::ffi::reflection;
-  refl::GlobalDef()
-    .def("tir.transform.VerifySSA", VerifySSA);
+  refl::GlobalDef().def("tir.transform.VerifySSA", VerifySSA);
 });
 
 }  // namespace transform

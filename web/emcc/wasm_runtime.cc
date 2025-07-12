@@ -30,8 +30,8 @@
 #define TVM_FFI_ALWAYS_LOG_BEFORE_THROW 1
 #define DMLC_USE_LOGGING_LIBRARY <tvm/runtime/logging.h>
 
-#include <tvm/runtime/logging.h>
 #include <tvm/ffi/reflection/reflection.h>
+#include <tvm/runtime/logging.h>
 
 #include "src/runtime/contrib/sort/sort.cc"
 #include "src/runtime/cpu_device_api.cc"
@@ -108,17 +108,17 @@ void LogMessageImpl(const std::string& file, int lineno, int level, const std::s
 TVM_FFI_STATIC_INIT_BLOCK({
   namespace refl = tvm::ffi::reflection;
   refl::GlobalDef()
-    .def_packed("tvmjs.testing.call", [](ffi::PackedArgs args, ffi::Any* ret) {
-      (args[0].cast<ffi::Function>()).CallPacked(args.Slice(1), ret);
-    })
-    .def_packed("tvmjs.testing.log_info_str", [](ffi::PackedArgs args, ffi::Any* ret) {
-      LOG(INFO) << args[0].cast<String>();
-    })
-    .def("tvmjs.testing.add_one", [](int x) { return x + 1; })
-    .def_packed("tvmjs.testing.wrap_callback", [](ffi::PackedArgs args, ffi::Any* ret) {
-      ffi::Function pf = args[0].cast<ffi::Function>();
-      *ret = ffi::TypedFunction<void()>([pf]() { pf(); });
-    });
+      .def_packed("tvmjs.testing.call",
+                  [](ffi::PackedArgs args, ffi::Any* ret) {
+                    (args[0].cast<ffi::Function>()).CallPacked(args.Slice(1), ret);
+                  })
+      .def_packed("tvmjs.testing.log_info_str",
+                  [](ffi::PackedArgs args, ffi::Any* ret) { LOG(INFO) << args[0].cast<String>(); })
+      .def("tvmjs.testing.add_one", [](int x) { return x + 1; })
+      .def_packed("tvmjs.testing.wrap_callback", [](ffi::PackedArgs args, ffi::Any* ret) {
+        ffi::Function pf = args[0].cast<ffi::Function>();
+        *ret = ffi::TypedFunction<void()>([pf]() { pf(); });
+      });
 });
 
 void ArrayDecodeStorage(NDArray cpu_arr, std::string bytes, std::string format, std::string dtype) {
@@ -144,27 +144,26 @@ void ArrayDecodeStorage(NDArray cpu_arr, std::string bytes, std::string format, 
 
 TVM_FFI_STATIC_INIT_BLOCK({
   namespace refl = tvm::ffi::reflection;
-  refl::GlobalDef()
-    .def("tvmjs.array.decode_storage", ArrayDecodeStorage);
+  refl::GlobalDef().def("tvmjs.array.decode_storage", ArrayDecodeStorage);
 });
 
 // Concatenate n TVMArrays
 TVM_FFI_STATIC_INIT_BLOCK({
   namespace refl = tvm::ffi::reflection;
-  refl::GlobalDef()
-    .def_packed("tvmjs.runtime.ArrayConcat", [](ffi::PackedArgs args, ffi::Any* ret) {
-      std::vector<Any> data;
-      for (int i = 0; i < args.size(); ++i) {
-        // Get i-th TVMArray
-        auto* arr_i = args[i].as<ffi::ArrayObj>();
-        ICHECK(arr_i != nullptr);
-        for (size_t j = 0; j < arr_i->size(); ++j) {
-          // Push back each j-th element of the i-th array
-          data.push_back(arr_i->at(j));
-        }
-      }
-      *ret = Array<Any>(data);
-    });
+  refl::GlobalDef().def_packed("tvmjs.runtime.ArrayConcat",
+                               [](ffi::PackedArgs args, ffi::Any* ret) {
+                                 std::vector<Any> data;
+                                 for (int i = 0; i < args.size(); ++i) {
+                                   // Get i-th TVMArray
+                                   auto* arr_i = args[i].as<ffi::ArrayObj>();
+                                   ICHECK(arr_i != nullptr);
+                                   for (size_t j = 0; j < arr_i->size(); ++j) {
+                                     // Push back each j-th element of the i-th array
+                                     data.push_back(arr_i->at(j));
+                                   }
+                                 }
+                                 *ret = Array<Any>(data);
+                               });
 });
 
 NDArray ConcatEmbeddings(const std::vector<NDArray>& embeddings) {
@@ -205,24 +204,24 @@ NDArray ConcatEmbeddings(const std::vector<NDArray>& embeddings) {
 TVM_FFI_STATIC_INIT_BLOCK({
   namespace refl = tvm::ffi::reflection;
   refl::GlobalDef()
-    .def_packed("tvmjs.runtime.ConcatEmbeddings", [](ffi::PackedArgs args, ffi::Any* ret) {
-      std::vector<NDArray> embeddings;
-      for (int i = 0; i < args.size(); ++i) {
-        embeddings.push_back(args[i].cast<NDArray>());
-      }
-      NDArray result = ConcatEmbeddings(std::move(embeddings));
-      *ret = result;
-    })
-    .def("tvmjs.runtime.NDArrayCopyFromBytes", [](NDArray nd, TVMFFIByteArray* bytes) {
-      nd.CopyFromBytes(bytes->data, bytes->size);
-    })
-    .def("tvmjs.runtime.NDArrayCopyToBytes", [](NDArray nd) -> ffi::Bytes {
-      size_t size = GetDataSize(*(nd.operator->()));
-      std::string bytes;
-      bytes.resize(size);
-      nd.CopyToBytes(bytes.data(), size);
-      return ffi::Bytes(bytes);
-    });
+      .def_packed("tvmjs.runtime.ConcatEmbeddings",
+                  [](ffi::PackedArgs args, ffi::Any* ret) {
+                    std::vector<NDArray> embeddings;
+                    for (int i = 0; i < args.size(); ++i) {
+                      embeddings.push_back(args[i].cast<NDArray>());
+                    }
+                    NDArray result = ConcatEmbeddings(std::move(embeddings));
+                    *ret = result;
+                  })
+      .def("tvmjs.runtime.NDArrayCopyFromBytes",
+           [](NDArray nd, TVMFFIByteArray* bytes) { nd.CopyFromBytes(bytes->data, bytes->size); })
+      .def("tvmjs.runtime.NDArrayCopyToBytes", [](NDArray nd) -> ffi::Bytes {
+        size_t size = GetDataSize(*(nd.operator->()));
+        std::string bytes;
+        bytes.resize(size);
+        nd.CopyToBytes(bytes.data(), size);
+        return ffi::Bytes(bytes);
+      });
 });
 
 }  // namespace runtime

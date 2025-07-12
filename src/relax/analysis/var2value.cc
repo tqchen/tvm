@@ -17,10 +17,10 @@
  * under the License.
  */
 
+#include <tvm/ffi/reflection/reflection.h>
 #include <tvm/relax/analysis.h>
 #include <tvm/relax/expr.h>
 #include <tvm/relax/expr_functor.h>
-#include <tvm/ffi/reflection/reflection.h>
 
 namespace tvm {
 namespace relax {
@@ -61,10 +61,8 @@ Map<Var, Expr> AnalyzeVar2Value(const IRModule& m) {
 
 TVM_FFI_STATIC_INIT_BLOCK({
   namespace refl = tvm::ffi::reflection;
-  refl::GlobalDef()
-    .def("relax.analysis.get_var2val", [](const Function& f) {
-  return AnalyzeVar2Value(f);
-});
+  refl::GlobalDef().def("relax.analysis.get_var2val",
+                        [](const Function& f) { return AnalyzeVar2Value(f); });
 });
 
 class Name2BindingAnalysis : public relax::ExprVisitor {
@@ -92,8 +90,7 @@ Map<String, Array<Binding>> NameToBinding(const Function& fn) {
 
 TVM_FFI_STATIC_INIT_BLOCK({
   namespace refl = tvm::ffi::reflection;
-  refl::GlobalDef()
-    .def("relax.analysis.name_to_binding", NameToBinding);
+  refl::GlobalDef().def("relax.analysis.name_to_binding", NameToBinding);
 });
 
 }  // namespace relax

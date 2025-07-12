@@ -18,8 +18,8 @@
  */
 #include <tvm/arith/analyzer.h>
 #include <tvm/ffi/container/variant.h>
-#include <tvm/script/ir_builder/tir/ir.h>
 #include <tvm/ffi/reflection/reflection.h>
+#include <tvm/script/ir_builder/tir/ir.h>
 
 #include "./utils.h"
 
@@ -692,68 +692,70 @@ TVM_STATIC_IR_FUNCTOR(Namer, vtable)
 TVM_FFI_STATIC_INIT_BLOCK({
   namespace refl = tvm::ffi::reflection;
   refl::GlobalDef()
-    .def("script.ir_builder.tir.Buffer", BufferDecl)
-    .def("script.ir_builder.tir.PrimFunc", PrimFunc)
-    .def("script.ir_builder.tir.Arg", [](String name, ObjectRef obj) -> ObjectRef {
-      using namespace tvm::tir;
-      if (auto var = obj.as<Var>()) {
-        return Arg(name, var.value());
-      }
-      if (auto buffer = obj.as<Buffer>()) {
-        return Arg(name, buffer.value());
-      }
-      LOG(FATAL) << "ValueError: Unexpected type for TIR Arg: " << obj->GetTypeKey();
-      throw;
-    })
-    .def("script.ir_builder.tir.FuncName", FuncName)
-    .def("script.ir_builder.tir.FuncAttrs", FuncAttrs)
-    .def("script.ir_builder.tir.FuncRet", FuncRet)
-    .def("script.ir_builder.tir.MatchBuffer", MatchBuffer)
-    .def("script.ir_builder.tir.Block", Block)
-    .def("script.ir_builder.tir.Init", Init)
-    .def("script.ir_builder.tir.Where", Where)
-    .def("script.ir_builder.tir.Reads", Reads)
-    .def("script.ir_builder.tir.Writes", Writes)
-    .def("script.ir_builder.tir.BlockAttrs", BlockAttrs)
-    .def("script.ir_builder.tir.AllocBuffer", AllocBuffer)
-    .def("script.ir_builder.tir.AxisSpatial", axis::Spatial)
-    .def("script.ir_builder.tir.AxisReduce", axis::Reduce)
-    .def("script.ir_builder.tir.AxisScan", axis::Scan)
-    .def("script.ir_builder.tir.AxisOpaque", axis::Opaque)
-    .def("script.ir_builder.tir.AxisRemap", axis::Remap)
-    .def("script.ir_builder.tir.Serial", Serial)
-    .def("script.ir_builder.tir.Parallel", Parallel)
-    .def("script.ir_builder.tir.Vectorized", Vectorized)
-    .def("script.ir_builder.tir.Unroll", Unroll)
-    .def("script.ir_builder.tir.ThreadBinding", ThreadBinding)
-    .def("script.ir_builder.tir.Grid", Grid)
-    .def("script.ir_builder.tir.Assert", Assert)
-    .def("script.ir_builder.tir.LetStmt", LetStmt)
-    .def("script.ir_builder.tir.LegacyLetStmt", LegacyLetStmt)
-    .def("script.ir_builder.tir.Allocate", Allocate)
-    .def("script.ir_builder.tir.AllocateConst", AllocateConst)
-    .def("script.ir_builder.tir.Realize", Realize)
-    .def("script.ir_builder.tir.Attr", Attr)
-    .def("script.ir_builder.tir.While", While)
-    .def("script.ir_builder.tir.If", If)
-    .def("script.ir_builder.tir.Then", Then)
-    .def("script.ir_builder.tir.Else", Else)
-    .def("script.ir_builder.tir.DeclBuffer", DeclBuffer)
-    .def("script.ir_builder.tir.LaunchThread", [](ffi::Variant<tvm::tir::Var, String> thread_tag_or_var, PrimExpr extent) {
-      if (auto var = thread_tag_or_var.as<tvm::tir::Var>()) {
-        return LaunchThread(var.value(), extent);
-      } else if (auto str = thread_tag_or_var.as<String>()) {
-        return LaunchThread(str.value(), extent);
-      } else {
-        LOG(FATAL) << "ValueError: Unexpected type for TIR LaunchThread: "
-                   << thread_tag_or_var.GetTypeKey();
-        throw;
-      }
-    })
-    .def("script.ir_builder.tir.EnvThread", EnvThread)
-    .def("script.ir_builder.tir.BufferStore", BufferStore)
-    .def("script.ir_builder.tir.Evaluate", Evaluate)
-    .def("script.ir_builder.tir.Ptr", Ptr);
+      .def("script.ir_builder.tir.Buffer", BufferDecl)
+      .def("script.ir_builder.tir.PrimFunc", PrimFunc)
+      .def("script.ir_builder.tir.Arg",
+           [](String name, ObjectRef obj) -> ObjectRef {
+             using namespace tvm::tir;
+             if (auto var = obj.as<Var>()) {
+               return Arg(name, var.value());
+             }
+             if (auto buffer = obj.as<Buffer>()) {
+               return Arg(name, buffer.value());
+             }
+             LOG(FATAL) << "ValueError: Unexpected type for TIR Arg: " << obj->GetTypeKey();
+             throw;
+           })
+      .def("script.ir_builder.tir.FuncName", FuncName)
+      .def("script.ir_builder.tir.FuncAttrs", FuncAttrs)
+      .def("script.ir_builder.tir.FuncRet", FuncRet)
+      .def("script.ir_builder.tir.MatchBuffer", MatchBuffer)
+      .def("script.ir_builder.tir.Block", Block)
+      .def("script.ir_builder.tir.Init", Init)
+      .def("script.ir_builder.tir.Where", Where)
+      .def("script.ir_builder.tir.Reads", Reads)
+      .def("script.ir_builder.tir.Writes", Writes)
+      .def("script.ir_builder.tir.BlockAttrs", BlockAttrs)
+      .def("script.ir_builder.tir.AllocBuffer", AllocBuffer)
+      .def("script.ir_builder.tir.AxisSpatial", axis::Spatial)
+      .def("script.ir_builder.tir.AxisReduce", axis::Reduce)
+      .def("script.ir_builder.tir.AxisScan", axis::Scan)
+      .def("script.ir_builder.tir.AxisOpaque", axis::Opaque)
+      .def("script.ir_builder.tir.AxisRemap", axis::Remap)
+      .def("script.ir_builder.tir.Serial", Serial)
+      .def("script.ir_builder.tir.Parallel", Parallel)
+      .def("script.ir_builder.tir.Vectorized", Vectorized)
+      .def("script.ir_builder.tir.Unroll", Unroll)
+      .def("script.ir_builder.tir.ThreadBinding", ThreadBinding)
+      .def("script.ir_builder.tir.Grid", Grid)
+      .def("script.ir_builder.tir.Assert", Assert)
+      .def("script.ir_builder.tir.LetStmt", LetStmt)
+      .def("script.ir_builder.tir.LegacyLetStmt", LegacyLetStmt)
+      .def("script.ir_builder.tir.Allocate", Allocate)
+      .def("script.ir_builder.tir.AllocateConst", AllocateConst)
+      .def("script.ir_builder.tir.Realize", Realize)
+      .def("script.ir_builder.tir.Attr", Attr)
+      .def("script.ir_builder.tir.While", While)
+      .def("script.ir_builder.tir.If", If)
+      .def("script.ir_builder.tir.Then", Then)
+      .def("script.ir_builder.tir.Else", Else)
+      .def("script.ir_builder.tir.DeclBuffer", DeclBuffer)
+      .def("script.ir_builder.tir.LaunchThread",
+           [](ffi::Variant<tvm::tir::Var, String> thread_tag_or_var, PrimExpr extent) {
+             if (auto var = thread_tag_or_var.as<tvm::tir::Var>()) {
+               return LaunchThread(var.value(), extent);
+             } else if (auto str = thread_tag_or_var.as<String>()) {
+               return LaunchThread(str.value(), extent);
+             } else {
+               LOG(FATAL) << "ValueError: Unexpected type for TIR LaunchThread: "
+                          << thread_tag_or_var.GetTypeKey();
+               throw;
+             }
+           })
+      .def("script.ir_builder.tir.EnvThread", EnvThread)
+      .def("script.ir_builder.tir.BufferStore", BufferStore)
+      .def("script.ir_builder.tir.Evaluate", Evaluate)
+      .def("script.ir_builder.tir.Ptr", Ptr);
 });
 
 #define TVM_TMP_STR(x) #x
@@ -787,100 +789,90 @@ TVM_FFI_REGISTER_GLOBAL_SIZES_LANES("script.ir_builder.tir.Int", Int);
 
 TVM_FFI_STATIC_INIT_BLOCK({
   namespace refl = tvm::ffi::reflection;
-  refl::GlobalDef()
-    .def("script.ir_builder.tir.BFloat16", BFloat16);
+  refl::GlobalDef().def("script.ir_builder.tir.BFloat16", BFloat16);
 });
 TVM_FFI_REGISTER_GLOBAL_LANES("script.ir_builder.tir.BFloat16", BFloat16);
 
 // Float8 variants
 TVM_FFI_STATIC_INIT_BLOCK({
   namespace refl = tvm::ffi::reflection;
-  refl::GlobalDef()
-    .def("script.ir_builder.tir.Float8E3M4", Float8E3M4);
+  refl::GlobalDef().def("script.ir_builder.tir.Float8E3M4", Float8E3M4);
 });
 TVM_FFI_REGISTER_GLOBAL_LANES("script.ir_builder.tir.Float8E3M4", Float8E3M4);
 
 TVM_FFI_STATIC_INIT_BLOCK({
   namespace refl = tvm::ffi::reflection;
-  refl::GlobalDef()
-    .def("script.ir_builder.tir.Float8E4M3", Float8E4M3);
+  refl::GlobalDef().def("script.ir_builder.tir.Float8E4M3", Float8E4M3);
 });
 TVM_FFI_REGISTER_GLOBAL_LANES("script.ir_builder.tir.Float8E4M3", Float8E4M3);
 
 TVM_FFI_STATIC_INIT_BLOCK({
   namespace refl = tvm::ffi::reflection;
-  refl::GlobalDef()
-    .def("script.ir_builder.tir.Float8E4M3B11FNUZ", Float8E4M3B11FNUZ);
+  refl::GlobalDef().def("script.ir_builder.tir.Float8E4M3B11FNUZ", Float8E4M3B11FNUZ);
 });
 TVM_FFI_REGISTER_GLOBAL_LANES("script.ir_builder.tir.Float8E4M3B11FNUZ", Float8E4M3B11FNUZ);
 
 TVM_FFI_STATIC_INIT_BLOCK({
   namespace refl = tvm::ffi::reflection;
-  refl::GlobalDef()
-    .def("script.ir_builder.tir.Float8E4M3FN", Float8E4M3FN);
+  refl::GlobalDef().def("script.ir_builder.tir.Float8E4M3FN", Float8E4M3FN);
 });
 TVM_FFI_REGISTER_GLOBAL_LANES("script.ir_builder.tir.Float8E4M3FN", Float8E4M3FN);
 
 TVM_FFI_STATIC_INIT_BLOCK({
   namespace refl = tvm::ffi::reflection;
-  refl::GlobalDef()
-    .def("script.ir_builder.tir.Float8E4M3FNUZ", Float8E4M3FNUZ);
+  refl::GlobalDef().def("script.ir_builder.tir.Float8E4M3FNUZ", Float8E4M3FNUZ);
 });
 TVM_FFI_REGISTER_GLOBAL_LANES("script.ir_builder.tir.Float8E4M3FNUZ", Float8E4M3FNUZ);
 
 TVM_FFI_STATIC_INIT_BLOCK({
   namespace refl = tvm::ffi::reflection;
-  refl::GlobalDef()
-    .def("script.ir_builder.tir.Float8E5M2", Float8E5M2);
+  refl::GlobalDef().def("script.ir_builder.tir.Float8E5M2", Float8E5M2);
 });
 TVM_FFI_REGISTER_GLOBAL_LANES("script.ir_builder.tir.Float8E5M2", Float8E5M2);
 
 TVM_FFI_STATIC_INIT_BLOCK({
   namespace refl = tvm::ffi::reflection;
-  refl::GlobalDef()
-    .def("script.ir_builder.tir.Float8E5M2FNUZ", Float8E5M2FNUZ);
+  refl::GlobalDef().def("script.ir_builder.tir.Float8E5M2FNUZ", Float8E5M2FNUZ);
 });
 TVM_FFI_REGISTER_GLOBAL_LANES("script.ir_builder.tir.Float8E5M2FNUZ", Float8E5M2FNUZ);
 
 TVM_FFI_STATIC_INIT_BLOCK({
   namespace refl = tvm::ffi::reflection;
-  refl::GlobalDef()
-    .def("script.ir_builder.tir.Float8E8M0FNU", Float8E8M0FNU);
+  refl::GlobalDef().def("script.ir_builder.tir.Float8E8M0FNU", Float8E8M0FNU);
 });
 TVM_FFI_REGISTER_GLOBAL_LANES("script.ir_builder.tir.Float8E8M0FNU", Float8E8M0FNU);
 
 // Float6 variants
 TVM_FFI_STATIC_INIT_BLOCK({
   namespace refl = tvm::ffi::reflection;
-  refl::GlobalDef()
-    .def("script.ir_builder.tir.Float6E2M3FN", Float6E2M3FN);
+  refl::GlobalDef().def("script.ir_builder.tir.Float6E2M3FN", Float6E2M3FN);
 });
 TVM_FFI_REGISTER_GLOBAL_LANES("script.ir_builder.tir.Float6E2M3FN", Float6E2M3FN);
 
 TVM_FFI_STATIC_INIT_BLOCK({
   namespace refl = tvm::ffi::reflection;
-  refl::GlobalDef()
-    .def("script.ir_builder.tir.Float6E3M2FN", Float6E3M2FN);
+  refl::GlobalDef().def("script.ir_builder.tir.Float6E3M2FN", Float6E3M2FN);
 });
 TVM_FFI_REGISTER_GLOBAL_LANES("script.ir_builder.tir.Float6E3M2FN", Float6E3M2FN);
 
 // Float4 variant
 TVM_FFI_STATIC_INIT_BLOCK({
   namespace refl = tvm::ffi::reflection;
-  refl::GlobalDef()
-    .def("script.ir_builder.tir.Float4E2M1FN", Float4E2M1FN);
+  refl::GlobalDef().def("script.ir_builder.tir.Float4E2M1FN", Float4E2M1FN);
 });
 TVM_FFI_REGISTER_GLOBAL_LANES("script.ir_builder.tir.Float4E2M1FN", Float4E2M1FN);
 
 TVM_FFI_STATIC_INIT_BLOCK({
   namespace refl = tvm::ffi::reflection;
   refl::GlobalDef()
-    .def("script.ir_builder.tir.Boolean", Boolean)
-    .def("script.ir_builder.tir.Handle", Handle)
-    .def("script.ir_builder.tir.TensormapHandle", TensormapHandle)
-    .def("script.ir_builder.tir.Void", Void)
-    .def("script.ir_builder.tir.min", [](PrimExpr a, PrimExpr b) -> PrimExpr { return tvm::min(a, b); })
-    .def("script.ir_builder.tir.max", [](PrimExpr a, PrimExpr b) -> PrimExpr { return tvm::max(a, b); });
+      .def("script.ir_builder.tir.Boolean", Boolean)
+      .def("script.ir_builder.tir.Handle", Handle)
+      .def("script.ir_builder.tir.TensormapHandle", TensormapHandle)
+      .def("script.ir_builder.tir.Void", Void)
+      .def("script.ir_builder.tir.min",
+           [](PrimExpr a, PrimExpr b) -> PrimExpr { return tvm::min(a, b); })
+      .def("script.ir_builder.tir.max",
+           [](PrimExpr a, PrimExpr b) -> PrimExpr { return tvm::max(a, b); });
 });
 }  // namespace tir
 }  // namespace ir_builder

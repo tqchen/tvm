@@ -21,10 +21,10 @@
  * \file tvm/relax/transform/meta_schedule.cc
  * \brief Pass for meta_schedule tuning
  */
+#include <tvm/ffi/reflection/reflection.h>
 #include <tvm/meta_schedule/database.h>
 #include <tvm/relax/transform.h>
 #include <tvm/tir/transform.h>
-#include <tvm/ffi/reflection/reflection.h>
 
 #include "../src/meta_schedule/module_equality.h"
 #include "../src/meta_schedule/trace_apply.h"
@@ -179,9 +179,9 @@ Pass MetaScheduleTuneTIR(String work_dir, Integer max_trials_global) {
 TVM_FFI_STATIC_INIT_BLOCK({
   namespace refl = tvm::ffi::reflection;
   refl::GlobalDef()
-    .def("relax.transform.MetaScheduleApplyDatabase", MetaScheduleApplyDatabase)
-    .def("relax.transform.MetaScheduleTuneIRMod", MetaScheduleTuneIRMod)
-    .def("relax.transform.MetaScheduleTuneTIR", MetaScheduleTuneTIR);
+      .def("relax.transform.MetaScheduleApplyDatabase", MetaScheduleApplyDatabase)
+      .def("relax.transform.MetaScheduleTuneIRMod", MetaScheduleTuneIRMod)
+      .def("relax.transform.MetaScheduleTuneTIR", MetaScheduleTuneTIR);
 });
 }  // namespace transform
 }  // namespace relax

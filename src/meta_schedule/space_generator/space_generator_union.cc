@@ -89,8 +89,8 @@ TVM_FFI_STATIC_INIT_BLOCK({ SpaceGeneratorUnionNode::RegisterReflection(); });
 TVM_REGISTER_NODE_TYPE(SpaceGeneratorUnionNode);
 TVM_FFI_STATIC_INIT_BLOCK({
   namespace refl = tvm::ffi::reflection;
-  refl::GlobalDef()
-    .def("meta_schedule.SpaceGeneratorSpaceGeneratorUnion", SpaceGenerator::SpaceGeneratorUnion);
+  refl::GlobalDef().def("meta_schedule.SpaceGeneratorSpaceGeneratorUnion",
+                        SpaceGenerator::SpaceGeneratorUnion);
 });
 
 }  // namespace meta_schedule

@@ -18,13 +18,13 @@
  */
 
 #include <tvm/arith/iter_affine_map.h>
+#include <tvm/ffi/reflection/reflection.h>
 #include <tvm/relax/analysis.h>
 #include <tvm/relax/op_attr_types.h>
 #include <tvm/tir/analysis.h>
 #include <tvm/tir/expr_functor.h>
 #include <tvm/tir/function.h>
 #include <tvm/tir/stmt_functor.h>
-#include <tvm/ffi/reflection/reflection.h>
 
 namespace tvm {
 namespace relax {
@@ -540,8 +540,7 @@ bool HasReshapePattern(const PrimFunc& func) {
 
 TVM_FFI_STATIC_INIT_BLOCK({
   namespace refl = tvm::ffi::reflection;
-  refl::GlobalDef()
-    .def("relax.analysis.has_reshape_pattern", HasReshapePattern);
+  refl::GlobalDef().def("relax.analysis.has_reshape_pattern", HasReshapePattern);
 });
 
 }  // namespace relax

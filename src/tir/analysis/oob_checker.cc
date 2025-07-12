@@ -21,8 +21,8 @@
  *  Out of bounds array access static analyzer.
  */
 
-#include <tvm/tir/transform.h>
 #include <tvm/ffi/reflection/reflection.h>
+#include <tvm/tir/transform.h>
 
 #include "../../arith/ir_visitor_with_analyzer.h"
 #include "../schedule/error.h"
@@ -126,8 +126,7 @@ transform::Pass OOBChecker() {
 
 TVM_FFI_STATIC_INIT_BLOCK({
   namespace refl = tvm::ffi::reflection;
-  refl::GlobalDef()
-    .def("tir.analysis.OOBChecker", OOBChecker);
+  refl::GlobalDef().def("tir.analysis.OOBChecker", OOBChecker);
 });
 }  // namespace transform
 }  // namespace tir

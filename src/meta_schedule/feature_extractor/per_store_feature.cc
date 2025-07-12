@@ -1451,8 +1451,8 @@ TVM_FFI_STATIC_INIT_BLOCK({ PerStoreFeatureNode::RegisterReflection(); });
 TVM_REGISTER_NODE_TYPE(PerStoreFeatureNode);
 TVM_FFI_STATIC_INIT_BLOCK({
   namespace refl = tvm::ffi::reflection;
-  refl::GlobalDef()
-    .def("meta_schedule.FeatureExtractorPerStoreFeature", FeatureExtractor::PerStoreFeature);
+  refl::GlobalDef().def("meta_schedule.FeatureExtractorPerStoreFeature",
+                        FeatureExtractor::PerStoreFeature);
 });
 
 }  // namespace meta_schedule

@@ -24,9 +24,9 @@
  * extra computations that do not impact the final results.
  */
 
+#include <tvm/ffi/reflection/reflection.h>
 #include <tvm/tir/op.h>
 #include <tvm/tir/transform.h>
-#include <tvm/ffi/reflection/reflection.h>
 
 #include <optional>
 
@@ -179,8 +179,8 @@ Pass ReduceBranchingThroughOvercompute() {
 
 TVM_FFI_STATIC_INIT_BLOCK({
   namespace refl = tvm::ffi::reflection;
-  refl::GlobalDef()
-    .def("tir.transform.ReduceBranchingThroughOvercompute", ReduceBranchingThroughOvercompute);
+  refl::GlobalDef().def("tir.transform.ReduceBranchingThroughOvercompute",
+                        ReduceBranchingThroughOvercompute);
 });
 
 }  // namespace transform

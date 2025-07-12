@@ -16,8 +16,9 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-#include "../utils.h"
 #include <tvm/ffi/reflection/reflection.h>
+
+#include "../utils.h"
 
 namespace tvm {
 namespace meta_schedule {
@@ -374,13 +375,14 @@ TVM_REGISTER_NODE_TYPE(PyTaskSchedulerNode);
 TVM_FFI_STATIC_INIT_BLOCK({
   namespace refl = tvm::ffi::reflection;
   refl::GlobalDef()
-    .def("meta_schedule.TaskSchedulerPyTaskScheduler", TaskScheduler::PyTaskScheduler)
-    .def_method("meta_schedule.TaskSchedulerTune", &TaskSchedulerNode::Tune)
-    .def_method("meta_schedule.TaskSchedulerJoinRunningTask", &TaskSchedulerNode::JoinRunningTask)
-    .def_method("meta_schedule.TaskSchedulerNextTaskId", &TaskSchedulerNode::NextTaskId)
-    .def_method("meta_schedule.TaskSchedulerTerminateTask", &TaskSchedulerNode::TerminateTask)
-    .def_method("meta_schedule.TaskSchedulerTouchTask", &TaskSchedulerNode::TouchTask)
-    .def_method("meta_schedule.TaskSchedulerPrintTuningStatistics", &TaskSchedulerNode::PrintTuningStatistics);
+      .def("meta_schedule.TaskSchedulerPyTaskScheduler", TaskScheduler::PyTaskScheduler)
+      .def_method("meta_schedule.TaskSchedulerTune", &TaskSchedulerNode::Tune)
+      .def_method("meta_schedule.TaskSchedulerJoinRunningTask", &TaskSchedulerNode::JoinRunningTask)
+      .def_method("meta_schedule.TaskSchedulerNextTaskId", &TaskSchedulerNode::NextTaskId)
+      .def_method("meta_schedule.TaskSchedulerTerminateTask", &TaskSchedulerNode::TerminateTask)
+      .def_method("meta_schedule.TaskSchedulerTouchTask", &TaskSchedulerNode::TouchTask)
+      .def_method("meta_schedule.TaskSchedulerPrintTuningStatistics",
+                  &TaskSchedulerNode::PrintTuningStatistics);
 });
 
 }  // namespace meta_schedule

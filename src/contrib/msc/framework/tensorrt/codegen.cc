@@ -23,8 +23,8 @@
  */
 
 #include "codegen.h"
-#include <tvm/ffi/reflection/reflection.h>
 
+#include <tvm/ffi/reflection/reflection.h>
 #include <tvm/ir/module.h>
 #include <tvm/relax/expr.h>
 
@@ -578,19 +578,20 @@ const Map<String, String> TensorRTCodeGen::GetStepCtx() {
 TVM_FFI_STATIC_INIT_BLOCK({
   namespace refl = tvm::ffi::reflection;
   refl::GlobalDef()
-    .def("msc.framework.tensorrt.GetTensorRTSources", [](const MSCGraph& graph, const String& codegen_config,
-                       const String& print_config) -> Map<String, String> {
-      TensorRTCodeGen codegen = TensorRTCodeGen(graph, codegen_config);
-      codegen.Init();
-      return codegen.GetSources(print_config);
-    })
-    .def("msc.framework.tensorrt.GetTensorRTRoot", []() -> String {
+      .def("msc.framework.tensorrt.GetTensorRTSources",
+           [](const MSCGraph& graph, const String& codegen_config,
+              const String& print_config) -> Map<String, String> {
+             TensorRTCodeGen codegen = TensorRTCodeGen(graph, codegen_config);
+             codegen.Init();
+             return codegen.GetSources(print_config);
+           })
+      .def("msc.framework.tensorrt.GetTensorRTRoot", []() -> String {
 #ifdef TENSORRT_ROOT_DIR
-  return TENSORRT_ROOT_DIR;
+        return TENSORRT_ROOT_DIR;
 #else
   return "";
 #endif
-});
+      });
 });
 
 /*!
@@ -623,8 +624,7 @@ Array<runtime::Module> MSCTensorRTCompiler(Array<Function> functions,
 
 TVM_FFI_STATIC_INIT_BLOCK({
   namespace refl = tvm::ffi::reflection;
-  refl::GlobalDef()
-    .def("relax.ext.msc_tensorrt", MSCTensorRTCompiler);
+  refl::GlobalDef().def("relax.ext.msc_tensorrt", MSCTensorRTCompiler);
 });
 
 }  // namespace msc

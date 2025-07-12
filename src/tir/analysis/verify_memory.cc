@@ -22,13 +22,13 @@
  * \brief Pass to check if memory accesses are legal.
  */
 #include <tvm/ffi/function.h>
+#include <tvm/ffi/reflection/reflection.h>
 #include <tvm/ir/transform.h>
 #include <tvm/target/target.h>
 #include <tvm/tir/analysis.h>
 #include <tvm/tir/builtin.h>
 #include <tvm/tir/expr.h>
 #include <tvm/tir/stmt_functor.h>
-#include <tvm/ffi/reflection/reflection.h>
 
 namespace tvm {
 namespace tir {
@@ -189,8 +189,7 @@ bool VerifyMemory(const PrimFunc& func) { return VerifyMemory_(func).size() == 0
 
 TVM_FFI_STATIC_INIT_BLOCK({
   namespace refl = tvm::ffi::reflection;
-  refl::GlobalDef()
-    .def("tir.analysis.verify_memory", VerifyMemory);
+  refl::GlobalDef().def("tir.analysis.verify_memory", VerifyMemory);
 });
 
 namespace transform {
@@ -218,8 +217,7 @@ Pass VerifyMemory() {
 
 TVM_FFI_STATIC_INIT_BLOCK({
   namespace refl = tvm::ffi::reflection;
-  refl::GlobalDef()
-    .def("tir.transform.VerifyMemory", VerifyMemory);
+  refl::GlobalDef().def("tir.transform.VerifyMemory", VerifyMemory);
 });
 
 }  // namespace transform

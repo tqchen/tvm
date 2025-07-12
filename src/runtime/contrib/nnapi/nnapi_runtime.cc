@@ -19,8 +19,8 @@
 
 #include <dlpack/dlpack.h>
 #include <tvm/ffi/function.h>
-#include <tvm/runtime/ndarray.h>
 #include <tvm/ffi/reflection/reflection.h>
+#include <tvm/runtime/ndarray.h>
 
 #include <algorithm>
 #include <cstdint>
@@ -244,8 +244,8 @@ runtime::Module NNAPIRuntimeCreate(const String& symbol_name, const String& grap
 TVM_FFI_STATIC_INIT_BLOCK({
   namespace refl = tvm::ffi::reflection;
   refl::GlobalDef()
-    .def("runtime.nnapi_runtime_create", NNAPIRuntimeCreate)
-    .def("runtime.module.loadbinary_nnapi", JSONRuntimeBase::LoadFromBinary<NNAPIRuntime>);
+      .def("runtime.nnapi_runtime_create", NNAPIRuntimeCreate)
+      .def("runtime.module.loadbinary_nnapi", JSONRuntimeBase::LoadFromBinary<NNAPIRuntime>);
 });
 
 }  // namespace contrib

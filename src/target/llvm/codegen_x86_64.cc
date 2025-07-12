@@ -135,10 +135,10 @@ llvm::Value* CodeGenX86_64::CallVectorIntrin(llvm::Intrinsic::ID id, size_t intr
 
 TVM_FFI_STATIC_INIT_BLOCK({
   namespace refl = tvm::ffi::reflection;
-  refl::GlobalDef()
-    .def_packed("tvm.codegen.llvm.target_x86-64", [](const ffi::PackedArgs& targs, ffi::Any* rv) {
-      *rv = static_cast<void*>(new CodeGenX86_64());
-    });
+  refl::GlobalDef().def_packed("tvm.codegen.llvm.target_x86-64",
+                               [](const ffi::PackedArgs& targs, ffi::Any* rv) {
+                                 *rv = static_cast<void*>(new CodeGenX86_64());
+                               });
 });
 
 }  // namespace codegen

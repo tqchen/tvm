@@ -21,6 +21,7 @@
  * \file make_unpacked_api.cc Lower PrimFunc to a standard C function API.
  */
 #include <tvm/ffi/function.h>
+#include <tvm/ffi/reflection/reflection.h>
 #include <tvm/runtime/device_api.h>
 #include <tvm/target/target.h>
 #include <tvm/tir/analysis.h>
@@ -29,7 +30,6 @@
 #include <tvm/tir/expr.h>
 #include <tvm/tir/stmt_functor.h>
 #include <tvm/tir/transform.h>
-#include <tvm/ffi/reflection/reflection.h>
 
 #include <unordered_set>
 #include <utility>
@@ -203,8 +203,7 @@ Pass MakeUnpackedAPI() {
 
 TVM_FFI_STATIC_INIT_BLOCK({
   namespace refl = tvm::ffi::reflection;
-  refl::GlobalDef()
-    .def("tir.transform.MakeUnpackedAPI", MakeUnpackedAPI);
+  refl::GlobalDef().def("tir.transform.MakeUnpackedAPI", MakeUnpackedAPI);
 });
 }  // namespace transform
 }  // namespace tir

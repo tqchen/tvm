@@ -23,7 +23,6 @@
 #ifdef TVM_LLVM_VERSION
 
 #include "codegen_cpu.h"
-#include <tvm/ffi/reflection/reflection.h>
 
 #include <llvm/ADT/SmallVector.h>
 #include <llvm/ADT/StringRef.h>
@@ -44,6 +43,7 @@
 #include <llvm/IR/MDBuilder.h>
 #include <llvm/IR/Metadata.h>
 #include <llvm/IR/Module.h>
+#include <tvm/ffi/reflection/reflection.h>
 #if TVM_LLVM_VERSION >= 100
 #include <llvm/Support/Alignment.h>
 #endif
@@ -1164,10 +1164,10 @@ void CodeGenCPU::VisitStmt_(const ForNode* op) {
 
 TVM_FFI_STATIC_INIT_BLOCK({
   namespace refl = tvm::ffi::reflection;
-  refl::GlobalDef()
-    .def_packed("tvm.codegen.llvm.target_cpu", [](const ffi::PackedArgs& targs, ffi::Any* rv) {
-      *rv = static_cast<void*>(new CodeGenCPU());
-    });
+  refl::GlobalDef().def_packed("tvm.codegen.llvm.target_cpu",
+                               [](const ffi::PackedArgs& targs, ffi::Any* rv) {
+                                 *rv = static_cast<void*>(new CodeGenCPU());
+                               });
 });
 
 }  // namespace codegen

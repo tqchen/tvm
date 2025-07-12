@@ -54,11 +54,11 @@
  * is important since the dependency relation is transitive.
  */
 
+#include <tvm/ffi/reflection/reflection.h>
 #include <tvm/relax/expr_functor.h>
 #include <tvm/relax/struct_info.h>
 #include <tvm/relax/transform.h>
 #include <tvm/tir/function.h>
-#include <tvm/ffi/reflection/reflection.h>
 
 #include "../../support/arena.h"
 #include "utils.h"
@@ -424,8 +424,7 @@ Pass MergeCompositeFunctions() {
 
 TVM_FFI_STATIC_INIT_BLOCK({
   namespace refl = tvm::ffi::reflection;
-  refl::GlobalDef()
-    .def("relax.transform.MergeCompositeFunctions", MergeCompositeFunctions);
+  refl::GlobalDef().def("relax.transform.MergeCompositeFunctions", MergeCompositeFunctions);
 });
 
 }  // namespace transform

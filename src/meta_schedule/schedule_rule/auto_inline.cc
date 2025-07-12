@@ -198,8 +198,7 @@ TVM_FFI_STATIC_INIT_BLOCK({ AutoInlineNode::RegisterReflection(); });
 TVM_REGISTER_NODE_TYPE(AutoInlineNode);
 TVM_FFI_STATIC_INIT_BLOCK({
   namespace refl = tvm::ffi::reflection;
-  refl::GlobalDef()
-    .def("meta_schedule.ScheduleRuleAutoInline", ScheduleRule::AutoInline);
+  refl::GlobalDef().def("meta_schedule.ScheduleRuleAutoInline", ScheduleRule::AutoInline);
 });
 
 /*! \brief Inline blocks that produce a constant scalar. */
@@ -248,8 +247,8 @@ TVM_FFI_STATIC_INIT_BLOCK({ InlineConstantScalarsNode::RegisterReflection(); });
 TVM_REGISTER_NODE_TYPE(InlineConstantScalarsNode);
 TVM_FFI_STATIC_INIT_BLOCK({
   namespace refl = tvm::ffi::reflection;
-  refl::GlobalDef()
-    .def("meta_schedule.ScheduleRuleInlineConstantScalars", ScheduleRule::InlineConstantScalars);
+  refl::GlobalDef().def("meta_schedule.ScheduleRuleInlineConstantScalars",
+                        ScheduleRule::InlineConstantScalars);
 });
 }  // namespace meta_schedule
 }  // namespace tvm

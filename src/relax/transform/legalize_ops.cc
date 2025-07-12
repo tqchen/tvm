@@ -23,13 +23,13 @@
  * with corresponding low-level TIR PrimFuncs.
  */
 
+#include <tvm/ffi/reflection/reflection.h>
 #include <tvm/relax/analysis.h>
 #include <tvm/relax/expr_functor.h>
 #include <tvm/relax/op_attr_types.h>
 #include <tvm/relax/struct_info.h>
 #include <tvm/relax/transform.h>
 #include <tvm/tir/transform.h>
-#include <tvm/ffi/reflection/reflection.h>
 
 namespace tvm {
 namespace relax {
@@ -407,8 +407,7 @@ Pass LegalizeOps(Optional<Map<String, ffi::Function>> cmap, bool enable_warning)
 
 TVM_FFI_STATIC_INIT_BLOCK({
   namespace refl = tvm::ffi::reflection;
-  refl::GlobalDef()
-    .def("relax.transform.LegalizeOps", LegalizeOps);
+  refl::GlobalDef().def("relax.transform.LegalizeOps", LegalizeOps);
 });
 
 }  // namespace transform

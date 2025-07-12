@@ -22,9 +22,9 @@
  */
 #include <tvm/arith/analyzer.h>
 #include <tvm/ffi/function.h>
+#include <tvm/ffi/reflection/reflection.h>
 #include <tvm/tir/builtin.h>
 #include <tvm/tir/expr_functor.h>
-#include <tvm/ffi/reflection/reflection.h>
 
 #include <algorithm>
 #include <optional>
@@ -56,8 +56,7 @@ ConstIntBound MakeConstIntBound(int64_t min_value, int64_t max_value) {
 
 TVM_FFI_STATIC_INIT_BLOCK({
   namespace refl = tvm::ffi::reflection;
-  refl::GlobalDef()
-    .def("arith.ConstIntBound", MakeConstIntBound);
+  refl::GlobalDef().def("arith.ConstIntBound", MakeConstIntBound);
 });
 
 inline void PrintBoundValue(std::ostream& os, int64_t val) {

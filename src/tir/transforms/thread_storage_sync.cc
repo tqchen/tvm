@@ -21,12 +21,12 @@
  * \file thread_storage_sync.cc
  */
 #include <tvm/ffi/function.h>
+#include <tvm/ffi/reflection/reflection.h>
 #include <tvm/tir/analysis.h>
 #include <tvm/tir/builtin.h>
 #include <tvm/tir/expr.h>
 #include <tvm/tir/stmt_functor.h>
 #include <tvm/tir/transform.h>
-#include <tvm/ffi/reflection/reflection.h>
 
 #include <unordered_map>
 #include <unordered_set>
@@ -474,8 +474,7 @@ Pass ThreadSync(String storage_scope) {
 
 TVM_FFI_STATIC_INIT_BLOCK({
   namespace refl = tvm::ffi::reflection;
-  refl::GlobalDef()
-    .def("tir.transform.ThreadSync", ThreadSync);
+  refl::GlobalDef().def("tir.transform.ThreadSync", ThreadSync);
 });
 
 }  // namespace transform
