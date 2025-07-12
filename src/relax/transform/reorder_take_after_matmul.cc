@@ -27,6 +27,7 @@
 #include <tvm/relax/expr.h>
 #include <tvm/relax/expr_functor.h>
 #include <tvm/relax/transform.h>
+#include <tvm/ffi/reflection/reflection.h>
 
 #include <optional>
 #include <unordered_set>
@@ -156,8 +157,11 @@ Pass ReorderTakeAfterMatmul() {
   return CreateFunctionPass(pass_func, 1, "ReorderTakeAfterMatmul", {});
 }
 
-TVM_FFI_REGISTER_GLOBAL("relax.transform.ReorderTakeAfterMatmul")
-    .set_body_typed(ReorderTakeAfterMatmul);
+TVM_FFI_STATIC_INIT_BLOCK({
+  namespace refl = tvm::ffi::reflection;
+  refl::GlobalDef()
+    .def("relax.transform.ReorderTakeAfterMatmul", ReorderTakeAfterMatmul);
+});
 
 }  // namespace transform
 }  // namespace relax

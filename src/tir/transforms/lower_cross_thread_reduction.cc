@@ -24,6 +24,7 @@
 #include <tvm/tir/analysis.h>
 #include <tvm/tir/stmt_functor.h>
 #include <tvm/tir/transform.h>
+#include <tvm/ffi/reflection/reflection.h>
 
 #include "../../runtime/thread_storage_scope.h"
 #include "../../support/utils.h"
@@ -935,8 +936,11 @@ Pass LowerCrossThreadReduction() {
   return CreatePrimFuncPass(pass_func, 0, "tir.LowerCrossThreadReduction", {});
 }
 
-TVM_FFI_REGISTER_GLOBAL("tir.transform.LowerCrossThreadReduction")
-    .set_body_typed(LowerCrossThreadReduction);
+TVM_FFI_STATIC_INIT_BLOCK({
+  namespace refl = tvm::ffi::reflection;
+  refl::GlobalDef()
+    .def("tir.transform.LowerCrossThreadReduction", LowerCrossThreadReduction);
+});
 
 }  // namespace transform
 

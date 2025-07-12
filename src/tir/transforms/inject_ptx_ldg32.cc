@@ -25,6 +25,7 @@
 #include <tvm/tir/stmt.h>
 #include <tvm/tir/stmt_functor.h>
 #include <tvm/tir/transform.h>
+#include <tvm/ffi/reflection/reflection.h>
 
 #include "../../arith/const_fold.h"
 #include "../../arith/pattern_match.h"
@@ -123,7 +124,11 @@ Pass InjectPTXLDG32(bool enable_inject_ptx_intrin) {
 
 // The pass can now be invoked via the pass infrastructure, but we also add a
 // Python binding for it
-TVM_FFI_REGISTER_GLOBAL("tir.transform.InjectPTXLDG32").set_body_typed(InjectPTXLDG32);
+TVM_FFI_STATIC_INIT_BLOCK({
+  namespace refl = tvm::ffi::reflection;
+  refl::GlobalDef()
+    .def("tir.transform.InjectPTXLDG32", InjectPTXLDG32);
+});
 
 }  // namespace transform
 }  // namespace tir

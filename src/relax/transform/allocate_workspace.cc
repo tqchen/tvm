@@ -27,6 +27,7 @@
 #include <tvm/relax/expr.h>
 #include <tvm/relax/expr_functor.h>
 #include <tvm/relax/transform.h>
+#include <tvm/ffi/reflection/reflection.h>
 
 #include "../op/op_common.h"
 
@@ -201,7 +202,11 @@ Pass AllocateWorkspace() {
   return CreateModulePass(pass_func, 0, "AllocateWorkspace", {});
 }
 
-TVM_FFI_REGISTER_GLOBAL("relax.transform.AllocateWorkspace").set_body_typed(AllocateWorkspace);
+TVM_FFI_STATIC_INIT_BLOCK({
+  namespace refl = tvm::ffi::reflection;
+  refl::GlobalDef()
+    .def("relax.transform.AllocateWorkspace", AllocateWorkspace);
+});
 
 }  // namespace transform
 }  // namespace tvm

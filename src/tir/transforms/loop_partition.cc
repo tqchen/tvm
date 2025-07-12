@@ -28,6 +28,7 @@
 #include <tvm/tir/expr.h>
 #include <tvm/tir/stmt_functor.h>
 #include <tvm/tir/transform.h>
+#include <tvm/ffi/reflection/reflection.h>
 
 #include <optional>
 #include <unordered_map>
@@ -819,7 +820,11 @@ Pass LoopPartition() {
   return CreatePrimFuncPass(pass_func, 0, "tir.LoopPartition", {});
 }
 
-TVM_FFI_REGISTER_GLOBAL("tir.transform.LoopPartition").set_body_typed(LoopPartition);
+TVM_FFI_STATIC_INIT_BLOCK({
+  namespace refl = tvm::ffi::reflection;
+  refl::GlobalDef()
+    .def("tir.transform.LoopPartition", LoopPartition);
+});
 
 }  // namespace transform
 

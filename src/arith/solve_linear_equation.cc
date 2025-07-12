@@ -29,6 +29,7 @@
 #include <tvm/tir/expr.h>
 #include <tvm/tir/op.h>
 #include <tvm/tir/stmt_functor.h>
+#include <tvm/ffi/reflection/reflection.h>
 
 #include "int_operator.h"
 
@@ -454,8 +455,10 @@ IntConstraintsTransform SolveLinearEquations(const IntConstraints& system_to_sol
   return transform;
 }
 
-TVM_FFI_REGISTER_GLOBAL("arith.SolveLinearEquations")
-    .set_body_packed([](ffi::PackedArgs args, ffi::Any* ret) {
+TVM_FFI_STATIC_INIT_BLOCK({
+  namespace refl = tvm::ffi::reflection;
+  refl::GlobalDef()
+    .def_packed("arith.SolveLinearEquations", [](ffi::PackedArgs args, ffi::Any* ret) {
       if (args.size() == 1) {
         *ret = SolveLinearEquations(args[0].cast<IntConstraints>());
       } else if (args.size() == 3) {
@@ -469,6 +472,7 @@ TVM_FFI_REGISTER_GLOBAL("arith.SolveLinearEquations")
         LOG(FATAL) << "arith.SolveLinearEquations expects 1 or 3 arguments, gets " << args.size();
       }
     });
+});
 
 }  // namespace arith
 }  // namespace tvm

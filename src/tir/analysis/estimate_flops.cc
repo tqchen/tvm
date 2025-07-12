@@ -18,6 +18,7 @@
  */
 #include <tvm/tir/analysis.h>
 #include <tvm/tir/stmt_functor.h>
+#include <tvm/ffi/reflection/reflection.h>
 
 #include "tvm/arith/analyzer.h"
 
@@ -246,8 +247,10 @@ double EstimateTIRFlops(const IRModule& mod) {
   return PostprocessResults(result) + cached_result;
 }
 
-TVM_FFI_REGISTER_GLOBAL("tir.analysis.EstimateTIRFlops")
-    .set_body_typed([](ObjectRef obj) -> double {
+TVM_FFI_STATIC_INIT_BLOCK({
+  namespace refl = tvm::ffi::reflection;
+  refl::GlobalDef()
+    .def("tir.analysis.EstimateTIRFlops", [](ObjectRef obj) -> double {
       if (auto mod = obj.as<IRModule>()) {
         return EstimateTIRFlops(mod.value());
       } else if (auto stmt = obj.as<Stmt>()) {
@@ -258,6 +261,7 @@ TVM_FFI_REGISTER_GLOBAL("tir.analysis.EstimateTIRFlops")
         throw;
       }
     });
+});
 
 }  // namespace tir
 }  // namespace tvm

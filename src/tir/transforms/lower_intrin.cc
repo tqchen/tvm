@@ -26,6 +26,7 @@
 #include <tvm/tir/expr.h>
 #include <tvm/tir/op.h>
 #include <tvm/tir/transform.h>
+#include <tvm/ffi/reflection/reflection.h>
 
 #include <limits>
 #include <unordered_set>
@@ -394,7 +395,11 @@ Pass LowerIntrin() {
   return CreatePrimFuncPass(pass_func, 0, "tir.LowerIntrin", {});
 }
 
-TVM_FFI_REGISTER_GLOBAL("tir.transform.LowerIntrin").set_body_typed(LowerIntrin);
+TVM_FFI_STATIC_INIT_BLOCK({
+  namespace refl = tvm::ffi::reflection;
+  refl::GlobalDef()
+    .def("tir.transform.LowerIntrin", LowerIntrin);
+});
 
 }  // namespace transform
 

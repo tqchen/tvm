@@ -25,6 +25,7 @@
 #include <tvm/relax/expr.h>
 #include <tvm/relax/expr_functor.h>
 #include <tvm/relax/transform.h>
+#include <tvm/ffi/reflection/reflection.h>
 
 #include "../../../../relax/transform/utils.h"
 
@@ -132,7 +133,11 @@ Pass BindShape(const String& entry_name) {
   return CreateModulePass(pass_func, 0, "BindShape", {});
 }
 
-TVM_FFI_REGISTER_GLOBAL("relax.transform.BindShape").set_body_typed(BindShape);
+TVM_FFI_STATIC_INIT_BLOCK({
+  namespace refl = tvm::ffi::reflection;
+  refl::GlobalDef()
+    .def("relax.transform.BindShape", BindShape);
+});
 
 }  // namespace transform
 }  // namespace relax

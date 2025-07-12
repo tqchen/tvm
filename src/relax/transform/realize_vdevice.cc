@@ -25,6 +25,7 @@
 #include <tvm/relax/attrs/op.h>
 #include <tvm/relax/expr_functor.h>
 #include <tvm/relax/transform.h>
+#include <tvm/ffi/reflection/reflection.h>
 
 namespace tvm {
 namespace relax {
@@ -415,7 +416,11 @@ Pass RealizeVDevice() {
                           /*required=*/{});
 }
 
-TVM_FFI_REGISTER_GLOBAL("relax.transform.RealizeVDevice").set_body_typed(RealizeVDevice);
+TVM_FFI_STATIC_INIT_BLOCK({
+  namespace refl = tvm::ffi::reflection;
+  refl::GlobalDef()
+    .def("relax.transform.RealizeVDevice", RealizeVDevice);
+});
 
 }  // namespace transform
 }  // namespace relax

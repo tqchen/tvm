@@ -42,6 +42,7 @@
 #include <tvm/tir/op.h>
 #include <tvm/tir/stmt_functor.h>
 #include <tvm/tir/transform.h>
+#include <tvm/ffi/reflection/reflection.h>
 
 #include "../../arith/constraint_extract.h"
 #include "../../arith/ir_mutator_with_analyzer.h"
@@ -381,8 +382,11 @@ Pass UseAssumeToReduceBranches() {
   return CreatePrimFuncPass(pass_func, 0, "tir.UseAssumeToReduceBranches", {});
 }
 
-TVM_FFI_REGISTER_GLOBAL("tir.transform.UseAssumeToReduceBranches")
-    .set_body_typed(UseAssumeToReduceBranches);
+TVM_FFI_STATIC_INIT_BLOCK({
+  namespace refl = tvm::ffi::reflection;
+  refl::GlobalDef()
+    .def("tir.transform.UseAssumeToReduceBranches", UseAssumeToReduceBranches);
+});
 
 }  // namespace transform
 

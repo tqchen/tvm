@@ -23,6 +23,7 @@
 #include <tvm/relax/transform.h>
 #include <tvm/relax/type.h>
 #include <tvm/tir/op.h>
+#include <tvm/ffi/reflection/reflection.h>
 
 #include <tuple>
 #include <utility>
@@ -154,7 +155,11 @@ Pass BindNamedParams(String func_name, Map<ObjectRef, ObjectRef> params) {
   return CreateModulePass(pass_func, 0, "BindNamedParams", {});
 }
 
-TVM_FFI_REGISTER_GLOBAL("relax.transform.BindNamedParams").set_body_typed(BindNamedParams);
+TVM_FFI_STATIC_INIT_BLOCK({
+  namespace refl = tvm::ffi::reflection;
+  refl::GlobalDef()
+    .def("relax.transform.BindNamedParams", BindNamedParams);
+});
 
 }  // namespace transform
 

@@ -18,6 +18,7 @@
  */
 
 #include "../../meta_schedule/utils.h"
+#include <tvm/ffi/reflection/reflection.h>
 
 namespace tvm {
 namespace tir {
@@ -162,7 +163,11 @@ Pass DefaultGPUSchedule() {
                           /*required=*/{});
 }
 
-TVM_FFI_REGISTER_GLOBAL("tir.transform.DefaultGPUSchedule").set_body_typed(DefaultGPUSchedule);
+TVM_FFI_STATIC_INIT_BLOCK({
+  namespace refl = tvm::ffi::reflection;
+  refl::GlobalDef()
+    .def("tir.transform.DefaultGPUSchedule", DefaultGPUSchedule);
+});
 
 }  // namespace transform
 

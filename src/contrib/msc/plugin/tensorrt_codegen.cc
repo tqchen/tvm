@@ -21,6 +21,7 @@
  * \file src/contrib/msc/plugin/tensorrt_codegen.cc
  */
 #include "tensorrt_codegen.h"
+#include <tvm/ffi/reflection/reflection.h>
 
 #include <set>
 namespace tvm {
@@ -883,8 +884,10 @@ void TensorRTPluginCodeGen::CodegenEnqueue(const Plugin& plugin, bool dynamic) {
   }
 }
 
-TVM_FFI_REGISTER_GLOBAL("msc.plugin.GetTensorRTPluginSources")
-    .set_body_typed([](const String& codegen_config, const String& print_config,
+TVM_FFI_STATIC_INIT_BLOCK({
+  namespace refl = tvm::ffi::reflection;
+  refl::GlobalDef()
+    .def("msc.plugin.GetTensorRTPluginSources", [](const String& codegen_config, const String& print_config,
                        const String& codegen_type) -> Map<String, String> {
       TensorRTPluginCodeGen codegen = TensorRTPluginCodeGen(codegen_config);
       if (codegen_type == "build") {
@@ -895,6 +898,7 @@ TVM_FFI_REGISTER_GLOBAL("msc.plugin.GetTensorRTPluginSources")
       }
       return Map<String, String>();
     });
+});
 
 }  // namespace msc
 }  // namespace contrib

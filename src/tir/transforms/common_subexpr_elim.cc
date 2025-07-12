@@ -28,6 +28,7 @@
  */
 
 #include "common_subexpr_elim.h"
+#include <tvm/ffi/reflection/reflection.h>
 
 #include <tvm/ffi/container/array.h>
 #include <tvm/ffi/string.h>
@@ -637,7 +638,11 @@ Pass CommonSubexprElimTIR(bool enable_cse_tir, bool identify_equiv_terms) {
 }
 
 // The pass can now be invoked via the pass infrastructure, but we also add a Python binding for it
-TVM_FFI_REGISTER_GLOBAL("tir.transform.CommonSubexprElimTIR").set_body_typed(CommonSubexprElimTIR);
+TVM_FFI_STATIC_INIT_BLOCK({
+  namespace refl = tvm::ffi::reflection;
+  refl::GlobalDef()
+    .def("tir.transform.CommonSubexprElimTIR", CommonSubexprElimTIR);
+});
 
 }  // namespace transform
 }  // namespace tir

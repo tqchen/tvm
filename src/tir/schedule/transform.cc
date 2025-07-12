@@ -19,6 +19,7 @@
 
 #include "../transforms/ir_utils.h"
 #include "./utils.h"
+#include <tvm/ffi/reflection/reflection.h>
 
 namespace tvm {
 namespace tir {
@@ -439,7 +440,11 @@ Optional<LoopRV> TileWithTensorIntrin(const tir::Schedule& sch, const tir::Block
   return reorder_suffix[0];
 }
 
-TVM_FFI_REGISTER_GLOBAL("tir.schedule.TileWithTensorIntrin").set_body_typed(TileWithTensorIntrin);
+TVM_FFI_STATIC_INIT_BLOCK({
+  namespace refl = tvm::ffi::reflection;
+  refl::GlobalDef()
+    .def("tir.schedule.TileWithTensorIntrin", TileWithTensorIntrin);
+});
 
 /******** BlockBufferAccessSimplifier ********/
 void BlockBufferAccessSimplifier::SimplifyAccessRegion(Array<BufferRegion>* old_access_regions) {
@@ -557,7 +562,11 @@ Optional<ObjectRef> NormalizePrimFunc(Schedule sch) {
   return Array<ObjectRef>{leaf_blocks, block_loops, block_iters, block_is_reduction};
 }
 
-TVM_FFI_REGISTER_GLOBAL("tir.schedule.NormalizePrimFunc").set_body_typed(NormalizePrimFunc);
+TVM_FFI_STATIC_INIT_BLOCK({
+  namespace refl = tvm::ffi::reflection;
+  refl::GlobalDef()
+    .def("tir.schedule.NormalizePrimFunc", NormalizePrimFunc);
+});
 
 }  // namespace tir
 }  // namespace tvm

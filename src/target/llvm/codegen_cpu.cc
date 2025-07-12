@@ -23,6 +23,7 @@
 #ifdef TVM_LLVM_VERSION
 
 #include "codegen_cpu.h"
+#include <tvm/ffi/reflection/reflection.h>
 
 #include <llvm/ADT/SmallVector.h>
 #include <llvm/ADT/StringRef.h>
@@ -1161,10 +1162,13 @@ void CodeGenCPU::VisitStmt_(const ForNode* op) {
   }
 }
 
-TVM_FFI_REGISTER_GLOBAL("tvm.codegen.llvm.target_cpu")
-    .set_body_packed([](const ffi::PackedArgs& targs, ffi::Any* rv) {
+TVM_FFI_STATIC_INIT_BLOCK({
+  namespace refl = tvm::ffi::reflection;
+  refl::GlobalDef()
+    .def_packed("tvm.codegen.llvm.target_cpu", [](const ffi::PackedArgs& targs, ffi::Any* rv) {
       *rv = static_cast<void*>(new CodeGenCPU());
     });
+});
 
 }  // namespace codegen
 }  // namespace tvm

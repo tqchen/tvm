@@ -30,6 +30,7 @@
 #include <tvm/tir/function.h>
 #include <tvm/tir/op.h>
 #include <tvm/tir/stmt_functor.h>
+#include <tvm/ffi/reflection/reflection.h>
 
 namespace tvm {
 namespace relax {
@@ -813,8 +814,12 @@ Pass VMShapeLower(bool emit_err_ctx) {
   return CreateModulePass(pass_func, 0, "VMShapeLower", {});
 }
 
-TVM_FFI_REGISTER_GLOBAL("relax.transform.VMShapeLower").set_body_typed([](bool emit_err_ctx) {
+TVM_FFI_STATIC_INIT_BLOCK({
+  namespace refl = tvm::ffi::reflection;
+  refl::GlobalDef()
+    .def("relax.transform.VMShapeLower", [](bool emit_err_ctx) {
   return VMShapeLower(emit_err_ctx);
+});
 });
 
 }  // namespace transform

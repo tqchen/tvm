@@ -25,6 +25,7 @@
 #include <tvm/ffi/function.h>
 #include <tvm/tir/expr.h>
 #include <tvm/tir/expr_functor.h>
+#include <tvm/ffi/reflection/reflection.h>
 
 #include <unordered_map>
 #include <unordered_set>
@@ -402,11 +403,14 @@ IntSet DeduceBound(PrimExpr v, PrimExpr e, const Map<Var, IntSet>& hint_map,
   return DeduceBound(v, e, hmap, rmap);
 }
 
-TVM_FFI_REGISTER_GLOBAL("arith.DeduceBound")
-    .set_body_typed([](PrimExpr v, PrimExpr cond, const Map<Var, IntSet> hint_map,
+TVM_FFI_STATIC_INIT_BLOCK({
+  namespace refl = tvm::ffi::reflection;
+  refl::GlobalDef()
+    .def("arith.DeduceBound", [](PrimExpr v, PrimExpr cond, const Map<Var, IntSet> hint_map,
                        const Map<Var, IntSet> relax_map) {
       return DeduceBound(v, cond, hint_map, relax_map);
     });
+});
 
 }  // namespace arith
 }  // namespace tvm

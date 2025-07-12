@@ -30,6 +30,7 @@
 #include <tvm/tir/op_attr_types.h>
 #include <tvm/tir/stmt_functor.h>
 #include <tvm/tir/transform.h>
+#include <tvm/ffi/reflection/reflection.h>
 
 #include <unordered_map>
 #include <vector>
@@ -1024,7 +1025,11 @@ Pass VectorizeLoop(bool enable_vectorize) {
   return CreatePrimFuncPass(pass_func, 0, "tir.VectorizeLoop", {});
 }
 
-TVM_FFI_REGISTER_GLOBAL("tir.transform.VectorizeLoop").set_body_typed(VectorizeLoop);
+TVM_FFI_STATIC_INIT_BLOCK({
+  namespace refl = tvm::ffi::reflection;
+  refl::GlobalDef()
+    .def("tir.transform.VectorizeLoop", VectorizeLoop);
+});
 
 }  // namespace transform
 

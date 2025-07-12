@@ -29,6 +29,7 @@
 #include <tvm/tir/expr.h>
 #include <tvm/tir/stmt_functor.h>
 #include <tvm/tir/transform.h>
+#include <tvm/ffi/reflection/reflection.h>
 
 #include <unordered_set>
 #include <utility>
@@ -200,7 +201,11 @@ Pass MakeUnpackedAPI() {
   return tvm::transform::CreateModulePass(pass_func, 0, "tir.MakeUnpackedAPI", {});
 }
 
-TVM_FFI_REGISTER_GLOBAL("tir.transform.MakeUnpackedAPI").set_body_typed(MakeUnpackedAPI);
+TVM_FFI_STATIC_INIT_BLOCK({
+  namespace refl = tvm::ffi::reflection;
+  refl::GlobalDef()
+    .def("tir.transform.MakeUnpackedAPI", MakeUnpackedAPI);
+});
 }  // namespace transform
 }  // namespace tir
 }  // namespace tvm

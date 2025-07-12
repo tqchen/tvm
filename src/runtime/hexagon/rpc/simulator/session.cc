@@ -19,6 +19,7 @@
 
 #include <HexagonWrapper.h>
 #include <tvm/ffi/function.h>
+#include <tvm/ffi/reflection/reflection.h>
 // POSIX includes
 #include <dirent.h>
 #include <unistd.h>
@@ -1369,8 +1370,10 @@ std::optional<HEXAPI_Nullptr> SimulatorRPCChannel::to_nullptr(const detail::Mayb
       .Default(std::nullopt);
 }
 
-TVM_FFI_REGISTER_GLOBAL("tvm.contrib.hexagon.create_hexagon_session")
-    .set_body_packed([](ffi::PackedArgs args, ffi::Any* rv) {
+TVM_FFI_STATIC_INIT_BLOCK({
+  namespace refl = tvm::ffi::reflection;
+  refl::GlobalDef()
+    .def_packed("tvm.contrib.hexagon.create_hexagon_session", [](ffi::PackedArgs args, ffi::Any* rv) {
       ICHECK(args.size() >= 4) << args.size() << " is less than 4";
 
       auto session_name = args[0].cast<std::string>();
@@ -1382,6 +1385,7 @@ TVM_FFI_REGISTER_GLOBAL("tvm.contrib.hexagon.create_hexagon_session")
       std::shared_ptr<RPCSession> session = CreateClientSession(endpoint);
       *rv = CreateRPCSessionModule(session);
     });
+});
 
 }  // namespace hexagon
 }  // namespace runtime

@@ -25,6 +25,7 @@
 #include <tvm/runtime/data_type.h>
 #include <tvm/runtime/logging.h>
 #include <tvm/runtime/threading_backend.h>
+#include <tvm/ffi/reflection/reflection.h>
 
 #include <algorithm>
 
@@ -69,8 +70,10 @@ RandomThreadLocalEntry* RandomThreadLocalEntry::ThreadLocal() {
   return RandomThreadLocalStore::Get();
 }
 
-TVM_FFI_REGISTER_GLOBAL("tvm.contrib.random.randint")
-    .set_body_packed([](ffi::PackedArgs args, ffi::Any* ret) {
+TVM_FFI_STATIC_INIT_BLOCK({
+  namespace refl = tvm::ffi::reflection;
+  refl::GlobalDef()
+    .def_packed("tvm.contrib.random.randint", [](ffi::PackedArgs args, ffi::Any* ret) {
       RandomThreadLocalEntry* entry = RandomThreadLocalEntry::ThreadLocal();
       int64_t low = args[0].cast<int64_t>();
       int64_t high = args[1].cast<int64_t>();
@@ -101,35 +104,27 @@ TVM_FFI_REGISTER_GLOBAL("tvm.contrib.random.randint")
           LOG(FATAL) << "Do not support random.randint on this device yet";
         }
       })
-    });
-
-TVM_FFI_REGISTER_GLOBAL("tvm.contrib.random.uniform")
-    .set_body_packed([](ffi::PackedArgs args, ffi::Any* ret) {
+    })
+    .def_packed("tvm.contrib.random.uniform", [](ffi::PackedArgs args, ffi::Any* ret) {
       RandomThreadLocalEntry* entry = RandomThreadLocalEntry::ThreadLocal();
       double low = args[0].cast<double>();
       double high = args[1].cast<double>();
       auto out = args[2].cast<DLTensor*>();
       entry->random_engine.SampleUniform(out, low, high);
-    });
-
-TVM_FFI_REGISTER_GLOBAL("tvm.contrib.random.normal")
-    .set_body_packed([](ffi::PackedArgs args, ffi::Any* ret) {
+    })
+    .def_packed("tvm.contrib.random.normal", [](ffi::PackedArgs args, ffi::Any* ret) {
       RandomThreadLocalEntry* entry = RandomThreadLocalEntry::ThreadLocal();
       double loc = args[0].cast<double>();
       double scale = args[1].cast<double>();
       auto out = args[2].cast<DLTensor*>();
       entry->random_engine.SampleNormal(out, loc, scale);
-    });
-
-TVM_FFI_REGISTER_GLOBAL("tvm.contrib.random.random_fill")
-    .set_body_packed([](ffi::PackedArgs args, ffi::Any* ret) {
+    })
+    .def_packed("tvm.contrib.random.random_fill", [](ffi::PackedArgs args, ffi::Any* ret) {
       RandomThreadLocalEntry* entry = RandomThreadLocalEntry::ThreadLocal();
       auto out = args[0].cast<DLTensor*>();
       entry->random_engine.RandomFill(out);
-    });
-
-TVM_FFI_REGISTER_GLOBAL("tvm.contrib.random.random_fill_for_measure")
-    .set_body_packed([](ffi::PackedArgs args, ffi::Any* ret) -> void {
+    })
+    .def_packed("tvm.contrib.random.random_fill_for_measure", [](ffi::PackedArgs args, ffi::Any* ret) -> void {
       const auto curand = tvm::ffi::Function::GetGlobal("runtime.contrib.curand.RandomFill");
       auto out = args[0].cast<DLTensor*>();
       if (curand.has_value() && out->device.device_type == DLDeviceType::kDLCUDA) {
@@ -141,6 +136,7 @@ TVM_FFI_REGISTER_GLOBAL("tvm.contrib.random.random_fill_for_measure")
       RandomThreadLocalEntry* entry = RandomThreadLocalEntry::ThreadLocal();
       entry->random_engine.RandomFillForMeasure(out);
     });
+});
 
 }  // namespace contrib
 }  // namespace tvm

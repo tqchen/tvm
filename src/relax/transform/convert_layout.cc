@@ -27,6 +27,7 @@
 #include <tvm/relax/op_attr_types.h>
 #include <tvm/relax/transform.h>
 #include <tvm/tir/index_map.h>
+#include <tvm/ffi/reflection/reflection.h>
 
 #include "../op/tensor/manipulate.h"
 #include "infer_layout_utils.h"
@@ -350,7 +351,11 @@ Pass ConvertLayout(Map<String, Array<String>> desired_layouts) {
   return CreateDataflowBlockPass(pass_func, 0, "ConvertLayout", {});
 }
 
-TVM_FFI_REGISTER_GLOBAL("relax.transform.ConvertLayout").set_body_typed(ConvertLayout);
+TVM_FFI_STATIC_INIT_BLOCK({
+  namespace refl = tvm::ffi::reflection;
+  refl::GlobalDef()
+    .def("relax.transform.ConvertLayout", ConvertLayout);
+});
 
 }  // namespace transform
 }  // namespace relax

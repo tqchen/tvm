@@ -18,6 +18,7 @@
  */
 
 #include <tvm/relax/transform.h>
+#include <tvm/ffi/reflection/reflection.h>
 
 #include "../../meta_schedule/utils.h"
 
@@ -172,7 +173,11 @@ Pass FewShotTuning(int valid_count, bool benchmark) {
                           /*required=*/{});
 }
 
-TVM_FFI_REGISTER_GLOBAL("relax.transform.FewShotTuning").set_body_typed(FewShotTuning);
+TVM_FFI_STATIC_INIT_BLOCK({
+  namespace refl = tvm::ffi::reflection;
+  refl::GlobalDef()
+    .def("relax.transform.FewShotTuning", FewShotTuning);
+});
 
 }  // namespace transform
 }  // namespace relax

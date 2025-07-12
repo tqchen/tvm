@@ -17,6 +17,7 @@
  * under the License.
  */
 #include "../utils.h"
+#include <tvm/ffi/reflection/reflection.h>
 
 namespace tvm {
 namespace meta_schedule {
@@ -64,12 +65,13 @@ TVM_FFI_STATIC_INIT_BLOCK({
 TVM_REGISTER_OBJECT_TYPE(MeasureCallbackNode);
 TVM_REGISTER_NODE_TYPE(PyMeasureCallbackNode);
 
-TVM_FFI_REGISTER_GLOBAL("meta_schedule.MeasureCallbackApply")
-    .set_body_method(&MeasureCallbackNode::Apply);
-TVM_FFI_REGISTER_GLOBAL("meta_schedule.MeasureCallbackPyMeasureCallback")
-    .set_body_typed(MeasureCallback::PyMeasureCallback);
-TVM_FFI_REGISTER_GLOBAL("meta_schedule.MeasureCallbackDefault")
-    .set_body_typed(MeasureCallback::Default);
+TVM_FFI_STATIC_INIT_BLOCK({
+  namespace refl = tvm::ffi::reflection;
+  refl::GlobalDef()
+    .def_method("meta_schedule.MeasureCallbackApply", &MeasureCallbackNode::Apply)
+    .def("meta_schedule.MeasureCallbackPyMeasureCallback", MeasureCallback::PyMeasureCallback)
+    .def("meta_schedule.MeasureCallbackDefault", MeasureCallback::Default);
+});
 
 }  // namespace meta_schedule
 }  // namespace tvm

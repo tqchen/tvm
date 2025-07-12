@@ -27,6 +27,7 @@
 #include <tvm/tir/op.h>
 #include <tvm/tir/stmt_functor.h>
 #include <tvm/tir/transform.h>
+#include <tvm/ffi/reflection/reflection.h>
 
 #include <numeric>
 #include <stack>
@@ -756,8 +757,11 @@ Pass CompactBufferAllocation(bool is_strict) {
   return CreatePrimFuncPass(pass_func, 0, "tir.CompactBufferAllocation", {});
 }
 
-TVM_FFI_REGISTER_GLOBAL("tir.transform.CompactBufferAllocation")
-    .set_body_typed(CompactBufferAllocation);
+TVM_FFI_STATIC_INIT_BLOCK({
+  namespace refl = tvm::ffi::reflection;
+  refl::GlobalDef()
+    .def("tir.transform.CompactBufferAllocation", CompactBufferAllocation);
+});
 }  // namespace transform
 
 }  // namespace tir

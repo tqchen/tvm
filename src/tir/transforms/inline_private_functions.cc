@@ -28,6 +28,7 @@
 #include <tvm/tir/stmt.h>
 #include <tvm/tir/stmt_functor.h>
 #include <tvm/tir/transform.h>
+#include <tvm/ffi/reflection/reflection.h>
 
 namespace tvm {
 namespace tir {
@@ -292,8 +293,11 @@ Pass InlinePrivateFunctions() {
   return tvm::transform::CreateModulePass(pass_func, 0, "tir.InlinePrivateFunctions", {});
 }
 
-TVM_FFI_REGISTER_GLOBAL("tir.transform.InlinePrivateFunctions")
-    .set_body_typed(InlinePrivateFunctions);
+TVM_FFI_STATIC_INIT_BLOCK({
+  namespace refl = tvm::ffi::reflection;
+  refl::GlobalDef()
+    .def("tir.transform.InlinePrivateFunctions", InlinePrivateFunctions);
+});
 
 }  // namespace transform
 

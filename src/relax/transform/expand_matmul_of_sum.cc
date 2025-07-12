@@ -27,6 +27,7 @@
 #include <tvm/relax/expr.h>
 #include <tvm/relax/expr_functor.h>
 #include <tvm/relax/transform.h>
+#include <tvm/ffi/reflection/reflection.h>
 
 #include <optional>
 #include <unordered_set>
@@ -104,7 +105,11 @@ Pass ExpandMatmulOfSum() {
   return CreateFunctionPass(pass_func, 1, "ExpandMatmulOfSum", {});
 }
 
-TVM_FFI_REGISTER_GLOBAL("relax.transform.ExpandMatmulOfSum").set_body_typed(ExpandMatmulOfSum);
+TVM_FFI_STATIC_INIT_BLOCK({
+  namespace refl = tvm::ffi::reflection;
+  refl::GlobalDef()
+    .def("relax.transform.ExpandMatmulOfSum", ExpandMatmulOfSum);
+});
 
 }  // namespace transform
 }  // namespace relax

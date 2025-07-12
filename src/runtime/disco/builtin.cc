@@ -23,6 +23,7 @@
 #include <tvm/runtime/disco/disco_worker.h>
 #include <tvm/runtime/disco/session.h>
 #include <tvm/runtime/vm/vm.h>
+#include <tvm/ffi/reflection/reflection.h>
 
 #include <sstream>
 
@@ -121,10 +122,11 @@ void SyncWorker() {
   }
 }
 
-TVM_FFI_REGISTER_GLOBAL("runtime.disco.load_vm_module").set_body_typed(LoadVMModule);
-
-TVM_FFI_REGISTER_GLOBAL("runtime.disco.empty")
-    .set_body_typed([](ffi::Shape shape, DataType dtype, Optional<Device> device, bool worker0_only,
+TVM_FFI_STATIC_INIT_BLOCK({
+  namespace refl = tvm::ffi::reflection;
+  refl::GlobalDef()
+    .def("runtime.disco.load_vm_module", LoadVMModule)
+    .def("runtime.disco.empty", [](ffi::Shape shape, DataType dtype, Optional<Device> device, bool worker0_only,
                        bool in_group) -> Optional<NDArray> {
       int worker_id = WorkerId();
       int group_size =
@@ -135,41 +137,38 @@ TVM_FFI_REGISTER_GLOBAL("runtime.disco.empty")
       } else {
         return DiscoEmptyNDArray(shape, dtype, device);
       }
-    });
-
-TVM_FFI_REGISTER_GLOBAL("runtime.disco.allreduce")
-    .set_body_typed([](NDArray send, ffi::Shape reduce_kind, bool in_group, NDArray recv) {
+    })
+    .def("runtime.disco.allreduce", [](NDArray send, ffi::Shape reduce_kind, bool in_group, NDArray recv) {
       int kind = IntegerFromShape(reduce_kind);
       CHECK(0 <= kind && kind <= 4) << "ValueError: Unknown ReduceKind: " << kind;
       AllReduce(send, static_cast<ReduceKind>(kind), in_group, recv);
-    });
-TVM_FFI_REGISTER_GLOBAL("runtime.disco.allgather").set_body_typed(AllGather);
-TVM_FFI_REGISTER_GLOBAL("runtime.disco.broadcast_from_worker0")
-    .set_body_typed(BroadcastFromWorker0);
-TVM_FFI_REGISTER_GLOBAL("runtime.disco.scatter_from_worker0").set_body_typed(ScatterFromWorker0);
-TVM_FFI_REGISTER_GLOBAL("runtime.disco.gather_to_worker0").set_body_typed(GatherToWorker0);
-TVM_FFI_REGISTER_GLOBAL("runtime.disco.recv_from_worker0").set_body_typed(RecvFromWorker0);
-TVM_FFI_REGISTER_GLOBAL("runtime.disco.send_to_next_group").set_body_typed(SendToNextGroup);
-TVM_FFI_REGISTER_GLOBAL("runtime.disco.recv_from_prev_group").set_body_typed(RecvFromPrevGroup);
-TVM_FFI_REGISTER_GLOBAL("runtime.disco.send_to_worker").set_body_typed(SendToWorker);
-TVM_FFI_REGISTER_GLOBAL("runtime.disco.recv_from_worker").set_body_typed(RecvFromWorker);
-TVM_FFI_REGISTER_GLOBAL("runtime.disco.worker_id").set_body_typed([]() -> ffi::Shape {
+    })
+    .def("runtime.disco.allgather", AllGather)
+    .def("runtime.disco.broadcast_from_worker0", BroadcastFromWorker0)
+    .def("runtime.disco.scatter_from_worker0", ScatterFromWorker0)
+    .def("runtime.disco.gather_to_worker0", GatherToWorker0)
+    .def("runtime.disco.recv_from_worker0", RecvFromWorker0)
+    .def("runtime.disco.send_to_next_group", SendToNextGroup)
+    .def("runtime.disco.recv_from_prev_group", RecvFromPrevGroup)
+    .def("runtime.disco.send_to_worker", SendToWorker)
+    .def("runtime.disco.recv_from_worker", RecvFromWorker)
+    .def("runtime.disco.worker_id", []() -> ffi::Shape {
   return ffi::Shape({WorkerId()});
-});
-TVM_FFI_REGISTER_GLOBAL("runtime.disco.worker_rank").set_body_typed([]() -> int64_t {
+})
+    .def("runtime.disco.worker_rank", []() -> int64_t {
   return WorkerId();
-});
-TVM_FFI_REGISTER_GLOBAL("runtime.disco.device").set_body_typed([]() -> Device {
+})
+    .def("runtime.disco.device", []() -> Device {
   return DiscoWorker::ThreadLocal()->default_device;
-});
-TVM_FFI_REGISTER_GLOBAL("runtime.disco.bind_worker_to_cpu_core")
-    .set_body_typed([](ffi::Shape cpu_ids) {
+})
+    .def("runtime.disco.bind_worker_to_cpu_core", [](ffi::Shape cpu_ids) {
       int worker_id = WorkerId();
       ICHECK_LT(worker_id, static_cast<int>(cpu_ids.size()));
       const auto f_set_thread_affinity = tvm::ffi::Function::GetGlobalRequired(
           "tvm.runtime.threading.set_current_thread_affinity");
       f_set_thread_affinity(ffi::Shape{cpu_ids[worker_id]});
     });
+});
 
 }  // namespace runtime
 }  // namespace tvm

@@ -31,6 +31,7 @@
 #include <tvm/tir/expr.h>
 #include <tvm/tir/stmt_functor.h>
 #include <tvm/tir/transform.h>
+#include <tvm/ffi/reflection/reflection.h>
 
 #include <map>
 #include <unordered_map>
@@ -1762,7 +1763,11 @@ Pass StorageRewrite() {
   return CreatePrimFuncPass(pass_func, 0, "tir.StorageRewrite", {});
 }
 
-TVM_FFI_REGISTER_GLOBAL("tir.transform.StorageRewrite").set_body_typed(StorageRewrite);
+TVM_FFI_STATIC_INIT_BLOCK({
+  namespace refl = tvm::ffi::reflection;
+  refl::GlobalDef()
+    .def("tir.transform.StorageRewrite", StorageRewrite);
+});
 
 Pass PointerValueTypeRewrite() {
   auto pass_func = [](PrimFunc f, IRModule m, PassContext ctx) {
@@ -1771,8 +1776,11 @@ Pass PointerValueTypeRewrite() {
   return CreatePrimFuncPass(pass_func, 0, "tir.PointerValueTypeRewrite", {});
 }
 
-TVM_FFI_REGISTER_GLOBAL("tir.transform.PointerValueTypeRewrite")
-    .set_body_typed(PointerValueTypeRewrite);
+TVM_FFI_STATIC_INIT_BLOCK({
+  namespace refl = tvm::ffi::reflection;
+  refl::GlobalDef()
+    .def("tir.transform.PointerValueTypeRewrite", PointerValueTypeRewrite);
+});
 
 }  // namespace transform
 

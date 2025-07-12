@@ -29,6 +29,7 @@
 #include <tvm/relax/struct_info.h>
 #include <tvm/relax/transform.h>
 #include <tvm/tir/transform.h>
+#include <tvm/ffi/reflection/reflection.h>
 
 namespace tvm {
 namespace relax {
@@ -404,7 +405,11 @@ Pass LegalizeOps(Optional<Map<String, ffi::Function>> cmap, bool enable_warning)
                           /*required=*/{});
 }
 
-TVM_FFI_REGISTER_GLOBAL("relax.transform.LegalizeOps").set_body_typed(LegalizeOps);
+TVM_FFI_STATIC_INIT_BLOCK({
+  namespace refl = tvm::ffi::reflection;
+  refl::GlobalDef()
+    .def("relax.transform.LegalizeOps", LegalizeOps);
+});
 
 }  // namespace transform
 

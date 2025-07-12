@@ -23,6 +23,7 @@
  */
 #include <tvm/topi/broadcast.h>
 #include <tvm/topi/einsum.h>
+#include <tvm/ffi/reflection/reflection.h>
 
 namespace tvm {
 namespace topi {
@@ -355,8 +356,12 @@ Array<PrimExpr> InferEinsumShape(const std::string& subscripts,
   return einsum_builder.InferShape();
 }
 
-TVM_FFI_REGISTER_GLOBAL("topi.einsum").set_body_packed([](ffi::PackedArgs args, ffi::Any* rv) {
+TVM_FFI_STATIC_INIT_BLOCK({
+  namespace refl = tvm::ffi::reflection;
+  refl::GlobalDef()
+    .def_packed("topi.einsum", [](ffi::PackedArgs args, ffi::Any* rv) {
   *rv = einsum(args[0].cast<std::string>(), args[1].cast<Array<Tensor>>());
+});
 });
 
 }  // namespace topi

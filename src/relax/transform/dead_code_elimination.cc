@@ -37,6 +37,7 @@
 #include <tvm/relax/expr.h>
 #include <tvm/relax/expr_functor.h>
 #include <tvm/relax/transform.h>
+#include <tvm/ffi/reflection/reflection.h>
 
 #include "utils.h"
 
@@ -140,7 +141,11 @@ Pass DeadCodeElimination(Array<String> entry_functions) {
   return CreateModulePass(pass_func, 1, "DeadCodeElimination", {});
 }
 
-TVM_FFI_REGISTER_GLOBAL("relax.transform.DeadCodeElimination").set_body_typed(DeadCodeElimination);
+TVM_FFI_STATIC_INIT_BLOCK({
+  namespace refl = tvm::ffi::reflection;
+  refl::GlobalDef()
+    .def("relax.transform.DeadCodeElimination", DeadCodeElimination);
+});
 
 }  // namespace transform
 }  // namespace relax

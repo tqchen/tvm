@@ -28,6 +28,7 @@
 #include <tvm/runtime/data_type.h>
 #include <tvm/runtime/profiling.h>
 #include <tvm/runtime/threading_backend.h>
+#include <tvm/ffi/reflection/reflection.h>
 
 #include <algorithm>
 #include <chrono>
@@ -84,8 +85,12 @@ class CPUTimerNode : public TimerNode {
 };
 TVM_REGISTER_OBJECT_TYPE(CPUTimerNode);
 
-TVM_FFI_REGISTER_GLOBAL("profiling.timer.cpu").set_body_typed([](Device dev) {
+TVM_FFI_STATIC_INIT_BLOCK({
+  namespace refl = tvm::ffi::reflection;
+  refl::GlobalDef()
+    .def("profiling.timer.cpu", [](Device dev) {
   return Timer(make_object<CPUTimerNode>());
+});
 });
 
 // keep track of which timers are not defined but we have already warned about
@@ -115,7 +120,11 @@ Timer Timer::Start(Device dev) {
   }
 }
 
-TVM_FFI_REGISTER_GLOBAL("profiling.start_timer").set_body_typed(Timer::Start);
+TVM_FFI_STATIC_INIT_BLOCK({
+  namespace refl = tvm::ffi::reflection;
+  refl::GlobalDef()
+    .def("profiling.start_timer", Timer::Start);
+});
 
 namespace profiling {
 
@@ -788,16 +797,20 @@ TVM_REGISTER_OBJECT_TYPE(ReportNode);
 TVM_REGISTER_OBJECT_TYPE(DeviceWrapperNode);
 TVM_REGISTER_OBJECT_TYPE(MetricCollectorNode);
 
-TVM_FFI_REGISTER_GLOBAL("runtime.profiling.AsTable").set_body_method(&ReportNode::AsTable);
-TVM_FFI_REGISTER_GLOBAL("runtime.profiling.AsCSV").set_body_typed([](Report n) {
+TVM_FFI_STATIC_INIT_BLOCK({
+  namespace refl = tvm::ffi::reflection;
+  refl::GlobalDef()
+    .def_method("runtime.profiling.AsTable", &ReportNode::AsTable)
+    .def("runtime.profiling.AsCSV", [](Report n) {
   return n->AsCSV();
-});
-TVM_FFI_REGISTER_GLOBAL("runtime.profiling.AsJSON").set_body_typed([](Report n) {
+})
+    .def("runtime.profiling.AsJSON", [](Report n) {
   return n->AsJSON();
-});
-TVM_FFI_REGISTER_GLOBAL("runtime.profiling.FromJSON").set_body_typed(Report::FromJSON);
-TVM_FFI_REGISTER_GLOBAL("runtime.profiling.DeviceWrapper").set_body_typed([](Device dev) {
+})
+    .def("runtime.profiling.FromJSON", Report::FromJSON)
+    .def("runtime.profiling.DeviceWrapper", [](Device dev) {
   return DeviceWrapper(dev);
+});
 });
 
 ffi::Function ProfileFunction(Module mod, std::string func_name, int device_type, int device_id,
@@ -846,9 +859,10 @@ ffi::Function ProfileFunction(Module mod, std::string func_name, int device_type
       });
 }
 
-TVM_FFI_REGISTER_GLOBAL("runtime.profiling.ProfileFunction")
-    .set_body_typed<ffi::Function(Module, String, int, int, int,
-                                  Array<MetricCollector>)>([](Module mod, String func_name,
+TVM_FFI_STATIC_INIT_BLOCK({
+  namespace refl = tvm::ffi::reflection;
+  refl::GlobalDef()
+    .def("runtime.profiling.ProfileFunction", [](Module mod, String func_name,
                                                               int device_type, int device_id,
                                                               int warmup_iters,
                                                               Array<MetricCollector> collectors) {
@@ -861,6 +875,7 @@ TVM_FFI_REGISTER_GLOBAL("runtime.profiling.ProfileFunction")
         return ProfileFunction(mod, func_name, device_type, device_id, warmup_iters, collectors);
       }
     });
+});
 
 ffi::Function WrapTimeEvaluator(ffi::Function pf, Device dev, int number, int repeat,
                                 int min_repeat_ms, int limit_zero_time_iterations,
@@ -927,27 +942,26 @@ ffi::Function WrapTimeEvaluator(ffi::Function pf, Device dev, int number, int re
   return ffi::Function::FromPacked(ftimer);
 }
 
-TVM_FFI_REGISTER_GLOBAL("runtime.profiling.Report")
-    .set_body_typed([](Array<Map<String, ffi::Any>> calls,
+TVM_FFI_STATIC_INIT_BLOCK({
+  namespace refl = tvm::ffi::reflection;
+  refl::GlobalDef()
+    .def("runtime.profiling.Report", [](Array<Map<String, ffi::Any>> calls,
                        Map<String, Map<String, ffi::Any>> device_metrics,
                        Map<String, ffi::Any> configuration) {
       return Report(calls, device_metrics, configuration);
-    });
-
-TVM_FFI_REGISTER_GLOBAL("runtime.profiling.Count").set_body_typed([](int64_t count) {
+    })
+    .def("runtime.profiling.Count", [](int64_t count) {
   return ObjectRef(make_object<CountNode>(count));
-});
-
-TVM_FFI_REGISTER_GLOBAL("runtime.profiling.Percent").set_body_typed([](double percent) {
+})
+    .def("runtime.profiling.Percent", [](double percent) {
   return ObjectRef(make_object<PercentNode>(percent));
-});
-
-TVM_FFI_REGISTER_GLOBAL("runtime.profiling.Duration").set_body_typed([](double duration) {
+})
+    .def("runtime.profiling.Duration", [](double duration) {
   return ObjectRef(make_object<DurationNode>(duration));
-});
-
-TVM_FFI_REGISTER_GLOBAL("runtime.profiling.Ratio").set_body_typed([](double ratio) {
+})
+    .def("runtime.profiling.Ratio", [](double ratio) {
   return ObjectRef(make_object<RatioNode>(ratio));
+});
 });
 
 }  // namespace profiling

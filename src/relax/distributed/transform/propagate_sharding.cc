@@ -29,6 +29,7 @@
 #include <tvm/relax/distributed/axis_group_graph.h>
 #include <tvm/relax/distributed/transform.h>
 #include <tvm/relax/expr_functor.h>
+#include <tvm/ffi/reflection/reflection.h>
 
 #include <numeric>
 
@@ -615,8 +616,11 @@ Pass PropagateSharding() {
   };
   return CreateModulePass(pass_func, 1, "PropagateSharding", {});
 }
-TVM_FFI_REGISTER_GLOBAL("relax.distributed.transform.PropagateSharding")
-    .set_body_typed(PropagateSharding);
+TVM_FFI_STATIC_INIT_BLOCK({
+  namespace refl = tvm::ffi::reflection;
+  refl::GlobalDef()
+    .def("relax.distributed.transform.PropagateSharding", PropagateSharding);
+});
 }  // namespace transform
 
 }  // namespace distributed

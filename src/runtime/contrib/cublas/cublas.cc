@@ -23,6 +23,7 @@
 #include <tvm/ffi/function.h>
 #include <tvm/runtime/data_type.h>
 #include <tvm/runtime/logging.h>
+#include <tvm/ffi/reflection/reflection.h>
 
 #include "../../3rdparty/compiler-rt/builtin_fp16.h"
 #include "../cblas/gemm_common.h"
@@ -514,8 +515,10 @@ inline void CallBatchGemmEx(ffi::PackedArgs args, ffi::Any* ret, cublasHandle_t 
 }
 
 // matrix multiplication for row major
-TVM_FFI_REGISTER_GLOBAL("tvm.contrib.cublas.matmul")
-    .set_body_packed([](ffi::PackedArgs args, ffi::Any* ret) {
+TVM_FFI_STATIC_INIT_BLOCK({
+  namespace refl = tvm::ffi::reflection;
+  refl::GlobalDef()
+    .def_packed("tvm.contrib.cublas.matmul", [](ffi::PackedArgs args, ffi::Any* ret) {
       auto A = args[0].cast<DLTensor*>();
       auto C = args[2].cast<DLTensor*>();
 
@@ -537,10 +540,13 @@ TVM_FFI_REGISTER_GLOBAL("tvm.contrib.cublas.matmul")
         CallGemmEx(args, ret, entry_ptr->handle);
       }
     });
+});
 
 #if CUDART_VERSION >= 10010
-TVM_FFI_REGISTER_GLOBAL("tvm.contrib.cublaslt.matmul")
-    .set_body_packed([](ffi::PackedArgs args, ffi::Any* ret) {
+TVM_FFI_STATIC_INIT_BLOCK({
+  namespace refl = tvm::ffi::reflection;
+  refl::GlobalDef()
+    .def_packed("tvm.contrib.cublaslt.matmul", [](ffi::PackedArgs args, ffi::Any* ret) {
       auto A = args[0].cast<DLTensor*>();
 
       CuBlasThreadEntry* entry_ptr = CuBlasThreadEntry::ThreadLocal();
@@ -555,10 +561,13 @@ TVM_FFI_REGISTER_GLOBAL("tvm.contrib.cublaslt.matmul")
       CallLtIgemm(args, ret, ltHandle, stream);
       CHECK_CUBLAS_ERROR(cublasLtDestroy(ltHandle));
     });
+});
 #endif  // CUDART_VERSION >= 10010
 
-TVM_FFI_REGISTER_GLOBAL("tvm.contrib.cublas.batch_matmul")
-    .set_body_packed([](ffi::PackedArgs args, ffi::Any* ret) {
+TVM_FFI_STATIC_INIT_BLOCK({
+  namespace refl = tvm::ffi::reflection;
+  refl::GlobalDef()
+    .def_packed("tvm.contrib.cublas.batch_matmul", [](ffi::PackedArgs args, ffi::Any* ret) {
       auto A = args[0].cast<DLTensor*>();
       auto C = args[2].cast<DLTensor*>();
 
@@ -579,6 +588,7 @@ TVM_FFI_REGISTER_GLOBAL("tvm.contrib.cublas.batch_matmul")
         CallBatchGemmEx(args, ret, entry_ptr->handle);
       }
     });
+});
 
 }  // namespace contrib
 }  // namespace tvm

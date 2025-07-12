@@ -24,6 +24,7 @@
 #include <tvm/relax/expr_functor.h>
 #include <tvm/relax/struct_info.h>
 #include <tvm/relax/transform.h>
+#include <tvm/ffi/reflection/reflection.h>
 
 #include <algorithm>
 #include <deque>
@@ -342,8 +343,10 @@ Pass TopologicalSort(TraversalOrder order, StartingLocation starting_location) {
   return relax::transform::CreateFunctionPass(pass_func, 0, "TopologicalSort", {});
 }
 
-TVM_FFI_REGISTER_GLOBAL("relax.transform.TopologicalSort")
-    .set_body_typed([](String order_str, String direction_str) -> Pass {
+TVM_FFI_STATIC_INIT_BLOCK({
+  namespace refl = tvm::ffi::reflection;
+  refl::GlobalDef()
+    .def("relax.transform.TopologicalSort", [](String order_str, String direction_str) -> Pass {
       TraversalOrder order = [&]() {
         if (order_str == "depth-first") {
           return TraversalOrder::DepthFirst;
@@ -370,6 +373,7 @@ TVM_FFI_REGISTER_GLOBAL("relax.transform.TopologicalSort")
 
       return TopologicalSort(order, starting_location);
     });
+});
 
 }  // namespace transform
 

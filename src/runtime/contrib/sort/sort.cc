@@ -25,6 +25,7 @@
 #include <tvm/ffi/function.h>
 #include <tvm/runtime/data_type.h>
 #include <tvm/runtime/logging.h>
+#include <tvm/ffi/reflection/reflection.h>
 
 #include <algorithm>
 #include <vector>
@@ -79,8 +80,10 @@ struct float16 {
 // If input tensor has dimension (d0, d1, ..., d(k-1), dk, d(k+1), ..., d(n-1))
 // and sort axis is dk. sort_num should have dimension of
 // (d1, d2, ..., d(k-1), d(k+1), ..., dn).
-TVM_FFI_REGISTER_GLOBAL("tvm.contrib.sort.argsort_nms")
-    .set_body_packed([](ffi::PackedArgs args, ffi::Any* ret) {
+TVM_FFI_STATIC_INIT_BLOCK({
+  namespace refl = tvm::ffi::reflection;
+  refl::GlobalDef()
+    .def_packed("tvm.contrib.sort.argsort_nms", [](ffi::PackedArgs args, ffi::Any* ret) {
       auto input = args[0].cast<DLTensor*>();
       auto sort_num = args[1].cast<DLTensor*>();
       auto output = args[2].cast<DLTensor*>();
@@ -154,6 +157,7 @@ TVM_FFI_REGISTER_GLOBAL("tvm.contrib.sort.argsort_nms")
         }
       }
     });
+});
 
 template <typename DataType, typename OutType>
 void sort_impl(
@@ -218,8 +222,10 @@ void sort(DLTensor* input, DLTensor* output, int32_t axis, bool is_ascend) {
 // If input tensor has dimension (d0, d1, ..., d(k-1), dk, d(k+1), ..., d(n-1))
 // and sort axis is dk. sort_num should have dimension of
 // (d1, d2, ..., d(k-1), d(k+1), ..., dn).
-TVM_FFI_REGISTER_GLOBAL("tvm.contrib.sort.argsort")
-    .set_body_packed([](ffi::PackedArgs args, ffi::Any* ret) {
+TVM_FFI_STATIC_INIT_BLOCK({
+  namespace refl = tvm::ffi::reflection;
+  refl::GlobalDef()
+    .def_packed("tvm.contrib.sort.argsort", [](ffi::PackedArgs args, ffi::Any* ret) {
       auto input = args[0].cast<DLTensor*>();
       auto output = args[1].cast<DLTensor*>();
       int32_t axis = args[2].cast<int32_t>();
@@ -306,6 +312,7 @@ TVM_FFI_REGISTER_GLOBAL("tvm.contrib.sort.argsort")
         LOG(FATAL) << "Unsupported input dtype: " << data_dtype;
       }
     });
+});
 
 // Sort implemented C library sort.
 // Return  sorted tensor.
@@ -314,8 +321,10 @@ TVM_FFI_REGISTER_GLOBAL("tvm.contrib.sort.argsort")
 // If input tensor has dimension (d0, d1, ..., d(k-1), dk, d(k+1), ..., d(n-1))
 // and sort axis is dk. sort_num should have dimension of
 // (d1, d2, ..., d(k-1), d(k+1), ..., dn).
-TVM_FFI_REGISTER_GLOBAL("tvm.contrib.sort.sort")
-    .set_body_packed([](ffi::PackedArgs args, ffi::Any* ret) {
+TVM_FFI_STATIC_INIT_BLOCK({
+  namespace refl = tvm::ffi::reflection;
+  refl::GlobalDef()
+    .def_packed("tvm.contrib.sort.sort", [](ffi::PackedArgs args, ffi::Any* ret) {
       auto input = args[0].cast<DLTensor*>();
       auto output = args[1].cast<DLTensor*>();
       int32_t axis = args[2].cast<int32_t>();
@@ -350,6 +359,7 @@ TVM_FFI_REGISTER_GLOBAL("tvm.contrib.sort.sort")
         LOG(FATAL) << "Unsupported input dtype: " << data_dtype;
       }
     });
+});
 
 template <typename DataType, typename IndicesType>
 void topk(DLTensor* input, DLTensor* out_values, DLTensor* out_indices, int k, int axis,
@@ -444,8 +454,10 @@ void topk(DLTensor* input, DLTensor* out_values, DLTensor* out_indices, int k, i
 // If input tensor has dimension (d0, d1, ..., d(k-1), dk, d(k+1), ..., d(n-1))
 // and sort axis is dk. sort_num should have dimension of
 // (d1, d2, ..., d(k-1), d(k+1), ..., dn).
-TVM_FFI_REGISTER_GLOBAL("tvm.contrib.sort.topk")
-    .set_body_packed([](ffi::PackedArgs args, ffi::Any* ret) {
+TVM_FFI_STATIC_INIT_BLOCK({
+  namespace refl = tvm::ffi::reflection;
+  refl::GlobalDef()
+    .def_packed("tvm.contrib.sort.topk", [](ffi::PackedArgs args, ffi::Any* ret) {
       auto input = args[0].cast<DLTensor*>();
       DLTensor* values_out = nullptr;
       DLTensor* indices_out = nullptr;
@@ -565,6 +577,7 @@ TVM_FFI_REGISTER_GLOBAL("tvm.contrib.sort.topk")
         LOG(FATAL) << "Unsupported input dtype: " << data_dtype;
       }
     });
+});
 
 }  // namespace contrib
 }  // namespace tvm

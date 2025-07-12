@@ -22,6 +22,7 @@
  * \brief Implementation of the DNNL JSON serializer.
  */
 #include <tvm/ir/module.h>
+#include <tvm/ffi/reflection/reflection.h>
 
 #include <string>
 
@@ -97,7 +98,11 @@ Array<runtime::Module> DNNLCompiler(Array<Function> functions, Map<String, ffi::
   return compiled_functions;
 }
 
-TVM_FFI_REGISTER_GLOBAL("relax.ext.dnnl").set_body_typed(DNNLCompiler);
+TVM_FFI_STATIC_INIT_BLOCK({
+  namespace refl = tvm::ffi::reflection;
+  refl::GlobalDef()
+    .def("relax.ext.dnnl", DNNLCompiler);
+});
 
 }  // namespace contrib
 }  // namespace relax

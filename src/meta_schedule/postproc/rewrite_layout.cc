@@ -18,6 +18,7 @@
  */
 #include <optional>
 #include <unordered_set>
+#include <tvm/ffi/reflection/reflection.h>
 
 #include "../utils.h"
 
@@ -273,8 +274,11 @@ Postproc Postproc::RewriteLayout() {
 }
 
 TVM_REGISTER_NODE_TYPE(RewriteLayoutNode);
-TVM_FFI_REGISTER_GLOBAL("meta_schedule.PostprocRewriteLayout")
-    .set_body_typed(Postproc::RewriteLayout);
+TVM_FFI_STATIC_INIT_BLOCK({
+  namespace refl = tvm::ffi::reflection;
+  refl::GlobalDef()
+    .def("meta_schedule.PostprocRewriteLayout", Postproc::RewriteLayout);
+});
 
 }  // namespace meta_schedule
 }  // namespace tvm

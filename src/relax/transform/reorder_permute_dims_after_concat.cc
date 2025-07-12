@@ -27,6 +27,7 @@
 #include <tvm/relax/expr.h>
 #include <tvm/relax/expr_functor.h>
 #include <tvm/relax/transform.h>
+#include <tvm/ffi/reflection/reflection.h>
 
 #include <optional>
 #include <unordered_set>
@@ -173,8 +174,11 @@ Pass ReorderPermuteDimsAfterConcat() {
   return CreateFunctionPass(pass_func, 1, "ReorderPermuteDimsAfterConcat", {});
 }
 
-TVM_FFI_REGISTER_GLOBAL("relax.transform.ReorderPermuteDimsAfterConcat")
-    .set_body_typed(ReorderPermuteDimsAfterConcat);
+TVM_FFI_STATIC_INIT_BLOCK({
+  namespace refl = tvm::ffi::reflection;
+  refl::GlobalDef()
+    .def("relax.transform.ReorderPermuteDimsAfterConcat", ReorderPermuteDimsAfterConcat);
+});
 
 }  // namespace transform
 }  // namespace relax

@@ -26,6 +26,7 @@
 #include <tvm/node/object_path.h>
 #include <tvm/node/reflection.h>
 #include <tvm/node/structural_equal.h>
+#include <tvm/ffi/reflection/reflection.h>
 
 #include <optional>
 #include <unordered_map>
@@ -36,15 +37,16 @@ namespace tvm {
 
 TVM_REGISTER_OBJECT_TYPE(ObjectPathPairNode);
 
-TVM_FFI_REGISTER_GLOBAL("node.ObjectPathPairLhsPath")
-    .set_body_typed([](const ObjectPathPair& object_path_pair) {
+TVM_FFI_STATIC_INIT_BLOCK({
+  namespace refl = tvm::ffi::reflection;
+  refl::GlobalDef()
+    .def("node.ObjectPathPairLhsPath", [](const ObjectPathPair& object_path_pair) {
       return object_path_pair->lhs_path;
-    });
-
-TVM_FFI_REGISTER_GLOBAL("node.ObjectPathPairRhsPath")
-    .set_body_typed([](const ObjectPathPair& object_path_pair) {
+    })
+    .def("node.ObjectPathPairRhsPath", [](const ObjectPathPair& object_path_pair) {
       return object_path_pair->rhs_path;
     });
+});
 
 ObjectPathPairNode::ObjectPathPairNode(ObjectPath lhs_path, ObjectPath rhs_path)
     : lhs_path(std::move(lhs_path)), rhs_path(std::move(rhs_path)) {}
@@ -599,8 +601,10 @@ bool SEqualHandlerDefault::DispatchSEqualReduce(const ObjectRef& lhs, const Obje
   return impl->DispatchSEqualReduce(lhs, rhs, map_free_vars, current_paths);
 }
 
-TVM_FFI_REGISTER_GLOBAL("node.StructuralEqual")
-    .set_body_typed([](const Any& lhs, const Any& rhs, bool assert_mode, bool map_free_vars) {
+TVM_FFI_STATIC_INIT_BLOCK({
+  namespace refl = tvm::ffi::reflection;
+  refl::GlobalDef()
+    .def("node.StructuralEqual", [](const Any& lhs, const Any& rhs, bool assert_mode, bool map_free_vars) {
       // If we are asserting on failure, then the `defer_fails` option
       // should be enabled, to provide better error messages.  For
       // example, if the number of bindings in a `relax::BindingBlock`
@@ -610,16 +614,15 @@ TVM_FFI_REGISTER_GLOBAL("node.StructuralEqual")
       Optional<ObjectPathPair> first_mismatch;
       return SEqualHandlerDefault(assert_mode, &first_mismatch, defer_fails)
           .Equal(lhs, rhs, map_free_vars);
-    });
-
-TVM_FFI_REGISTER_GLOBAL("node.GetFirstStructuralMismatch")
-    .set_body_typed([](const Any& lhs, const Any& rhs, bool map_free_vars) {
+    })
+    .def("node.GetFirstStructuralMismatch", [](const Any& lhs, const Any& rhs, bool map_free_vars) {
       Optional<ObjectPathPair> first_mismatch;
       bool equal =
           SEqualHandlerDefault(false, &first_mismatch, true).Equal(lhs, rhs, map_free_vars);
       ICHECK(equal == !first_mismatch.defined());
       return first_mismatch;
     });
+});
 
 bool StructuralEqual::operator()(const ObjectRef& lhs, const ObjectRef& rhs,
                                  bool map_free_params) const {

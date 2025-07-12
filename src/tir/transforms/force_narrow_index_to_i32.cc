@@ -26,6 +26,7 @@
 #include <tvm/tir/data_type_rewriter.h>
 #include <tvm/tir/op.h>
 #include <tvm/tir/transform.h>
+#include <tvm/ffi/reflection/reflection.h>
 
 namespace tvm {
 namespace tir {
@@ -86,8 +87,11 @@ Pass ForceNarrowIndexToInt32() {
   return CreatePrimFuncPass(pass_func, 0, "tir.NarrowDataType", {});
 }
 
-TVM_FFI_REGISTER_GLOBAL("tir.transform.ForceNarrowIndexToInt32")
-    .set_body_typed(ForceNarrowIndexToInt32);
+TVM_FFI_STATIC_INIT_BLOCK({
+  namespace refl = tvm::ffi::reflection;
+  refl::GlobalDef()
+    .def("tir.transform.ForceNarrowIndexToInt32", ForceNarrowIndexToInt32);
+});
 
 }  // namespace transform
 }  // namespace tir

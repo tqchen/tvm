@@ -28,6 +28,7 @@
 #include <tvm/tir/stmt.h>
 #include <tvm/tir/stmt_functor.h>
 #include <tvm/tir/transform.h>
+#include <tvm/ffi/reflection/reflection.h>
 
 namespace tvm {
 namespace tir {
@@ -171,7 +172,11 @@ Pass RemoveStoreUndef() {
                     "tir.RemoveStoreUndef");
 }
 
-TVM_FFI_REGISTER_GLOBAL("tir.transform.RemoveStoreUndef").set_body_typed(RemoveStoreUndef);
+TVM_FFI_STATIC_INIT_BLOCK({
+  namespace refl = tvm::ffi::reflection;
+  refl::GlobalDef()
+    .def("tir.transform.RemoveStoreUndef", RemoveStoreUndef);
+});
 
 }  // namespace transform
 

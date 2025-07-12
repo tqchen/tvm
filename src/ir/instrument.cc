@@ -26,6 +26,7 @@
 #include <tvm/ir/instrument.h>
 #include <tvm/ir/transform.h>
 #include <tvm/node/repr_printer.h>
+#include <tvm/ffi/reflection/reflection.h>
 
 #include <stack>
 
@@ -177,9 +178,10 @@ void BasePassInstrumentNode::RunAfterPass(const IRModule& ir_module,
 
 TVM_REGISTER_NODE_TYPE(BasePassInstrumentNode);
 
-TVM_FFI_REGISTER_GLOBAL("instrument.PassInstrument")
-    .set_body_typed(
-        [](String name, ffi::TypedFunction<void()> enter_pass_ctx,
+TVM_FFI_STATIC_INIT_BLOCK({
+  namespace refl = tvm::ffi::reflection;
+  refl::GlobalDef()
+    .def("instrument.PassInstrument", [](String name, ffi::TypedFunction<void()> enter_pass_ctx,
            ffi::TypedFunction<void()> exit_pass_ctx,
            ffi::TypedFunction<bool(const IRModule&, const transform::PassInfo&)> should_run,
            ffi::TypedFunction<void(const IRModule&, const transform::PassInfo&)> run_before_pass,
@@ -187,6 +189,7 @@ TVM_FFI_REGISTER_GLOBAL("instrument.PassInstrument")
           return BasePassInstrument(name, enter_pass_ctx, exit_pass_ctx, should_run,
                                     run_before_pass, run_after_pass);
         });
+});
 
 TVM_STATIC_IR_FUNCTOR(ReprPrinter, vtable)
     .set_dispatch<BasePassInstrumentNode>([](const ObjectRef& ref, ReprPrinter* p) {
@@ -310,9 +313,11 @@ String RenderPassProfiles() {
   return os.str();
 }
 
-TVM_FFI_REGISTER_GLOBAL("instrument.RenderTimePassProfiles").set_body_typed(RenderPassProfiles);
-
-TVM_FFI_REGISTER_GLOBAL("instrument.MakePassTimingInstrument").set_body_typed([]() {
+TVM_FFI_STATIC_INIT_BLOCK({
+  namespace refl = tvm::ffi::reflection;
+  refl::GlobalDef()
+    .def("instrument.RenderTimePassProfiles", RenderPassProfiles)
+    .def("instrument.MakePassTimingInstrument", []() {
   auto run_before_pass = [](const IRModule&, const transform::PassInfo& pass_info) {
     PassProfile::EnterPass(pass_info->name);
     return true;
@@ -327,6 +332,7 @@ TVM_FFI_REGISTER_GLOBAL("instrument.MakePassTimingInstrument").set_body_typed([]
   return BasePassInstrument("PassTimingInstrument",
                             /* enter_pass_ctx */ nullptr, exit_pass_ctx, /* should_run */ nullptr,
                             run_before_pass, run_after_pass);
+});
 });
 
 }  // namespace instrument

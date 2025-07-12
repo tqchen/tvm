@@ -18,14 +18,17 @@
  */
 
 #include "mps_utils.h"
+#include <tvm/ffi/reflection/reflection.h>
 
 namespace tvm {
 namespace contrib {
 
 using namespace runtime;
 
-TVM_FFI_REGISTER_GLOBAL("tvm.contrib.mps.buffer2img")
-    .set_body_packed([](ffi::PackedArgs args, ffi::Any* ret) {
+TVM_FFI_STATIC_INIT_BLOCK({
+  namespace refl = tvm::ffi::reflection;
+  refl::GlobalDef()
+    .def_packed("tvm.contrib.mps.buffer2img", [](ffi::PackedArgs args, ffi::Any* ret) {
       auto buf = args[0].cast<DLTensor*>();
       auto img = args[1].cast<DLTensor*>();
       // copy to temp
@@ -55,10 +58,8 @@ TVM_FFI_REGISTER_GLOBAL("tvm.contrib.mps.buffer2img")
       [mpsimg readBytes:[temp contents]
              dataLayout:MPSDataLayoutHeightxWidthxFeatureChannels
              imageIndex:0];
-    });
-
-TVM_FFI_REGISTER_GLOBAL("tvm.contrib.mps.img2buffer")
-    .set_body_packed([](ffi::PackedArgs args, ffi::Any* ret) {
+    })
+    .def_packed("tvm.contrib.mps.img2buffer", [](ffi::PackedArgs args, ffi::Any* ret) {
       auto img = args[0].cast<DLTensor*>();
       auto buf = args[1].cast<DLTensor*>();
       id<MTLBuffer> mtlbuf = (__bridge id<MTLBuffer>)(buf->data);
@@ -74,10 +75,8 @@ TVM_FFI_REGISTER_GLOBAL("tvm.contrib.mps.img2buffer")
       entry_ptr->metal_api->CopyDataFromTo((__bridge void*)temp, 0, (__bridge void*)mtlbuf, 0,
                                            [mtlbuf length], buf -> device, buf -> device,
                                            buf -> dtype, nullptr);
-    });
-
-TVM_FFI_REGISTER_GLOBAL("tvm.contrib.mps.conv2d")
-    .set_body_packed([](ffi::PackedArgs args, ffi::Any* ret) {
+    })
+    .def_packed("tvm.contrib.mps.conv2d", [](ffi::PackedArgs args, ffi::Any* ret) {
       // MPS-NHWC
       auto data = args[0].cast<DLTensor*>();
       auto weight = args[1].cast<DLTensor*>();
@@ -158,6 +157,7 @@ TVM_FFI_REGISTER_GLOBAL("tvm.contrib.mps.conv2d")
 
       (*f_img2buf)(&tmp_out, output);
     });
+});
 
 }  // namespace contrib
 }  // namespace tvm

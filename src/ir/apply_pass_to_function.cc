@@ -25,6 +25,7 @@
 #include <tvm/ir/transform.h>
 #include <tvm/relax/expr.h>
 #include <tvm/tir/function.h>
+#include <tvm/ffi/reflection/reflection.h>
 
 #include <unordered_set>
 
@@ -129,7 +130,11 @@ Pass ApplyPassToFunction(Pass pass, String func_name_regex,
   return CreateModulePass(pass_func, 0, pass_name, {});
 }
 
-TVM_FFI_REGISTER_GLOBAL("transform.ApplyPassToFunction").set_body_typed(ApplyPassToFunction);
+TVM_FFI_STATIC_INIT_BLOCK({
+  namespace refl = tvm::ffi::reflection;
+  refl::GlobalDef()
+    .def("transform.ApplyPassToFunction", ApplyPassToFunction);
+});
 
 }  // namespace transform
 }  // namespace tvm

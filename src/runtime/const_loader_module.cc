@@ -33,6 +33,7 @@
 #include <tvm/ffi/string.h>
 #include <tvm/runtime/module.h>
 #include <tvm/runtime/ndarray.h>
+#include <tvm/ffi/reflection/reflection.h>
 
 #include <cstdint>
 
@@ -247,8 +248,11 @@ Module ConstLoaderModuleCreate(
   return Module(n);
 }
 
-TVM_FFI_REGISTER_GLOBAL("runtime.module.loadbinary_const_loader")
-    .set_body_typed(ConstLoaderModuleNode::LoadFromBinary);
+TVM_FFI_STATIC_INIT_BLOCK({
+  namespace refl = tvm::ffi::reflection;
+  refl::GlobalDef()
+    .def("runtime.module.loadbinary_const_loader", ConstLoaderModuleNode::LoadFromBinary);
+});
 
 }  // namespace runtime
 }  // namespace tvm

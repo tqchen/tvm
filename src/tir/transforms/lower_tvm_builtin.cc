@@ -26,6 +26,7 @@
 #include <tvm/tir/expr.h>
 #include <tvm/tir/stmt_functor.h>
 #include <tvm/tir/transform.h>
+#include <tvm/ffi/reflection/reflection.h>
 
 #include <unordered_set>
 
@@ -673,7 +674,11 @@ Pass LowerTVMBuiltin() {
   return CreatePrimFuncPass(pass_func, 0, "tir.LowerTVMBuiltin", {});
 }
 
-TVM_FFI_REGISTER_GLOBAL("tir.transform.LowerTVMBuiltin").set_body_typed(LowerTVMBuiltin);
+TVM_FFI_STATIC_INIT_BLOCK({
+  namespace refl = tvm::ffi::reflection;
+  refl::GlobalDef()
+    .def("tir.transform.LowerTVMBuiltin", LowerTVMBuiltin);
+});
 
 }  // namespace transform
 }  // namespace tir

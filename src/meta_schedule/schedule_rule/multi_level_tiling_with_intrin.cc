@@ -21,6 +21,7 @@
 #include "../../tir/schedule/transform.h"
 #include "../utils.h"
 #include "multi_level_tiling.h"
+#include <tvm/ffi/reflection/reflection.h>
 
 namespace tvm {
 namespace meta_schedule {
@@ -106,8 +107,11 @@ ScheduleRule ScheduleRule::MultiLevelTilingWithIntrin(String intrin_name, String
 }
 
 TVM_REGISTER_NODE_TYPE(MultiLevelTilingWithIntrinNode);
-TVM_FFI_REGISTER_GLOBAL("meta_schedule.ScheduleRuleMultiLevelTilingWithIntrin")
-    .set_body_typed(ScheduleRule::MultiLevelTilingWithIntrin);
+TVM_FFI_STATIC_INIT_BLOCK({
+  namespace refl = tvm::ffi::reflection;
+  refl::GlobalDef()
+    .def("meta_schedule.ScheduleRuleMultiLevelTilingWithIntrin", ScheduleRule::MultiLevelTilingWithIntrin);
+});
 
 }  // namespace meta_schedule
 }  // namespace tvm

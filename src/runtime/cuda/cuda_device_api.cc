@@ -27,6 +27,7 @@
 #include <tvm/ffi/function.h>
 #include <tvm/runtime/device_api.h>
 #include <tvm/runtime/profiling.h>
+#include <tvm/ffi/reflection/reflection.h>
 
 #include <cstring>
 
@@ -286,16 +287,18 @@ CUDAThreadEntry::CUDAThreadEntry() : pool(kDLCUDA, CUDADeviceAPI::Global()) {}
 
 CUDAThreadEntry* CUDAThreadEntry::ThreadLocal() { return CUDAThreadStore::Get(); }
 
-TVM_FFI_REGISTER_GLOBAL("device_api.cuda").set_body_packed([](ffi::PackedArgs args, ffi::Any* rv) {
+TVM_FFI_STATIC_INIT_BLOCK({
+  namespace refl = tvm::ffi::reflection;
+  refl::GlobalDef()
+    .def_packed("device_api.cuda", [](ffi::PackedArgs args, ffi::Any* rv) {
   DeviceAPI* ptr = CUDADeviceAPI::Global();
   *rv = static_cast<void*>(ptr);
-});
-
-TVM_FFI_REGISTER_GLOBAL("device_api.cuda_host")
-    .set_body_packed([](ffi::PackedArgs args, ffi::Any* rv) {
+})
+    .def_packed("device_api.cuda_host", [](ffi::PackedArgs args, ffi::Any* rv) {
       DeviceAPI* ptr = CUDADeviceAPI::Global();
       *rv = static_cast<void*>(ptr);
     });
+});
 
 class CUDATimerNode : public TimerNode {
  public:
@@ -330,8 +333,12 @@ class CUDATimerNode : public TimerNode {
 
 TVM_REGISTER_OBJECT_TYPE(CUDATimerNode);
 
-TVM_FFI_REGISTER_GLOBAL("profiling.timer.cuda").set_body_typed([](Device dev) {
+TVM_FFI_STATIC_INIT_BLOCK({
+  namespace refl = tvm::ffi::reflection;
+  refl::GlobalDef()
+    .def("profiling.timer.cuda", [](Device dev) {
   return Timer(make_object<CUDATimerNode>());
+});
 });
 
 TVM_DLL String GetCudaFreeMemory() {
@@ -343,10 +350,13 @@ TVM_DLL String GetCudaFreeMemory() {
   return ss.str();
 }
 
-TVM_FFI_REGISTER_GLOBAL("runtime.GetCudaFreeMemory").set_body_typed(GetCudaFreeMemory);
-
-TVM_FFI_REGISTER_GLOBAL("runtime.get_cuda_stream").set_body_typed([]() {
+TVM_FFI_STATIC_INIT_BLOCK({
+  namespace refl = tvm::ffi::reflection;
+  refl::GlobalDef()
+    .def("runtime.GetCudaFreeMemory", GetCudaFreeMemory)
+    .def("runtime.get_cuda_stream", []() {
   return static_cast<void*>(CUDAThreadEntry::ThreadLocal()->stream);
+});
 });
 
 TVM_DLL int GetCudaDeviceCount() {
@@ -355,7 +365,11 @@ TVM_DLL int GetCudaDeviceCount() {
   return count;
 }
 
-TVM_FFI_REGISTER_GLOBAL("runtime.GetCudaDeviceCount").set_body_typed(GetCudaDeviceCount);
+TVM_FFI_STATIC_INIT_BLOCK({
+  namespace refl = tvm::ffi::reflection;
+  refl::GlobalDef()
+    .def("runtime.GetCudaDeviceCount", GetCudaDeviceCount);
+});
 
 #if (CUDA_VERSION >= 12000)
 /**
@@ -381,8 +395,10 @@ TVM_FFI_REGISTER_GLOBAL("runtime.GetCudaDeviceCount").set_body_typed(GetCudaDevi
  * \param l2_promotion_kind (int): An integer corresponding to the CUtensorMapL2promotion enum.
  * \param oob_fill_kind (int): An integer corresponding to the CUtensorMapFloatOOBfill enum.
  */
-TVM_FFI_REGISTER_GLOBAL("runtime.cuTensorMapEncodeTiled")
-    .set_body_packed([](ffi::PackedArgs args, ffi::Any* rv) {
+TVM_FFI_STATIC_INIT_BLOCK({
+  namespace refl = tvm::ffi::reflection;
+  refl::GlobalDef()
+    .def_packed("runtime.cuTensorMapEncodeTiled", [](ffi::PackedArgs args, ffi::Any* rv) {
       CHECK_GE(args.size(), 4) << "init_cuTensorMap expects at least 4 arguments";
       size_t arg_cnt = 0;
       CUtensorMap* tensor_map = static_cast<CUtensorMap*>(args[arg_cnt++].cast<void*>());
@@ -563,6 +579,7 @@ TVM_FFI_REGISTER_GLOBAL("runtime.cuTensorMapEncodeTiled")
         CHECK_EQ(res, CUDA_SUCCESS) << "Error in cuTensorMapEncodeTiled: " << errstr;
       }
     });
+});
 #endif  // CUDA_VERSION >= 12000
 
 }  // namespace runtime

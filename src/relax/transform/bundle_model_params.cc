@@ -27,6 +27,7 @@
 #include <tvm/relax/expr_functor.h>
 #include <tvm/relax/transform.h>
 #include <tvm/runtime/logging.h>
+#include <tvm/ffi/reflection/reflection.h>
 
 #include "utils.h"
 
@@ -115,7 +116,11 @@ Pass BundleModelParams(Optional<String> param_tuple_name) {
   return CreateModulePass(pass_func, 1, "BundleModelParams", {});
 }
 
-TVM_FFI_REGISTER_GLOBAL("relax.transform.BundleModelParams").set_body_typed(BundleModelParams);
+TVM_FFI_STATIC_INIT_BLOCK({
+  namespace refl = tvm::ffi::reflection;
+  refl::GlobalDef()
+    .def("relax.transform.BundleModelParams", BundleModelParams);
+});
 
 }  // namespace transform
 }  // namespace relax

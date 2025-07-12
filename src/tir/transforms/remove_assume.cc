@@ -28,6 +28,7 @@
 #include <tvm/tir/stmt.h>
 #include <tvm/tir/stmt_functor.h>
 #include <tvm/tir/transform.h>
+#include <tvm/ffi/reflection/reflection.h>
 
 namespace tvm {
 namespace tir {
@@ -61,7 +62,11 @@ Pass RemoveAssume() {
   return Sequential({RemoveAssumeInternal(), RemoveNoOp()}, "tir.RemoveAssume");
 }
 
-TVM_FFI_REGISTER_GLOBAL("tir.transform.RemoveAssume").set_body_typed(RemoveAssume);
+TVM_FFI_STATIC_INIT_BLOCK({
+  namespace refl = tvm::ffi::reflection;
+  refl::GlobalDef()
+    .def("tir.transform.RemoveAssume", RemoveAssume);
+});
 
 }  // namespace transform
 

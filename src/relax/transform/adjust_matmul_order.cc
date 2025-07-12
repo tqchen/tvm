@@ -27,6 +27,7 @@
 #include <tvm/relax/expr.h>
 #include <tvm/relax/expr_functor.h>
 #include <tvm/relax/transform.h>
+#include <tvm/ffi/reflection/reflection.h>
 
 #include <optional>
 #include <unordered_set>
@@ -213,7 +214,11 @@ Pass AdjustMatmulOrder() {
   return CreateFunctionPass(pass_func, 1, "AdjustMatmulOrder", {});
 }
 
-TVM_FFI_REGISTER_GLOBAL("relax.transform.AdjustMatmulOrder").set_body_typed(AdjustMatmulOrder);
+TVM_FFI_STATIC_INIT_BLOCK({
+  namespace refl = tvm::ffi::reflection;
+  refl::GlobalDef()
+    .def("relax.transform.AdjustMatmulOrder", AdjustMatmulOrder);
+});
 
 }  // namespace transform
 }  // namespace relax

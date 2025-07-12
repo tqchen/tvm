@@ -24,6 +24,7 @@
 #include <tvm/ffi/function.h>
 #include <tvm/tir/expr.h>
 #include <tvm/tir/op.h>
+#include <tvm/ffi/reflection/reflection.h>
 
 #include "./scalable_expression.h"
 #include "const_fold.h"
@@ -269,8 +270,10 @@ PrimExpr Analyzer::Simplify(const PrimExpr& expr, int steps) {
   return res;
 }
 
-TVM_FFI_REGISTER_GLOBAL("arith.CreateAnalyzer")
-    .set_body_packed([](ffi::PackedArgs args, ffi::Any* ret) {
+TVM_FFI_STATIC_INIT_BLOCK({
+  namespace refl = tvm::ffi::reflection;
+  refl::GlobalDef()
+    .def_packed("arith.CreateAnalyzer", [](ffi::PackedArgs args, ffi::Any* ret) {
       using ffi::Function;
       using ffi::TypedFunction;
       auto self = std::make_shared<Analyzer>();
@@ -363,6 +366,7 @@ TVM_FFI_REGISTER_GLOBAL("arith.CreateAnalyzer")
       };
       *ret = ffi::TypedFunction<ffi::Function(std::string)>(f);
     });
+});
 
 }  // namespace arith
 }  // namespace tvm

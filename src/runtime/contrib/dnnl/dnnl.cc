@@ -25,6 +25,7 @@
 #include <assert.h>
 #include <stdlib.h>
 #include <string.h>
+#include <tvm/ffi/reflection/reflection.h>
 
 #include <algorithm>
 #include <iostream>
@@ -348,8 +349,10 @@ extern "C" void dnnl_binary_op(float* data, float* weight, float* out, int algo_
 }
 
 // DNNL Conv2d single OP
-TVM_FFI_REGISTER_GLOBAL("tvm.contrib.dnnl.conv2d")
-    .set_body_packed([](ffi::PackedArgs args, ffi::Any* ret) {
+TVM_FFI_STATIC_INIT_BLOCK({
+  namespace refl = tvm::ffi::reflection;
+  refl::GlobalDef()
+    .def_packed("tvm.contrib.dnnl.conv2d", [](ffi::PackedArgs args, ffi::Any* ret) {
       auto input = args[0].cast<DLTensor*>();
       auto weights = args[1].cast<DLTensor*>();
       auto output = args[2].cast<DLTensor*>();
@@ -381,6 +384,7 @@ TVM_FFI_REGISTER_GLOBAL("tvm.contrib.dnnl.conv2d")
           static_cast<float*>(output->data), p_N_, p_C_, p_H_, p_W_, p_O_, p_G_, p_Ph0_, p_Pw0_,
           p_Ph1_, p_Pw1_, p_Kh_, p_Kw_, p_Sh_, p_Sw_, attr, channel_last, pre_cast, post_cast);
     });
+});
 
 }  // namespace contrib
 }  // namespace runtime

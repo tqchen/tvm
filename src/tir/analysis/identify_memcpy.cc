@@ -28,6 +28,7 @@
 #include <tvm/tir/analysis.h>
 #include <tvm/tir/buffer.h>
 #include <tvm/tir/stmt.h>
+#include <tvm/ffi/reflection/reflection.h>
 
 #include <optional>
 #include <sstream>
@@ -282,7 +283,10 @@ std::optional<MemCpyDetails> IdentifyMemCpy(const For& loop, arith::Analyzer* an
 }
 
 // Expose the IdentifyMemCpy functionality to Python API for purpose of unit testing.
-TVM_FFI_REGISTER_GLOBAL("tir.analysis._identify_memcpy").set_body_typed([](const Stmt& stmt) {
+TVM_FFI_STATIC_INIT_BLOCK({
+  namespace refl = tvm::ffi::reflection;
+  refl::GlobalDef()
+    .def("tir.analysis._identify_memcpy", [](const Stmt& stmt) {
   Array<ObjectRef> output;
 
   struct Visitor : arith::IRVisitorWithAnalyzer {
@@ -310,6 +314,7 @@ TVM_FFI_REGISTER_GLOBAL("tir.analysis._identify_memcpy").set_body_typed([](const
   visitor(stmt);
 
   return output;
+});
 });
 
 }  // namespace tir

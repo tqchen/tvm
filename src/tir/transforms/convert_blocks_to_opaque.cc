@@ -24,6 +24,7 @@
 
 #include <tvm/tir/stmt_functor.h>
 #include <tvm/tir/transform.h>
+#include <tvm/ffi/reflection/reflection.h>
 
 #include "ir_utils.h"
 
@@ -122,8 +123,11 @@ Pass ConvertBlocksToOpaque() {
   return CreatePrimFuncPass(pass_func, 0, "tir.ConvertBlocksToOpaque", {});
 }
 
-TVM_FFI_REGISTER_GLOBAL("tir.transform.ConvertBlocksToOpaque")
-    .set_body_typed(ConvertBlocksToOpaque);
+TVM_FFI_STATIC_INIT_BLOCK({
+  namespace refl = tvm::ffi::reflection;
+  refl::GlobalDef()
+    .def("tir.transform.ConvertBlocksToOpaque", ConvertBlocksToOpaque);
+});
 }  // namespace transform
 
 }  // namespace tir

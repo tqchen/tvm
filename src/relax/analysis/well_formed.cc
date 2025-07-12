@@ -71,6 +71,7 @@
 #include <tvm/relax/struct_info_functor.h>
 #include <tvm/relax/utils.h>
 #include <tvm/tir/expr_functor.h>
+#include <tvm/ffi/reflection/reflection.h>
 
 #include <unordered_set>
 
@@ -645,7 +646,11 @@ bool WellFormed(Variant<IRModule, Function> obj, bool check_struct_info) {
   return WellFormedChecker::Check(obj, check_struct_info);
 }
 
-TVM_FFI_REGISTER_GLOBAL(("relax.analysis.well_formed")).set_body_typed(WellFormed);
+TVM_FFI_STATIC_INIT_BLOCK({
+  namespace refl = tvm::ffi::reflection;
+  refl::GlobalDef()
+    .def("relax.analysis.well_formed", WellFormed);
+});
 
 }  // namespace relax
 }  // namespace tvm

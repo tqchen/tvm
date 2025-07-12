@@ -22,6 +22,7 @@
  */
 
 #include "hexagon_device_api.h"
+#include <tvm/ffi/reflection/reflection.h>
 
 #include <dmlc/thread_local.h>
 #include <tvm/ffi/function.h>
@@ -190,8 +191,10 @@ void HexagonDeviceAPI::CopyDataFromTo(const void* from, size_t from_offset, void
   memcpy(static_cast<char*>(to) + to_offset, static_cast<const char*>(from) + from_offset, size);
 }
 
-TVM_FFI_REGISTER_GLOBAL("device_api.hexagon.dma_copy_dltensor")
-    .set_body_packed([](ffi::PackedArgs args, ffi::Any* rv) {
+TVM_FFI_STATIC_INIT_BLOCK({
+  namespace refl = tvm::ffi::reflection;
+  refl::GlobalDef()
+    .def_packed("device_api.hexagon.dma_copy_dltensor", [](ffi::PackedArgs args, ffi::Any* rv) {
       auto dst = args[0].cast<DLTensor*>();
       auto src = args[1].cast<DLTensor*>();
       int size = args[2].cast<int>();
@@ -207,10 +210,8 @@ TVM_FFI_REGISTER_GLOBAL("device_api.hexagon.dma_copy_dltensor")
       HexagonDeviceAPI::Global()->UserDMA()->Wait(SYNC_DMA_QUEUE, 0);
 
       *rv = static_cast<int32_t>(0);
-    });
-
-TVM_FFI_REGISTER_GLOBAL("device_api.hexagon.dma_copy")
-    .set_body_packed([](ffi::PackedArgs args, ffi::Any* rv) {
+    })
+    .def_packed("device_api.hexagon.dma_copy", [](ffi::PackedArgs args, ffi::Any* rv) {
       uint32_t queue_id = args[0].cast<uint32_t>();
       void* dst = args[1].cast<void*>();
       void* src = args[2].cast<void*>();
@@ -224,33 +225,25 @@ TVM_FFI_REGISTER_GLOBAL("device_api.hexagon.dma_copy")
       } while (ret == DMA_RETRY);
       CHECK(ret == DMA_SUCCESS);
       *rv = static_cast<int32_t>(ret);
-    });
-
-TVM_FFI_REGISTER_GLOBAL("device_api.hexagon.dma_wait")
-    .set_body_packed([](ffi::PackedArgs args, ffi::Any* rv) {
+    })
+    .def_packed("device_api.hexagon.dma_wait", [](ffi::PackedArgs args, ffi::Any* rv) {
       uint32_t queue_id = args[0].cast<uint32_t>();
       int inflight = args[1].cast<int>();
       ICHECK(inflight >= 0);
       HexagonDeviceAPI::Global()->UserDMA()->Wait(queue_id, inflight);
       *rv = static_cast<int32_t>(0);
-    });
-
-TVM_FFI_REGISTER_GLOBAL("device_api.hexagon.dma_start_group")
-    .set_body_packed([](ffi::PackedArgs args, ffi::Any* rv) {
+    })
+    .def_packed("device_api.hexagon.dma_start_group", [](ffi::PackedArgs args, ffi::Any* rv) {
       uint32_t queue_id = args[0].cast<uint32_t>();
       HexagonDeviceAPI::Global()->UserDMA()->StartGroup(queue_id);
       *rv = static_cast<int32_t>(0);
-    });
-
-TVM_FFI_REGISTER_GLOBAL("device_api.hexagon.dma_end_group")
-    .set_body_packed([](ffi::PackedArgs args, ffi::Any* rv) {
+    })
+    .def_packed("device_api.hexagon.dma_end_group", [](ffi::PackedArgs args, ffi::Any* rv) {
       uint32_t queue_id = args[0].cast<uint32_t>();
       HexagonDeviceAPI::Global()->UserDMA()->EndGroup(queue_id);
       *rv = static_cast<int32_t>(0);
-    });
-
-TVM_FFI_REGISTER_GLOBAL("device_api.hexagon.alloc_nd")
-    .set_body_packed([](ffi::PackedArgs args, ffi::Any* rv) {
+    })
+    .def_packed("device_api.hexagon.alloc_nd", [](ffi::PackedArgs args, ffi::Any* rv) {
       int32_t device_type = args[0].cast<int32_t>();
       int32_t device_id = args[1].cast<int32_t>();
       int32_t dtype_code_hint = args[2].cast<int32_t>();
@@ -272,10 +265,8 @@ TVM_FFI_REGISTER_GLOBAL("device_api.hexagon.alloc_nd")
 
       HexagonDeviceAPI* hexapi = HexagonDeviceAPI::Global();
       *rv = hexapi->AllocDataSpace(dev, ndim, shape, type_hint, String(scope));
-    });
-
-TVM_FFI_REGISTER_GLOBAL("device_api.hexagon.free_nd")
-    .set_body_packed([](ffi::PackedArgs args, ffi::Any* rv) {
+    })
+    .def_packed("device_api.hexagon.free_nd", [](ffi::PackedArgs args, ffi::Any* rv) {
       int32_t device_type = args[0].cast<int32_t>();
       int32_t device_id = args[1].cast<int32_t>();
       auto scope = args[2].cast<std::string>();
@@ -289,31 +280,24 @@ TVM_FFI_REGISTER_GLOBAL("device_api.hexagon.free_nd")
       HexagonDeviceAPI* hexapi = HexagonDeviceAPI::Global();
       hexapi->FreeDataSpace(dev, ptr);
       *rv = static_cast<int32_t>(0);
-    });
-
-TVM_FFI_REGISTER_GLOBAL("device_api.hexagon.acquire_resources")
-    .set_body_packed([](ffi::PackedArgs args, ffi::Any* rv) {
+    })
+    .def_packed("device_api.hexagon.acquire_resources", [](ffi::PackedArgs args, ffi::Any* rv) {
       HexagonDeviceAPI* api = HexagonDeviceAPI::Global();
       api->AcquireResources();
-    });
-
-TVM_FFI_REGISTER_GLOBAL("device_api.hexagon.release_resources")
-    .set_body_packed([](ffi::PackedArgs args, ffi::Any* rv) {
+    })
+    .def_packed("device_api.hexagon.release_resources", [](ffi::PackedArgs args, ffi::Any* rv) {
       HexagonDeviceAPI* api = HexagonDeviceAPI::Global();
       api->ReleaseResources();
-    });
-
-TVM_FFI_REGISTER_GLOBAL("device_api.hexagon.vtcm_device_bytes")
-    .set_body_packed([](ffi::PackedArgs args, ffi::Any* rv) {
+    })
+    .def_packed("device_api.hexagon.vtcm_device_bytes", [](ffi::PackedArgs args, ffi::Any* rv) {
       HexagonDeviceAPI* api = HexagonDeviceAPI::Global();
       *rv = static_cast<int32_t>(api->VtcmPool()->VtcmDeviceBytes());
-    });
-
-TVM_FFI_REGISTER_GLOBAL("device_api.hexagon")
-    .set_body_packed([](ffi::PackedArgs args, ffi::Any* rv) {
+    })
+    .def_packed("device_api.hexagon", [](ffi::PackedArgs args, ffi::Any* rv) {
       DeviceAPI* ptr = HexagonDeviceAPI::Global();
       *rv = static_cast<void*>(ptr);
     });
+});
 
 }  // namespace hexagon
 }  // namespace runtime

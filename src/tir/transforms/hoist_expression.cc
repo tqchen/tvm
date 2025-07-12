@@ -26,6 +26,7 @@
 #include <tvm/tir/expr.h>
 #include <tvm/tir/stmt_functor.h>
 #include <tvm/tir/transform.h>
+#include <tvm/ffi/reflection/reflection.h>
 
 #include <queue>
 #include <unordered_map>
@@ -563,7 +564,11 @@ Pass HoistExpression() {
       "tir.HoistExpression");
 }
 
-TVM_FFI_REGISTER_GLOBAL("tir.transform.HoistExpression").set_body_typed(HoistExpression);
+TVM_FFI_STATIC_INIT_BLOCK({
+  namespace refl = tvm::ffi::reflection;
+  refl::GlobalDef()
+    .def("tir.transform.HoistExpression", HoistExpression);
+});
 
 Pass HoistIfThenElse() {
   auto pass_func = [=](PrimFunc f, IRModule m, PassContext ctx) {
@@ -598,7 +603,11 @@ Pass HoistIfThenElse() {
       "tir.HoistIfThenElse");
 }
 
-TVM_FFI_REGISTER_GLOBAL("tir.transform.HoistIfThenElse").set_body_typed(HoistIfThenElse);
+TVM_FFI_STATIC_INIT_BLOCK({
+  namespace refl = tvm::ffi::reflection;
+  refl::GlobalDef()
+    .def("tir.transform.HoistIfThenElse", HoistIfThenElse);
+});
 
 Pass HoistIfThenElseBasic() {
   auto pass_func = [=](PrimFunc f, IRModule m, PassContext ctx) {
@@ -618,7 +627,11 @@ Pass HoistIfThenElseBasic() {
       "tir.HoistIfThenElseBasic");
 }
 
-TVM_FFI_REGISTER_GLOBAL("tir.transform.HoistIfThenElseBasic").set_body_typed(HoistIfThenElseBasic);
+TVM_FFI_STATIC_INIT_BLOCK({
+  namespace refl = tvm::ffi::reflection;
+  refl::GlobalDef()
+    .def("tir.transform.HoistIfThenElseBasic", HoistIfThenElseBasic);
+});
 
 }  // namespace transform
 

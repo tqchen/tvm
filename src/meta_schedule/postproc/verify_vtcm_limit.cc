@@ -17,6 +17,7 @@
  * under the License.
  */
 #include <tvm/tir/transform.h>
+#include <tvm/ffi/reflection/reflection.h>
 
 #include "../utils.h"
 
@@ -69,8 +70,11 @@ Postproc Postproc::VerifyVTCMLimit() {
 }
 
 TVM_REGISTER_NODE_TYPE(VerifyVTCMLimitNode);
-TVM_FFI_REGISTER_GLOBAL("meta_schedule.PostprocVerifyVTCMLimit")
-    .set_body_typed(Postproc::VerifyVTCMLimit);
+TVM_FFI_STATIC_INIT_BLOCK({
+  namespace refl = tvm::ffi::reflection;
+  refl::GlobalDef()
+    .def("meta_schedule.PostprocVerifyVTCMLimit", Postproc::VerifyVTCMLimit);
+});
 
 }  // namespace meta_schedule
 }  // namespace tvm

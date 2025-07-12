@@ -23,6 +23,7 @@
 #include <tvm/ffi/function.h>
 #include <tvm/runtime/data_type.h>
 #include <tvm/runtime/device_api.h>
+#include <tvm/ffi/reflection/reflection.h>
 
 #include "cudnn_utils.h"
 
@@ -185,8 +186,10 @@ void BackwardFilterFindAlgo(int format, int dims, int groups, const int pad[], c
   ret[0] = static_cast<int>(best_algo);
 }
 
-TVM_FFI_REGISTER_GLOBAL("tvm.contrib.cudnn.conv2d.backward_data")
-    .set_body_packed([](ffi::PackedArgs args, ffi::Any* ret) {
+TVM_FFI_STATIC_INIT_BLOCK({
+  namespace refl = tvm::ffi::reflection;
+  refl::GlobalDef()
+    .def_packed("tvm.contrib.cudnn.conv2d.backward_data", [](ffi::PackedArgs args, ffi::Any* ret) {
       int mode = args[0].cast<int>();
       int format = args[1].cast<int>();
       int algo = args[2].cast<int>();
@@ -204,10 +207,8 @@ TVM_FFI_REGISTER_GLOBAL("tvm.contrib.cudnn.conv2d.backward_data")
 
       ConvolutionBackwardData(mode, format, algo, 2, groups, pad_v, stride_v, dilation_v, dy, w, dx,
                               conv_dtype);
-    });
-
-TVM_FFI_REGISTER_GLOBAL("tvm.contrib.cudnn.conv.backward_data_find_algo")
-    .set_body_packed([](ffi::PackedArgs args, ffi::Any* ret) {
+    })
+    .def_packed("tvm.contrib.cudnn.conv.backward_data_find_algo", [](ffi::PackedArgs args, ffi::Any* ret) {
       int format = args[0].cast<int>();
       int dims = args[1].cast<int>();
       int* pad = static_cast<int*>(args[2].cast<void*>());
@@ -223,10 +224,8 @@ TVM_FFI_REGISTER_GLOBAL("tvm.contrib.cudnn.conv.backward_data_find_algo")
 
       BackwardDataFindAlgo(format, dims, groups, pad, stride, dilation, dy_dim, w_dim, dx_dim,
                            data_dtype, conv_dtype, verbose, ret);
-    });
-
-TVM_FFI_REGISTER_GLOBAL("tvm.contrib.cudnn.conv2d.backward_filter")
-    .set_body_packed([](ffi::PackedArgs args, ffi::Any* ret) {
+    })
+    .def_packed("tvm.contrib.cudnn.conv2d.backward_filter", [](ffi::PackedArgs args, ffi::Any* ret) {
       int mode = args[0].cast<int>();
       int format = args[1].cast<int>();
       int algo = args[2].cast<int>();
@@ -244,10 +243,8 @@ TVM_FFI_REGISTER_GLOBAL("tvm.contrib.cudnn.conv2d.backward_filter")
 
       ConvolutionBackwardFilter(mode, format, algo, 2, groups, pad_v, stride_v, dilation_v, dy, x,
                                 dw, conv_dtype);
-    });
-
-TVM_FFI_REGISTER_GLOBAL("tvm.contrib.cudnn.conv.backward_filter_find_algo")
-    .set_body_packed([](ffi::PackedArgs args, ffi::Any* ret) {
+    })
+    .def_packed("tvm.contrib.cudnn.conv.backward_filter_find_algo", [](ffi::PackedArgs args, ffi::Any* ret) {
       int format = args[0].cast<int>();
       int dims = args[1].cast<int>();
       int* pad = static_cast<int*>(args[2].cast<void*>());
@@ -264,6 +261,7 @@ TVM_FFI_REGISTER_GLOBAL("tvm.contrib.cudnn.conv.backward_filter_find_algo")
       BackwardFilterFindAlgo(format, dims, groups, pad, stride, dilation, dy_dim, x_dim, dw_dim,
                              data_dtype, conv_dtype, verbose, ret);
     });
+});
 
 }  // namespace contrib
 }  // namespace tvm

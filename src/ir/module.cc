@@ -27,6 +27,7 @@
 #include <tvm/ir/module.h>
 #include <tvm/ir/type_functor.h>
 #include <tvm/node/structural_equal.h>
+#include <tvm/ffi/reflection/reflection.h>
 
 #include <algorithm>
 #include <fstream>
@@ -244,8 +245,10 @@ IRModule IRModule::FromExpr(const RelaxExpr& expr,
 
 TVM_REGISTER_NODE_TYPE(IRModuleNode);
 
-TVM_FFI_REGISTER_GLOBAL("ir.IRModule")
-    .set_body_typed([](tvm::Map<GlobalVar, BaseFunc> funcs, tvm::ObjectRef attrs,
+TVM_FFI_STATIC_INIT_BLOCK({
+  namespace refl = tvm::ffi::reflection;
+  refl::GlobalDef()
+    .def("ir.IRModule", [](tvm::Map<GlobalVar, BaseFunc> funcs, tvm::ObjectRef attrs,
                        Map<String, Array<GlobalInfo>> global_infos) {
       auto dict_attrs = [&attrs]() {
         if (!attrs.defined()) {
@@ -260,23 +263,18 @@ TVM_FFI_REGISTER_GLOBAL("ir.IRModule")
       }();
 
       return IRModule(funcs, {}, dict_attrs, global_infos);
-    });
-
-TVM_FFI_REGISTER_GLOBAL("ir.Module_Clone").set_body_typed([](IRModule mod) -> IRModule {
+    })
+    .def("ir.Module_Clone", [](IRModule mod) -> IRModule {
   IRModule clone = mod;
   clone.CopyOnWrite();
   return clone;
-});
-
-TVM_FFI_REGISTER_GLOBAL("ir.Module_Add")
-    .set_body_typed([](IRModule mod, GlobalVar var, ObjectRef val, bool update) -> IRModule {
+})
+    .def("ir.Module_Add", [](IRModule mod, GlobalVar var, ObjectRef val, bool update) -> IRModule {
       ICHECK(val->IsInstance<RelaxExprNode>());
       mod->Add(var, Downcast<BaseFunc>(val), update);
       return mod;
-    });
-
-TVM_FFI_REGISTER_GLOBAL("ir.Module_Remove")
-    .set_body_typed([](IRModule mod, Variant<String, GlobalVar> var) -> IRModule {
+    })
+    .def("ir.Module_Remove", [](IRModule mod, Variant<String, GlobalVar> var) -> IRModule {
       GlobalVar gvar = [&]() {
         if (auto opt = var.as<GlobalVar>()) {
           return opt.value();
@@ -289,10 +287,8 @@ TVM_FFI_REGISTER_GLOBAL("ir.Module_Remove")
       }();
       mod->Remove(gvar);
       return mod;
-    });
-
-TVM_FFI_REGISTER_GLOBAL("ir.Module_Contains")
-    .set_body_typed([](IRModule mod, Variant<String, GlobalVar> var) -> bool {
+    })
+    .def("ir.Module_Contains", [](IRModule mod, Variant<String, GlobalVar> var) -> bool {
       if (auto opt = var.as<GlobalVar>()) {
         return mod->functions.count(opt.value());
       } else if (auto opt = var.as<String>()) {
@@ -301,59 +297,39 @@ TVM_FFI_REGISTER_GLOBAL("ir.Module_Contains")
         LOG(FATAL) << "InternalError: "
                    << "Variant didn't contain any of the allowed types";
       }
-    });
-
-TVM_FFI_REGISTER_GLOBAL("ir.Module_GetGlobalVar").set_body_method(&IRModuleNode::GetGlobalVar);
-
-TVM_FFI_REGISTER_GLOBAL("ir.Module_GetGlobalVars").set_body_method(&IRModuleNode::GetGlobalVars);
-
-TVM_FFI_REGISTER_GLOBAL("ir.Module_ContainGlobalVar")
-    .set_body_method(&IRModuleNode::ContainGlobalVar);
-
-TVM_FFI_REGISTER_GLOBAL("ir.Module_Lookup").set_body_typed([](IRModule mod, GlobalVar var) {
+    })
+    .def_method("ir.Module_GetGlobalVar", &IRModuleNode::GetGlobalVar)
+    .def_method("ir.Module_GetGlobalVars", &IRModuleNode::GetGlobalVars)
+    .def_method("ir.Module_ContainGlobalVar", &IRModuleNode::ContainGlobalVar)
+    .def("ir.Module_Lookup", [](IRModule mod, GlobalVar var) {
   return mod->Lookup(var);
-});
-
-TVM_FFI_REGISTER_GLOBAL("ir.Module_Lookup_str").set_body_typed([](IRModule mod, String var) {
+})
+    .def("ir.Module_Lookup_str", [](IRModule mod, String var) {
   return mod->Lookup(var);
-});
-
-TVM_FFI_REGISTER_GLOBAL("ir.Module_FromExpr").set_body_typed(&IRModule::FromExpr);
-
-TVM_FFI_REGISTER_GLOBAL("ir.Module_Update").set_body_typed([](IRModule mod, IRModule from) {
+})
+    .def("ir.Module_FromExpr", &IRModule::FromExpr)
+    .def("ir.Module_Update", [](IRModule mod, IRModule from) {
   mod->Update(from);
-});
-
-TVM_FFI_REGISTER_GLOBAL("ir.Module_UpdateFunction")
-    .set_body_typed([](IRModule mod, GlobalVar gv, BaseFunc func) { mod->Update(gv, func); });
-
-TVM_FFI_REGISTER_GLOBAL("ir.Module_UpdateGlobalInfo")
-    .set_body_typed([](IRModule mod, String name, Array<GlobalInfo> global_info) {
+})
+    .def("ir.Module_UpdateFunction", [](IRModule mod, GlobalVar gv, BaseFunc func) { mod->Update(gv, func); })
+    .def("ir.Module_UpdateGlobalInfo", [](IRModule mod, String name, Array<GlobalInfo> global_info) {
       mod->UpdateGlobalInfo(name, global_info);
-    });
-
-TVM_FFI_REGISTER_GLOBAL("ir.Module_GetAttrs").set_body_typed([](IRModule mod) -> ObjectRef {
+    })
+    .def("ir.Module_GetAttrs", [](IRModule mod) -> ObjectRef {
   return mod->GetAttrs();
-});
-
-TVM_FFI_REGISTER_GLOBAL("ir.Module_WithAttr")
-    .set_body_typed([](ffi::RValueRef<IRModule> mod, String key, ffi::Any value) -> IRModule {
+})
+    .def("ir.Module_WithAttr", [](ffi::RValueRef<IRModule> mod, String key, ffi::Any value) -> IRModule {
       return WithAttr(*std::move(mod), key, value);
-    });
-
-TVM_FFI_REGISTER_GLOBAL("ir.Module_WithoutAttr")
-    .set_body_typed([](ffi::RValueRef<IRModule> mod, String key) -> IRModule {
+    })
+    .def("ir.Module_WithoutAttr", [](ffi::RValueRef<IRModule> mod, String key) -> IRModule {
       return WithoutAttr(*std::move(mod), key);
-    });
-
-TVM_FFI_REGISTER_GLOBAL("ir.Module_WithAttrs")
-    .set_body_typed([](ffi::RValueRef<IRModule> mod, Map<String, ffi::Any> attr_map) -> IRModule {
+    })
+    .def("ir.Module_WithAttrs", [](ffi::RValueRef<IRModule> mod, Map<String, ffi::Any> attr_map) -> IRModule {
       return WithAttrs(*std::move(mod), attr_map);
-    });
-
-TVM_FFI_REGISTER_GLOBAL("ir.Module_GetAttr")
-    .set_body_typed([](IRModule mod, String key) -> ObjectRef {
+    })
+    .def("ir.Module_GetAttr", [](IRModule mod, String key) -> ObjectRef {
       return mod->GetAttr<ObjectRef>(key);
     });
+});
 
 }  // namespace tvm

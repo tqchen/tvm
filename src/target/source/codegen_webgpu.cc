@@ -21,6 +21,7 @@
  * \file codegen_webgpu.cc
  */
 #include "codegen_webgpu.h"
+#include <tvm/ffi/reflection/reflection.h>
 
 #include <tvm/arith/analyzer.h>
 #include <tvm/tir/builtin.h>
@@ -779,8 +780,12 @@ runtime::Module BuildWebGPU(IRModule mod, Target target) {
   return runtime::Module(n);
 }
 
-TVM_FFI_REGISTER_GLOBAL("target.build.webgpu").set_body_typed([](IRModule mod, Target target) {
+TVM_FFI_STATIC_INIT_BLOCK({
+  namespace refl = tvm::ffi::reflection;
+  refl::GlobalDef()
+    .def("target.build.webgpu", [](IRModule mod, Target target) {
   return BuildWebGPU(mod, target);
+});
 });
 
 }  // namespace codegen

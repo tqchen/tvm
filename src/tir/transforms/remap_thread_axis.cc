@@ -24,6 +24,7 @@
 #include <tvm/tir/expr.h>
 #include <tvm/tir/stmt_functor.h>
 #include <tvm/tir/transform.h>
+#include <tvm/ffi/reflection/reflection.h>
 
 #include <unordered_map>
 
@@ -103,7 +104,11 @@ Pass RemapThreadAxis(Map<String, IterVar> thread_map) {
   return CreatePrimFuncPass(pass_func, 0, "tir.RemapThreadAxis", {});
 }
 
-TVM_FFI_REGISTER_GLOBAL("tir.transform.RemapThreadAxis").set_body_typed(RemapThreadAxis);
+TVM_FFI_STATIC_INIT_BLOCK({
+  namespace refl = tvm::ffi::reflection;
+  refl::GlobalDef()
+    .def("tir.transform.RemapThreadAxis", RemapThreadAxis);
+});
 
 }  // namespace transform
 }  // namespace tir

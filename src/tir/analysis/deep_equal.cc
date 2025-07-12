@@ -26,6 +26,7 @@
 #include <tvm/node/reflection.h>
 #include <tvm/node/structural_equal.h>
 #include <tvm/tir/analysis.h>
+#include <tvm/ffi/reflection/reflection.h>
 
 namespace tvm {
 namespace tir {
@@ -68,10 +69,13 @@ bool ExprDeepEqual::operator()(const PrimExpr& lhs, const PrimExpr& rhs) const {
   return DeepCmpSEqualHandler().SEqualReduce(lhs, rhs, false, std::nullopt);
 }
 
-TVM_FFI_REGISTER_GLOBAL("tir.analysis.expr_deep_equal")
-    .set_body_typed([](const PrimExpr& lhs, const PrimExpr& rhs) {
+TVM_FFI_STATIC_INIT_BLOCK({
+  namespace refl = tvm::ffi::reflection;
+  refl::GlobalDef()
+    .def("tir.analysis.expr_deep_equal", [](const PrimExpr& lhs, const PrimExpr& rhs) {
       return ExprDeepEqual()(lhs, rhs);
     });
+});
 
 }  // namespace tir
 }  // namespace tvm

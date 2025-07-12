@@ -30,6 +30,7 @@
 #include <tvm/runtime/c_backend_api.h>
 #include <tvm/runtime/device_api.h>
 #include <tvm/runtime/module.h>
+#include <tvm/ffi/reflection/reflection.h>
 
 #include <algorithm>
 #include <array>
@@ -167,30 +168,26 @@ TVMStreamHandle DeviceAPI::GetCurrentStream(Device dev) { return nullptr; }
 void DeviceAPI::SyncStreamFromTo(Device dev, TVMStreamHandle event_src, TVMStreamHandle event_dst) {
 }
 
-TVM_FFI_REGISTER_GLOBAL("runtime.Device_StreamCreate").set_body_typed([](DLDevice dev) {
+TVM_FFI_STATIC_INIT_BLOCK({
+  namespace refl = tvm::ffi::reflection;
+  refl::GlobalDef()
+    .def("runtime.Device_StreamCreate", [](DLDevice dev) {
   return reinterpret_cast<int64_t>(DeviceAPIManager::Get(dev)->CreateStream(dev));
-});
-
-TVM_FFI_REGISTER_GLOBAL("runtime.Device_StreamFree")
-    .set_body_typed([](DLDevice dev, int64_t stream) {
+})
+    .def("runtime.Device_StreamFree", [](DLDevice dev, int64_t stream) {
       DeviceAPIManager::Get(dev)->FreeStream(dev, reinterpret_cast<TVMStreamHandle>(stream));
-    });
-
-TVM_FFI_REGISTER_GLOBAL("runtime.Device_SetStream")
-    .set_body_typed([](DLDevice dev, int64_t stream) {
+    })
+    .def("runtime.Device_SetStream", [](DLDevice dev, int64_t stream) {
       DeviceAPIManager::Get(dev)->SetStream(dev, reinterpret_cast<TVMStreamHandle>(stream));
-    });
-
-TVM_FFI_REGISTER_GLOBAL("runtime.Device_StreamSync")
-    .set_body_typed([](DLDevice dev, int64_t stream) {
+    })
+    .def("runtime.Device_StreamSync", [](DLDevice dev, int64_t stream) {
       DeviceAPIManager::Get(dev)->StreamSync(dev, reinterpret_cast<TVMStreamHandle>(stream));
-    });
-
-TVM_FFI_REGISTER_GLOBAL("runtime.Device_StreamSyncFromTo")
-    .set_body_typed([](DLDevice dev, int64_t src, int64_t dst) {
+    })
+    .def("runtime.Device_StreamSyncFromTo", [](DLDevice dev, int64_t src, int64_t dst) {
       DeviceAPIManager::Get(dev)->SyncStreamFromTo(dev, reinterpret_cast<TVMStreamHandle>(src),
                                                    reinterpret_cast<TVMStreamHandle>(dst));
     });
+});
 
 // set device api
 TVM_FFI_REGISTER_GLOBAL(tvm::runtime::symbol::tvm_set_device)
@@ -202,8 +199,10 @@ TVM_FFI_REGISTER_GLOBAL(tvm::runtime::symbol::tvm_set_device)
     });
 
 // set device api
-TVM_FFI_REGISTER_GLOBAL("runtime.GetDeviceAttr")
-    .set_body_packed([](tvm::ffi::PackedArgs args, tvm::ffi::Any* ret) {
+TVM_FFI_STATIC_INIT_BLOCK({
+  namespace refl = tvm::ffi::reflection;
+  refl::GlobalDef()
+    .def_packed("runtime.GetDeviceAttr", [](tvm::ffi::PackedArgs args, tvm::ffi::Any* ret) {
       DLDevice dev;
       dev.device_type = static_cast<DLDeviceType>(args[0].cast<int>());
       dev.device_id = args[1].cast<int>();
@@ -219,15 +218,14 @@ TVM_FFI_REGISTER_GLOBAL("runtime.GetDeviceAttr")
       } else {
         DeviceAPIManager::Get(dev)->GetAttr(dev, kind, ret);
       }
-    });
-
-TVM_FFI_REGISTER_GLOBAL("runtime.TVMSetStream")
-    .set_body_typed([](int device_type, int device_id, void* stream) {
+    })
+    .def("runtime.TVMSetStream", [](int device_type, int device_id, void* stream) {
       Device dev;
       dev.device_type = static_cast<DLDeviceType>(device_type);
       dev.device_id = device_id;
       DeviceAPIManager::Get(dev)->SetStream(dev, stream);
     });
+});
 }  // namespace runtime
 }  // namespace tvm
 

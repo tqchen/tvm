@@ -43,6 +43,7 @@
 #include <tvm/runtime/memory/memory_manager.h>
 #include <tvm/runtime/ndarray.h>
 #include <tvm/runtime/vm/vm.h>
+#include <tvm/ffi/reflection/reflection.h>
 
 #include <cmath>
 
@@ -259,24 +260,33 @@ TVM_REGISTER_OBJECT_TYPE(AttentionKVCacheLegacyObj);
 //-------------------------------------------------
 //  Register runtime functions
 //-------------------------------------------------
-TVM_FFI_REGISTER_GLOBAL("vm.builtin.attention_kv_cache_create")
-    .set_body_typed(AttentionKVCacheLegacy::Create);
+TVM_FFI_STATIC_INIT_BLOCK({
+  namespace refl = tvm::ffi::reflection;
+  refl::GlobalDef()
+    .def("vm.builtin.attention_kv_cache_create", AttentionKVCacheLegacy::Create);
+});
 
 AttentionKVCacheLegacy AttentionKVCacheUpdate(AttentionKVCacheLegacy cache, NDArray value) {
   cache->Update(value);
   return cache;
 }
 
-TVM_FFI_REGISTER_GLOBAL("vm.builtin.attention_kv_cache_update")
-    .set_body_typed(AttentionKVCacheUpdate);
+TVM_FFI_STATIC_INIT_BLOCK({
+  namespace refl = tvm::ffi::reflection;
+  refl::GlobalDef()
+    .def("vm.builtin.attention_kv_cache_update", AttentionKVCacheUpdate);
+});
 
 AttentionKVCacheLegacy AttentionKVCacheAppend(AttentionKVCacheLegacy cache, NDArray value) {
   cache->Append(value);
   return cache;
 }
 
-TVM_FFI_REGISTER_GLOBAL("vm.builtin.attention_kv_cache_append")
-    .set_body_typed(AttentionKVCacheAppend);
+TVM_FFI_STATIC_INIT_BLOCK({
+  namespace refl = tvm::ffi::reflection;
+  refl::GlobalDef()
+    .def("vm.builtin.attention_kv_cache_append", AttentionKVCacheAppend);
+});
 
 AttentionKVCacheLegacy AttentionKVCacheWindowOverride(AttentionKVCacheLegacy cache, NDArray value,
                                                       int64_t max_cache_size) {
@@ -284,8 +294,11 @@ AttentionKVCacheLegacy AttentionKVCacheWindowOverride(AttentionKVCacheLegacy cac
   return cache;
 }
 
-TVM_FFI_REGISTER_GLOBAL("vm.builtin.attention_kv_cache_window_override")
-    .set_body_typed(AttentionKVCacheWindowOverride);
+TVM_FFI_STATIC_INIT_BLOCK({
+  namespace refl = tvm::ffi::reflection;
+  refl::GlobalDef()
+    .def("vm.builtin.attention_kv_cache_window_override", AttentionKVCacheWindowOverride);
+});
 
 AttentionKVCacheLegacy AttentionKVCacheWindowOverrideWithSinks(AttentionKVCacheLegacy cache,
                                                                NDArray value,
@@ -295,15 +308,20 @@ AttentionKVCacheLegacy AttentionKVCacheWindowOverrideWithSinks(AttentionKVCacheL
   return cache;
 }
 
-TVM_FFI_REGISTER_GLOBAL("vm.builtin.attention_kv_cache_window_override_with_sinks")
-    .set_body_typed(AttentionKVCacheWindowOverrideWithSinks);
+TVM_FFI_STATIC_INIT_BLOCK({
+  namespace refl = tvm::ffi::reflection;
+  refl::GlobalDef()
+    .def("vm.builtin.attention_kv_cache_window_override_with_sinks", AttentionKVCacheWindowOverrideWithSinks);
+});
 
 NDArray AttentionKVCacheView(AttentionKVCacheLegacy cache, ffi::Shape shape) {
   return cache->View(shape);
 }
 
-TVM_FFI_REGISTER_GLOBAL("vm.builtin.attention_kv_cache_view")
-    .set_body_packed([](ffi::PackedArgs args, ffi::Any* rv) {
+TVM_FFI_STATIC_INIT_BLOCK({
+  namespace refl = tvm::ffi::reflection;
+  refl::GlobalDef()
+    .def_packed("vm.builtin.attention_kv_cache_view", [](ffi::PackedArgs args, ffi::Any* rv) {
       CHECK(args.size() == 1 || args.size() == 2)
           << "ValueError: `vm.builtin.attention_kv_cache_view` expects 1 or 2 arguments, but got "
           << args.size() << ".";
@@ -320,6 +338,7 @@ TVM_FFI_REGISTER_GLOBAL("vm.builtin.attention_kv_cache_view")
         *rv = cache->View(ffi::Shape(shape));
       }
     });
+});
 
 void AttentionKVCacheArrayPopN(Array<AttentionKVCacheLegacy> caches, int64_t n) {
   for (AttentionKVCacheLegacy cache : caches) {
@@ -327,8 +346,11 @@ void AttentionKVCacheArrayPopN(Array<AttentionKVCacheLegacy> caches, int64_t n) 
   }
 }
 
-TVM_FFI_REGISTER_GLOBAL("vm.builtin.attention_kv_cache_array_popn")
-    .set_body_typed(AttentionKVCacheArrayPopN);
+TVM_FFI_STATIC_INIT_BLOCK({
+  namespace refl = tvm::ffi::reflection;
+  refl::GlobalDef()
+    .def("vm.builtin.attention_kv_cache_array_popn", AttentionKVCacheArrayPopN);
+});
 
 void AttentionKVCacheArrayClear(Array<AttentionKVCacheLegacy> caches) {
   for (AttentionKVCacheLegacy cache : caches) {
@@ -336,8 +358,11 @@ void AttentionKVCacheArrayClear(Array<AttentionKVCacheLegacy> caches) {
   }
 }
 
-TVM_FFI_REGISTER_GLOBAL("vm.builtin.attention_kv_cache_array_clear")
-    .set_body_typed(AttentionKVCacheArrayClear);
+TVM_FFI_STATIC_INIT_BLOCK({
+  namespace refl = tvm::ffi::reflection;
+  refl::GlobalDef()
+    .def("vm.builtin.attention_kv_cache_array_clear", AttentionKVCacheArrayClear);
+});
 
 // NOTE this is a built-in highly related to LM so we put it here.
 int SampleTopPFromLogits(NDArray logits, double temperature, double top_p, double uniform_sample) {
@@ -401,7 +426,11 @@ int SampleTopPFromLogits(NDArray logits, double temperature, double top_p, doubl
   return data[0].second;
 }
 
-TVM_FFI_REGISTER_GLOBAL("vm.builtin.sample_top_p_from_logits").set_body_typed(SampleTopPFromLogits);
+TVM_FFI_STATIC_INIT_BLOCK({
+  namespace refl = tvm::ffi::reflection;
+  refl::GlobalDef()
+    .def("vm.builtin.sample_top_p_from_logits", SampleTopPFromLogits);
+});
 
 int SampleTopPFromProb(NDArray prob, double top_p, double uniform_sample) {
   ICHECK(prob.IsContiguous());
@@ -496,7 +525,11 @@ int SampleTopPFromProb(NDArray prob, double top_p, double uniform_sample) {
   return sampled_index;
 }
 
-TVM_FFI_REGISTER_GLOBAL("vm.builtin.sample_top_p_from_prob").set_body_typed(SampleTopPFromProb);
+TVM_FFI_STATIC_INIT_BLOCK({
+  namespace refl = tvm::ffi::reflection;
+  refl::GlobalDef()
+    .def("vm.builtin.sample_top_p_from_prob", SampleTopPFromProb);
+});
 
 NDArray MultinomialFromUniform(NDArray prob, NDArray uniform_sample) {
   ICHECK(prob.IsContiguous());
@@ -533,8 +566,11 @@ NDArray MultinomialFromUniform(NDArray prob, NDArray uniform_sample) {
   return new_array;
 }
 
-TVM_FFI_REGISTER_GLOBAL("vm.builtin.multinomial_from_uniform")
-    .set_body_typed(MultinomialFromUniform);
+TVM_FFI_STATIC_INIT_BLOCK({
+  namespace refl = tvm::ffi::reflection;
+  refl::GlobalDef()
+    .def("vm.builtin.multinomial_from_uniform", MultinomialFromUniform);
+});
 
 // This is an inplace operation.
 void ApplyRepetitionPenalty(NDArray logits, NDArray token_ids, double penalty) {
@@ -557,8 +593,11 @@ void ApplyRepetitionPenalty(NDArray logits, NDArray token_ids, double penalty) {
   }
 }
 
-TVM_FFI_REGISTER_GLOBAL("vm.builtin.apply_repetition_penalty")
-    .set_body_typed(ApplyRepetitionPenalty);
+TVM_FFI_STATIC_INIT_BLOCK({
+  namespace refl = tvm::ffi::reflection;
+  refl::GlobalDef()
+    .def("vm.builtin.apply_repetition_penalty", ApplyRepetitionPenalty);
+});
 
 /*!
  * \brief Apply presence and frequency penalty. This is an inplace operation.
@@ -593,8 +632,11 @@ void ApplyPresenceAndFrequencyPenalty(NDArray logits, NDArray token_ids, NDArray
   }
 }
 
-TVM_FFI_REGISTER_GLOBAL("vm.builtin.apply_presence_and_frequency_penalty")
-    .set_body_typed(ApplyPresenceAndFrequencyPenalty);
+TVM_FFI_STATIC_INIT_BLOCK({
+  namespace refl = tvm::ffi::reflection;
+  refl::GlobalDef()
+    .def("vm.builtin.apply_presence_and_frequency_penalty", ApplyPresenceAndFrequencyPenalty);
+});
 
 // This is an inplace operation.
 void ApplySoftmaxWithTemperature(NDArray logits, double temperature) {
@@ -618,8 +660,11 @@ void ApplySoftmaxWithTemperature(NDArray logits, double temperature) {
   }
 }
 
-TVM_FFI_REGISTER_GLOBAL("vm.builtin.apply_softmax_with_temperature")
-    .set_body_typed(ApplySoftmaxWithTemperature);
+TVM_FFI_STATIC_INIT_BLOCK({
+  namespace refl = tvm::ffi::reflection;
+  refl::GlobalDef()
+    .def("vm.builtin.apply_softmax_with_temperature", ApplySoftmaxWithTemperature);
+});
 
 }  // namespace vm
 }  // namespace runtime

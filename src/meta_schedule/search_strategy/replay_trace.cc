@@ -17,6 +17,7 @@
  * under the License.
  */
 #include "../utils.h"
+#include <tvm/ffi/reflection/reflection.h>
 
 namespace tvm {
 namespace meta_schedule {
@@ -189,8 +190,11 @@ SearchStrategy SearchStrategy::ReplayTrace(int max_fail_count) {
 TVM_FFI_STATIC_INIT_BLOCK({ ReplayTraceNode::RegisterReflection(); });
 
 TVM_REGISTER_NODE_TYPE(ReplayTraceNode);
-TVM_FFI_REGISTER_GLOBAL("meta_schedule.SearchStrategyReplayTrace")
-    .set_body_typed(SearchStrategy::ReplayTrace);
+TVM_FFI_STATIC_INIT_BLOCK({
+  namespace refl = tvm::ffi::reflection;
+  refl::GlobalDef()
+    .def("meta_schedule.SearchStrategyReplayTrace", SearchStrategy::ReplayTrace);
+});
 
 }  // namespace meta_schedule
 }  // namespace tvm

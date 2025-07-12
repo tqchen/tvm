@@ -24,6 +24,7 @@
 #include <tvm/ffi/container/variant.h>
 #include <tvm/ffi/function.h>
 #include <tvm/te/operation.h>
+#include <tvm/ffi/reflection/reflection.h>
 
 namespace tvm {
 namespace te {
@@ -63,8 +64,10 @@ Tensor placeholder(Array<PrimExpr> shape, DataType dtype, std::string name) {
   return PlaceholderOp(name, shape, dtype).output(0);
 }
 
-TVM_FFI_REGISTER_GLOBAL("te.Placeholder")
-    .set_body_typed([](Variant<PrimExpr, Array<PrimExpr>> shape_arg, DataType dtype,
+TVM_FFI_STATIC_INIT_BLOCK({
+  namespace refl = tvm::ffi::reflection;
+  refl::GlobalDef()
+    .def("te.Placeholder", [](Variant<PrimExpr, Array<PrimExpr>> shape_arg, DataType dtype,
                        std::string name) {
       auto shape = [&]() -> Array<PrimExpr> {
         if (auto arg_expr = shape_arg.as<PrimExpr>()) {
@@ -77,6 +80,7 @@ TVM_FFI_REGISTER_GLOBAL("te.Placeholder")
       }();
       return placeholder(shape, dtype, name);
     });
+});
 
 Array<Tensor> PlaceholderOpNode::InputTensors() const { return {}; }
 

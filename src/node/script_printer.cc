@@ -20,6 +20,7 @@
 #include <tvm/ir/expr.h>
 #include <tvm/node/repr_printer.h>
 #include <tvm/node/script_printer.h>
+#include <tvm/ffi/reflection/reflection.h>
 
 #include <algorithm>
 
@@ -140,9 +141,13 @@ Array<String> PrinterConfigNode::GetBuiltinKeywords() {
 }
 
 TVM_REGISTER_NODE_TYPE(PrinterConfigNode);
-TVM_FFI_REGISTER_GLOBAL("node.PrinterConfig").set_body_typed([](Map<String, Any> config_dict) {
+TVM_FFI_STATIC_INIT_BLOCK({
+  namespace refl = tvm::ffi::reflection;
+  refl::GlobalDef()
+    .def("node.PrinterConfig", [](Map<String, Any> config_dict) {
   return PrinterConfig(config_dict);
+})
+    .def("node.TVMScriptPrinterScript", TVMScriptPrinter::Script);
 });
-TVM_FFI_REGISTER_GLOBAL("node.TVMScriptPrinterScript").set_body_typed(TVMScriptPrinter::Script);
 
 }  // namespace tvm

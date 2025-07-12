@@ -23,6 +23,7 @@
 #include <tvm/relax/expr.h>
 #include <tvm/relax/expr_functor.h>
 #include <tvm/relax/transform.h>
+#include <tvm/ffi/reflection/reflection.h>
 
 #include <optional>
 #include <unordered_map>
@@ -259,7 +260,11 @@ Pass LazyGetInput() {
                             /*required=*/{});
 }
 
-TVM_FFI_REGISTER_GLOBAL("relax.transform.LazyGetInput").set_body_typed(LazyGetInput);
+TVM_FFI_STATIC_INIT_BLOCK({
+  namespace refl = tvm::ffi::reflection;
+  refl::GlobalDef()
+    .def("relax.transform.LazyGetInput", LazyGetInput);
+});
 
 Pass LazySetOutput() {
   auto pass_func = [](Function func, IRModule, PassContext) -> Function {
@@ -274,7 +279,11 @@ Pass LazySetOutput() {
                             /*required=*/{});
 }
 
-TVM_FFI_REGISTER_GLOBAL("relax.transform.LazySetOutput").set_body_typed(LazySetOutput);
+TVM_FFI_STATIC_INIT_BLOCK({
+  namespace refl = tvm::ffi::reflection;
+  refl::GlobalDef()
+    .def("relax.transform.LazySetOutput", LazySetOutput);
+});
 
 }  // namespace transform
 }  // namespace relax

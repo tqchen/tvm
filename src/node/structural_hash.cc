@@ -28,6 +28,7 @@
 #include <tvm/node/structural_hash.h>
 #include <tvm/runtime/profiling.h>
 #include <tvm/target/codegen.h>
+#include <tvm/ffi/reflection/reflection.h>
 
 #include <algorithm>
 #include <unordered_map>
@@ -291,11 +292,14 @@ void SHashHandlerDefault::DispatchSHash(const ObjectRef& key, bool map_free_vars
   impl->DispatchSHash(key, map_free_vars);
 }
 
-TVM_FFI_REGISTER_GLOBAL("node.StructuralHash")
-    .set_body_typed([](const Any& object, bool map_free_vars) -> int64_t {
+TVM_FFI_STATIC_INIT_BLOCK({
+  namespace refl = tvm::ffi::reflection;
+  refl::GlobalDef()
+    .def("node.StructuralHash", [](const Any& object, bool map_free_vars) -> int64_t {
       uint64_t hashed_value = SHashHandlerDefault().Hash(object, map_free_vars);
       return static_cast<int64_t>(hashed_value);
     });
+});
 
 uint64_t StructuralHash::operator()(const ObjectRef& object) const {
   return SHashHandlerDefault().Hash(object, false);

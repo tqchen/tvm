@@ -22,6 +22,7 @@
  * \brief Utilities to get information about schedule graph.
  */
 #include "graph.h"
+#include <tvm/ffi/reflection/reflection.h>
 
 #include <tvm/ffi/function.h>
 #include <tvm/te/operation.h>
@@ -80,12 +81,14 @@ Array<Operation> PostDFSOrder(const Array<Operation>& roots, const ReadGraph& g)
   return post_order;
 }
 
-TVM_FFI_REGISTER_GLOBAL("schedule.CreateReadGraph").set_body_typed(CreateReadGraph);
-
-TVM_FFI_REGISTER_GLOBAL("schedule.PostDFSOrder")
-    .set_body_typed([](const Array<Operation>& roots, const ReadGraph& g) {
+TVM_FFI_STATIC_INIT_BLOCK({
+  namespace refl = tvm::ffi::reflection;
+  refl::GlobalDef()
+    .def("schedule.CreateReadGraph", CreateReadGraph)
+    .def("schedule.PostDFSOrder", [](const Array<Operation>& roots, const ReadGraph& g) {
       return PostDFSOrder(roots, g);
     });
+});
 
 }  // namespace te
 }  // namespace tvm

@@ -27,6 +27,7 @@
 #include <tvm/tir/data_type_rewriter.h>
 #include <tvm/tir/op.h>
 #include <tvm/tir/transform.h>
+#include <tvm/ffi/reflection/reflection.h>
 
 #include "../../arith/ir_mutator_with_analyzer.h"
 #include "../../arith/ir_visitor_with_analyzer.h"
@@ -320,7 +321,11 @@ Pass NarrowDataType(int target_bits) {
   return CreatePrimFuncPass(pass_func, 0, "tir.NarrowDataType", {});
 }
 
-TVM_FFI_REGISTER_GLOBAL("tir.transform.NarrowDataType").set_body_typed(NarrowDataType);
+TVM_FFI_STATIC_INIT_BLOCK({
+  namespace refl = tvm::ffi::reflection;
+  refl::GlobalDef()
+    .def("tir.transform.NarrowDataType", NarrowDataType);
+});
 
 }  // namespace transform
 }  // namespace tir

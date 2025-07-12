@@ -18,6 +18,7 @@
  */
 
 #include "create_primfunc.h"
+#include <tvm/ffi/reflection/reflection.h>
 
 #include <tvm/arith/analyzer.h>
 #include <tvm/ffi/function.h>
@@ -784,8 +785,10 @@ PrimFunc CreatePrimFunc(const Array<te::Tensor>& arg_list,
   return CreatePrimFuncWithConstants(arg_list, {}, index_dtype_override);
 }
 
-TVM_FFI_REGISTER_GLOBAL("te.CreatePrimFunc")
-    .set_body_packed([](ffi::PackedArgs args, ffi::Any* ret) {
+TVM_FFI_STATIC_INIT_BLOCK({
+  namespace refl = tvm::ffi::reflection;
+  refl::GlobalDef()
+    .def_packed("te.CreatePrimFunc", [](ffi::PackedArgs args, ffi::Any* ret) {
       Array<ObjectRef> arg_list = args[0].cast<Array<ObjectRef>>();
       std::optional<DataType> index_dtype_override{std::nullopt};
       // Add conversion to make std::optional compatible with FFI.
@@ -794,6 +797,7 @@ TVM_FFI_REGISTER_GLOBAL("te.CreatePrimFunc")
       }
       *ret = CreatePrimFunc(arg_list, index_dtype_override);
     });
+});
 
 // Relax version impl
 PrimFunc GenerateAndCompletePrimFunc(const Array<ObjectRef>& arg_tir_var_list,

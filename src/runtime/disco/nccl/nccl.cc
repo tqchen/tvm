@@ -21,6 +21,7 @@
 #include <mutex>
 #include <sstream>
 #include <vector>
+#include <tvm/ffi/reflection/reflection.h>
 
 #include "../../../support/process_id.h"
 #include "../utils.h"
@@ -325,8 +326,12 @@ void SyncWorker() {
   StreamSynchronize(stream);
 }
 
-TVM_FFI_REGISTER_GLOBAL("runtime.disco.compiled_ccl").set_body_typed([]() -> String {
+TVM_FFI_STATIC_INIT_BLOCK({
+  namespace refl = tvm::ffi::reflection;
+  refl::GlobalDef()
+    .def("runtime.disco.compiled_ccl", []() -> String {
   return TVM_DISCO_CCL_NAME;
+});
 });
 TVM_FFI_REGISTER_GLOBAL("runtime.disco." TVM_DISCO_CCL_NAME ".init_ccl").set_body_typed(InitCCL);
 TVM_FFI_REGISTER_GLOBAL("runtime.disco." TVM_DISCO_CCL_NAME ".init_ccl_per_worker")

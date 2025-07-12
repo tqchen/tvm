@@ -71,6 +71,7 @@
 #include <tvm/relax/nested_msg.h>
 #include <tvm/relax/transform.h>
 #include <tvm/tir/stmt_functor.h>
+#include <tvm/ffi/reflection/reflection.h>
 
 #include <map>
 #include <set>
@@ -983,8 +984,11 @@ Pass StaticPlanBlockMemory() {
   return CreateModulePass(pass_func, /*opt_level=*/0, "StaticPlanBlockMemory", {});
 }
 
-TVM_FFI_REGISTER_GLOBAL("relax.transform.StaticPlanBlockMemory")
-    .set_body_typed(StaticPlanBlockMemory);
+TVM_FFI_STATIC_INIT_BLOCK({
+  namespace refl = tvm::ffi::reflection;
+  refl::GlobalDef()
+    .def("relax.transform.StaticPlanBlockMemory", StaticPlanBlockMemory);
+});
 
 }  // namespace transform
 }  // namespace relax

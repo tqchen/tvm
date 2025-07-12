@@ -23,6 +23,7 @@
  */
 
 #include "../../tir/transforms/simplify.h"
+#include <tvm/ffi/reflection/reflection.h>
 
 #include <tvm/arith/analyzer.h>
 #include <tvm/ffi/function.h>
@@ -363,7 +364,11 @@ Pass Simplify() {
   return CreatePrimFuncPass(pass_func, 0, "tir.Simplify", {});
 }
 
-TVM_FFI_REGISTER_GLOBAL("tir.transform.Simplify").set_body_typed(Simplify);
+TVM_FFI_STATIC_INIT_BLOCK({
+  namespace refl = tvm::ffi::reflection;
+  refl::GlobalDef()
+    .def("tir.transform.Simplify", Simplify);
+});
 
 }  // namespace transform
 }  // namespace tir

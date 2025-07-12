@@ -31,6 +31,7 @@
 #include <tvm/tir/expr.h>
 #include <tvm/tir/function.h>
 #include <tvm/tir/stmt.h>
+#include <tvm/ffi/reflection/reflection.h>
 
 #include <cctype>
 #include <string>
@@ -530,7 +531,11 @@ IRModule VMTIRCodeGen(ExecBuilder exec_builder, IRModule mod) {
   return CodeGenVMTIR::Run(exec_builder, mod);
 }
 
-TVM_FFI_REGISTER_GLOBAL("relax.VMTIRCodeGen").set_body_typed(VMTIRCodeGen);
+TVM_FFI_STATIC_INIT_BLOCK({
+  namespace refl = tvm::ffi::reflection;
+  refl::GlobalDef()
+    .def("relax.VMTIRCodeGen", VMTIRCodeGen);
+});
 
 }  // namespace codegen_vm
 }  // namespace relax

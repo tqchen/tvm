@@ -19,6 +19,7 @@
 
 #include <gtest/gtest.h>
 #include <tvm/ffi/function.h>
+#include <tvm/ffi/reflection/reflection.h>
 
 #include <string>
 #include <vector>
@@ -79,8 +80,10 @@ class GtestPrinter : public testing::EmptyTestEventListener {
   std::string GetOutput() { return gtest_out_.str(); }
 };
 
-TVM_FFI_REGISTER_GLOBAL("hexagon.run_unit_tests")
-    .set_body_packed([](ffi::PackedArgs args, ffi::Any* rv) {
+TVM_FFI_STATIC_INIT_BLOCK({
+  namespace refl = tvm::ffi::reflection;
+  refl::GlobalDef()
+    .def_packed("hexagon.run_unit_tests", [](ffi::PackedArgs args, ffi::Any* rv) {
       // gtest args are passed into this packed func as a singular string
       // split gtest args using <space> delimiter and build argument vector
       std::vector<std::string> parsed_args = tvm::support::Split(args[0].cast<std::string>(), ' ');
@@ -116,6 +119,7 @@ TVM_FFI_REGISTER_GLOBAL("hexagon.run_unit_tests")
       *rv = gtest_error_code_and_output.str();
       delete gprinter;
     });
+});
 
 }  // namespace hexagon
 }  // namespace runtime

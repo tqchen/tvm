@@ -27,6 +27,7 @@
 #include <tvm/relax/transform.h>
 #include <tvm/relax/type.h>
 #include <tvm/tir/op.h>
+#include <tvm/ffi/reflection/reflection.h>
 
 #include "utils.h"
 
@@ -183,7 +184,11 @@ Pass CallTIRRewrite() {
                           /*required=*/{});
 }
 
-TVM_FFI_REGISTER_GLOBAL("relax.transform.CallTIRRewrite").set_body_typed(CallTIRRewrite);
+TVM_FFI_STATIC_INIT_BLOCK({
+  namespace refl = tvm::ffi::reflection;
+  refl::GlobalDef()
+    .def("relax.transform.CallTIRRewrite", CallTIRRewrite);
+});
 
 }  // namespace transform
 

@@ -24,6 +24,7 @@
 #include <tvm/tir/op.h>
 #include <tvm/tir/stmt_functor.h>
 #include <tvm/tir/transform.h>
+#include <tvm/ffi/reflection/reflection.h>
 
 #include <array>
 #include <stack>
@@ -776,7 +777,11 @@ Pass LowerAutoCopy() {
   return CreatePrimFuncPass(pass_func, 0, "tir.LowerAutoCopy", {});
 }
 
-TVM_FFI_REGISTER_GLOBAL("tir.transform.LowerAutoCopy").set_body_typed(LowerAutoCopy);
+TVM_FFI_STATIC_INIT_BLOCK({
+  namespace refl = tvm::ffi::reflection;
+  refl::GlobalDef()
+    .def("tir.transform.LowerAutoCopy", LowerAutoCopy);
+});
 
 }  // namespace transform
 }  // namespace tir

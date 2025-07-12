@@ -28,6 +28,7 @@
 #include <tvm/relax/analysis.h>
 #include <tvm/relax/expr_functor.h>
 #include <tvm/relax/type.h>
+#include <tvm/ffi/reflection/reflection.h>
 
 // functions to be overriden.
 #define RELAX_VISIT_BINDING_DISPATCH(OP)                                   \
@@ -326,10 +327,13 @@ void PostOrderVisit(const Expr& e, std::function<void(const Expr&)> fvisit) {
   ExprApplyVisit(fvisit).VisitExpr(e);
 }
 
-TVM_FFI_REGISTER_GLOBAL("relax.analysis.post_order_visit")
-    .set_body_typed([](Expr expr, ffi::Function f) {
+TVM_FFI_STATIC_INIT_BLOCK({
+  namespace refl = tvm::ffi::reflection;
+  refl::GlobalDef()
+    .def("relax.analysis.post_order_visit", [](Expr expr, ffi::Function f) {
       PostOrderVisit(expr, [f](const Expr& n) { f(n); });
     });
+});
 
 // ==================
 // ExprMutatorBase

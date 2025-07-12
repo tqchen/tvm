@@ -28,6 +28,7 @@
 #include <tvm/tir/analysis.h>
 #include <tvm/tir/index_map.h>
 #include <tvm/tir/stmt_functor.h>
+#include <tvm/ffi/reflection/reflection.h>
 
 #include "../../support/array.h"
 
@@ -614,10 +615,13 @@ Map<tir::Block, Map<ObjectRef, tir::IndexMap>> SuggestLayoutTransforms(
   return analyzer.GetSuggestedTransforms();
 }
 
-TVM_FFI_REGISTER_GLOBAL(("relax.analysis.suggest_layout_transforms"))
-    .set_body_typed([](PrimFunc fn, Array<tir::IndexMap> write_buffer_transformations) {
+TVM_FFI_STATIC_INIT_BLOCK({
+  namespace refl = tvm::ffi::reflection;
+  refl::GlobalDef()
+    .def("relax.analysis.suggest_layout_transforms", [](PrimFunc fn, Array<tir::IndexMap> write_buffer_transformations) {
       return SuggestLayoutTransforms(fn, write_buffer_transformations);
     });
+});
 
 }  // namespace relax
 }  // namespace tvm

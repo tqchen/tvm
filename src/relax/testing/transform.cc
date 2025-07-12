@@ -19,6 +19,7 @@
 
 #include <tvm/relax/expr_functor.h>
 #include <tvm/relax/transform.h>
+#include <tvm/ffi/reflection/reflection.h>
 
 namespace tvm {
 namespace relax {
@@ -35,8 +36,11 @@ tvm::transform::Pass ApplyEmptyCppMutator() {
                                                    "relax.testing.ApplyEmptyCppMutator", {});
 }
 
-TVM_FFI_REGISTER_GLOBAL("relax.testing.transform.ApplyEmptyCppMutator")
-    .set_body_typed(ApplyEmptyCppMutator);
+TVM_FFI_STATIC_INIT_BLOCK({
+  namespace refl = tvm::ffi::reflection;
+  refl::GlobalDef()
+    .def("relax.testing.transform.ApplyEmptyCppMutator", ApplyEmptyCppMutator);
+});
 
 }  // namespace testing
 }  // namespace relax

@@ -29,6 +29,7 @@
 #include <tvm/tir/builtin.h>
 #include <tvm/tir/op.h>
 #include <tvm/tir/stmt_functor.h>
+#include <tvm/ffi/reflection/reflection.h>
 
 #include "../../tir/schedule/ir_comparator.h"
 
@@ -774,8 +775,11 @@ Pass SplitCallTIRByPattern(Array<TIRPattern> patterns, FCodegen fcodegen) {
                           /*pass_name=*/"SplitCallTIRByPattern",  //
                           /*required=*/{});
 }
-TVM_FFI_REGISTER_GLOBAL("relax.transform.SplitCallTIRByPattern")
-    .set_body_typed(SplitCallTIRByPattern);
+TVM_FFI_STATIC_INIT_BLOCK({
+  namespace refl = tvm::ffi::reflection;
+  refl::GlobalDef()
+    .def("relax.transform.SplitCallTIRByPattern", SplitCallTIRByPattern);
+});
 
 }  // namespace transform
 

@@ -24,6 +24,7 @@
 #include <tvm/ffi/function.h>
 #include <tvm/runtime/profiling.h>
 #include "metal_common.h"
+#include <tvm/ffi/reflection/reflection.h>
 
 namespace tvm {
 namespace runtime {
@@ -362,13 +363,16 @@ typedef dmlc::ThreadLocalStore<MetalThreadEntry> MetalThreadStore;
 
 MetalThreadEntry* MetalThreadEntry::ThreadLocal() { return MetalThreadStore::Get(); }
 
-TVM_FFI_REGISTER_GLOBAL("device_api.metal").set_body_packed([](ffi::PackedArgs args, ffi::Any* rv) {
+TVM_FFI_STATIC_INIT_BLOCK({
+  namespace refl = tvm::ffi::reflection;
+  refl::GlobalDef()
+    .def_packed("device_api.metal", [](ffi::PackedArgs args, ffi::Any* rv) {
   DeviceAPI* ptr = MetalWorkspace::Global();
   *rv = static_cast<void*>(ptr);
-});
-
-TVM_FFI_REGISTER_GLOBAL("metal.ResetGlobalState").set_body_typed([]() {
+})
+    .def("metal.ResetGlobalState", []() {
   MetalWorkspace::Global()->ReinitializeDefaultStreams();
+});
 });
 
 class MetalTimerNode : public TimerNode {
@@ -403,8 +407,12 @@ class MetalTimerNode : public TimerNode {
 
 TVM_REGISTER_OBJECT_TYPE(MetalTimerNode);
 
-TVM_FFI_REGISTER_GLOBAL("profiling.timer.metal").set_body_typed([](Device dev) {
+TVM_FFI_STATIC_INIT_BLOCK({
+  namespace refl = tvm::ffi::reflection;
+  refl::GlobalDef()
+    .def("profiling.timer.metal", [](Device dev) {
   return Timer(make_object<MetalTimerNode>(dev));
+});
 });
 
 }  // namespace metal

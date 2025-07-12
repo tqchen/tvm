@@ -30,6 +30,7 @@
 #include <tvm/relax/distributed/transform.h>
 #include <tvm/relax/expr_functor.h>
 #include <tvm/tir/stmt_functor.h>
+#include <tvm/ffi/reflection/reflection.h>
 
 #include "../../../tir/schedule/transform.h"
 #include "../../op/ccl/ccl.h"
@@ -262,7 +263,11 @@ Pass LowerDistIR() {
   auto pass_func = [=](IRModule m, PassContext pc) { return DistIRSharder::LowerDistIR(m); };
   return CreateModulePass(pass_func, 1, "LowerDistIR", {});
 }
-TVM_FFI_REGISTER_GLOBAL("relax.distributed.transform.LowerDistIR").set_body_typed(LowerDistIR);
+TVM_FFI_STATIC_INIT_BLOCK({
+  namespace refl = tvm::ffi::reflection;
+  refl::GlobalDef()
+    .def("relax.distributed.transform.LowerDistIR", LowerDistIR);
+});
 }  // namespace transform
 
 }  // namespace distributed

@@ -23,6 +23,7 @@
  */
 #include <tvm/ffi/function.h>
 #include <tvm/runtime/device_api.h>
+#include <tvm/ffi/reflection/reflection.h>
 
 #include "cudnn_utils.h"
 
@@ -77,15 +78,16 @@ void softmax_impl(cudnnSoftmaxAlgorithm_t alg, ffi::PackedArgs args, ffi::Any* r
                                  entry_ptr->softmax_entry.shape_desc, y->data));
 }
 
-TVM_FFI_REGISTER_GLOBAL("tvm.contrib.cudnn.softmax.forward")
-    .set_body_packed([](ffi::PackedArgs args, ffi::Any* ret) {
+TVM_FFI_STATIC_INIT_BLOCK({
+  namespace refl = tvm::ffi::reflection;
+  refl::GlobalDef()
+    .def_packed("tvm.contrib.cudnn.softmax.forward", [](ffi::PackedArgs args, ffi::Any* ret) {
       softmax_impl(CUDNN_SOFTMAX_ACCURATE, args, ret);
-    });
-
-TVM_FFI_REGISTER_GLOBAL("tvm.contrib.cudnn.log_softmax.forward")
-    .set_body_packed([](ffi::PackedArgs args, ffi::Any* ret) {
+    })
+    .def_packed("tvm.contrib.cudnn.log_softmax.forward", [](ffi::PackedArgs args, ffi::Any* ret) {
       softmax_impl(CUDNN_SOFTMAX_LOG, args, ret);
     });
+});
 
 }  // namespace contrib
 }  // namespace tvm

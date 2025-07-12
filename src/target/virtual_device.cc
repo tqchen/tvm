@@ -25,6 +25,7 @@
 #include <tvm/node/reflection.h>
 #include <tvm/runtime/device_api.h>
 #include <tvm/target/virtual_device.h>
+#include <tvm/ffi/reflection/reflection.h>
 
 namespace tvm {
 
@@ -193,7 +194,10 @@ VirtualDevice VirtualDeviceCache::Unique(const VirtualDevice& virtual_device) {
               virtual_device->target, virtual_device->memory_scope);
 }
 
-TVM_FFI_REGISTER_GLOBAL("target.VirtualDevice_ForDeviceTargetAndMemoryScope")
-    .set_body_typed(VirtualDevice::ForDeviceTargetAndMemoryScope);
+TVM_FFI_STATIC_INIT_BLOCK({
+  namespace refl = tvm::ffi::reflection;
+  refl::GlobalDef()
+    .def("target.VirtualDevice_ForDeviceTargetAndMemoryScope", VirtualDevice::ForDeviceTargetAndMemoryScope);
+});
 
 }  // namespace tvm

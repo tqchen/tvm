@@ -30,6 +30,7 @@
 #include <tvm/relax/struct_info.h>
 #include <tvm/relax/transform.h>
 #include <tvm/tir/stmt_functor.h>
+#include <tvm/ffi/reflection/reflection.h>
 
 namespace tvm {
 namespace relax {
@@ -591,8 +592,11 @@ Pass CanonicalizeBindings() {
       "CanonicalizeBindings");
 }
 
-TVM_FFI_REGISTER_GLOBAL("relax.transform.CanonicalizeBindings")
-    .set_body_typed(CanonicalizeBindings);
+TVM_FFI_STATIC_INIT_BLOCK({
+  namespace refl = tvm::ffi::reflection;
+  refl::GlobalDef()
+    .def("relax.transform.CanonicalizeBindings", CanonicalizeBindings);
+});
 
 }  // namespace transform
 

@@ -26,6 +26,7 @@
 #include <tvm/tir/stmt_functor.h>
 #include <tvm/tir/transform.h>
 #include <tvm/tir/var.h>
+#include <tvm/ffi/reflection/reflection.h>
 
 #include "ir_utils.h"
 
@@ -257,8 +258,11 @@ Pass PlanAndUpdateBufferAllocationLocation() {
   return CreatePrimFuncPass(pass_func, 0, "tir.PlanAndUpdateBufferAllocationLocation", {});
 }
 
-TVM_FFI_REGISTER_GLOBAL("tir.transform.PlanAndUpdateBufferAllocationLocation")
-    .set_body_typed(PlanAndUpdateBufferAllocationLocation);
+TVM_FFI_STATIC_INIT_BLOCK({
+  namespace refl = tvm::ffi::reflection;
+  refl::GlobalDef()
+    .def("tir.transform.PlanAndUpdateBufferAllocationLocation", PlanAndUpdateBufferAllocationLocation);
+});
 
 }  // namespace transform
 

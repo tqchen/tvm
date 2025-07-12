@@ -22,6 +22,7 @@
 #include <tvm/relax/struct_info.h>
 #include <tvm/relax/transform.h>
 #include <tvm/tir/stmt_functor.h>
+#include <tvm/ffi/reflection/reflection.h>
 
 #include <unordered_map>
 #include <unordered_set>
@@ -1267,7 +1268,11 @@ Pass FuseTIR() {
       "FuseTIR");
 }
 
-TVM_FFI_REGISTER_GLOBAL("relax.transform.FuseTIR").set_body_typed(FuseTIR);
+TVM_FFI_STATIC_INIT_BLOCK({
+  namespace refl = tvm::ffi::reflection;
+  refl::GlobalDef()
+    .def("relax.transform.FuseTIR", FuseTIR);
+});
 
 }  // namespace transform
 

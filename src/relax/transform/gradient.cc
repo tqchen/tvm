@@ -31,6 +31,7 @@
 #include <tvm/relax/nested_msg.h>
 #include <tvm/relax/op_attr_types.h>
 #include <tvm/relax/transform.h>
+#include <tvm/ffi/reflection/reflection.h>
 
 #include <unordered_set>
 
@@ -787,7 +788,11 @@ Pass Gradient(String func_name, Optional<Array<Var>> require_grads, int target_i
                           /*required=*/{});
 }
 
-TVM_FFI_REGISTER_GLOBAL("relax.transform.Gradient").set_body_typed(Gradient);
+TVM_FFI_STATIC_INIT_BLOCK({
+  namespace refl = tvm::ffi::reflection;
+  refl::GlobalDef()
+    .def("relax.transform.Gradient", Gradient);
+});
 
 }  // namespace transform
 

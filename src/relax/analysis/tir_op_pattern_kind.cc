@@ -24,6 +24,7 @@
 #include <tvm/tir/expr_functor.h>
 #include <tvm/tir/function.h>
 #include <tvm/tir/stmt_functor.h>
+#include <tvm/ffi/reflection/reflection.h>
 
 namespace tvm {
 namespace relax {
@@ -537,7 +538,11 @@ bool HasReshapePattern(const PrimFunc& func) {
   return ReshapeDetector::Detect(src_buffer, dst_buffer, func->body);
 }
 
-TVM_FFI_REGISTER_GLOBAL("relax.analysis.has_reshape_pattern").set_body_typed(HasReshapePattern);
+TVM_FFI_STATIC_INIT_BLOCK({
+  namespace refl = tvm::ffi::reflection;
+  refl::GlobalDef()
+    .def("relax.analysis.has_reshape_pattern", HasReshapePattern);
+});
 
 }  // namespace relax
 }  // namespace tvm

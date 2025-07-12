@@ -29,6 +29,7 @@
 #include <tvm/tir/builtin.h>
 #include <tvm/tir/expr.h>
 #include <tvm/tir/stmt_functor.h>
+#include <tvm/ffi/reflection/reflection.h>
 
 #include <string>
 #include <unordered_set>
@@ -154,11 +155,14 @@ ComputeOp::ComputeOp(std::string name, std::string tag, Map<String, ffi::Any> at
   data_ = std::move(n);
 }
 
-TVM_FFI_REGISTER_GLOBAL("te.ComputeOp")
-    .set_body_typed([](std::string name, std::string tag, Optional<Map<String, ffi::Any>> attrs,
+TVM_FFI_STATIC_INIT_BLOCK({
+  namespace refl = tvm::ffi::reflection;
+  refl::GlobalDef()
+    .def("te.ComputeOp", [](std::string name, std::string tag, Optional<Map<String, ffi::Any>> attrs,
                        Array<IterVar> axis, Array<PrimExpr> body) {
       return ComputeOp(name, tag, attrs.value_or({}), axis, body);
     });
+});
 
 // The schedule related logics
 Array<Tensor> ComputeOpNode::InputTensors() const {

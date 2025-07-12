@@ -24,6 +24,7 @@
 #include <tvm/relax/struct_info.h>
 #include <tvm/relax/transform.h>
 #include <tvm/relax/utils.h>
+#include <tvm/ffi/reflection/reflection.h>
 
 namespace tvm {
 namespace relax {
@@ -88,8 +89,11 @@ Pass RemovePurityChecking() {
   return CreateFunctionPass(pass_func, 0, "RemovePurityChecking", {});
 }
 
-TVM_FFI_REGISTER_GLOBAL("relax.transform.RemovePurityChecking")
-    .set_body_typed(RemovePurityChecking);
+TVM_FFI_STATIC_INIT_BLOCK({
+  namespace refl = tvm::ffi::reflection;
+  refl::GlobalDef()
+    .def("relax.transform.RemovePurityChecking", RemovePurityChecking);
+});
 
 }  // namespace transform
 

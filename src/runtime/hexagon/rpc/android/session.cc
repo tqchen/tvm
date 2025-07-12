@@ -22,6 +22,7 @@
  */
 
 #include <tvm/ffi/function.h>
+#include <tvm/ffi/reflection/reflection.h>
 
 extern "C" {
 #include <AEEStdDef.h>
@@ -109,8 +110,10 @@ class HexagonTransportChannel : public RPCChannel {
   remote_handle64 _handle = AEE_EUNKNOWN;
 };
 
-TVM_FFI_REGISTER_GLOBAL("tvm.contrib.hexagon.create_hexagon_session")
-    .set_body_packed([](ffi::PackedArgs args, ffi::Any* rv) {
+TVM_FFI_STATIC_INIT_BLOCK({
+  namespace refl = tvm::ffi::reflection;
+  refl::GlobalDef()
+    .def_packed("tvm.contrib.hexagon.create_hexagon_session", [](ffi::PackedArgs args, ffi::Any* rv) {
       ICHECK(args.size() >= 4) << args.size() << " is less than 4";
 
       auto session_name = args[0].cast<std::string>();
@@ -125,6 +128,7 @@ TVM_FFI_REGISTER_GLOBAL("tvm.contrib.hexagon.create_hexagon_session")
       auto sess = CreateClientSession(ep);
       *rv = CreateRPCSessionModule(sess);
     });
+});
 
 }  // namespace hexagon
 }  // namespace runtime

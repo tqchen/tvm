@@ -27,6 +27,7 @@
 #include <tvm/runtime/vm/bytecode.h>
 #include <tvm/target/target.h>
 #include <tvm/tir/function.h>
+#include <tvm/ffi/reflection/reflection.h>
 
 #include <string>
 #include <unordered_map>
@@ -425,7 +426,11 @@ IRModule VMCodeGen(ExecBuilder exec_builder, IRModule mod) {
   return CodeGenVM::Run(exec_builder, mod);
 }
 
-TVM_FFI_REGISTER_GLOBAL("relax.VMCodeGen").set_body_typed(VMCodeGen);
+TVM_FFI_STATIC_INIT_BLOCK({
+  namespace refl = tvm::ffi::reflection;
+  refl::GlobalDef()
+    .def("relax.VMCodeGen", VMCodeGen);
+});
 
 /*!
  * \brief Link the modules together, possibly create a constant module.
@@ -490,7 +495,11 @@ Module VMLink(ExecBuilder builder, Target target, Optional<Module> lib, Array<Mo
   return Module(executable);
 }
 
-TVM_FFI_REGISTER_GLOBAL("relax.VMLink").set_body_typed(VMLink);
+TVM_FFI_STATIC_INIT_BLOCK({
+  namespace refl = tvm::ffi::reflection;
+  refl::GlobalDef()
+    .def("relax.VMLink", VMLink);
+});
 
 }  // namespace codegen_vm
 }  // namespace relax

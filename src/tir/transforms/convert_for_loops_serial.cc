@@ -26,6 +26,7 @@
 #include <tvm/tir/function.h>
 #include <tvm/tir/stmt_functor.h>
 #include <tvm/tir/transform.h>
+#include <tvm/ffi/reflection/reflection.h>
 
 namespace tvm {
 namespace tir {
@@ -66,8 +67,11 @@ Pass ConvertForLoopsToSerial() {
   return CreatePrimFuncPass(pass_func, 0, "tir.ConvertForLoopsToSerial", {});
 }
 
-TVM_FFI_REGISTER_GLOBAL("tir.transform.ConvertForLoopsToSerial")
-    .set_body_typed(ConvertForLoopsToSerial);
+TVM_FFI_STATIC_INIT_BLOCK({
+  namespace refl = tvm::ffi::reflection;
+  refl::GlobalDef()
+    .def("tir.transform.ConvertForLoopsToSerial", ConvertForLoopsToSerial);
+});
 
 }  // namespace transform
 

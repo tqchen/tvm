@@ -26,6 +26,7 @@
 #include <tvm/runtime/logging.h>
 #include <tvm/runtime/memory/memory_manager.h>
 #include <tvm/runtime/ndarray.h>
+#include <tvm/ffi/reflection/reflection.h>
 
 #include <algorithm>
 #include <numeric>
@@ -2435,8 +2436,10 @@ TVM_REGISTER_OBJECT_TYPE(PagedAttentionKVCacheObj);
 //  Register runtime functions
 //-------------------------------------------------
 
-TVM_FFI_REGISTER_GLOBAL("vm.builtin.paged_attention_kv_cache_create")
-    .set_body_packed([](ffi::PackedArgs args, ffi::Any* rv) {
+TVM_FFI_STATIC_INIT_BLOCK({
+  namespace refl = tvm::ffi::reflection;
+  refl::GlobalDef()
+    .def_packed("vm.builtin.paged_attention_kv_cache_create", [](ffi::PackedArgs args, ffi::Any* rv) {
       // Todo: cuda graph arg
       CHECK(args.size() == 28 || args.size() == 29)
           << "Invalid number of KV cache constructor args: " << args.size();
@@ -2537,6 +2540,7 @@ TVM_FFI_REGISTER_GLOBAL("vm.builtin.paged_attention_kv_cache_create")
           std::move(f_copy_single_page), std::move(f_debug_get_kv));
       *rv = AttentionKVCache(std::move(n));
     });
+});
 
 }  // namespace vm
 }  // namespace runtime

@@ -21,6 +21,7 @@
  * \file Use external rocblas library call.
  */
 #include "rocblas.h"
+#include <tvm/ffi/reflection/reflection.h>
 
 #include <dmlc/thread_local.h>
 #include <tvm/ffi/function.h>
@@ -65,8 +66,10 @@ struct RocBlasThreadEntry {
 typedef dmlc::ThreadLocalStore<RocBlasThreadEntry> RocBlasThreadStore;
 
 // matrix multiplication for row major
-TVM_FFI_REGISTER_GLOBAL("tvm.contrib.rocblas.matmul")
-    .set_body_packed([](ffi::PackedArgs args, ffi::Any* ret) {
+TVM_FFI_STATIC_INIT_BLOCK({
+  namespace refl = tvm::ffi::reflection;
+  refl::GlobalDef()
+    .def_packed("tvm.contrib.rocblas.matmul", [](ffi::PackedArgs args, ffi::Any* ret) {
       auto A = args[0].cast<DLTensor*>();
       auto B = args[1].cast<DLTensor*>();
       auto C = args[2].cast<DLTensor*>();
@@ -101,10 +104,8 @@ TVM_FFI_REGISTER_GLOBAL("tvm.contrib.rocblas.matmul")
       CHECK_ROCBLAS_ERROR(rocblas_sgemm(RocBlasThreadStore::Get()->handle, roc_trans_B, roc_trans_A,
                                         N, M, K, &alpha, B_ptr, ldb, A_ptr, lda, &beta, C_ptr,
                                         ldc));
-    });
-
-TVM_FFI_REGISTER_GLOBAL("tvm.contrib.rocblas.batch_matmul")
-    .set_body_packed([](ffi::PackedArgs args, ffi::Any* ret) {
+    })
+    .def_packed("tvm.contrib.rocblas.batch_matmul", [](ffi::PackedArgs args, ffi::Any* ret) {
       auto A = args[0].cast<DLTensor*>();
       auto B = args[1].cast<DLTensor*>();
       auto C = args[2].cast<DLTensor*>();
@@ -138,5 +139,6 @@ TVM_FFI_REGISTER_GLOBAL("tvm.contrib.rocblas.batch_matmul")
           RocBlasThreadStore::Get()->handle, roc_trans_B, roc_trans_A, N, M, K, &alpha, B_ptr, ldb,
           K * N, A_ptr, lda, M * K, &beta, C_ptr, ldc, M * N, batch_size));
     });
+});
 }  // namespace contrib
 }  // namespace tvm

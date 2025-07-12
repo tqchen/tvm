@@ -18,6 +18,7 @@
  */
 
 #include "transform/utils.h"
+#include <tvm/ffi/reflection/reflection.h>
 
 #include <tvm/relax/analysis.h>
 #include <tvm/relax/attrs/index.h>
@@ -245,7 +246,11 @@ Expr GetBoundValue(const Binding& b) {
  */
 Function CopyWithNewVars(Function func) { return FunctionCopier().Copy(func); }
 
-TVM_FFI_REGISTER_GLOBAL("relax.CopyWithNewVars").set_body_typed(CopyWithNewVars);
+TVM_FFI_STATIC_INIT_BLOCK({
+  namespace refl = tvm::ffi::reflection;
+  refl::GlobalDef()
+    .def("relax.CopyWithNewVars", CopyWithNewVars);
+});
 
 }  // namespace relax
 }  // namespace tvm

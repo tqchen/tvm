@@ -29,6 +29,7 @@
 #include <tvm/tir/stmt.h>
 #include <tvm/tir/stmt_functor.h>
 #include <tvm/tir/transform.h>
+#include <tvm/ffi/reflection/reflection.h>
 
 namespace tvm {
 namespace tir {
@@ -283,8 +284,11 @@ Pass InstrumentProfileIntrinsics() {
   return tvm::transform::CreateModulePass(pass_func, 0, "tir.InstrumentProfileIntrinsics", {});
 }
 
-TVM_FFI_REGISTER_GLOBAL("tir.transform.InstrumentProfileIntrinsics")
-    .set_body_typed(InstrumentProfileIntrinsics);
+TVM_FFI_STATIC_INIT_BLOCK({
+  namespace refl = tvm::ffi::reflection;
+  refl::GlobalDef()
+    .def("tir.transform.InstrumentProfileIntrinsics", InstrumentProfileIntrinsics);
+});
 
 }  // namespace transform
 

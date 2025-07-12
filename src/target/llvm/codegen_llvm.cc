@@ -23,6 +23,7 @@
 #ifdef TVM_LLVM_VERSION
 // Part of the code are adapted from Halide's CodeGen_LLVM
 #include "codegen_llvm.h"
+#include <tvm/ffi/reflection/reflection.h>
 
 #include <llvm/ADT/ArrayRef.h>
 #include <llvm/ADT/SmallVector.h>
@@ -2350,19 +2351,17 @@ llvm::DIType* CodeGenLLVM::GetDebugType(const Type& ty_tir, llvm::Type* ty_llvm)
   return nullptr;
 }
 
-TVM_FFI_REGISTER_GLOBAL("tvm.codegen.llvm.GetDefaultTargetTriple")
-    .set_body_typed([]() -> std::string { return llvm::sys::getDefaultTargetTriple(); });
-
-TVM_FFI_REGISTER_GLOBAL("tvm.codegen.llvm.GetProcessTriple").set_body_typed([]() -> std::string {
+TVM_FFI_STATIC_INIT_BLOCK({
+  namespace refl = tvm::ffi::reflection;
+  refl::GlobalDef()
+    .def("tvm.codegen.llvm.GetDefaultTargetTriple", []() -> std::string { return llvm::sys::getDefaultTargetTriple(); })
+    .def("tvm.codegen.llvm.GetProcessTriple", []() -> std::string {
   return llvm::sys::getProcessTriple();
-});
-
-TVM_FFI_REGISTER_GLOBAL("tvm.codegen.llvm.GetHostCPUName").set_body_typed([]() -> std::string {
+})
+    .def("tvm.codegen.llvm.GetHostCPUName", []() -> std::string {
   return llvm::sys::getHostCPUName().str();
-});
-
-TVM_FFI_REGISTER_GLOBAL("tvm.codegen.llvm.GetHostCPUFeatures")
-    .set_body_typed([]() -> Map<String, IntImm> {
+})
+    .def("tvm.codegen.llvm.GetHostCPUFeatures", []() -> Map<String, IntImm> {
 #if TVM_LLVM_VERSION >= 190
       Map<String, IntImm> ret;
       auto features = llvm::sys::getHostCPUFeatures();
@@ -2387,6 +2386,7 @@ TVM_FFI_REGISTER_GLOBAL("tvm.codegen.llvm.GetHostCPUFeatures")
       LOG(WARNING) << "Current version of LLVM does not support feature detection on your CPU";
       return {};
     });
+});
 
 }  // namespace codegen
 }  // namespace tvm

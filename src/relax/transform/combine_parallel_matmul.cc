@@ -24,6 +24,7 @@
 #include <tvm/relax/expr_functor.h>
 #include <tvm/relax/struct_info.h>
 #include <tvm/relax/transform.h>
+#include <tvm/ffi/reflection/reflection.h>
 
 #include <optional>
 #include <unordered_map>
@@ -387,8 +388,11 @@ Pass CombineParallelMatmul(FCheck check) {
                             /*required=*/{});
 }
 
-TVM_FFI_REGISTER_GLOBAL("relax.transform.CombineParallelMatmul")
-    .set_body_typed(CombineParallelMatmul);
+TVM_FFI_STATIC_INIT_BLOCK({
+  namespace refl = tvm::ffi::reflection;
+  refl::GlobalDef()
+    .def("relax.transform.CombineParallelMatmul", CombineParallelMatmul);
+});
 
 }  // namespace transform
 

@@ -25,6 +25,7 @@
 #include <tvm/relax/expr_functor.h>
 #include <tvm/relax/transform.h>
 #include <tvm/tir/stmt_functor.h>
+#include <tvm/ffi/reflection/reflection.h>
 
 #include <algorithm>
 #include <cstddef>
@@ -340,7 +341,10 @@ Pass SplitLayoutRewritePreproc() {
   return tvm::transform::Sequential({pass, relax::transform::DeadCodeElimination()},
                                     "SplitLayoutRewritePreproc");
 }
-TVM_FFI_REGISTER_GLOBAL("relax.transform.SplitLayoutRewritePreproc")
-    .set_body_typed(SplitLayoutRewritePreproc);
+TVM_FFI_STATIC_INIT_BLOCK({
+  namespace refl = tvm::ffi::reflection;
+  refl::GlobalDef()
+    .def("relax.transform.SplitLayoutRewritePreproc", SplitLayoutRewritePreproc);
+});
 }  // namespace transform
 }  // namespace tvm

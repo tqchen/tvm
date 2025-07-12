@@ -27,6 +27,7 @@
 #include <tvm/relax/expr.h>
 #include <tvm/relax/expr_functor.h>
 #include <tvm/relax/transform.h>
+#include <tvm/ffi/reflection/reflection.h>
 
 #include "../../../../relax/transform/utils.h"
 #include "../../../../support/scalars.h"
@@ -913,7 +914,11 @@ Pass TransformTensorRT(const String& config) {
   return CreateFunctionPass(pass_func, 0, "TransformTensorRT", {});
 }
 
-TVM_FFI_REGISTER_GLOBAL("relax.transform.TransformTensorRT").set_body_typed(TransformTensorRT);
+TVM_FFI_STATIC_INIT_BLOCK({
+  namespace refl = tvm::ffi::reflection;
+  refl::GlobalDef()
+    .def("relax.transform.TransformTensorRT", TransformTensorRT);
+});
 
 }  // namespace transform
 }  // namespace relax

@@ -23,6 +23,7 @@
 
 #include <cstdint>
 #include <vector>
+#include <tvm/ffi/reflection/reflection.h>
 
 #include "kv_state.h"
 
@@ -464,8 +465,10 @@ TVM_REGISTER_OBJECT_TYPE(RNNStateImpObj);
 //  Register runtime functions
 //-------------------------------------------------
 
-TVM_FFI_REGISTER_GLOBAL("vm.builtin.rnn_state_create")
-    .set_body_typed([](int64_t num_layers,           //
+TVM_FFI_STATIC_INIT_BLOCK({
+  namespace refl = tvm::ffi::reflection;
+  refl::GlobalDef()
+    .def("vm.builtin.rnn_state_create", [](int64_t num_layers,           //
                        int64_t reserved_num_seqs,    //
                        int64_t max_history,          //
                        Array<ffi::Function> f_gets,  //
@@ -494,6 +497,7 @@ TVM_FFI_REGISTER_GLOBAL("vm.builtin.rnn_state_create")
                                       std::move(f_gets), std::move(f_sets), init_layer_value);
       return RNNState(std::move(n));
     });
+});
 
 }  // namespace vm
 }  // namespace runtime

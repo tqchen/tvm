@@ -17,6 +17,7 @@
  * under the License.
  */
 #include "../utils.h"
+#include <tvm/ffi/reflection/reflection.h>
 
 namespace tvm {
 namespace meta_schedule {
@@ -63,8 +64,11 @@ MeasureCallback MeasureCallback::UpdateCostModel() {
 }
 
 TVM_REGISTER_NODE_TYPE(UpdateCostModelNode);
-TVM_FFI_REGISTER_GLOBAL("meta_schedule.MeasureCallbackUpdateCostModel")
-    .set_body_typed(MeasureCallback::UpdateCostModel);
+TVM_FFI_STATIC_INIT_BLOCK({
+  namespace refl = tvm::ffi::reflection;
+  refl::GlobalDef()
+    .def("meta_schedule.MeasureCallbackUpdateCostModel", MeasureCallback::UpdateCostModel);
+});
 
 }  // namespace meta_schedule
 }  // namespace tvm

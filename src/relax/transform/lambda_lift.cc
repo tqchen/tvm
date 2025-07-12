@@ -27,6 +27,7 @@
 #include <tvm/relax/expr_functor.h>
 #include <tvm/relax/transform.h>
 #include <tvm/runtime/logging.h>
+#include <tvm/ffi/reflection/reflection.h>
 
 #include <iostream>
 #include <vector>
@@ -495,7 +496,11 @@ Pass LambdaLift() {
   return tvm::transform::CreateModulePass(pass_func, 1, "LambdaLift", {});
 }
 
-TVM_FFI_REGISTER_GLOBAL("relax.transform.LambdaLift").set_body_typed(LambdaLift);
+TVM_FFI_STATIC_INIT_BLOCK({
+  namespace refl = tvm::ffi::reflection;
+  refl::GlobalDef()
+    .def("relax.transform.LambdaLift", LambdaLift);
+});
 
 }  // namespace transform
 }  // namespace relax

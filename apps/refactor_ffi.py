@@ -27,117 +27,9 @@ Entry to store the information of the function registration to be extracted from
 Entry = namedtuple("Entry", ["lineno_begin", "lineno_end", "method", "name", "function"])
 
 
-def is_in_string_or_comment(text: str, pos: int) -> bool:
-    """Check if position is inside a string literal or comment"""
-    # Simple heuristic: check if we're in a string or comment
-    before = text[:pos]
-
-    # Count quotes to see if we're in a string
-    single_quotes = before.count("'") - before.count("\\'")
-    double_quotes = before.count('"') - before.count('\\"')
-
-    # If odd number of quotes, we're inside a string
-    if single_quotes % 2 == 1 or double_quotes % 2 == 1:
-        return True
-
-    # Check for line comments
-    line_start = before.rfind('\n')
-    if line_start == -1:
-        line_start = 0
-    else:
-        line_start += 1
-
-    current_line = text[line_start:pos]
-    if '//' in current_line:
-        comment_pos = current_line.find('//')
-        if comment_pos < pos - line_start:
-            return True
-
-    # Check for block comments (simplified)
-    block_comment_start = before.rfind('/*')
-    block_comment_end = before.rfind('*/')
-    if block_comment_start != -1 and (block_comment_end == -1 or block_comment_start > block_comment_end):
-        return True
-
-    return False
-
-
-def find_matching_paren(text: str, start_pos: int) -> int:
-    """Find the matching closing parenthesis, accounting for nested parens"""
-    paren_count = 0
-    i = start_pos
-
-    while i < len(text):
-        if not is_in_string_or_comment(text, i):
-            if text[i] == '(':
-                paren_count += 1
-            elif text[i] == ')':
-                paren_count -= 1
-                if paren_count == 0:
-                    return i
-        i += 1
-
-    return -1
-
-
-def extract_function_name(text: str, start_pos: int) -> str:
-    """Extract function name from TVM_FFI_REGISTER_GLOBAL("name")"""
-    # Find the opening parenthesis
-    paren_start = text.find('(', start_pos)
-    if paren_start == -1:
-        return ""
-
-    # Find the closing parenthesis
-    paren_end = find_matching_paren(text, paren_start)
-    if paren_end == -1:
-        return ""
-
-    # Extract content between parentheses
-    content = text[paren_start + 1:paren_end].strip()
-
-    # Remove quotes
-    if content.startswith('"') and content.endswith('"'):
-        content = content[1:-1]
-    elif content.startswith("'") and content.endswith("'"):
-        content = content[1:-1]
-
-    return content
-
-
-def extract_method_and_function(text: str, start_pos: int) -> Tuple[str, str]:
-    """Extract method type and function body from set_body* call"""
-    # Find the method type
-    method_match = re.search(r'\.set_body(_typed|_method|_packed)?', text[start_pos:])
-    if not method_match:
-        return "", ""
-
-    method_type = method_match.group(1)
-    if method_type == "_packed":
-        method_type = "packed"
-    elif method_type == "_typed":
-        method_type = "typed"
-    elif method_type == "_method":
-        method_type = "method"
-    else:
-        method_type = "packed"  # default
-
-    # Find the function body
-    method_pos = start_pos + method_match.start()
-    paren_start = text.find('(', method_pos)
-    if paren_start == -1:
-        return method_type, ""
-
-    paren_end = find_matching_paren(text, paren_start)
-    if paren_end == -1:
-        return method_type, ""
-
-    function_body = text[paren_start + 1:paren_end].strip()
-    return method_type, function_body
-
-
 def extract_registration_entries(lines: List[str]) -> List[Entry]:
     """
-    Extract the registration entries from the file
+    Extract the registration entries from the file using line-by-line parsing
 
     Parameters
     ----------
@@ -150,71 +42,118 @@ def extract_registration_entries(lines: List[str]) -> List[Entry]:
         The list of registration entries
     """
     entries = []
-    full_text = '\n'.join(lines)
+    i = 0
 
-    # Find all TVM_FFI_REGISTER_GLOBAL occurrences
-    pattern = r'TVM_FFI_REGISTER_GLOBAL\s*\('
-    matches = list(re.finditer(pattern, full_text))
+    while i < len(lines):
+        line = lines[i]
 
-    for match in matches:
-        start_pos = match.start()
+        # Look for TVM_FFI_REGISTER_GLOBAL
+        if 'TVM_FFI_REGISTER_GLOBAL' in line:
+            lineno_begin = i
 
-        # Find the line number of the start
-        text_before = full_text[:start_pos]
-        lineno_begin = text_before.count('\n')
+            # Extract function name from the current line
+            match = re.search(r'TVM_FFI_REGISTER_GLOBAL\s*\(\s*"([^"]+)"\s*\)', line)
+            if not match:
+                i += 1
+                continue
 
-        # Extract function name
-        name = extract_function_name(full_text, start_pos)
-        if not name:
-            continue
+            name = match.group(1)
 
-        # Find the end of the registration (look for the closing semicolon)
-        # We need to find the complete statement including the method call
-        search_start = match.end()
+            # Start counting parentheses from this line
+            paren_count = 0
+            registration_lines = []
+            j = i
 
-        # Find the method call and function body
-        method_match = re.search(r'\.set_body(_typed|_method|_packed)?', full_text[search_start:])
-        if not method_match:
-            continue
+            while j < len(lines):
+                current_line = lines[j]
+                registration_lines.append(current_line)
 
-        method_pos = search_start + method_match.start()
-        paren_start = full_text.find('(', method_pos)
-        if paren_start == -1:
-            continue
+                # Count parentheses in this line
+                for char in current_line:
+                    if char == '(':
+                        paren_count += 1
+                    elif char == ')':
+                        paren_count -= 1
 
-        paren_end = find_matching_paren(full_text, paren_start)
-        if paren_end == -1:
-            continue
+                # If we've matched all parentheses and found a semicolon, we're done
+                if paren_count == 0 and ';' in current_line:
+                    break
 
-        function_body = full_text[paren_start + 1:paren_end].strip()
+                j += 1
 
-        # Determine method type
-        method_type = method_match.group(1)
-        if method_type == "_packed":
-            method_type = "packed"
-        elif method_type == "_typed":
-            method_type = "typed"
-        elif method_type == "_method":
-            method_type = "method"
+            if j >= len(lines):
+                # Didn't find complete registration, skip
+                i += 1
+                continue
+
+            lineno_end = j
+
+            # Join all registration lines to extract method and function
+            registration_text = '\n'.join(registration_lines)
+
+            # Extract method type
+            method = "packed"  # default
+            if '.set_body_packed' in registration_text:
+                method = "packed"
+            elif '.set_body_typed' in registration_text:
+                method = "typed"
+            elif '.set_body_method' in registration_text:
+                method = "method"
+            elif '.set_body' in registration_text:
+                method = "packed"  # default for set_body
+
+            # Extract function body from the registration lines
+            # Find the .set_body* call and extract everything after the opening parenthesis
+            set_body_pos = registration_text.find('.set_body')
+            if set_body_pos != -1:
+                # Find where the method name ends (could be .set_body, .set_body_typed, etc.)
+                method_end = set_body_pos
+                while method_end < len(registration_text) and registration_text[method_end] not in '(<':
+                    method_end += 1
+
+                # Skip template parameters if they exist
+                if method_end < len(registration_text) and registration_text[method_end] == '<':
+                    # Find the matching closing angle bracket
+                    angle_count = 0
+                    for k in range(method_end, len(registration_text)):
+                        if registration_text[k] == '<':
+                            angle_count += 1
+                        elif registration_text[k] == '>':
+                            angle_count -= 1
+                            if angle_count == 0:
+                                method_end = k + 1
+                                break
+
+                # Now find the opening parenthesis of the set_body call
+                paren_start = registration_text.find('(', method_end)
+                if paren_start != -1:
+                    # Use parentheses counting to find the matching closing parenthesis
+                    paren_count = 0
+                    function_end = -1
+
+                    for k in range(paren_start, len(registration_text)):
+                        if registration_text[k] == '(':
+                            paren_count += 1
+                        elif registration_text[k] == ')':
+                            paren_count -= 1
+                            if paren_count == 0:
+                                function_end = k
+                                break
+
+                    if function_end != -1:
+                        function_body = registration_text[paren_start + 1:function_end].strip()
+
+                        entries.append(Entry(
+                            lineno_begin=lineno_begin,
+                            lineno_end=lineno_end,
+                            method=method,
+                            name=name,
+                            function=function_body
+                        ))
+
+            i = j + 1
         else:
-            method_type = "packed"  # default
-
-        # Find the semicolon that comes after the function body
-        semicolon_pos = full_text.find(';', paren_end)
-        if semicolon_pos == -1:
-            continue
-
-        # Find the line number of the end (the line containing the semicolon)
-        text_to_end = full_text[:semicolon_pos]
-        lineno_end = text_to_end.count('\n') + 1
-
-        entries.append(Entry(
-            lineno_begin=lineno_begin,
-            lineno_end=lineno_end,
-            method=method_type,
-            name=name,
-            function=function_body
-        ))
+            i += 1
 
     return entries
 
@@ -462,14 +401,14 @@ def refactor_file_content(lines: List[str], entries: List[Entry]) -> str:
 
         # Delete all lines from first entry to last entry
         for entry in group:
-            delete_task.update(range(entry.lineno_begin, entry.lineno_end))
+            delete_task.update(range(entry.lineno_begin, entry.lineno_end + 1))
 
         # Also delete whitespace lines between entries in the group
         if len(group) > 1:
             for i in range(len(group) - 1):
                 curr_end = group[i].lineno_end
                 next_start = group[i + 1].lineno_begin
-                for line_idx in range(curr_end, next_start):
+                for line_idx in range(curr_end + 1, next_start):
                     if line_idx < len(lines) and not lines[line_idx].strip():
                         delete_task.add(line_idx)
 

@@ -26,6 +26,7 @@
 #include <tvm/tir/op.h>
 #include <tvm/tir/stmt_functor.h>
 #include <tvm/tir/transform.h>
+#include <tvm/ffi/reflection/reflection.h>
 
 #include <cmath>
 #include <tuple>
@@ -758,7 +759,11 @@ Pass BF16ComputeLegalize() {
   return CreatePrimFuncPass(pass_func, 0, "tir.BF16ComputeLegalize", {});
 }
 
-TVM_FFI_REGISTER_GLOBAL("tir.transform.BF16ComputeLegalize").set_body_typed(BF16ComputeLegalize);
+TVM_FFI_STATIC_INIT_BLOCK({
+  namespace refl = tvm::ffi::reflection;
+  refl::GlobalDef()
+    .def("tir.transform.BF16ComputeLegalize", BF16ComputeLegalize);
+});
 
 Pass BF16StorageLegalize() {
   auto pass_func = [](PrimFunc f, IRModule m, PassContext ctx) {
@@ -771,7 +776,11 @@ Pass BF16StorageLegalize() {
   return CreatePrimFuncPass(pass_func, 0, "tir.BF16StorageLegalize", {});
 }
 
-TVM_FFI_REGISTER_GLOBAL("tir.transform.BF16StorageLegalize").set_body_typed(BF16StorageLegalize);
+TVM_FFI_STATIC_INIT_BLOCK({
+  namespace refl = tvm::ffi::reflection;
+  refl::GlobalDef()
+    .def("tir.transform.BF16StorageLegalize", BF16StorageLegalize);
+});
 
 Pass FP8ComputeLegalize(String promote_dtype_str) {
   auto pass_func = [=](PrimFunc f, IRModule m, PassContext ctx) {
@@ -784,7 +793,11 @@ Pass FP8ComputeLegalize(String promote_dtype_str) {
   return CreatePrimFuncPass(pass_func, 0, "tir.FP8ComputeLegalize", {});
 }
 
-TVM_FFI_REGISTER_GLOBAL("tir.transform.FP8ComputeLegalize").set_body_typed(FP8ComputeLegalize);
+TVM_FFI_STATIC_INIT_BLOCK({
+  namespace refl = tvm::ffi::reflection;
+  refl::GlobalDef()
+    .def("tir.transform.FP8ComputeLegalize", FP8ComputeLegalize);
+});
 
 Pass FP8StorageLegalize() {
   auto pass_func = [=](PrimFunc f, IRModule m, PassContext ctx) {
@@ -797,7 +810,11 @@ Pass FP8StorageLegalize() {
   return CreatePrimFuncPass(pass_func, 0, "tir.FP8StorageLegalize", {});
 }
 
-TVM_FFI_REGISTER_GLOBAL("tir.transform.FP8StorageLegalize").set_body_typed(FP8StorageLegalize);
+TVM_FFI_STATIC_INIT_BLOCK({
+  namespace refl = tvm::ffi::reflection;
+  refl::GlobalDef()
+    .def("tir.transform.FP8StorageLegalize", FP8StorageLegalize);
+});
 
 }  // namespace transform
 }  // namespace tir

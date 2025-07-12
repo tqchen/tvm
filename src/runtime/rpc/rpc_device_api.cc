@@ -23,6 +23,7 @@
 #include <tvm/ffi/function.h>
 #include <tvm/runtime/device_api.h>
 #include <tvm/runtime/logging.h>
+#include <tvm/ffi/reflection/reflection.h>
 
 #include <utility>
 
@@ -150,10 +151,14 @@ class RPCDeviceAPI final : public DeviceAPI {
   }
 };
 
-TVM_FFI_REGISTER_GLOBAL("device_api.rpc").set_body_packed([](ffi::PackedArgs args, ffi::Any* rv) {
+TVM_FFI_STATIC_INIT_BLOCK({
+  namespace refl = tvm::ffi::reflection;
+  refl::GlobalDef()
+    .def_packed("device_api.rpc", [](ffi::PackedArgs args, ffi::Any* rv) {
   static RPCDeviceAPI inst;
   DeviceAPI* ptr = &inst;
   *rv = static_cast<void*>(ptr);
+});
 });
 }  // namespace runtime
 }  // namespace tvm

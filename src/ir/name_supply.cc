@@ -22,6 +22,7 @@
  * \brief NameSupply that can be used to generate unique variable names.
  */
 #include "tvm/ir/name_supply.h"
+#include <tvm/ffi/reflection/reflection.h>
 
 #include <tvm/ffi/function.h>
 
@@ -92,15 +93,15 @@ std::string NameSupplyNode::GetUniqueName(std::string name, bool add_underscore)
 
 TVM_REGISTER_NODE_TYPE(NameSupplyNode);
 
-TVM_FFI_REGISTER_GLOBAL("ir.NameSupply").set_body_typed([](String prefix) {
+TVM_FFI_STATIC_INIT_BLOCK({
+  namespace refl = tvm::ffi::reflection;
+  refl::GlobalDef()
+    .def("ir.NameSupply", [](String prefix) {
   return NameSupply(prefix);
+})
+    .def_method("ir.NameSupply_FreshName", &NameSupplyNode::FreshName)
+    .def_method("ir.NameSupply_ReserveName", &NameSupplyNode::ReserveName)
+    .def_method("ir.NameSupply_ContainsName", &NameSupplyNode::ContainsName);
 });
-
-TVM_FFI_REGISTER_GLOBAL("ir.NameSupply_FreshName").set_body_method(&NameSupplyNode::FreshName);
-
-TVM_FFI_REGISTER_GLOBAL("ir.NameSupply_ReserveName").set_body_method(&NameSupplyNode::ReserveName);
-
-TVM_FFI_REGISTER_GLOBAL("ir.NameSupply_ContainsName")
-    .set_body_method(&NameSupplyNode::ContainsName);
 
 }  // namespace tvm

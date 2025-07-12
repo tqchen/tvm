@@ -25,6 +25,7 @@
 #include <tvm/relax/expr.h>
 #include <tvm/relax/expr_functor.h>
 #include <tvm/relax/transform.h>
+#include <tvm/ffi/reflection/reflection.h>
 
 #include "../../../../relax/transform/utils.h"
 #include "../utils.h"
@@ -184,7 +185,11 @@ Pass InlineParams(const String& entry_name) {
   return CreateModulePass(pass_func, 0, "InlineParams", {});
 }
 
-TVM_FFI_REGISTER_GLOBAL("relax.transform.InlineParams").set_body_typed(InlineParams);
+TVM_FFI_STATIC_INIT_BLOCK({
+  namespace refl = tvm::ffi::reflection;
+  refl::GlobalDef()
+    .def("relax.transform.InlineParams", InlineParams);
+});
 
 }  // namespace transform
 }  // namespace relax

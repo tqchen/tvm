@@ -21,6 +21,7 @@
  * \file tflite_runtime.cc
  */
 #include "tflite_runtime.h"
+#include <tvm/ffi/reflection/reflection.h>
 
 #include <tensorflow/lite/interpreter.h>
 #include <tensorflow/lite/kernels/register.h>
@@ -183,11 +184,13 @@ Module TFLiteRuntimeCreate(const std::string& tflite_model_bytes, Device dev) {
   return Module(exec);
 }
 
-TVM_FFI_REGISTER_GLOBAL("tvm.tflite_runtime.create")
-    .set_body_packed([](ffi::PackedArgs args, ffi::Any* rv) {
+TVM_FFI_STATIC_INIT_BLOCK({
+  namespace refl = tvm::ffi::reflection;
+  refl::GlobalDef()
+    .def_packed("tvm.tflite_runtime.create", [](ffi::PackedArgs args, ffi::Any* rv) {
       *rv = TFLiteRuntimeCreate(args[0].cast<std::string>(), args[1].cast<Device>());
-    });
-
-TVM_FFI_REGISTER_GLOBAL("target.runtime.tflite").set_body_typed(TFLiteRuntimeCreate);
+    })
+    .def("target.runtime.tflite", TFLiteRuntimeCreate);
+});
 }  // namespace runtime
 }  // namespace tvm

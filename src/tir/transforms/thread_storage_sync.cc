@@ -26,6 +26,7 @@
 #include <tvm/tir/expr.h>
 #include <tvm/tir/stmt_functor.h>
 #include <tvm/tir/transform.h>
+#include <tvm/ffi/reflection/reflection.h>
 
 #include <unordered_map>
 #include <unordered_set>
@@ -471,7 +472,11 @@ Pass ThreadSync(String storage_scope) {
   return CreatePrimFuncPass(pass_func, 0, "tir.ThreadSync", {});
 }
 
-TVM_FFI_REGISTER_GLOBAL("tir.transform.ThreadSync").set_body_typed(ThreadSync);
+TVM_FFI_STATIC_INIT_BLOCK({
+  namespace refl = tvm::ffi::reflection;
+  refl::GlobalDef()
+    .def("tir.transform.ThreadSync", ThreadSync);
+});
 
 }  // namespace transform
 }  // namespace tir

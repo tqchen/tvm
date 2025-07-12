@@ -37,6 +37,7 @@
 #include <tvm/ir/global_var_supply.h>
 #include <tvm/tir/stmt_functor.h>
 #include <tvm/tir/transform.h>
+#include <tvm/ffi/reflection/reflection.h>
 
 #include <unordered_set>
 
@@ -370,7 +371,11 @@ transform::Pass BindTarget(Target target) {
   return tir::transform::CreateModulePass(fpass, 0, "tir.BindTarget", {});
 }
 
-TVM_FFI_REGISTER_GLOBAL("tir.transform.BindTarget").set_body_typed(BindTarget);
+TVM_FFI_STATIC_INIT_BLOCK({
+  namespace refl = tvm::ffi::reflection;
+  refl::GlobalDef()
+    .def("tir.transform.BindTarget", BindTarget);
+});
 
 }  // namespace transform
 }  // namespace tir

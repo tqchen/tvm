@@ -26,6 +26,7 @@
 #include <tvm/tir/op.h>
 #include <tvm/tir/stmt_functor.h>
 #include <tvm/tir/transform.h>
+#include <tvm/ffi/reflection/reflection.h>
 
 #include "../../arith/ir_mutator_with_analyzer.h"
 #include "../../runtime/thread_storage_scope.h"
@@ -295,7 +296,11 @@ Pass InjectPermutedLayout() {
   return CreatePrimFuncPass(pass_func, 0, "tir.InjectPermutedLayout", {});
 }
 
-TVM_FFI_REGISTER_GLOBAL("tir.transform.InjectPermutedLayout").set_body_typed(InjectPermutedLayout);
+TVM_FFI_STATIC_INIT_BLOCK({
+  namespace refl = tvm::ffi::reflection;
+  refl::GlobalDef()
+    .def("tir.transform.InjectPermutedLayout", InjectPermutedLayout);
+});
 
 }  // namespace transform
 

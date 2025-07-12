@@ -24,6 +24,7 @@
 #include <dmlc/thread_local.h>
 #include <tvm/ffi/function.h>
 #include <tvm/runtime/profiling.h>
+#include <tvm/ffi/reflection/reflection.h>
 
 #include <sstream>
 
@@ -760,8 +761,10 @@ void OpenCLWorkspace::Init(const std::string& type_key, const std::string& devic
   initialized_ = true;
 }
 
-TVM_FFI_REGISTER_GLOBAL("device_api.opencl.alloc_nd")
-    .set_body_packed([](ffi::PackedArgs args, ffi::Any* rv) {
+TVM_FFI_STATIC_INIT_BLOCK({
+  namespace refl = tvm::ffi::reflection;
+  refl::GlobalDef()
+    .def_packed("device_api.opencl.alloc_nd", [](ffi::PackedArgs args, ffi::Any* rv) {
       int32_t device_type = args[0].cast<int32_t>();
       int32_t device_id = args[1].cast<int32_t>();
       int32_t dtype_code_hint = args[2].cast<int32_t>();
@@ -786,10 +789,8 @@ TVM_FFI_REGISTER_GLOBAL("device_api.opencl.alloc_nd")
       *rv = OpenCLWorkspace::Global()->AllocDataSpace(dev, static_cast<size_t>(width),
                                                       static_cast<size_t>(height), type_hint,
                                                       String("global.texture"));
-    });
-
-TVM_FFI_REGISTER_GLOBAL("device_api.opencl.free_nd")
-    .set_body_packed([](ffi::PackedArgs args, ffi::Any* rv) {
+    })
+    .def_packed("device_api.opencl.free_nd", [](ffi::PackedArgs args, ffi::Any* rv) {
       int32_t device_type = args[0].cast<int32_t>();
       int32_t device_id = args[1].cast<int32_t>();
       auto scope = args[2].cast<std::string>();
@@ -801,18 +802,21 @@ TVM_FFI_REGISTER_GLOBAL("device_api.opencl.free_nd")
       dev.device_id = device_id;
       ptr->FreeDataSpace(dev, data);
       *rv = static_cast<int32_t>(0);
-    });
-
-TVM_FFI_REGISTER_GLOBAL("device_api.opencl")
-    .set_body_packed([](ffi::PackedArgs args, ffi::Any* rv) {
+    })
+    .def_packed("device_api.opencl", [](ffi::PackedArgs args, ffi::Any* rv) {
       DeviceAPI* ptr = OpenCLWorkspace::Global();
       *rv = static_cast<void*>(ptr);
     });
+});
 
 TVM_REGISTER_OBJECT_TYPE(OpenCLTimerNode);
 
-TVM_FFI_REGISTER_GLOBAL("profiling.timer.opencl").set_body_typed([](Device dev) {
+TVM_FFI_STATIC_INIT_BLOCK({
+  namespace refl = tvm::ffi::reflection;
+  refl::GlobalDef()
+    .def("profiling.timer.opencl", [](Device dev) {
   return Timer(make_object<OpenCLTimerNode>(dev));
+});
 });
 
 class OpenCLPooledAllocator final : public memory::PooledAllocator {
@@ -894,11 +898,14 @@ class OpenCLPooledAllocator final : public memory::PooledAllocator {
   }
 };
 
-TVM_FFI_REGISTER_GLOBAL("DeviceAllocator.opencl")
-    .set_body_packed([](ffi::PackedArgs args, ffi::Any* rv) {
+TVM_FFI_STATIC_INIT_BLOCK({
+  namespace refl = tvm::ffi::reflection;
+  refl::GlobalDef()
+    .def_packed("DeviceAllocator.opencl", [](ffi::PackedArgs args, ffi::Any* rv) {
       Allocator* alloc = new OpenCLPooledAllocator();
       *rv = static_cast<void*>(alloc);
     });
+});
 
 }  // namespace cl
 size_t OpenCLTimerNode::count_timer_execs = 0;

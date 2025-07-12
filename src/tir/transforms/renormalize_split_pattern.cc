@@ -27,6 +27,7 @@
 #include <tvm/tir/stmt.h>
 #include <tvm/tir/stmt_functor.h>
 #include <tvm/tir/transform.h>
+#include <tvm/ffi/reflection/reflection.h>
 
 #include "../../arith/ir_mutator_with_analyzer.h"
 #include "../../arith/pattern_match.h"
@@ -205,8 +206,11 @@ Pass RenormalizeSplitPattern() {
   return CreatePrimFuncPass(pass_func, 0, "tir.RenormalizeSplitPattern", {});
 }
 
-TVM_FFI_REGISTER_GLOBAL("tir.transform.RenormalizeSplitPattern")
-    .set_body_typed(RenormalizeSplitPattern);
+TVM_FFI_STATIC_INIT_BLOCK({
+  namespace refl = tvm::ffi::reflection;
+  refl::GlobalDef()
+    .def("tir.transform.RenormalizeSplitPattern", RenormalizeSplitPattern);
+});
 
 }  // namespace transform
 

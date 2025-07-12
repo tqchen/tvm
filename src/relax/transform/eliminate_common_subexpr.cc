@@ -28,6 +28,7 @@
 #include <tvm/relax/expr_functor.h>
 #include <tvm/relax/transform.h>
 #include <tvm/relax/utils.h>
+#include <tvm/ffi/reflection/reflection.h>
 
 #include "../../support/utils.h"
 
@@ -221,8 +222,11 @@ Pass EliminateCommonSubexpr(bool call_only) {
   return CreateFunctionPass(pass_func, 1, "EliminateCommonSubexpr", {});
 }
 
-TVM_FFI_REGISTER_GLOBAL("relax.transform.EliminateCommonSubexpr")
-    .set_body_typed(EliminateCommonSubexpr);
+TVM_FFI_STATIC_INIT_BLOCK({
+  namespace refl = tvm::ffi::reflection;
+  refl::GlobalDef()
+    .def("relax.transform.EliminateCommonSubexpr", EliminateCommonSubexpr);
+});
 
 }  // namespace transform
 

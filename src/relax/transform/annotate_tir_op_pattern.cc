@@ -25,6 +25,7 @@
 #include <tvm/relax/analysis.h>
 #include <tvm/relax/transform.h>
 #include <tvm/tir/transform.h>
+#include <tvm/ffi/reflection/reflection.h>
 
 namespace tvm {
 namespace relax {
@@ -47,8 +48,11 @@ Pass AnnotateTIROpPattern() {
   return tir::transform::CreatePrimFuncPass(pass_func, 0, "AnnotateTIROpPattern", {});
 }
 
-TVM_FFI_REGISTER_GLOBAL("relax.transform.AnnotateTIROpPattern")
-    .set_body_typed(AnnotateTIROpPattern);
+TVM_FFI_STATIC_INIT_BLOCK({
+  namespace refl = tvm::ffi::reflection;
+  refl::GlobalDef()
+    .def("relax.transform.AnnotateTIROpPattern", AnnotateTIROpPattern);
+});
 
 }  // namespace transform
 

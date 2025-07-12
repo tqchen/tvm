@@ -17,6 +17,7 @@
  * under the License.
  */
 #include "./utils.h"
+#include <tvm/ffi/reflection/reflection.h>
 
 namespace tvm {
 namespace script {
@@ -82,7 +83,11 @@ TVM_SCRIPT_REPR(relax::ShapeTypeNode, ReprPrintRelax);
 TVM_SCRIPT_REPR(relax::ObjectTypeNode, ReprPrintRelax);
 TVM_SCRIPT_REPR(relax::TensorTypeNode, ReprPrintRelax);
 TVM_SCRIPT_REPR(relax::PackedFuncTypeNode, ReprPrintRelax);
-TVM_FFI_REGISTER_GLOBAL("script.printer.ReprPrintRelax").set_body_typed(ReprPrintRelax);
+TVM_FFI_STATIC_INIT_BLOCK({
+  namespace refl = tvm::ffi::reflection;
+  refl::GlobalDef()
+    .def("script.printer.ReprPrintRelax", ReprPrintRelax);
+});
 
 }  // namespace printer
 }  // namespace script

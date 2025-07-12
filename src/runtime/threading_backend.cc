@@ -25,6 +25,7 @@
 #include <tvm/ffi/function.h>
 #include <tvm/runtime/logging.h>
 #include <tvm/runtime/threading_backend.h>
+#include <tvm/ffi/reflection/reflection.h>
 
 #if defined(__linux__) || defined(__ANDROID__)
 #if __ANDROID_API__ >= 21
@@ -437,11 +438,14 @@ int MaxConcurrency() {
 
 // This global function can be used by disco runtime to bind processes
 // to CPUs.
-TVM_FFI_REGISTER_GLOBAL("tvm.runtime.threading.set_current_thread_affinity")
-    .set_body_typed([](ffi::Shape cpu_ids) {
+TVM_FFI_STATIC_INIT_BLOCK({
+  namespace refl = tvm::ffi::reflection;
+  refl::GlobalDef()
+    .def("tvm.runtime.threading.set_current_thread_affinity", [](ffi::Shape cpu_ids) {
       SetThreadAffinity(CURRENT_THREAD_HANDLE,
                         std::vector<unsigned int>{cpu_ids.begin(), cpu_ids.end()});
     });
+});
 
 }  // namespace threading
 }  // namespace runtime

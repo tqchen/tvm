@@ -25,6 +25,7 @@
 #include <tvm/ffi/string.h>
 #include <tvm/runtime/device_api.h>
 #include <tvm/runtime/profiling.h>
+#include <tvm/ffi/reflection/reflection.h>
 
 #include <chrono>
 #include <cstring>
@@ -389,8 +390,10 @@ inline void CPUCacheFlush(int begin_index, const ffi::PackedArgs& args) {
   }
 }
 
-TVM_FFI_REGISTER_GLOBAL("runtime.RPCTimeEvaluator")
-    .set_body_typed([](Optional<Module> opt_mod, std::string name, int device_type, int device_id,
+TVM_FFI_STATIC_INIT_BLOCK({
+  namespace refl = tvm::ffi::reflection;
+  refl::GlobalDef()
+    .def("runtime.RPCTimeEvaluator", [](Optional<Module> opt_mod, std::string name, int device_type, int device_id,
                        int number, int repeat, int min_repeat_ms, int limit_zero_time_iterations,
                        int cooldown_interval_ms, int repeats_to_cooldown, int cache_flush_bytes,
                        std::string f_preproc_name) {
@@ -433,47 +436,46 @@ TVM_FFI_REGISTER_GLOBAL("runtime.RPCTimeEvaluator")
                                             limit_zero_time_iterations, cooldown_interval_ms,
                                             repeats_to_cooldown, cache_flush_bytes, f_preproc);
       }
-    });
-
-TVM_FFI_REGISTER_GLOBAL("cache_flush_cpu_non_first_arg")
-    .set_body_packed([](ffi::PackedArgs args, ffi::Any* rv) { CPUCacheFlush(1, args); });
+    })
+    .def_packed("cache_flush_cpu_non_first_arg", [](ffi::PackedArgs args, ffi::Any* rv) { CPUCacheFlush(1, args); });
+});
 
 // server function registration.
-TVM_FFI_REGISTER_GLOBAL("tvm.rpc.server.ImportModule")
-    .set_body_typed([](Module parent, Module child) { parent->Import(child); });
-
-TVM_FFI_REGISTER_GLOBAL("tvm.rpc.server.ModuleGetFunction")
-    .set_body_typed([](Module parent, std::string name, bool query_imports) {
+TVM_FFI_STATIC_INIT_BLOCK({
+  namespace refl = tvm::ffi::reflection;
+  refl::GlobalDef()
+    .def("tvm.rpc.server.ImportModule", [](Module parent, Module child) { parent->Import(child); })
+    .def("tvm.rpc.server.ModuleGetFunction", [](Module parent, std::string name, bool query_imports) {
       return parent->GetFunction(name, query_imports);
     });
+});
 
 // functions to access an RPC module.
-TVM_FFI_REGISTER_GLOBAL("rpc.LoadRemoteModule").set_body_typed([](Module sess, std::string name) {
+TVM_FFI_STATIC_INIT_BLOCK({
+  namespace refl = tvm::ffi::reflection;
+  refl::GlobalDef()
+    .def("rpc.LoadRemoteModule", [](Module sess, std::string name) {
   std::string tkey = sess->type_key();
   ICHECK_EQ(tkey, "rpc");
   return static_cast<RPCModuleNode*>(sess.operator->())->LoadModule(name);
-});
-
-TVM_FFI_REGISTER_GLOBAL("rpc.ImportRemoteModule").set_body_typed([](Module parent, Module child) {
+})
+    .def("rpc.ImportRemoteModule", [](Module parent, Module child) {
   std::string tkey = parent->type_key();
   ICHECK_EQ(tkey, "rpc");
   static_cast<RPCModuleNode*>(parent.operator->())->ImportModule(child);
-});
-
-TVM_FFI_REGISTER_GLOBAL("rpc.SessTableIndex")
-    .set_body_packed([](ffi::PackedArgs args, ffi::Any* rv) {
+})
+    .def_packed("rpc.SessTableIndex", [](ffi::PackedArgs args, ffi::Any* rv) {
       Module m = args[0].cast<Module>();
       std::string tkey = m->type_key();
       ICHECK_EQ(tkey, "rpc");
       *rv = static_cast<RPCModuleNode*>(m.operator->())->sess()->table_index();
-    });
-
-TVM_FFI_REGISTER_GLOBAL("tvm.rpc.NDArrayFromRemoteOpaqueHandle")
-    .set_body_typed([](Module mod, void* remote_array, DLTensor* template_tensor, Device dev,
+    })
+    .def("tvm.rpc.NDArrayFromRemoteOpaqueHandle", [](Module mod, void* remote_array, DLTensor* template_tensor, Device dev,
                        void* ndarray_handle) -> NDArray {
       return NDArrayFromRemoteOpaqueHandle(RPCModuleGetSession(mod), remote_array, template_tensor,
                                            dev, ndarray_handle);
     });
+});
 
 }  // namespace runtime
 }  // namespace tvm

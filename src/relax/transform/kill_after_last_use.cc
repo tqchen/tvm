@@ -26,6 +26,7 @@
 #include <tvm/relax/nested_msg.h>
 #include <tvm/relax/transform.h>
 #include <tvm/tir/stmt_functor.h>
+#include <tvm/ffi/reflection/reflection.h>
 
 #include <map>
 #include <set>
@@ -265,7 +266,11 @@ Pass KillAfterLastUse() {
   return CreateFunctionPass(pass_func, /*opt_level=*/0, "KillAfterLastUse", {});
 }
 
-TVM_FFI_REGISTER_GLOBAL("relax.transform.KillAfterLastUse").set_body_typed(KillAfterLastUse);
+TVM_FFI_STATIC_INIT_BLOCK({
+  namespace refl = tvm::ffi::reflection;
+  refl::GlobalDef()
+    .def("relax.transform.KillAfterLastUse", KillAfterLastUse);
+});
 
 }  // namespace transform
 }  // namespace relax

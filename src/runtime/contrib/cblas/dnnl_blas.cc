@@ -23,6 +23,7 @@
 #include <tvm/ffi/function.h>
 #include <tvm/runtime/data_type.h>
 #include <tvm/runtime/logging.h>
+#include <tvm/ffi/reflection/reflection.h>
 
 extern "C" {
 #include <dnnl.h>
@@ -46,11 +47,14 @@ struct DNNLSgemmOp {
 };
 
 // matrix multiplication for row major
-TVM_FFI_REGISTER_GLOBAL("tvm.contrib.dnnl.matmul")
-    .set_body_packed([](ffi::PackedArgs args, ffi::Any* ret) {
+TVM_FFI_STATIC_INIT_BLOCK({
+  namespace refl = tvm::ffi::reflection;
+  refl::GlobalDef()
+    .def_packed("tvm.contrib.dnnl.matmul", [](ffi::PackedArgs args, ffi::Any* ret) {
       auto A = args[0].cast<DLTensor*>();
       ICHECK(TypeMatch(A->dtype, kDLFloat, 32));
       CallGemm(args, ret, DNNLSgemmOp());
     });
+});
 }  // namespace contrib
 }  // namespace tvm

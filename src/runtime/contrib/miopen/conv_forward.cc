@@ -23,6 +23,7 @@
 #include <tvm/ffi/function.h>
 #include <tvm/runtime/data_type.h>
 #include <tvm/runtime/device_api.h>
+#include <tvm/ffi/reflection/reflection.h>
 
 #include <cassert>
 
@@ -34,8 +35,10 @@ namespace miopen {
 
 using namespace runtime;
 
-TVM_FFI_REGISTER_GLOBAL("tvm.contrib.miopen.conv2d.setup")
-    .set_body_packed([](ffi::PackedArgs args, ffi::Any* ret) {
+TVM_FFI_STATIC_INIT_BLOCK({
+  namespace refl = tvm::ffi::reflection;
+  refl::GlobalDef()
+    .def_packed("tvm.contrib.miopen.conv2d.setup", [](ffi::PackedArgs args, ffi::Any* ret) {
       const int mode = args[0].cast<int>();
       const int dtype = args[1].cast<int>();
       const int pad_h = args[2].cast<int>();
@@ -140,16 +143,17 @@ TVM_FFI_REGISTER_GLOBAL("tvm.contrib.miopen.conv2d.setup")
       LOG(INFO) << "\tMIOpen Found " << returned_algo_count << " fwd algorithms, choosing "
                 << fwd_algo_names[best_algo];
       for (int i = 0; i < returned_algo_count; ++i) {
-        LOG(INFO) << "\t\t" << i << ") " << fwd_algo_names[perfs[i].fwd_algo]
-                  << " - time: " << perfs[i].time << " ms"
-                  << ", Memory: " << perfs[i].memory;
+        LOG(INFO) << "\t\t" << i << ");
+});
       }
       // Set Algo
       ret[0] = static_cast<int>(best_algo);
     });
 
-TVM_FFI_REGISTER_GLOBAL("tvm.contrib.miopen.conv2d.forward")
-    .set_body_packed([](ffi::PackedArgs args, ffi::Any* ret) {
+TVM_FFI_STATIC_INIT_BLOCK({
+  namespace refl = tvm::ffi::reflection;
+  refl::GlobalDef()
+    .def_packed("tvm.contrib.miopen.conv2d.forward", [](ffi::PackedArgs args, ffi::Any* ret) {
       const int mode = args[0].cast<int>();
       const int dtype = args[1].cast<int>();
       const int pad_h = args[2].cast<int>();
@@ -219,6 +223,7 @@ TVM_FFI_REGISTER_GLOBAL("tvm.contrib.miopen.conv2d.forward")
           entry_ptr->conv_entry.fwd_algo, &beta, entry_ptr->conv_entry.output_desc, y->data,
           entry_ptr->conv_entry.workspace, entry_ptr->conv_entry.workspace_size));
     });
+});
 
 }  // namespace miopen
 }  // namespace contrib

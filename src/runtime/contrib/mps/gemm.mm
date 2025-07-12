@@ -18,14 +18,17 @@
  */
 
 #include "mps_utils.h"
+#include <tvm/ffi/reflection/reflection.h>
 
 namespace tvm {
 namespace contrib {
 
 using namespace runtime;
 
-TVM_FFI_REGISTER_GLOBAL("tvm.contrib.mps.matmul")
-    .set_body_packed([](ffi::PackedArgs args, ffi::Any* ret) {
+TVM_FFI_STATIC_INIT_BLOCK({
+  namespace refl = tvm::ffi::reflection;
+  refl::GlobalDef()
+    .def_packed("tvm.contrib.mps.matmul", [](ffi::PackedArgs args, ffi::Any* ret) {
       auto A = args[0].cast<DLTensor*>();
       auto B = args[1].cast<DLTensor*>();
       auto C = args[2].cast<DLTensor*>();
@@ -93,6 +96,7 @@ TVM_FFI_REGISTER_GLOBAL("tvm.contrib.mps.matmul")
       [sgemm encodeToCommandBuffer:cb leftMatrix:matrixA rightMatrix:matrixB resultMatrix:matrixC];
       [cb commit];
     });
+});
 
 }  // namespace contrib
 }  // namespace tvm

@@ -23,6 +23,7 @@
  */
 
 #include <tvm/tir/transform.h>
+#include <tvm/ffi/reflection/reflection.h>
 
 namespace tvm {
 namespace tir {
@@ -78,8 +79,12 @@ transform::Pass Filter(ffi::TypedFunction<bool(PrimFunc)> fcond) {
   return tir::transform::CreatePrimFuncPass(fpass, 0, "tir.Filter", {});
 }
 
-TVM_FFI_REGISTER_GLOBAL("tir.transform.AnnotateEntryFunc").set_body_typed(AnnotateEntryFunc);
-TVM_FFI_REGISTER_GLOBAL("tir.transform.Filter").set_body_typed(Filter);
+TVM_FFI_STATIC_INIT_BLOCK({
+  namespace refl = tvm::ffi::reflection;
+  refl::GlobalDef()
+    .def("tir.transform.AnnotateEntryFunc", AnnotateEntryFunc)
+    .def("tir.transform.Filter", Filter);
+});
 
 }  // namespace transform
 }  // namespace tir

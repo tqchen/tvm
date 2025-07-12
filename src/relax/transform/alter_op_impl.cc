@@ -33,6 +33,7 @@
 #include <tvm/te/operation.h>
 #include <tvm/tir/transform.h>
 #include <tvm/topi/tags.h>
+#include <tvm/ffi/reflection/reflection.h>
 
 #include "../../te/operation/create_primfunc.h"
 namespace tvm {
@@ -438,7 +439,11 @@ Pass AlterOpImpl(const Map<String, tir::PrimFunc>& op_impl_map,
                           /*required=*/{});
 }
 
-TVM_FFI_REGISTER_GLOBAL("relax.transform.AlterOpImpl").set_body_typed(AlterOpImpl);
+TVM_FFI_STATIC_INIT_BLOCK({
+  namespace refl = tvm::ffi::reflection;
+  refl::GlobalDef()
+    .def("relax.transform.AlterOpImpl", AlterOpImpl);
+});
 
 }  // namespace transform
 }  // namespace relax

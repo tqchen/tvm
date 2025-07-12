@@ -21,6 +21,7 @@
  * \file file_utils.cc
  */
 #include "file_utils.h"
+#include <tvm/ffi/reflection/reflection.h>
 
 #include <dmlc/json.h>
 #include <dmlc/memory_io.h>
@@ -250,25 +251,24 @@ std::string SaveParams(const Map<String, NDArray>& params) {
   return bytes;
 }
 
-TVM_FFI_REGISTER_GLOBAL("runtime.SaveParams")
-    .set_body_typed([](const Map<String, NDArray>& params) {
+TVM_FFI_STATIC_INIT_BLOCK({
+  namespace refl = tvm::ffi::reflection;
+  refl::GlobalDef()
+    .def("runtime.SaveParams", [](const Map<String, NDArray>& params) {
       std::string s = ::tvm::runtime::SaveParams(params);
       return ffi::Bytes(std::move(s));
-    });
-
-TVM_FFI_REGISTER_GLOBAL("runtime.SaveParamsToFile")
-    .set_body_typed([](const Map<String, NDArray>& params, const String& path) {
+    })
+    .def("runtime.SaveParamsToFile", [](const Map<String, NDArray>& params, const String& path) {
       tvm::runtime::SimpleBinaryFileStream strm(path, "wb");
       SaveParams(&strm, params);
-    });
-
-TVM_FFI_REGISTER_GLOBAL("runtime.LoadParams").set_body_typed([](const ffi::Bytes& s) {
+    })
+    .def("runtime.LoadParams", [](const ffi::Bytes& s) {
   return ::tvm::runtime::LoadParams(s);
-});
-
-TVM_FFI_REGISTER_GLOBAL("runtime.LoadParamsFromFile").set_body_typed([](const String& path) {
+})
+    .def("runtime.LoadParamsFromFile", [](const String& path) {
   tvm::runtime::SimpleBinaryFileStream strm(path, "rb");
   return LoadParams(&strm);
+});
 });
 
 }  // namespace runtime

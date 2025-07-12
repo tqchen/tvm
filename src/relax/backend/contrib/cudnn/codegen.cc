@@ -22,6 +22,7 @@
  * \brief Implementation of the cuDNN JSON serializer.
  */
 #include <tvm/ir/module.h>
+#include <tvm/ffi/reflection/reflection.h>
 
 #include <string>
 
@@ -149,7 +150,11 @@ Array<runtime::Module> cuDNNCompiler(Array<Function> functions, Map<String, ffi:
   return compiled_functions;
 }
 
-TVM_FFI_REGISTER_GLOBAL("relax.ext.cudnn").set_body_typed(cuDNNCompiler);
+TVM_FFI_STATIC_INIT_BLOCK({
+  namespace refl = tvm::ffi::reflection;
+  refl::GlobalDef()
+    .def("relax.ext.cudnn", cuDNNCompiler);
+});
 
 }  // namespace contrib
 }  // namespace relax

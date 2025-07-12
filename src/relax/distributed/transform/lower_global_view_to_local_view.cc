@@ -26,6 +26,7 @@
 #include <tvm/relax/distributed/transform.h>
 #include <tvm/relax/expr_functor.h>
 #include <tvm/tir/stmt_functor.h>
+#include <tvm/ffi/reflection/reflection.h>
 
 #include "../../../tir/schedule/transform.h"
 #include "utils.h"
@@ -432,8 +433,11 @@ Pass LowerGlobalViewToLocalView() {
   auto pass_func = [=](IRModule m, PassContext pc) { return LowerTIRToLocalView(m).Lower(); };
   return CreateModulePass(pass_func, 1, "LowerGlobalViewToLocalView", {});
 }
-TVM_FFI_REGISTER_GLOBAL("relax.distributed.transform.LowerGlobalViewToLocalView")
-    .set_body_typed(LowerGlobalViewToLocalView);
+TVM_FFI_STATIC_INIT_BLOCK({
+  namespace refl = tvm::ffi::reflection;
+  refl::GlobalDef()
+    .def("relax.distributed.transform.LowerGlobalViewToLocalView", LowerGlobalViewToLocalView);
+});
 }  // namespace transform
 
 }  // namespace distributed

@@ -25,6 +25,7 @@
 #include <tvm/tir/analysis.h>
 #include <tvm/tir/stmt_functor.h>
 #include <tvm/tir/transform.h>
+#include <tvm/ffi/reflection/reflection.h>
 
 #include "../../support/utils.h"
 #include "ir_utils.h"
@@ -200,7 +201,11 @@ Pass UnifyThreadBinding() {
   return CreatePrimFuncPass(pass_func, 0, "tir.UnifyThreadBinding", {});
 }
 
-TVM_FFI_REGISTER_GLOBAL("tir.transform.UnifyThreadBinding").set_body_typed(UnifyThreadBinding);
+TVM_FFI_STATIC_INIT_BLOCK({
+  namespace refl = tvm::ffi::reflection;
+  refl::GlobalDef()
+    .def("tir.transform.UnifyThreadBinding", UnifyThreadBinding);
+});
 
 }  // namespace transform
 

@@ -27,6 +27,7 @@
 #include <tvm/relax/expr_functor.h>
 #include <tvm/relax/transform.h>
 #include <tvm/runtime/logging.h>
+#include <tvm/ffi/reflection/reflection.h>
 
 #include <iostream>
 #include <optional>
@@ -867,7 +868,11 @@ Pass LiftTransformParams(Variant<Bool, Array<String>> shared_transform) {
       "LiftTransformParams");
 }
 
-TVM_FFI_REGISTER_GLOBAL("relax.transform.LiftTransformParams").set_body_typed(LiftTransformParams);
+TVM_FFI_STATIC_INIT_BLOCK({
+  namespace refl = tvm::ffi::reflection;
+  refl::GlobalDef()
+    .def("relax.transform.LiftTransformParams", LiftTransformParams);
+});
 
 }  // namespace transform
 }  // namespace relax

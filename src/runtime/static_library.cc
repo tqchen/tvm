@@ -23,6 +23,7 @@
  * dynamic library by export_library.
  */
 #include "./static_library.h"
+#include <tvm/ffi/reflection/reflection.h>
 
 #include <tvm/ffi/function.h>
 #include <tvm/ffi/memory.h>
@@ -126,9 +127,12 @@ Module LoadStaticLibrary(const std::string& filename, Array<String> func_names) 
   return Module(node);
 }
 
-TVM_FFI_REGISTER_GLOBAL("runtime.ModuleLoadStaticLibrary").set_body_typed(LoadStaticLibrary);
-TVM_FFI_REGISTER_GLOBAL("runtime.module.loadbinary_static_library")
-    .set_body_typed(StaticLibraryNode::LoadFromBinary);
+TVM_FFI_STATIC_INIT_BLOCK({
+  namespace refl = tvm::ffi::reflection;
+  refl::GlobalDef()
+    .def("runtime.ModuleLoadStaticLibrary", LoadStaticLibrary)
+    .def("runtime.module.loadbinary_static_library", StaticLibraryNode::LoadFromBinary);
+});
 
 }  // namespace runtime
 }  // namespace tvm

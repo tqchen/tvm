@@ -21,6 +21,7 @@
  * \file codegen_c_host.cc
  */
 #include "codegen_c_host.h"
+#include <tvm/ffi/reflection/reflection.h>
 
 #include <tvm/runtime/module.h>
 #include <tvm/target/codegen.h>
@@ -404,6 +405,10 @@ runtime::Module BuildCHost(IRModule mod, Target target) {
   return CSourceModuleCreate(code, "c", cg.GetFunctionNames());
 }
 
-TVM_FFI_REGISTER_GLOBAL("target.build.c").set_body_typed(BuildCHost);
+TVM_FFI_STATIC_INIT_BLOCK({
+  namespace refl = tvm::ffi::reflection;
+  refl::GlobalDef()
+    .def("target.build.c", BuildCHost);
+});
 }  // namespace codegen
 }  // namespace tvm

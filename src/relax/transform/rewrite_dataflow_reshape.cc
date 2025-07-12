@@ -26,6 +26,7 @@
 #include <tvm/relax/transform.h>
 #include <tvm/tir/analysis.h>
 #include <tvm/tir/function.h>
+#include <tvm/ffi/reflection/reflection.h>
 
 #include <vector>
 
@@ -165,8 +166,11 @@ Pass RewriteDataflowReshape() {
   return CreateFunctionPass(pass_func, 0, "RewriteDataflowReshape", {});
 }
 
-TVM_FFI_REGISTER_GLOBAL("relax.transform.RewriteDataflowReshape")
-    .set_body_typed(RewriteDataflowReshape);
+TVM_FFI_STATIC_INIT_BLOCK({
+  namespace refl = tvm::ffi::reflection;
+  refl::GlobalDef()
+    .def("relax.transform.RewriteDataflowReshape", RewriteDataflowReshape);
+});
 
 }  // namespace transform
 

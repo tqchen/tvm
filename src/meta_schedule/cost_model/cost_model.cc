@@ -17,6 +17,7 @@
  * under the License.
  */
 #include "../utils.h"
+#include <tvm/ffi/reflection/reflection.h>
 
 namespace tvm {
 namespace meta_schedule {
@@ -71,19 +72,21 @@ TVM_STATIC_IR_FUNCTOR(ReprPrinter, vtable)
 TVM_REGISTER_OBJECT_TYPE(CostModelNode);
 TVM_REGISTER_NODE_TYPE(PyCostModelNode);
 
-TVM_FFI_REGISTER_GLOBAL("meta_schedule.CostModelLoad").set_body_method(&CostModelNode::Load);
-TVM_FFI_REGISTER_GLOBAL("meta_schedule.CostModelSave").set_body_method(&CostModelNode::Save);
-TVM_FFI_REGISTER_GLOBAL("meta_schedule.CostModelUpdate").set_body_method(&CostModelNode::Update);
-TVM_FFI_REGISTER_GLOBAL("meta_schedule.CostModelPredict")
-    .set_body_typed([](CostModel model,                     //
+TVM_FFI_STATIC_INIT_BLOCK({
+  namespace refl = tvm::ffi::reflection;
+  refl::GlobalDef()
+    .def_method("meta_schedule.CostModelLoad", &CostModelNode::Load)
+    .def_method("meta_schedule.CostModelSave", &CostModelNode::Save)
+    .def_method("meta_schedule.CostModelUpdate", &CostModelNode::Update)
+    .def("meta_schedule.CostModelPredict", [](CostModel model,                     //
                        const TuneContext& context,          //
                        Array<MeasureCandidate> candidates,  //
                        void* p_addr) -> void {
       std::vector<double> result = model->Predict(context, candidates);
       std::copy(result.begin(), result.end(), static_cast<double*>(p_addr));
-    });
-TVM_FFI_REGISTER_GLOBAL("meta_schedule.CostModelPyCostModel")
-    .set_body_typed(CostModel::PyCostModel);
+    })
+    .def("meta_schedule.CostModelPyCostModel", CostModel::PyCostModel);
+});
 
 }  // namespace meta_schedule
 }  // namespace tvm

@@ -22,6 +22,7 @@
 #include <tvm/tir/analysis.h>
 #include <tvm/tir/builtin.h>
 #include <tvm/tir/stmt_functor.h>
+#include <tvm/ffi/reflection/reflection.h>
 
 namespace tvm {
 namespace relax {
@@ -86,7 +87,11 @@ Pass ComputePrimValue() {
   return CreateModulePass(pass_func, 0, "ComputePrimValue", {});
 }
 
-TVM_FFI_REGISTER_GLOBAL("relax.transform.ComputePrimValue").set_body_typed(ComputePrimValue);
+TVM_FFI_STATIC_INIT_BLOCK({
+  namespace refl = tvm::ffi::reflection;
+  refl::GlobalDef()
+    .def("relax.transform.ComputePrimValue", ComputePrimValue);
+});
 
 }  // namespace transform
 

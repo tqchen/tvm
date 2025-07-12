@@ -21,6 +21,7 @@
  * \file src/contrib/msc/framework/torch/codegen.cc
  */
 #include "codegen.h"
+#include <tvm/ffi/reflection/reflection.h>
 
 namespace tvm {
 namespace contrib {
@@ -151,13 +152,16 @@ const Array<Doc> TorchCodeGen::GetOpCodes(const MSCJoint& node) {
   }
 }
 
-TVM_FFI_REGISTER_GLOBAL("msc.framework.torch.GetTorchSources")
-    .set_body_typed([](const MSCGraph& graph, const String& codegen_config,
+TVM_FFI_STATIC_INIT_BLOCK({
+  namespace refl = tvm::ffi::reflection;
+  refl::GlobalDef()
+    .def("msc.framework.torch.GetTorchSources", [](const MSCGraph& graph, const String& codegen_config,
                        const String& print_config) -> Map<String, String> {
       TorchCodeGen codegen = TorchCodeGen(graph, codegen_config);
       codegen.Init();
       return codegen.GetSources(print_config);
     });
+});
 
 }  // namespace msc
 }  // namespace contrib
