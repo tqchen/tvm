@@ -35,6 +35,8 @@ using namespace tvm::ffi::testing;
 namespace refl = tvm::ffi::reflection;
 
 TEST(StructuralEqualHash, Array) {
+  EXPECT_TRUE(refl::StructuralEqual()(Array<Any>(), Array<Any>()));
+
   Array<int> a = {1, 2, 3};
   Array<int> b = {1, 2, 3};
   EXPECT_TRUE(refl::StructuralEqual()(a, b));
