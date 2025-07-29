@@ -238,7 +238,7 @@ class JSONParser {
   }
 
   bool ParseString(json::Value* out) {
-    std::string out_str;
+    temp_buffer_.clear();
     auto start_pos = input_.GetCurrentPos();
     input_.SkipNextAssumeNoSpace();
     int next_char;
@@ -248,7 +248,7 @@ class JSONParser {
         return false;
       }
       if (next_char == '\"') {
-        *out = String(std::move(out_str));
+        *out = String(temp_buffer_.data(), temp_buffer_.size());
         input_.SkipNextAssumeNoSpace();
         return true;
       }
@@ -260,7 +260,7 @@ class JSONParser {
 #define HANDLE_ESCAPE_CHAR(pattern, val) \
   case pattern:                          \
     input_.SkipNextAssumeNoSpace();      \
-    out_str.push_back(val);              \
+    temp_buffer_.push_back(val);              \
     break
           HANDLE_ESCAPE_CHAR('\"', '\"');
           HANDLE_ESCAPE_CHAR('\\', '\\');
@@ -336,37 +336,37 @@ class JSONParser {
             // 11110xxx 10xxxxxx 10xxxxxx 10xxxxxx    | 0x10000 - end
             // ------------------------------------------------------------
             if (code_point < 0x80) {
-              out_str.push_back(code_point);
+              temp_buffer_.push_back(code_point);
             } else if (code_point < 0x800) {
               // first byte: 110xxxxx (5 effective bits)
               // second byte: 10xxxxxx (6 effecive bits)
               // shift by 6 bits to get the first bytes
-              out_str.push_back(0xC0 | (code_point >> 6));
+              temp_buffer_.push_back(0xC0 | (code_point >> 6));
               // mask by 6 effective bits
-              out_str.push_back(0x80 | (code_point & 0x3F));
+              temp_buffer_.push_back(0x80 | (code_point & 0x3F));
             } else if (code_point < 0x10000) {
               // first byte: 1110xxxx (4 effective bits)
               // second byte: 10xxxxxx (6 effecive bits)
               // third byte: 10xxxxxx (6 effecive bits)
               // shift by 12 bits to get the first bytes
-              out_str.push_back(0xE0 | (code_point >> 12));
+              temp_buffer_.push_back(0xE0 | (code_point >> 12));
               // shift by 6 bits to get the second bytes, mask by 6 effective bits
-              out_str.push_back(0x80 | ((code_point >> 6) & 0x3F));
+              temp_buffer_.push_back(0x80 | ((code_point >> 6) & 0x3F));
               // mask by 6 effective bits
-              out_str.push_back(0x80 | (code_point & 0x3F));
+              temp_buffer_.push_back(0x80 | (code_point & 0x3F));
             } else {
               // first byte: 11110xxx (3 effective bits)
               // second byte: 10xxxxxx (6 effecive bits)
               // third byte: 10xxxxxx (6 effecive bits)
               // fourth byte: 10xxxxxx (6 effecive bits)
               // shift by 18 bits to get the first bytes
-              out_str.push_back(0xF0 | (code_point >> 18));
+              temp_buffer_.push_back(0xF0 | (code_point >> 18));
               // shift by 12 bits to get the second bytes, mask by 6 effective bits
-              out_str.push_back(0x80 | ((code_point >> 12) & 0x3F));
+              temp_buffer_.push_back(0x80 | ((code_point >> 12) & 0x3F));
               // shift by 6 bits to get the third bytes, mask by 6 effective bits
-              out_str.push_back(0x80 | ((code_point >> 6) & 0x3F));
+              temp_buffer_.push_back(0x80 | ((code_point >> 6) & 0x3F));
               // mask by 6 effective bits
-              out_str.push_back(0x80 | (code_point & 0x3F));
+              temp_buffer_.push_back(0x80 | (code_point & 0x3F));
             }
             break;
           }
@@ -376,7 +376,7 @@ class JSONParser {
           }
         }
       } else {
-        out_str.push_back(static_cast<char>(next_char));
+        temp_buffer_.push_back(static_cast<char>(next_char));
         input_.SkipNextAssumeNoSpace();
       }
     }
@@ -411,7 +411,7 @@ class JSONParser {
   }
 
   bool ParseObject(json::Value* out) {
-    json::Object result;
+    size_t stack_top = temp_object_buffer_.size();
     input_.SkipNextAssumeNoSpace();
     input_.SkipSpaces();
     int next_char = input_.Peek();
@@ -422,7 +422,7 @@ class JSONParser {
     // empty object
     if (next_char == '}') {
       input_.SkipNextAssumeNoSpace();
-      *out = result;
+      *out = json::Object();
       return true;
     }
     // non-empty object
@@ -441,11 +441,13 @@ class JSONParser {
       input_.SkipNextAssumeNoSpace();
       json::Value value;
       if (!ParseValue(&value)) return false;
-      result.Set(key, value);
+      temp_object_buffer_.emplace_back(std::move(key), std::move(value));
       input_.SkipSpaces();
       if (input_.Peek() == '}') {
         input_.SkipNextAssumeNoSpace();
-        *out = result;
+        *out = json::Object(temp_object_buffer_.begin() + stack_top, temp_object_buffer_.end());
+        // recover the stack to original state
+        temp_object_buffer_.resize(stack_top);
         return true;
       } else if (input_.Peek() == ',') {
         input_.SkipNextAssumeNoSpace();
@@ -460,8 +462,8 @@ class JSONParser {
   }
 
   bool ParseArray(json::Value* out) {
+    size_t stack_top = temp_array_buffer_.size();
     input_.SkipNextAssumeNoSpace();
-    json::Array result;
     input_.SkipSpaces();
     int next_char = input_.Peek();
     if (next_char == -1) {
@@ -471,7 +473,7 @@ class JSONParser {
     // empty array
     if (next_char == ']') {
       input_.SkipNextAssumeNoSpace();
-      *out = result;
+      *out = json::Array();
       return true;
     }
     // non-empty array
@@ -480,7 +482,7 @@ class JSONParser {
       // no need to skip space here because we already skipped space
       // at the beginning or in previous iteration
       if (!ParseValue(&value)) return false;
-      result.push_back(value);
+      temp_array_buffer_.emplace_back(std::move(value));
       input_.SkipSpaces();
       next_char = input_.Peek();
       if (next_char == ',') {
@@ -489,7 +491,9 @@ class JSONParser {
         input_.SkipSpaces();
       } else if (next_char == ']') {
         input_.SkipNextAssumeNoSpace();
-        *out = result;
+        *out = json::Array(temp_array_buffer_.begin() + stack_top, temp_array_buffer_.end());
+        // recover the stack
+        temp_array_buffer_.resize(stack_top);
         return true;
       } else {
         this->SetErrorExpectingComma();
@@ -630,6 +634,8 @@ class JSONParser {
   JSONStringInputStream input_;
   std::string error_msg_;
   std::string temp_buffer_;
+  std::vector<Any> temp_array_buffer_;
+  std::vector<std::pair<Any, Any>> temp_object_buffer_;
 };
 
 json::Value Parse(const String& json_str, String* error_msg) {
@@ -640,6 +646,9 @@ TVM_FFI_STATIC_INIT_BLOCK({
   namespace refl = tvm::ffi::reflection;
   refl::GlobalDef().def("ffi.json.Parse", [](const String& json_str) {
     return json::Parse(json_str);
+  })
+  .def("ffi.json.StringCopy", [](const String& json_str) {
+    return String(json_str.data(), json_str.size());
   });
 });
 

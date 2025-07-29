@@ -18,9 +18,11 @@ def benchmark_json_parse(name, func, nrepeat=2):
 def run_benchmark():
     ffi_parse = tvm_ffi.get_global_func("ffi.json.Parse")
     picojson_parse = tvm_ffi.get_global_func("ffi.picojson.parse")
+    ffi_string_copy = tvm_ffi.get_global_func("ffi.json.StringCopy")
     benchmark_json_parse("json.loads", json.loads)
     benchmark_json_parse("tvm_ffi.json.Parse", ffi_parse)
     benchmark_json_parse("tvm_ffi.picojson.parse", picojson_parse)
+    benchmark_json_parse("tvm_ffi.json.StringCopy", ffi_string_copy)
 
 
 if __name__ == "__main__":
