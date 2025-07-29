@@ -147,6 +147,8 @@ class JSONParser {
       if (error_msg != nullptr) {
         *error_msg = String("");
       }
+      parser.PrintStats();
+
       return result;
     }
     if (error_msg != nullptr) {
@@ -161,6 +163,16 @@ class JSONParser {
     // note that when we don't throw, error msg is set to indicate
     // an error happens
     return nullptr;
+  }
+
+  void PrintStats() {
+    std::cout << "max_object_size_: " << max_object_size_ << std::endl;
+    std::cout << "max_array_size_: " << max_array_size_ << std::endl;
+    std::cout << "count_str_len_10_: " << count_str_len_10_ << std::endl;
+    std::cout << "count_str_len_15_: " << count_str_len_15_ << std::endl;
+    std::cout << "count_str_total_: " << count_str_total_ << std::endl;
+    std::cout << "count_object_total_: " << count_object_total_ << std::endl;
+    std::cout << "count_array_total_: " << count_array_total_ << std::endl;
   }
 
  private:
@@ -238,6 +250,7 @@ class JSONParser {
   }
 
   bool ParseString(json::Value* out) {
+    count_str_total_++;
     temp_buffer_.clear();
     auto start_pos = input_.GetCurrentPos();
     input_.SkipNextAssumeNoSpace();
@@ -249,6 +262,12 @@ class JSONParser {
       }
       if (next_char == '\"') {
         *out = String(temp_buffer_.data(), temp_buffer_.size());
+        if (temp_buffer_.size() < 10) {
+          count_str_len_10_++;
+        }
+        if (temp_buffer_.size() < 15) {
+          count_str_len_15_++;
+        }
         input_.SkipNextAssumeNoSpace();
         return true;
       }
@@ -411,7 +430,8 @@ class JSONParser {
   }
 
   bool ParseObject(json::Value* out) {
-    size_t stack_top = object_temp_stack_.size();
+    count_object_total_++;
+    json::Object result;
     input_.SkipNextAssumeNoSpace();
     input_.SkipSpaces();
     int next_char = input_.Peek();
@@ -441,13 +461,18 @@ class JSONParser {
       input_.SkipNextAssumeNoSpace();
       json::Value value;
       if (!ParseValue(&value)) return false;
-      object_temp_stack_.emplace_back(key, value);
+      // object_temp_stack_.emplace_back(key, value);
+      result.Set(key, value);
       input_.SkipSpaces();
       if (input_.Peek() == '}') {
         input_.SkipNextAssumeNoSpace();
-        *out = json::Object(object_temp_stack_.begin() + stack_top, object_temp_stack_.end());
+        if (object_temp_stack_.size() > max_object_size_) {
+          max_object_size_ = object_temp_stack_.size();
+        }
+        *out = result;
+        // *out = json::Object(object_temp_stack_.begin() + stack_top, object_temp_stack_.end());
         // recover the stack to original state
-        object_temp_stack_.resize(stack_top);
+        // object_temp_stack_.resize(stack_top);
         return true;
       } else if (input_.Peek() == ',') {
         input_.SkipNextAssumeNoSpace();
@@ -462,6 +487,7 @@ class JSONParser {
   }
 
   bool ParseArray(json::Value* out) {
+    count_array_total_++;
     size_t stack_top = array_temp_stack_.size();
     input_.SkipNextAssumeNoSpace();
     input_.SkipSpaces();
@@ -634,6 +660,14 @@ class JSONParser {
   JSONStringInputStream input_;
   std::string error_msg_;
   std::string temp_buffer_;
+
+  size_t max_object_size_ = 0;
+  size_t max_array_size_ = 0;
+  size_t count_str_len_10_ = 0;
+  size_t count_str_len_15_ = 0;
+  size_t count_str_total_ = 0;
+  size_t count_object_total_ = 0;
+  size_t count_array_total_ = 0;
   // Temp stack for array members, to avoid repeated re-allocations
   // we first create a persistent stack to store the parsed values
   // then create the final array/object object with the precise size
@@ -654,6 +688,7 @@ TVM_FFI_STATIC_INIT_BLOCK({
     return String(json_str.data(), json_str.size());
   });
 });
+
 
 }  // namespace json
 }  // namespace ffi
