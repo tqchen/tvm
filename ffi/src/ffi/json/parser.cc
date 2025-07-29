@@ -411,7 +411,7 @@ class JSONParser {
   }
 
   bool ParseObject(json::Value* out) {
-    size_t stack_top = temp_object_buffer_.size();
+    size_t stack_top = object_temp_stack_.size();
     input_.SkipNextAssumeNoSpace();
     input_.SkipSpaces();
     int next_char = input_.Peek();
@@ -441,13 +441,13 @@ class JSONParser {
       input_.SkipNextAssumeNoSpace();
       json::Value value;
       if (!ParseValue(&value)) return false;
-      temp_object_buffer_.emplace_back(std::move(key), std::move(value));
+      object_temp_stack_.emplace_back(key, value);
       input_.SkipSpaces();
       if (input_.Peek() == '}') {
         input_.SkipNextAssumeNoSpace();
-        *out = json::Object(temp_object_buffer_.begin() + stack_top, temp_object_buffer_.end());
+        *out = json::Object(object_temp_stack_.begin() + stack_top, object_temp_stack_.end());
         // recover the stack to original state
-        temp_object_buffer_.resize(stack_top);
+        object_temp_stack_.resize(stack_top);
         return true;
       } else if (input_.Peek() == ',') {
         input_.SkipNextAssumeNoSpace();
@@ -462,7 +462,7 @@ class JSONParser {
   }
 
   bool ParseArray(json::Value* out) {
-    size_t stack_top = temp_array_buffer_.size();
+    size_t stack_top = array_temp_stack_.size();
     input_.SkipNextAssumeNoSpace();
     input_.SkipSpaces();
     int next_char = input_.Peek();
@@ -482,7 +482,7 @@ class JSONParser {
       // no need to skip space here because we already skipped space
       // at the beginning or in previous iteration
       if (!ParseValue(&value)) return false;
-      temp_array_buffer_.emplace_back(std::move(value));
+      array_temp_stack_.emplace_back(std::move(value));
       input_.SkipSpaces();
       next_char = input_.Peek();
       if (next_char == ',') {
@@ -491,9 +491,9 @@ class JSONParser {
         input_.SkipSpaces();
       } else if (next_char == ']') {
         input_.SkipNextAssumeNoSpace();
-        *out = json::Array(temp_array_buffer_.begin() + stack_top, temp_array_buffer_.end());
+        *out = json::Array(array_temp_stack_.begin() + stack_top, array_temp_stack_.end());
         // recover the stack
-        temp_array_buffer_.resize(stack_top);
+        array_temp_stack_.resize(stack_top);
         return true;
       } else {
         this->SetErrorExpectingComma();
@@ -634,8 +634,11 @@ class JSONParser {
   JSONStringInputStream input_;
   std::string error_msg_;
   std::string temp_buffer_;
-  std::vector<Any> temp_array_buffer_;
-  std::vector<std::pair<Any, Any>> temp_object_buffer_;
+  // Temp stack for array members, to avoid repeated re-allocations
+  // we first create a persistent stack to store the parsed values
+  // then create the final array/object object with the precise size
+  std::vector<Any> array_temp_stack_;
+  std::vector<std::pair<Any, Any>> object_temp_stack_;
 };
 
 json::Value Parse(const String& json_str, String* error_msg) {

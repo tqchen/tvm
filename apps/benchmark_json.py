@@ -4,12 +4,11 @@ import time
 from tvm import ffi as tvm_ffi
 
 
-def benchmark_json_parse(name, func, nrepeat=2):
-    x = open(sys.argv[1], "r").read()
-    func(x)
+def benchmark_json_parse(name, func, data, nrepeat=2):
+    func(data)
     start = time.time()
     for i in range(nrepeat):
-        func(x)
+        func(data)
     end = time.time()
     speed =  (end - start) / nrepeat
     print(f"{name}: {speed} sec/iter")
@@ -19,10 +18,11 @@ def run_benchmark():
     ffi_parse = tvm_ffi.get_global_func("ffi.json.Parse")
     picojson_parse = tvm_ffi.get_global_func("ffi.picojson.parse")
     ffi_string_copy = tvm_ffi.get_global_func("ffi.json.StringCopy")
-    benchmark_json_parse("json.loads", json.loads)
-    benchmark_json_parse("tvm_ffi.json.Parse", ffi_parse)
-    benchmark_json_parse("tvm_ffi.picojson.parse", picojson_parse)
-    benchmark_json_parse("tvm_ffi.json.StringCopy", ffi_string_copy)
+    data = open(sys.argv[1], "r").read()
+    benchmark_json_parse("json.loads", json.loads, data)
+    benchmark_json_parse("tvm_ffi.json.Parse", ffi_parse, data)
+    benchmark_json_parse("tvm_ffi.picojson.parse", picojson_parse, data)
+    benchmark_json_parse("tvm_ffi.json.StringCopy", ffi_string_copy, data)
 
 
 if __name__ == "__main__":

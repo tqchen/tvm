@@ -290,7 +290,7 @@ TEST(JSONParser, LargeInputs) {
 
 TEST(JSONParser, DuplicateKeys) {
   // Test object with duplicate keys
-  auto result = json::Parse("{\"a\": 1, \"a\": 2, \"a\": 3}");
+  auto result = json::Parse("{\"a\": 4, \"a\": 2, \"a\": 3}");
   EXPECT_TRUE(result != nullptr);
   // The last value should be preserved for duplicate keys
   auto obj = result.cast<json::Object>();
