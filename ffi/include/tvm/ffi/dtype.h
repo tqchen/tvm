@@ -135,6 +135,8 @@ struct TypeTraits<DLDataType> : public TypeTraitsBase {
     result->v_uint64 = 0;
     result->type_index = TypeIndex::kTVMFFIDataType;
     result->v_dtype = src;
+    result->extra_word = 0;
+    result->small_len = 0;
   }
 
   TVM_FFI_INLINE static void MoveToAny(DLDataType src, TVMFFIAny* result) {
@@ -142,6 +144,8 @@ struct TypeTraits<DLDataType> : public TypeTraitsBase {
     result->v_uint64 = 0;
     result->type_index = TypeIndex::kTVMFFIDataType;
     result->v_dtype = src;
+    result->extra_word = 0;
+    result->small_len = 0;
   }
 
   TVM_FFI_INLINE static bool CheckAnyStrict(const TVMFFIAny* src) {

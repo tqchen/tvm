@@ -125,6 +125,20 @@ class JSONParserContext {
     return ptr == pend;
   }
 
+  void AssignString(Any* out, const char* start_pos, const char* end_pos) {
+    size_t size = end_pos - start_pos;
+    if (size < 16) {
+      TVMFFIAny any;
+      any.type_index = TypeIndex::kTVMFFISmallStr;
+      any.small_len = size;
+      any.v_uint64 = 0;
+      memcpy(any.v_bytes, start_pos, std::min(size, static_cast<size_t>(16)));
+      *out = AnyView::CopyFromTVMFFIAny(any);
+    } else {
+      *out = String(start_pos, end_pos - start_pos);
+    }
+  }
+
   /*
    * \brief Parse the next strin starting with a double quote.
    * \return The next string, or null if the end of the stream is reached.
@@ -132,7 +146,6 @@ class JSONParserContext {
   bool NextString(Any* out) {
     const char* start_pos = cur_;
     TVM_FFI_ICHECK(*cur_ == '\"');
-
     if (quote_index_ + 1 < quote_pos_.size() && false) {
       for (; quote_pos_[quote_index_] < cur_; ++quote_index_);
       TVM_FFI_ICHECK(quote_pos_[quote_index_] == cur_);
@@ -141,7 +154,7 @@ class JSONParserContext {
         ++cur_;
         cur_ = quote_pos_[quote_index_ + 1] + 1;
         //*out = std::hash<std::string_view>(std::string_view(start_pos + 1, cur_ - start_pos - 1));
-        *out = String(start_pos + 1, cur_ - start_pos - 1);
+        this->AssignString(out, start_pos + 1, cur_);
         quote_index_ += 2;
         ++quote_hit_;
         return true;
@@ -152,7 +165,7 @@ class JSONParserContext {
     // fast path: no escape handling, make sure this loop is fast
     for (; cur_ != end_; ++cur_) {
       if (*cur_ == '\"') {
-        *out = String(start_pos + 1, cur_ - start_pos - 1);
+        this->AssignString(out, start_pos + 1, cur_);
         // *out = std::hash<std::string_view>()(std::string_view(start_pos + 1, cur_ - start_pos - 1));
         // *out = details::StableHashBytes(start_pos + 1, cur_ - start_pos - 1);
         ++cur_;

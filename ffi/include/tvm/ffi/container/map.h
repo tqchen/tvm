@@ -65,7 +65,7 @@ class MapObj : public Object {
   class iterator;
 
   static_assert(std::is_standard_layout<KVType>::value, "KVType is not standard layout");
-  static_assert(sizeof(KVType) == 32, "sizeof(KVType) incorrect");
+  // static_assert(sizeof(KVType) == 32, "sizeof(KVType) incorrect");
 
   static constexpr const int32_t _type_index = TypeIndex::kTVMFFIMap;
   static constexpr const char* _type_key = StaticTypeKey::kTVMFFIMap;

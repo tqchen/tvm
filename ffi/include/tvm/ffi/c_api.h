@@ -123,6 +123,8 @@ typedef enum {
   kTVMFFIByteArrayPtr = 9,
   /*! \brief R-value reference to ObjectRef */
   kTVMFFIObjectRValueRef = 10,
+  /*! \brief small string stored in TVMFFIAny */
+  kTVMFFISmallStr = 11,
   /*! \brief Start of statically defined objects. */
   kTVMFFIStaticObjectBegin = 64,
   /*!
@@ -221,6 +223,7 @@ typedef struct TVMFFIAny {
     char32_t v_char32[2];  // small UCS4 string and Unicode
     uint64_t v_uint64;     // uint64 repr mainly used for hashing
   };
+  uint64_t extra_word;
 } TVMFFIAny;
 
 /*!

@@ -61,6 +61,8 @@ class AnyView {
     data_.type_index = TypeIndex::kTVMFFINone;
     // invariance: always set the union padding part to 0
     data_.v_int64 = 0;
+    data_.extra_word = 0;
+    data_.small_len = 0;
   }
   /*!
    * \brief Swap this array with another Object
@@ -73,6 +75,8 @@ class AnyView {
   AnyView() {
     data_.type_index = TypeIndex::kTVMFFINone;
     data_.v_int64 = 0;
+    data_.extra_word = 0;
+    data_.small_len = 0;
   }
   ~AnyView() = default;
   // constructors from any view
@@ -81,6 +85,8 @@ class AnyView {
   AnyView(AnyView&& other) : data_(other.data_) {
     other.data_.type_index = TypeIndex::kTVMFFINone;
     other.data_.v_int64 = 0;
+    other.data_.extra_word = 0;
+    other.data_.small_len = 0;
   }
   TVM_FFI_INLINE AnyView& operator=(AnyView&& other) {
     // copy-and-swap idiom
@@ -240,6 +246,8 @@ class Any {
     }
     data_.type_index = TVMFFITypeIndex::kTVMFFINone;
     data_.v_int64 = 0;
+        data_.extra_word = 0;
+    data_.small_len = 0;
   }
   /*!
    * \brief Swap this array with another Object
@@ -252,6 +260,8 @@ class Any {
   Any() {
     data_.type_index = TypeIndex::kTVMFFINone;
     data_.v_int64 = 0;
+    data_.extra_word = 0;
+    data_.small_len = 0;
   }
   ~Any() { this->reset(); }
   // constructors from Any
@@ -263,6 +273,8 @@ class Any {
   Any(Any&& other) : data_(other.data_) {
     other.data_.type_index = TypeIndex::kTVMFFINone;
     other.data_.v_int64 = 0;
+    other.data_.extra_word = 0;
+    other.data_.small_len = 0;
   }
   TVM_FFI_INLINE Any& operator=(const Any& other) {
     // copy-and-swap idiom
@@ -486,6 +498,8 @@ struct AnyUnsafe : public ObjectUnsafe {
     TVMFFIAny result = any.data_;
     any.data_.type_index = TypeIndex::kTVMFFINone;
     any.data_.v_int64 = 0;
+    any.data_.extra_word = 0;
+    any.data_.small_len = 0;
     return result;
   }
 
@@ -494,6 +508,8 @@ struct AnyUnsafe : public ObjectUnsafe {
     any.data_ = data;
     data.type_index = TypeIndex::kTVMFFINone;
     data.v_int64 = 0;
+    data.extra_word = 0;
+    data.small_len = 0;
     return any;
   }
 
@@ -544,8 +560,10 @@ struct AnyHash {
    */
   uint64_t operator()(const Any& src) const {
     uint64_t val_hash = [&]() -> uint64_t {
-      if (src.data_.type_index == TypeIndex::kTVMFFIStr ||
-          src.data_.type_index == TypeIndex::kTVMFFIBytes) {
+      if (src.data_.type_index == TypeIndex::kTVMFFISmallStr) {
+        return details::StableHashBytes(src.data_.v_bytes, src.data_.small_len);
+      } else if (src.data_.type_index == TypeIndex::kTVMFFIStr ||
+                 src.data_.type_index == TypeIndex::kTVMFFIBytes) {
         const BytesObjBase* src_str =
             details::AnyUnsafe::CopyFromAnyViewAfterCheck<const BytesObjBase*>(src);
         return details::StableHashBytes(src_str->data, src_str->size);
@@ -567,6 +585,9 @@ struct AnyEqual {
    */
   bool operator()(const Any& lhs, const Any& rhs) const {
     if (lhs.data_.type_index != rhs.data_.type_index) return false;
+    if (lhs.data_.type_index == TypeIndex::kTVMFFISmallStr) {
+      return Bytes::memequal(lhs.data_.v_bytes, rhs.data_.v_bytes, lhs.data_.small_len, rhs.data_.small_len);
+    }
     // byte equivalence
     if (lhs.data_.v_int64 == rhs.data_.v_int64) return true;
     // specialy handle string hash

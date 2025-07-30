@@ -97,6 +97,7 @@ struct TypeTraits<RValueRef<TObjRef>> : public TypeTraitsBase {
     // store the address of the ObjectPtr, which allows us to move the value
     // and set the original ObjectPtr to nullptr
     result->v_ptr = &(src.data_);
+    result->extra_word = 0;
   }
 
   TVM_FFI_INLINE static std::string GetMismatchTypeInfo(const TVMFFIAny* src) {

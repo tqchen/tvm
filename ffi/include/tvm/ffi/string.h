@@ -464,6 +464,8 @@ struct TypeTraits<char[N]> : public TypeTraitsBase {
   TVM_FFI_INLINE static void CopyToAnyView(const char src[N], TVMFFIAny* result) {
     result->type_index = TypeIndex::kTVMFFIRawStr;
     result->v_c_str = src;
+    result->extra_word = 0;
+    result->small_len = 0;
   }
 
   TVM_FFI_INLINE static void MoveToAny(const char src[N], TVMFFIAny* result) {
@@ -480,6 +482,8 @@ struct TypeTraits<const char*> : public TypeTraitsBase {
     TVM_FFI_ICHECK_NOTNULL(src);
     result->type_index = TypeIndex::kTVMFFIRawStr;
     result->v_c_str = src;
+    result->extra_word = 0;
+    result->small_len = 0;
   }
 
   TVM_FFI_INLINE static void MoveToAny(const char* src, TVMFFIAny* result) {
@@ -508,6 +512,8 @@ struct TypeTraits<TVMFFIByteArray*> : public TypeTraitsBase {
     result->type_index = TypeIndex::kTVMFFIByteArrayPtr;
     TVM_FFI_CLEAR_PTR_PADDING_IN_FFI_ANY(result);
     result->v_ptr = src;
+    result->extra_word = 0;
+    result->small_len = 0;
   }
 
   TVM_FFI_INLINE static void MoveToAny(TVMFFIByteArray* src, TVMFFIAny* result) {
@@ -553,6 +559,8 @@ struct TypeTraits<std::string>
   TVM_FFI_INLINE static void CopyToAnyView(const std::string& src, TVMFFIAny* result) {
     result->type_index = TypeIndex::kTVMFFIRawStr;
     result->v_c_str = src.c_str();
+    result->extra_word = 0;
+    result->small_len = 0;
   }
 
   TVM_FFI_INLINE static void MoveToAny(std::string src, TVMFFIAny* result) {
