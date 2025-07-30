@@ -39,9 +39,9 @@ namespace json {
 /*!
  * \brief Helper class to parse a JSON string.
  */
-class JSONStringInputStream {
+class JSONParserContext {
  public:
-  JSONStringInputStream(const char* begin, const char* end)
+  JSONParserContext(const char* begin, const char* end)
       : begin_(begin), cur_(begin), end_(end) {
     last_line_begin_ = cur_;
   }
@@ -110,6 +110,32 @@ class JSONStringInputStream {
     return ptr == pend;
   }
 
+  /*
+   * \brief Parse the next strin starting with a double quote.
+   * \return The next string, or null if the end of the stream is reached.
+  */
+  bool NextString(Any* out) {
+    const char* start_pos = cur_;
+    if (*cur_ != '\"') return false;
+    // skip first double quote
+    ++cur_;
+    // fast path: no escape handling, make sure this loop is fast
+    for (; cur_ != end_; ++cur_) {
+      if (*cur_ == '\"') {
+        *out = String(start_pos + 1, cur_ - start_pos - 1);
+        ++cur_;
+        return true;
+      }
+      if (*cur_ < ' ' || *cur_ == '\\') {
+        // unlikely
+        return this->NextStringWithFullHandling(out, start_pos);
+      }
+    }
+    this->SetCurrentPosForBetterErrorMsg(start_pos);
+    this->SetErrorUnterminatedString();
+    return false;
+  }
+
   /*!
    * \brief Get the current line context.
    * \return The current line context.
@@ -125,161 +151,71 @@ class JSONStringInputStream {
     return String(err_prefix);
   }
 
- private:
-  /*! \brief The beginning of the string */
-  const char* begin_;
-  /*! \brief The current pointer */
-  const char* cur_;
-  /*! \brief End of the string */
-  const char* end_;
-  /*! \brief The beginning of the last line */
-  const char* last_line_begin_;
-  /*! \brief The line counter */
-  int64_t line_counter_{1};
-};
-
-class JSONParser {
- public:
-  static json::Value Parse(const String& json_str, String* error_msg) {
-    JSONParser parser(json_str);
-    json::Value result;
-    if (parser.ParseValue(&result) && parser.ParseTail()) {
-      if (error_msg != nullptr) {
-        *error_msg = String("");
-      }
-      parser.PrintStats();
-
-      return result;
+  std::string FinalizeErrorMsg() {
+    if (error_msg_.empty()) {
+      SetErrorDefault();
     }
-    if (error_msg != nullptr) {
-      if (parser.error_msg_.empty()) {
-        parser.SetErrorDefault();
-      }
-      *error_msg = parser.error_msg_;
-      TVM_FFI_ICHECK(!error_msg->empty());
-    } else {
-      TVM_FFI_THROW(ValueError) << parser.error_msg_;
-    }
-    // note that when we don't throw, error msg is set to indicate
-    // an error happens
-    return nullptr;
+    return std::string(error_msg_);
   }
 
-  void PrintStats() {
-    std::cout << "max_object_size_: " << max_object_size_ << std::endl;
-    std::cout << "max_array_size_: " << max_array_size_ << std::endl;
-    std::cout << "count_str_len_10_: " << count_str_len_10_ << std::endl;
-    std::cout << "count_str_len_15_: " << count_str_len_15_ << std::endl;
-    std::cout << "count_str_total_: " << count_str_total_ << std::endl;
-    std::cout << "count_object_total_: " << count_object_total_ << std::endl;
-    std::cout << "count_array_total_: " << count_array_total_ << std::endl;
+  void SetErrorDefault() { error_msg_ = GetSyntaxErrorContext("Syntax error near"); }
+
+  void SetErrorExpectingValue() { error_msg_ = GetSyntaxErrorContext("Expecting value"); }
+
+  void SetErrorInvalidControlCharacter() {
+    error_msg_ = GetSyntaxErrorContext("Invalid control character at");
+  }
+
+  void SetErrorUnterminatedString() {
+    error_msg_ = GetSyntaxErrorContext("Unterminated string starting at");
+  }
+
+  void SetErrorInvalidUnicodeEscape() {
+    error_msg_ = GetSyntaxErrorContext("Invalid \\uXXXX escape");
+  }
+
+  void SetErrorInvalidSurrogatePair() {
+    error_msg_ = GetSyntaxErrorContext("Invalid surrogate pair of \\uXXXX escapes");
+  }
+
+  void SetErrorInvalidEscape() { error_msg_ = GetSyntaxErrorContext("Invalid \\escape"); }
+
+  void SetErrorExtraData() { error_msg_ = GetSyntaxErrorContext("Extra data"); }
+
+  void SetErrorExpectingPropertyName() {
+    error_msg_ = GetSyntaxErrorContext("Expecting property name enclosed in double quotes");
+  }
+
+  void SetErrorExpectingColon() {
+    error_msg_ = GetSyntaxErrorContext("Expecting \':\' delimiter");
+  }
+
+  void SetErrorExpectingComma() {
+    error_msg_ = GetSyntaxErrorContext("Expecting \',\' delimiter");
   }
 
  private:
-  explicit JSONParser(String json_str)
-      : input_(json_str.data(), json_str.data() + json_str.size()) {}
-
-  bool ParseTail() {
-    input_.SkipSpaces();
-    // there are extra data in the tail
-    if (input_.Peek() != -1) {
-      this->SetErrorExtraData();
-      return false;
-    }
-    return true;
-  }
-
-  bool ParseValue(json::Value* out) {
-    input_.SkipSpaces();
-    // record start pos for cases where we might need to reset
-    // current position for better error message
-    auto start_pos = input_.GetCurrentPos();
-    // check if the end of the string is reached
-    switch (input_.Peek()) {
-      case -1: {
-        this->SetErrorExpectingValue();
-        return false;
-      }
-      case '{': {
-        return ParseObject(out);
-      }
-      case '[': {
-        return ParseArray(out);
-      }
-      case '\"': {
-        return ParseString(out);
-      }
-      case 't': {
-        input_.SkipNextAssumeNoSpace();
-        if (input_.MatchLiteral("rue", 3)) {
-          *out = true;
-          return true;
-        } else {
-          input_.SetCurrentPosForBetterErrorMsg(start_pos);
-          this->SetErrorExpectingValue();
-          return false;
-        }
-      }
-      case 'f': {
-        input_.SkipNextAssumeNoSpace();
-        if (input_.MatchLiteral("alse", 4)) {
-          *out = false;
-          return true;
-        } else {
-          input_.SetCurrentPosForBetterErrorMsg(start_pos);
-          this->SetErrorExpectingValue();
-          return false;
-        }
-      }
-      case 'n': {
-        input_.SkipNextAssumeNoSpace();
-        if (input_.MatchLiteral("ull", 3)) {
-          *out = nullptr;
-          return true;
-        } else {
-          input_.SetCurrentPosForBetterErrorMsg(start_pos);
-          this->SetErrorExpectingValue();
-          return false;
-        }
-      }
-      default: {
-        return ParseNumber(out);
-      }
-    }
-    return false;
-  }
-
-  bool ParseString(json::Value* out) {
-    count_str_total_++;
-    temp_buffer_.clear();
-    auto start_pos = input_.GetCurrentPos();
-    input_.SkipNextAssumeNoSpace();
-    int next_char;
-    while ((next_char = input_.Peek()) != -1) {
-      if (next_char < ' ') {
+  bool NextStringWithFullHandling(Any* out, const char* start_pos) {
+    // copy over the prefix
+    std::string out_str(start_pos + 1, cur_ - start_pos - 1);
+    while (cur_ != end_) {
+      if (*cur_ < ' ') {
         this->SetErrorInvalidControlCharacter();
         return false;
       }
-      if (next_char == '\"') {
-        *out = String(temp_buffer_.data(), temp_buffer_.size());
-        if (temp_buffer_.size() < 10) {
-          count_str_len_10_++;
-        }
-        if (temp_buffer_.size() < 15) {
-          count_str_len_15_++;
-        }
-        input_.SkipNextAssumeNoSpace();
+      if (*cur_ == '\"') {
+        *out = String(std::move(out_str));
+        ++cur_;
         return true;
       }
-      if (next_char == '\\') {
-        input_.SkipNextAssumeNoSpace();
-        next_char = input_.Peek();
-        switch (next_char) {
+      if (*cur_ == '\\') {
+        ++cur_;
+        switch (*cur_) {
           // handle escape characters per JSON spec(RFC 8259)
 #define HANDLE_ESCAPE_CHAR(pattern, val) \
   case pattern:                          \
-    input_.SkipNextAssumeNoSpace();      \
-    temp_buffer_.push_back(val);              \
+    ++cur_;                              \
+    out_str.push_back(val);              \
     break
           HANDLE_ESCAPE_CHAR('\"', '\"');
           HANDLE_ESCAPE_CHAR('\\', '\\');
@@ -291,12 +227,12 @@ class JSONParser {
           HANDLE_ESCAPE_CHAR('t', '\t');
 #undef HANDLE_ESCAPE_CHAR
           case 'u': {
-            auto escape_pos = input_.GetCurrentPos();
+            const char* escape_pos = cur_;
             // handle unicode code point
-            input_.SkipNextAssumeNoSpace();
+            ++cur_;
             int32_t first_i16, code_point = 0;
             if (!Parse4Hex(&first_i16)) {
-              input_.SetCurrentPosForBetterErrorMsg(escape_pos);
+              this->SetCurrentPosForBetterErrorMsg(escape_pos);
               this->SetErrorInvalidUnicodeEscape();
               return false;
             }
@@ -315,26 +251,26 @@ class JSONParser {
             if (first_i16 >= 0xD800 && first_i16 <= 0xDFFF) {
               // we are in the surrogate pair range
               if (first_i16 >= 0xDC00) {
-                input_.SetCurrentPosForBetterErrorMsg(escape_pos);
+                this->SetCurrentPosForBetterErrorMsg(escape_pos);
                 this->SetErrorInvalidSurrogatePair();
                 // we need to return false instead because this range is for W2
                 return false;
               }
-              if (!input_.MatchLiteral("\\u", 2)) {
-                input_.SetCurrentPosForBetterErrorMsg(escape_pos);
+              if (!this->MatchLiteral("\\u", 2)) {
+                this->SetCurrentPosForBetterErrorMsg(escape_pos);
                 this->SetErrorInvalidSurrogatePair();
                 return false;
               }
-              escape_pos = input_.GetCurrentPos();
+              escape_pos = cur_;
               // get the value of the W2 (second i16)
               int32_t second_i16;
               if (!Parse4Hex(&second_i16)) {
-                input_.SetCurrentPosForBetterErrorMsg(escape_pos);
+                this->SetCurrentPosForBetterErrorMsg(escape_pos);
                 this->SetErrorInvalidUnicodeEscape();
                 return false;
               }
               if (!(second_i16 >= 0xDC00 && second_i16 <= 0xDFFF)) {
-                input_.SetCurrentPosForBetterErrorMsg(escape_pos);
+                this->SetCurrentPosForBetterErrorMsg(escape_pos);
                 this->SetErrorInvalidSurrogatePair();
                 return false;
               }
@@ -355,37 +291,37 @@ class JSONParser {
             // 11110xxx 10xxxxxx 10xxxxxx 10xxxxxx    | 0x10000 - end
             // ------------------------------------------------------------
             if (code_point < 0x80) {
-              temp_buffer_.push_back(code_point);
+              out_str.push_back(code_point);
             } else if (code_point < 0x800) {
               // first byte: 110xxxxx (5 effective bits)
               // second byte: 10xxxxxx (6 effecive bits)
               // shift by 6 bits to get the first bytes
-              temp_buffer_.push_back(0xC0 | (code_point >> 6));
+              out_str.push_back(0xC0 | (code_point >> 6));
               // mask by 6 effective bits
-              temp_buffer_.push_back(0x80 | (code_point & 0x3F));
+              out_str.push_back(0x80 | (code_point & 0x3F));
             } else if (code_point < 0x10000) {
               // first byte: 1110xxxx (4 effective bits)
               // second byte: 10xxxxxx (6 effecive bits)
               // third byte: 10xxxxxx (6 effecive bits)
               // shift by 12 bits to get the first bytes
-              temp_buffer_.push_back(0xE0 | (code_point >> 12));
+              out_str.push_back(0xE0 | (code_point >> 12));
               // shift by 6 bits to get the second bytes, mask by 6 effective bits
-              temp_buffer_.push_back(0x80 | ((code_point >> 6) & 0x3F));
+              out_str.push_back(0x80 | ((code_point >> 6) & 0x3F));
               // mask by 6 effective bits
-              temp_buffer_.push_back(0x80 | (code_point & 0x3F));
+              out_str.push_back(0x80 | (code_point & 0x3F));
             } else {
               // first byte: 11110xxx (3 effective bits)
               // second byte: 10xxxxxx (6 effecive bits)
               // third byte: 10xxxxxx (6 effecive bits)
               // fourth byte: 10xxxxxx (6 effecive bits)
               // shift by 18 bits to get the first bytes
-              temp_buffer_.push_back(0xF0 | (code_point >> 18));
+              out_str.push_back(0xF0 | (code_point >> 18));
               // shift by 12 bits to get the second bytes, mask by 6 effective bits
-              temp_buffer_.push_back(0x80 | ((code_point >> 12) & 0x3F));
+              out_str.push_back(0x80 | ((code_point >> 12) & 0x3F));
               // shift by 6 bits to get the third bytes, mask by 6 effective bits
-              temp_buffer_.push_back(0x80 | ((code_point >> 6) & 0x3F));
+              out_str.push_back(0x80 | ((code_point >> 6) & 0x3F));
               // mask by 6 effective bits
-              temp_buffer_.push_back(0x80 | (code_point & 0x3F));
+              out_str.push_back(0x80 | (code_point & 0x3F));
             }
             break;
           }
@@ -395,15 +331,14 @@ class JSONParser {
           }
         }
       } else {
-        temp_buffer_.push_back(static_cast<char>(next_char));
-        input_.SkipNextAssumeNoSpace();
+        out_str.push_back(*cur_);
+        ++cur_;
       }
     }
-    input_.SetCurrentPosForBetterErrorMsg(start_pos);
+    this->SetCurrentPosForBetterErrorMsg(start_pos);
     this->SetErrorUnterminatedString();
     return false;
   }
-
   /*!
    * \brief Parse the four hex digits of a unicode code point per json spec.
    * \param out_i16 The output i16 number
@@ -411,8 +346,8 @@ class JSONParser {
    */
   bool Parse4Hex(int32_t* out_i16) {
     int32_t result = 0;
-    for (int i = 0; i < 4; ++i) {
-      int hex_val = input_.Peek();
+    for (int i = 0; i < 4; ++i, ++cur_) {
+      int hex_val = *reinterpret_cast<const uint8_t*>(cur_);
       if (hex_val >= '0' && hex_val <= '9') {
         hex_val -= '0';
       } else if (hex_val >= 'a' && hex_val <= 'f') {
@@ -422,50 +357,171 @@ class JSONParser {
       } else {
         return false;
       }
-      input_.SkipNextAssumeNoSpace();
       result = result * 16 + hex_val;
     }
     *out_i16 = result;
     return true;
   }
 
+
+  /*! \brief The beginning of the string */
+  const char* begin_;
+  /*! \brief The current pointer */
+  const char* cur_;
+  /*! \brief End of the string */
+  const char* end_;
+  /*! \brief The beginning of the last line */
+  const char* last_line_begin_;
+  /*! \brief The error message */
+  std::string error_msg_;
+  /*! \brief The line counter */
+  int64_t line_counter_{1};
+};
+
+class JSONParser {
+ public:
+  static json::Value Parse(const String& json_str, String* error_msg) {
+    JSONParser parser(json_str);
+    json::Value result;
+    if (parser.ParseValue(&result) && parser.ParseTail()) {
+      if (error_msg != nullptr) {
+        *error_msg = String("");
+      }
+      // parser.PrintStats();
+      return result;
+    }
+    if (error_msg != nullptr) {
+      *error_msg = parser.ctx_.FinalizeErrorMsg();
+      TVM_FFI_ICHECK(!error_msg->empty());
+    } else {
+      TVM_FFI_THROW(ValueError) << parser.ctx_.FinalizeErrorMsg();
+    }
+    // note that when we don't throw, error msg is set to indicate
+    // an error happens
+    return nullptr;
+  }
+
+  void PrintStats() {
+    std::cout << "max_object_size_: " << max_object_size_ << std::endl;
+    std::cout << "max_array_size_: " << max_array_size_ << std::endl;
+    std::cout << "count_str_len_10_: " << count_str_len_10_ << std::endl;
+    std::cout << "count_str_len_15_: " << count_str_len_15_ << std::endl;
+    std::cout << "count_str_total_: " << count_str_total_ << std::endl;
+    std::cout << "count_object_total_: " << count_object_total_ << std::endl;
+    std::cout << "count_array_total_: " << count_array_total_ << std::endl;
+  }
+
+ private:
+  explicit JSONParser(String json_str)
+      : ctx_(json_str.data(), json_str.data() + json_str.size()) {}
+
+  bool ParseTail() {
+    ctx_.SkipSpaces();
+    // there are extra data in the tail
+    if (ctx_.Peek() != -1) {
+      ctx_.SetErrorExtraData();
+      return false;
+    }
+    return true;
+  }
+
+  bool ParseValue(json::Value* out) {
+    ctx_.SkipSpaces();
+    // record start pos for cases where we might need to reset
+    // current position for better error message
+    auto start_pos = ctx_.GetCurrentPos();
+    // check if the end of the string is reached
+    switch (ctx_.Peek()) {
+      case -1: {
+        ctx_.SetErrorExpectingValue();
+        return false;
+      }
+      case '{': {
+        return ParseObject(out);
+      }
+      case '[': {
+        return ParseArray(out);
+      }
+      case '\"': {
+        return ctx_.NextString(out);
+      }
+      case 't': {
+        ctx_.SkipNextAssumeNoSpace();
+        if (ctx_.MatchLiteral("rue", 3)) {
+          *out = true;
+          return true;
+        } else {
+          ctx_.SetCurrentPosForBetterErrorMsg(start_pos);
+          ctx_.SetErrorExpectingValue();
+          return false;
+        }
+      }
+      case 'f': {
+        ctx_.SkipNextAssumeNoSpace();
+        if (ctx_.MatchLiteral("alse", 4)) {
+          *out = false;
+          return true;
+        } else {
+          ctx_.SetCurrentPosForBetterErrorMsg(start_pos);
+          ctx_.SetErrorExpectingValue();
+          return false;
+        }
+      }
+      case 'n': {
+        ctx_.SkipNextAssumeNoSpace();
+        if (ctx_.MatchLiteral("ull", 3)) {
+          *out = nullptr;
+          return true;
+        } else {
+          ctx_.SetCurrentPosForBetterErrorMsg(start_pos);
+          ctx_.SetErrorExpectingValue();
+          return false;
+        }
+      }
+      default: {
+        return ParseNumber(out);
+      }
+    }
+    return false;
+  }
+
   bool ParseObject(json::Value* out) {
     count_object_total_++;
     json::Object result;
-    input_.SkipNextAssumeNoSpace();
-    input_.SkipSpaces();
-    int next_char = input_.Peek();
+    ctx_.SkipNextAssumeNoSpace();
+    ctx_.SkipSpaces();
+    int next_char = ctx_.Peek();
     if (next_char == -1) {
-      this->SetErrorExpectingPropertyName();
+      ctx_.SetErrorExpectingPropertyName();
       return false;
     }
     // empty object
     if (next_char == '}') {
-      input_.SkipNextAssumeNoSpace();
+      ctx_.SkipNextAssumeNoSpace();
       *out = json::Object();
       return true;
     }
     // non-empty object
-    while ((next_char = input_.Peek()) != -1) {
+    while ((next_char = ctx_.Peek()) != -1) {
       if (next_char != '\"') {
-        this->SetErrorExpectingPropertyName();
+        ctx_.SetErrorExpectingPropertyName();
         return false;
       }
       json::Value key;
-      if (!ParseString(&key)) return false;
-      input_.SkipSpaces();
-      if (input_.Peek() != ':') {
-        this->SetErrorExpectingColon();
+      if (!ctx_.NextString(&key)) return false;
+      ctx_.SkipSpaces();
+      if (ctx_.Peek() != ':') {
+        ctx_.SetErrorExpectingColon();
         return false;
       }
-      input_.SkipNextAssumeNoSpace();
+      ctx_.SkipNextAssumeNoSpace();
       json::Value value;
       if (!ParseValue(&value)) return false;
       // object_temp_stack_.emplace_back(key, value);
       result.Set(key, value);
-      input_.SkipSpaces();
-      if (input_.Peek() == '}') {
-        input_.SkipNextAssumeNoSpace();
+      ctx_.SkipSpaces();
+      if (ctx_.Peek() == '}') {
+        ctx_.SkipNextAssumeNoSpace();
         if (object_temp_stack_.size() > max_object_size_) {
           max_object_size_ = object_temp_stack_.size();
         }
@@ -474,12 +530,12 @@ class JSONParser {
         // recover the stack to original state
         // object_temp_stack_.resize(stack_top);
         return true;
-      } else if (input_.Peek() == ',') {
-        input_.SkipNextAssumeNoSpace();
+      } else if (ctx_.Peek() == ',') {
+        ctx_.SkipNextAssumeNoSpace();
         // must skip space so next iteration do not have to do so
-        input_.SkipSpaces();
+        ctx_.SkipSpaces();
       } else {
-        this->SetErrorExpectingComma();
+        ctx_.SetErrorExpectingComma();
         return false;
       }
     }
@@ -489,40 +545,40 @@ class JSONParser {
   bool ParseArray(json::Value* out) {
     count_array_total_++;
     size_t stack_top = array_temp_stack_.size();
-    input_.SkipNextAssumeNoSpace();
-    input_.SkipSpaces();
-    int next_char = input_.Peek();
+    ctx_.SkipNextAssumeNoSpace();
+    ctx_.SkipSpaces();
+    int next_char = ctx_.Peek();
     if (next_char == -1) {
-      this->SetErrorExpectingValue();
+      ctx_.SetErrorExpectingValue();
       return false;
     }
     // empty array
     if (next_char == ']') {
-      input_.SkipNextAssumeNoSpace();
+      ctx_.SkipNextAssumeNoSpace();
       *out = json::Array();
       return true;
     }
     // non-empty array
-    while ((next_char = input_.Peek()) != -1) {
+    while ((next_char = ctx_.Peek()) != -1) {
       json::Value value;
       // no need to skip space here because we already skipped space
       // at the beginning or in previous iteration
       if (!ParseValue(&value)) return false;
       array_temp_stack_.emplace_back(std::move(value));
-      input_.SkipSpaces();
-      next_char = input_.Peek();
+      ctx_.SkipSpaces();
+      next_char = ctx_.Peek();
       if (next_char == ',') {
-        input_.SkipNextAssumeNoSpace();
+        ctx_.SkipNextAssumeNoSpace();
         // must skip space so next iteration do not have to do so
-        input_.SkipSpaces();
+        ctx_.SkipSpaces();
       } else if (next_char == ']') {
-        input_.SkipNextAssumeNoSpace();
+        ctx_.SkipNextAssumeNoSpace();
         *out = json::Array(array_temp_stack_.begin() + stack_top, array_temp_stack_.end());
         // recover the stack
         array_temp_stack_.resize(stack_top);
         return true;
       } else {
-        this->SetErrorExpectingComma();
+        ctx_.SetErrorExpectingComma();
         return false;
       }
     }
@@ -530,7 +586,7 @@ class JSONParser {
   }
 
   bool ParseNumber(json::Value* out) {
-    auto start_pos = input_.GetCurrentPos();
+    auto start_pos = ctx_.GetCurrentPos();
     // JSON number grammar:
     //
     // number = [ minus ] int [ frac ] [ exp ]
@@ -542,54 +598,54 @@ class JSONParser {
     temp_buffer_.clear();
     bool maybe_int = true;
     // parse [minus], cross check for Infinity/NaN/-Infinity
-    int next_char = input_.Peek();
+    int next_char = ctx_.Peek();
     if (next_char == '-') {
-      input_.SkipNextAssumeNoSpace();
+      ctx_.SkipNextAssumeNoSpace();
       temp_buffer_.push_back('-');
-      if (input_.Peek() == 'I') {
-        if (input_.MatchLiteral("Infinity", 8)) {
+      if (ctx_.Peek() == 'I') {
+        if (ctx_.MatchLiteral("Infinity", 8)) {
           *out = -std::numeric_limits<double>::infinity();
           return true;
         } else {
-          input_.SetCurrentPosForBetterErrorMsg(start_pos);
-          this->SetErrorExpectingValue();
+          ctx_.SetCurrentPosForBetterErrorMsg(start_pos);
+          ctx_.SetErrorExpectingValue();
           return false;
         }
       }
     } else if (next_char == 'I') {
-      if (input_.MatchLiteral("Infinity", 8)) {
+      if (ctx_.MatchLiteral("Infinity", 8)) {
         *out = std::numeric_limits<double>::infinity();
         return true;
       } else {
-        input_.SetCurrentPosForBetterErrorMsg(start_pos);
-        this->SetErrorExpectingValue();
+        ctx_.SetCurrentPosForBetterErrorMsg(start_pos);
+        ctx_.SetErrorExpectingValue();
         return false;
       }
     } else if (next_char == 'N') {
-      if (input_.MatchLiteral("NaN", 3)) {
+      if (ctx_.MatchLiteral("NaN", 3)) {
         *out = std::numeric_limits<double>::quiet_NaN();
         return true;
       } else {
-        input_.SetCurrentPosForBetterErrorMsg(start_pos);
-        this->SetErrorExpectingValue();
+        ctx_.SetCurrentPosForBetterErrorMsg(start_pos);
+        ctx_.SetErrorExpectingValue();
         return false;
       }
     }
     // read in all parts that are possibly part of a number
-    while ((next_char = input_.Peek()) != -1) {
+    while ((next_char = ctx_.Peek()) != -1) {
       if ((next_char >= '0' && next_char <= '9') || next_char == 'e' || next_char == 'E' ||
           next_char == '+' || next_char == '-' || next_char == '.') {
         temp_buffer_.push_back(next_char);
         if (next_char == '.' || next_char == 'e' || next_char == 'E') {
           maybe_int = false;
         }
-        input_.SkipNextAssumeNoSpace();
+        ctx_.SkipNextAssumeNoSpace();
       } else {
         break;
       }
     }
     if (temp_buffer_.empty()) {
-      this->SetErrorExpectingValue();
+      ctx_.SetErrorExpectingValue();
       return false;
     }
     // parse from temp_buffer_
@@ -614,51 +670,15 @@ class JSONParser {
         *out = double_val;
         return true;
       } else {
-        input_.SetCurrentPosForBetterErrorMsg(start_pos);
-        this->SetErrorExpectingValue();
+        ctx_.SetCurrentPosForBetterErrorMsg(start_pos);
+        ctx_.SetErrorExpectingValue();
         return false;
       }
     }
   }
 
-  void SetErrorDefault() { error_msg_ = input_.GetSyntaxErrorContext("Syntax error near"); }
 
-  void SetErrorExpectingValue() { error_msg_ = input_.GetSyntaxErrorContext("Expecting value"); }
-
-  void SetErrorInvalidControlCharacter() {
-    error_msg_ = input_.GetSyntaxErrorContext("Invalid control character at");
-  }
-
-  void SetErrorUnterminatedString() {
-    error_msg_ = input_.GetSyntaxErrorContext("Unterminated string starting at");
-  }
-
-  void SetErrorInvalidUnicodeEscape() {
-    error_msg_ = input_.GetSyntaxErrorContext("Invalid \\uXXXX escape");
-  }
-
-  void SetErrorInvalidSurrogatePair() {
-    error_msg_ = input_.GetSyntaxErrorContext("Invalid surrogate pair of \\uXXXX escapes");
-  }
-
-  void SetErrorInvalidEscape() { error_msg_ = input_.GetSyntaxErrorContext("Invalid \\escape"); }
-
-  void SetErrorExtraData() { error_msg_ = input_.GetSyntaxErrorContext("Extra data"); }
-
-  void SetErrorExpectingPropertyName() {
-    error_msg_ = input_.GetSyntaxErrorContext("Expecting property name enclosed in double quotes");
-  }
-
-  void SetErrorExpectingColon() {
-    error_msg_ = input_.GetSyntaxErrorContext("Expecting \':\' delimiter");
-  }
-
-  void SetErrorExpectingComma() {
-    error_msg_ = input_.GetSyntaxErrorContext("Expecting \',\' delimiter");
-  }
-
-  JSONStringInputStream input_;
-  std::string error_msg_;
+  JSONParserContext ctx_;
   std::string temp_buffer_;
 
   size_t max_object_size_ = 0;
