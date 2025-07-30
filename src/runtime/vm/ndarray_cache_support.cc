@@ -378,7 +378,14 @@ TVM_FFI_STATIC_INIT_BLOCK({
                       names.push_back(args[i].cast<String>());
                     }
                     *rv = ParamModuleNode::GetParamByName(names);
-                  });
+                  })
+    .def("ffi.picojson.parse", [](const String& json_str) {
+        picojson::value json_info;
+        std::string err = picojson::parse(json_info, json_str);
+        if (!err.empty()) {
+          LOG(FATAL) << "Failed to parse JSON: err. The JSON string is:" << json_str;
+        }
+      });
 });
 
 }  // namespace vm
