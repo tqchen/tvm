@@ -363,7 +363,6 @@ class JSONParserContext {
     return true;
   }
 
-
   /*! \brief The beginning of the string */
   const char* begin_;
   /*! \brief The current pointer */

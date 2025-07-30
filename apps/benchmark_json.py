@@ -22,8 +22,8 @@ def run_benchmark():
     data = open(sys.argv[1], "r").read()
     data = tvm_ffi.convert(data)
     benchmark_json_parse("json.loads", json.loads, data)
-    # benchmark_json_parse("tvm_ffi.json.Parse", ffi_parse, data)
-    # benchmark_json_parse("tvm_ffi.picojson.parse", picojson_parse, data)
+    benchmark_json_parse("tvm_ffi.json.Parse", ffi_parse, data)
+    benchmark_json_parse("tvm_ffi.picojson.parse", picojson_parse, data)
     benchmark_json_parse("tvm_ffi.json.StringCopy", ffi_string_copy, data)
     benchmark_json_parse("tvm_ffi.json.NewParse", ffi_new_parse, data)
 
