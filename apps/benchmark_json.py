@@ -4,7 +4,7 @@ import time
 from tvm import ffi as tvm_ffi
 
 
-def benchmark_json_parse(name, func, data, nrepeat=2):
+def benchmark_json_parse(name, func, data, nrepeat=4):
     func(data)
     start = time.time()
     for i in range(nrepeat):

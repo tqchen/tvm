@@ -46,6 +46,21 @@ class JSONParserContext {
     last_line_begin_ = cur_;
   }
 
+  void PreProcess() {
+    size_t total_size = end_ - begin_;
+    quote_pos_.reserve(total_size / 8);
+    FindQuotePos(begin_, end_, 0);
+  }
+
+  void FindQuotePos(const char* begin, const char* end, size_t offset) {
+    size_t size = end - begin;
+    for (size_t i = 0; i < size; ++i) {
+      if (begin[i] == '\"') {
+        quote_pos_.push_back(begin + i + offset);
+      }
+    }
+  }
+
   /*!
    * \brief Peek the current character.
    * \return The current character, or -1 if the end of the string is reached.
@@ -116,13 +131,30 @@ class JSONParserContext {
   */
   bool NextString(Any* out) {
     const char* start_pos = cur_;
-    if (*cur_ != '\"') return false;
+    TVM_FFI_ICHECK(*cur_ == '\"');
+
+    if (quote_index_ + 1 < quote_pos_.size() && false) {
+      for (; quote_pos_[quote_index_] < cur_; ++quote_index_);
+      TVM_FFI_ICHECK(quote_pos_[quote_index_] == cur_);
+      if (*(quote_pos_[quote_index_ + 1] - 1) != '\\') {
+        // skip first double quote
+        ++cur_;
+        cur_ = quote_pos_[quote_index_ + 1] + 1;
+        //*out = std::hash<std::string_view>(std::string_view(start_pos + 1, cur_ - start_pos - 1));
+        *out = String(start_pos + 1, cur_ - start_pos - 1);
+        quote_index_ += 2;
+        ++quote_hit_;
+        return true;
+      }
+    }
     // skip first double quote
     ++cur_;
     // fast path: no escape handling, make sure this loop is fast
     for (; cur_ != end_; ++cur_) {
       if (*cur_ == '\"') {
         *out = String(start_pos + 1, cur_ - start_pos - 1);
+        // *out = std::hash<std::string_view>()(std::string_view(start_pos + 1, cur_ - start_pos - 1));
+        // *out = details::StableHashBytes(start_pos + 1, cur_ - start_pos - 1);
         ++cur_;
         return true;
       }
@@ -192,6 +224,10 @@ class JSONParserContext {
 
   void SetErrorExpectingComma() {
     error_msg_ = GetSyntaxErrorContext("Expecting \',\' delimiter");
+  }
+
+  void PrintStats() {
+    std::cout << "quote_hit_: " << quote_hit_ << std::endl;
   }
 
  private:
@@ -375,18 +411,24 @@ class JSONParserContext {
   std::string error_msg_;
   /*! \brief The line counter */
   int64_t line_counter_{1};
+  /*! \brief The quote position */
+  std::vector<const char*> quote_pos_;
+  /*! \brief The quote tracking */
+  size_t quote_index_{0};
+  size_t quote_hit_{0};
 };
 
 class JSONParser {
  public:
   static json::Value Parse(const String& json_str, String* error_msg) {
     JSONParser parser(json_str);
+    parser.ctx_.PreProcess();
     json::Value result;
     if (parser.ParseValue(&result) && parser.ParseTail()) {
       if (error_msg != nullptr) {
         *error_msg = String("");
       }
-      // parser.PrintStats();
+      parser.ctx_.PrintStats();
       return result;
     }
     if (error_msg != nullptr) {
@@ -485,7 +527,7 @@ class JSONParser {
   }
 
   bool ParseObject(json::Value* out) {
-    count_object_total_++;
+    size_t stack_top = object_temp_stack_.size();
     json::Object result;
     ctx_.SkipNextAssumeNoSpace();
     ctx_.SkipSpaces();
@@ -516,18 +558,14 @@ class JSONParser {
       ctx_.SkipNextAssumeNoSpace();
       json::Value value;
       if (!ParseValue(&value)) return false;
-      // object_temp_stack_.emplace_back(key, value);
-      result.Set(key, value);
+      object_temp_stack_.emplace_back(key, value);
+      //result.Set(key, value);
       ctx_.SkipSpaces();
       if (ctx_.Peek() == '}') {
         ctx_.SkipNextAssumeNoSpace();
-        if (object_temp_stack_.size() > max_object_size_) {
-          max_object_size_ = object_temp_stack_.size();
-        }
-        *out = result;
-        // *out = json::Object(object_temp_stack_.begin() + stack_top, object_temp_stack_.end());
+        *out = json::Object(object_temp_stack_.begin() + stack_top, object_temp_stack_.end());
         // recover the stack to original state
-        // object_temp_stack_.resize(stack_top);
+        object_temp_stack_.resize(stack_top);
         return true;
       } else if (ctx_.Peek() == ',') {
         ctx_.SkipNextAssumeNoSpace();
