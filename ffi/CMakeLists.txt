@@ -66,6 +66,7 @@ if (TVM_FFI_USE_EXTRA_CXX_API)
   list(APPEND tvm_ffi_objs_sources
     "${CMAKE_CURRENT_SOURCE_DIR}/src/ffi/extra/structural_equal.cc"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/ffi/extra/structural_hash.cc"
+    "${CMAKE_CURRENT_SOURCE_DIR}/src/ffi/extra/json_parser.cc"
   )
 endif()
 
