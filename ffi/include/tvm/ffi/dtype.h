@@ -134,6 +134,7 @@ struct TypeTraits<DLDataType> : public TypeTraitsBase {
     // clear padding part to ensure the equality check can always check the v_uint64 part
     result->v_uint64 = 0;
     result->type_index = TypeIndex::kTVMFFIDataType;
+    result->zero_padding = 0;
     result->v_dtype = src;
   }
 
@@ -141,6 +142,7 @@ struct TypeTraits<DLDataType> : public TypeTraitsBase {
     // clear padding part to ensure the equality check can always check the v_uint64 part
     result->v_uint64 = 0;
     result->type_index = TypeIndex::kTVMFFIDataType;
+    result->zero_padding = 0;
     result->v_dtype = src;
   }
 

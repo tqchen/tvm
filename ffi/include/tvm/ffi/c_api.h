@@ -96,12 +96,14 @@ typedef enum {
   kTVMFFIDevice = 6,
   /*! \brief DLTensor* */
   kTVMFFIDLTensorPtr = 7,
-  /*! \brief const char**/
+  /*! \brief const char* */
   kTVMFFIRawStr = 8,
   /*! \brief TVMFFIByteArray* */
   kTVMFFIByteArrayPtr = 9,
   /*! \brief R-value reference to ObjectRef */
   kTVMFFIObjectRValueRef = 10,
+  /*! \brief Small string on stack */
+  kTVMFFISmallStr = 11,
   /*! \brief Start of statically defined objects. */
   kTVMFFIStaticObjectBegin = 64,
   /*!
@@ -183,11 +185,16 @@ typedef struct TVMFFIAny {
    * \note The type index of Object and Any are shared in FFI.
    */
   int32_t type_index;
-  /*!
-   * \brief length for on-stack Any object, such as small-string
-   * \note This field is reserved for future compact.
-   */
-  int32_t small_len;
+  union {  // 4 bytes
+    /*! \brief padding, must set to zero for values other than small string. */
+    uint32_t zero_padding;
+    /*!
+     * \brief small string header, small_str_header[0] is the length of the string,
+     *        followed by the content of the string.
+     * \note This field is used to store small string on stack.
+     */
+    uint8_t small_str_header[4];
+  };
   union {                  // 8 bytes
     int64_t v_int64;       // integers
     double v_float64;      // floating-point numbers

@@ -170,7 +170,8 @@ TVM_FFI_INLINE uint64_t StableHashCombine(uint64_t key, const T& value) {
  * \param size The size of the bytes.
  * \return the hash value.
  */
-TVM_FFI_INLINE uint64_t StableHashBytes(const char* data, size_t size) {
+TVM_FFI_INLINE uint64_t StableHashBytes(const void* data_ptr, size_t size) {
+  const char* data = reinterpret_cast<const char*>(data_ptr);
   const constexpr uint64_t kMultiplier = 1099511628211ULL;
   const constexpr uint64_t kMod = 2147483647ULL;
   union Union {

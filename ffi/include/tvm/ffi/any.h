@@ -60,6 +60,7 @@ class AnyView {
   void reset() {
     data_.type_index = TypeIndex::kTVMFFINone;
     // invariance: always set the union padding part to 0
+    data_.zero_padding = 0;
     data_.v_int64 = 0;
   }
   /*!
@@ -72,6 +73,7 @@ class AnyView {
   // default constructors
   AnyView() {
     data_.type_index = TypeIndex::kTVMFFINone;
+    data_.zero_padding = 0;
     data_.v_int64 = 0;
   }
   ~AnyView() = default;
@@ -80,6 +82,7 @@ class AnyView {
   AnyView& operator=(const AnyView&) = default;
   AnyView(AnyView&& other) : data_(other.data_) {
     other.data_.type_index = TypeIndex::kTVMFFINone;
+    other.data_.zero_padding = 0;
     other.data_.v_int64 = 0;
   }
   TVM_FFI_INLINE AnyView& operator=(AnyView&& other) {
@@ -204,6 +207,7 @@ TVM_FFI_INLINE void InplaceConvertAnyViewToAny(TVMFFIAny* data,
       // convert byte array to owned bytes object
       Bytes temp(*static_cast<TVMFFIByteArray*>(data->v_ptr));
       data->type_index = TypeIndex::kTVMFFIBytes;
+      data->zero_padding = 0;
       data->v_obj = details::ObjectUnsafe::MoveObjectRefToTVMFFIObjectPtr(std::move(temp));
     } else if (data->type_index == TypeIndex::kTVMFFIObjectRValueRef) {
       // convert rvalue ref to owned object
@@ -213,6 +217,7 @@ TVM_FFI_INLINE void InplaceConvertAnyViewToAny(TVMFFIAny* data,
       // set the rvalue ref to nullptr to avoid double move
       obj_addr[0] = nullptr;
       data->type_index = temp->type_index();
+      data->zero_padding = 0;
       data->v_obj = details::ObjectUnsafe::MoveObjectRefToTVMFFIObjectPtr(std::move(temp));
     }
   }
@@ -239,6 +244,7 @@ class Any {
       details::ObjectUnsafe::DecRefObjectHandle(data_.v_obj);
     }
     data_.type_index = TVMFFITypeIndex::kTVMFFINone;
+    data_.zero_padding = 0;
     data_.v_int64 = 0;
   }
   /*!
@@ -251,6 +257,7 @@ class Any {
   // default constructors
   Any() {
     data_.type_index = TypeIndex::kTVMFFINone;
+    data_.zero_padding = 0;
     data_.v_int64 = 0;
   }
   ~Any() { this->reset(); }
@@ -262,6 +269,7 @@ class Any {
   }
   Any(Any&& other) : data_(other.data_) {
     other.data_.type_index = TypeIndex::kTVMFFINone;
+    other.data_.zero_padding = 0;
     other.data_.v_int64 = 0;
   }
   TVM_FFI_INLINE Any& operator=(const Any& other) {
@@ -485,6 +493,7 @@ struct AnyUnsafe : public ObjectUnsafe {
   TVM_FFI_INLINE static TVMFFIAny MoveAnyToTVMFFIAny(Any&& any) {
     TVMFFIAny result = any.data_;
     any.data_.type_index = TypeIndex::kTVMFFINone;
+    any.data_.zero_padding = 0;
     any.data_.v_int64 = 0;
     return result;
   }
@@ -493,6 +502,7 @@ struct AnyUnsafe : public ObjectUnsafe {
     Any any;
     any.data_ = data;
     data.type_index = TypeIndex::kTVMFFINone;
+    data.zero_padding = 0;
     data.v_int64 = 0;
     return any;
   }
@@ -549,6 +559,9 @@ struct AnyHash {
         const BytesObjBase* src_str =
             details::AnyUnsafe::CopyFromAnyViewAfterCheck<const BytesObjBase*>(src);
         return details::StableHashBytes(src_str->data, src_str->size);
+      } else if (src.data_.type_index == TypeIndex::kTVMFFISmallStr) {
+        return details::StableHashBytes(src.data_.small_str_header + 1,
+                                        src.data_.small_str_header[0]);
       } else {
         return src.data_.v_uint64;
       }
@@ -566,19 +579,47 @@ struct AnyEqual {
    * \return String equality if both are strings, pointer address equality otherwise.
    */
   bool operator()(const Any& lhs, const Any& rhs) const {
-    if (lhs.data_.type_index != rhs.data_.type_index) return false;
-    // byte equivalence
-    if (lhs.data_.v_int64 == rhs.data_.v_int64) return true;
-    // specialy handle string hash
-    if (lhs.data_.type_index == TypeIndex::kTVMFFIStr ||
-        lhs.data_.type_index == TypeIndex::kTVMFFIBytes) {
-      const BytesObjBase* lhs_str =
-          details::AnyUnsafe::CopyFromAnyViewAfterCheck<const BytesObjBase*>(lhs);
-      const BytesObjBase* rhs_str =
-          details::AnyUnsafe::CopyFromAnyViewAfterCheck<const BytesObjBase*>(rhs);
-      return Bytes::memequal(lhs_str->data, rhs_str->data, lhs_str->size, rhs_str->size);
+    // header with type index
+    const int64_t* lhs_as_int64 = reinterpret_cast<const int64_t*>(&lhs.data_);
+    const int64_t* rhs_as_int64 = reinterpret_cast<const int64_t*>(&rhs.data_);
+    static_assert(sizeof(TVMFFIAny) == 16 && alignof(TVMFFIAny) == 8);
+    // fast path, check byte equality
+    if (lhs_as_int64[0] == rhs_as_int64[0] && lhs_as_int64[1] == rhs_as_int64[1]) {
+      return true;
     }
-    return false;
+    // common false case type index match, in this case we only need to pay attention to string
+    // equality
+    if (lhs.data_.type_index == rhs.data_.type_index) {
+      // specialy handle string hash
+      if (lhs.data_.type_index == TypeIndex::kTVMFFIStr ||
+          lhs.data_.type_index == TypeIndex::kTVMFFIBytes) {
+        const BytesObjBase* lhs_str =
+            details::AnyUnsafe::CopyFromAnyViewAfterCheck<const BytesObjBase*>(lhs);
+        const BytesObjBase* rhs_str =
+            details::AnyUnsafe::CopyFromAnyViewAfterCheck<const BytesObjBase*>(rhs);
+        return Bytes::memequal(lhs_str->data, rhs_str->data, lhs_str->size, rhs_str->size);
+      }
+      return false;
+    } else {
+      // type_index mismatch, if index is not string, return false
+      if (lhs.data_.type_index != kTVMFFIStr && lhs.data_.type_index != kTVMFFISmallStr) {
+        return false;
+      }
+      // small string and normal string comparison
+      if (lhs.data_.type_index == kTVMFFIStr && rhs.data_.type_index == kTVMFFISmallStr) {
+        const BytesObjBase* lhs_str =
+            details::AnyUnsafe::CopyFromAnyViewAfterCheck<const BytesObjBase*>(lhs);
+        return Bytes::memequal(lhs_str->data, rhs.data_.small_str_header + 1, lhs_str->size,
+                               rhs.data_.small_str_header[0]);
+      }
+      if (lhs.data_.type_index == kTVMFFISmallStr && rhs.data_.type_index == kTVMFFIStr) {
+        const BytesObjBase* rhs_str =
+            details::AnyUnsafe::CopyFromAnyViewAfterCheck<const BytesObjBase*>(rhs);
+        return Bytes::memequal(lhs.data_.small_str_header + 1, rhs_str->data,
+                               lhs.data_.small_str_header[0], rhs_str->size);
+      }
+      return false;
+    }
   }
 };
 

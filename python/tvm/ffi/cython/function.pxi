@@ -65,6 +65,7 @@ cdef inline int make_args(tuple py_args, TVMFFIAny* out, list temp_args) except 
         # clear the value to ensure zero padding on 32bit platforms
         if sizeof(void*) != 8:
             out[i].v_int64 = 0
+        out[i].zero_padding = 0
 
         if isinstance(arg, NDArray):
             if (<Object>arg).chandle != NULL:

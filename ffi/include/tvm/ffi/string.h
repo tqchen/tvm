@@ -200,7 +200,7 @@ class Bytes : public ObjectRef {
    *
    * \return true if the two char sequences are equal, false otherwise.
    */
-  static bool memequal(const char* lhs, const char* rhs, size_t lhs_count, size_t rhs_count) {
+  static bool memequal(const void* lhs, const void* rhs, size_t lhs_count, size_t rhs_count) {
     return lhs_count == rhs_count && (lhs == rhs || std::memcmp(lhs, rhs, lhs_count) == 0);
   }
 
@@ -463,6 +463,7 @@ struct TypeTraits<char[N]> : public TypeTraitsBase {
 
   TVM_FFI_INLINE static void CopyToAnyView(const char src[N], TVMFFIAny* result) {
     result->type_index = TypeIndex::kTVMFFIRawStr;
+    result->zero_padding = 0;
     result->v_c_str = src;
   }
 
@@ -479,6 +480,7 @@ struct TypeTraits<const char*> : public TypeTraitsBase {
   TVM_FFI_INLINE static void CopyToAnyView(const char* src, TVMFFIAny* result) {
     TVM_FFI_ICHECK_NOTNULL(src);
     result->type_index = TypeIndex::kTVMFFIRawStr;
+    result->zero_padding = 0;
     result->v_c_str = src;
   }
 
@@ -506,6 +508,7 @@ struct TypeTraits<TVMFFIByteArray*> : public TypeTraitsBase {
   TVM_FFI_INLINE static void CopyToAnyView(TVMFFIByteArray* src, TVMFFIAny* result) {
     TVM_FFI_ICHECK_NOTNULL(src);
     result->type_index = TypeIndex::kTVMFFIByteArrayPtr;
+    result->zero_padding = 0;
     TVM_FFI_CLEAR_PTR_PADDING_IN_FFI_ANY(result);
     result->v_ptr = src;
   }
@@ -552,6 +555,7 @@ struct TypeTraits<std::string>
     : public FallbackOnlyTraitsBase<std::string, const char*, TVMFFIByteArray*, Bytes, String> {
   TVM_FFI_INLINE static void CopyToAnyView(const std::string& src, TVMFFIAny* result) {
     result->type_index = TypeIndex::kTVMFFIRawStr;
+    result->zero_padding = 0;
     result->v_c_str = src.c_str();
   }
 
