@@ -65,13 +65,7 @@ enum TVMFFITypeIndex : int32_t {
 #else
 typedef enum {
 #endif
-  // [Section] On-stack POD and special types: [0, kTVMFFIStaticObjectBegin)
-  // N.B. `kTVMFFIRawStr` is a string backed by a `\0`-terminated char array,
-  // which is not owned by TVMFFIAny. It is required that the following
-  // invariant holds:
-  // - `Any::type_index` is never `kTVMFFIRawStr`
-  // - `AnyView::type_index` can be `kTVMFFIRawStr`
-  //
+
   /*
    * \brief The root type of all FFI objects.
    *
@@ -80,6 +74,13 @@ typedef enum {
    * However, it may appear in field annotations during reflection.
    */
   kTVMFFIAny = -1,
+  // [Section] On-stack POD and special types: [0, kTVMFFIStaticObjectBegin)
+  // N.B. `kTVMFFIRawStr` is a string backed by a `\0`-terminated char array,
+  // which is not owned by TVMFFIAny. It is required that the following
+  // invariant holds:
+  // - `Any::type_index` is never `kTVMFFIRawStr`
+  // - `AnyView::type_index` can be `kTVMFFIRawStr`
+  //
   /*! \brief None/nullptr value */
   kTVMFFINone = 0,
   /*! \brief POD int value */
@@ -96,12 +97,14 @@ typedef enum {
   kTVMFFIDevice = 6,
   /*! \brief DLTensor* */
   kTVMFFIDLTensorPtr = 7,
-  /*! \brief const char**/
+  /*! \brief const char* */
   kTVMFFIRawStr = 8,
   /*! \brief TVMFFIByteArray* */
   kTVMFFIByteArrayPtr = 9,
   /*! \brief R-value reference to ObjectRef */
   kTVMFFIObjectRValueRef = 10,
+  /*! \brief Small string on stack */
+  kTVMFFISmallStr = 11,
   /*! \brief Start of statically defined objects. */
   kTVMFFIStaticObjectBegin = 64,
   /*!
@@ -183,11 +186,16 @@ typedef struct TVMFFIAny {
    * \note The type index of Object and Any are shared in FFI.
    */
   int32_t type_index;
-  /*!
-   * \brief length for on-stack Any object, such as small-string
-   * \note This field is reserved for future compact.
-   */
-  int32_t small_len;
+  union {  // 4 bytes
+    /*! \brief padding, must set to zero for values other than small string. */
+    uint32_t zero_padding;
+    /*!
+     * \brief small string header, small_str_header[0] is the length of the string,
+     *        followed by the content of the string.
+     * \note This field is used to store small string on stack.
+     */
+    uint8_t small_str_header[4];
+  };
   union {                  // 8 bytes
     int64_t v_int64;       // integers
     double v_float64;      // floating-point numbers
@@ -823,7 +831,7 @@ TVM_FFI_DLL int TVMFFIDataTypeFromString(const TVMFFIByteArray* str, DLDataType*
 
  * \note The input dtype is a pointer to the DLDataType to avoid ABI compatibility issues.
  */
-TVM_FFI_DLL int TVMFFIDataTypeToString(const DLDataType* dtype, TVMFFIObjectHandle* out);
+TVM_FFI_DLL int TVMFFIDataTypeToString(const DLDataType* dtype, TVMFFIAny* out);
 
 //------------------------------------------------------------
 // Section: Backend noexcept functions for internal use

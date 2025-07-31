@@ -348,9 +348,10 @@ class TypeTable {
     if (str.size == 0) {
       return TVMFFIByteArray{nullptr, 0};
     }
-    String val = String(str.data, str.size);
-    TVMFFIByteArray c_val{val.data(), val.length()};
-    any_pool_.emplace_back(std::move(val));
+    // use explicit object creation to ensure the space pointer to not move
+    auto str_obj = details::MakeInplaceBytes<StringObj>(str.data, str.size);
+    TVMFFIByteArray c_val{str_obj->data, str_obj->size};
+    any_pool_.emplace_back(ObjectRef(std::move(str_obj)));
     return c_val;
   }
 

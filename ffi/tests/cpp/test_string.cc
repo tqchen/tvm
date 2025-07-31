@@ -54,9 +54,9 @@ TEST(String, Assignment) {
   s = std::move(s2);
   EXPECT_EQ(s == "world2", true);
 
-  ObjectRef r;
+  Any r;
   r = String("hello");
-  EXPECT_EQ(r.defined(), true);
+  EXPECT_EQ(r != nullptr, true);
 }
 
 TEST(String, empty) {
@@ -265,7 +265,7 @@ TEST(String, Cast) {
   using namespace std;
   string source = "this is a string";
   String s{source};
-  ObjectRef r = s;
+  Any r = s;
   String s2 = Downcast<String>(r);
 }
 
@@ -289,9 +289,10 @@ TEST(String, Concat) {
 TEST(String, Any) {
   // test anyview promotion to any
   AnyView view = "hello";
+  EXPECT_EQ(view.type_index(), TypeIndex::kTVMFFIRawStr);
 
   Any b = view;
-  EXPECT_EQ(b.type_index(), TypeIndex::kTVMFFIStr);
+  EXPECT_EQ(b.type_index(), TypeIndex::kTVMFFISmallStr);
   EXPECT_EQ(b.as<String>().value(), "hello");
   EXPECT_TRUE(b.as<String>().has_value());
   EXPECT_EQ(b.try_cast<std::string>().value(), "hello");
@@ -302,7 +303,7 @@ TEST(String, Any) {
 
   String s{"hello"};
   Any a = s;
-  EXPECT_EQ(a.type_index(), TypeIndex::kTVMFFIStr);
+  EXPECT_EQ(a.type_index(), TypeIndex::kTVMFFISmallStr);
   EXPECT_EQ(a.as<String>().value(), "hello");
   EXPECT_EQ(a.try_cast<std::string>().value(), "hello");
 
@@ -382,10 +383,9 @@ TEST(String, StdString) {
 TEST(String, CAPIAccessor) {
   using namespace std;
   String s{"hello"};
-  TVMFFIObjectHandle obj = details::ObjectUnsafe::RawObjectPtrFromObjectRef(s);
-  TVMFFIByteArray* arr = TVMFFIBytesGetByteArrayPtr(obj);
-  EXPECT_EQ(arr->size, 5);
-  EXPECT_EQ(std::string(arr->data, arr->size), "hello");
+  TVMFFIByteArray arr{s.data(), s.size()};
+  EXPECT_EQ(arr.size, 5);
+  EXPECT_EQ(std::string(arr.data, arr.size), "hello");
 }
 
 TEST(String, BytesHash) {

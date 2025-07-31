@@ -40,6 +40,7 @@ cdef extern from "tvm/ffi/c_api.h":
         kTVMFFIRawStr = 8
         kTVMFFIByteArrayPtr = 9
         kTVMFFIObjectRValueRef = 10
+        kTVMFFISmallStr = 11
         kTVMFFIStaticObjectBegin = 64
         kTVMFFIObject = 64
         kTVMFFIStr = 65
@@ -95,7 +96,7 @@ cdef extern from "tvm/ffi/c_api.h":
 
     ctypedef struct TVMFFIAny:
         int32_t type_index
-        int32_t padding
+        int32_t zero_padding
         int64_t v_int64
         double v_float64
         void* v_ptr

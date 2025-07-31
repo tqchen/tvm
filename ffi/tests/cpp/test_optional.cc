@@ -170,4 +170,21 @@ TEST(Optional, OptionalInArray) {
   auto opt_arr = any.cast<Array<Optional<Array<TInt>>>>();
   EXPECT_EQ(opt_arr[0].value()[0]->value, 0);
 }
+
+TEST(Optional, String) {
+  Optional<String> opt_str;
+  EXPECT_TRUE(!opt_str.has_value());
+  EXPECT_EQ(opt_str.value_or("default"), "default");
+  EXPECT_TRUE(opt_str != "default");
+  EXPECT_TRUE(opt_str != String("default"));
+  EXPECT_TRUE(opt_str == std::nullopt);
+
+  opt_str = "hello";
+  EXPECT_TRUE(opt_str.has_value());
+  EXPECT_EQ(opt_str.value(), "hello");
+  EXPECT_TRUE(opt_str == "hello");
+  EXPECT_TRUE(opt_str == String("hello"));
+  EXPECT_TRUE(opt_str != std::nullopt);
+  static_assert(sizeof(Optional<String>) == sizeof(String));
+}
 }  // namespace
