@@ -113,7 +113,9 @@ struct DiscoDebugObject : public Object {
   /*! \brief Deserialize the debug object from string */
   static inline ObjectPtr<DiscoDebugObject> LoadFromStr(std::string json_str);
   /*! \brief Get the size of the debug object in bytes */
-  inline uint64_t GetFFIAnyProtocolBytes() const { return sizeof(uint64_t) + this->SaveToStr().size(); }
+  inline uint64_t GetFFIAnyProtocolBytes() const {
+    return sizeof(uint64_t) + this->SaveToStr().size();
+  }
 
   static constexpr const char* _type_key = "runtime.disco.DiscoDebugObject";
   TVM_DECLARE_FINAL_OBJECT_INFO(DiscoDebugObject, SessionObj);
@@ -137,14 +139,15 @@ inline uint64_t DiscoProtocol<SubClassType>::GetFFIAnyProtocolBytes(const TVMFFI
     return sizeof(uint32_t) + (*opt_debug_obj).GetFFIAnyProtocolBytes();
   } else {
     LOG(FATAL) << "ValueError: Object type is not supported in Disco calling convention: "
-               << any_view_ptr->GetTypeKey() << " (type_index = " << any_view_ptr->type_index() << ")";
+               << any_view_ptr->GetTypeKey() << " (type_index = " << any_view_ptr->type_index()
+               << ")";
   }
 }
 template <class SubClassType>
 inline void DiscoProtocol<SubClassType>::WriteFFIAny(const TVMFFIAny* value) {
   SubClassType* self = static_cast<SubClassType*>(this);
   const AnyView* any_view_ptr = reinterpret_cast<const AnyView*>(value);
-  if (const auto *ref = any_view_ptr->as<DRefObj>()) {
+  if (const auto* ref = any_view_ptr->as<DRefObj>()) {
     int64_t reg_id = ref->reg_id;
     self->template Write<uint32_t>(TypeIndex::kRuntimeDiscoDRef);
     self->template Write<int64_t>(reg_id);
@@ -167,7 +170,8 @@ inline void DiscoProtocol<SubClassType>::WriteFFIAny(const TVMFFIAny* value) {
     self->template WriteArray<char>(str.data(), str.size());
   } else {
     LOG(FATAL) << "ValueError: Object type is not supported in Disco calling convention: "
-               << any_view_ptr->GetTypeKey() << " (type_index = " << any_view_ptr->type_index() << ")";
+               << any_view_ptr->GetTypeKey() << " (type_index = " << any_view_ptr->type_index()
+               << ")";
   }
 }
 

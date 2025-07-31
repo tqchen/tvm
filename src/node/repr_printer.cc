@@ -78,6 +78,7 @@ void ReprPrinter::Print(const ffi::Any& node) {
       Print(node.cast<ObjectRef>());
       break;
     }
+    case ffi::TypeIndex::kTVMFFISmallStr:
     case ffi::TypeIndex::kTVMFFIStr: {
       ffi::String str = node.cast<ffi::String>();
       stream << '"' << support::StrEscape(str.data(), str.size()) << '"';

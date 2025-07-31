@@ -225,13 +225,14 @@ class RPCEndpoint::EventHandler : public dmlc::Stream {
     // Rationale note: Only handle remote object allows the same mechanism to work for minRPC
     // which is needed for wasm and other env that goes through C API
     const AnyView* any_view_ptr = reinterpret_cast<const AnyView*>(in);
-    if (const auto *ref = any_view_ptr->as<RPCObjectRefObj>()) {
+    if (const auto* ref = any_view_ptr->as<RPCObjectRefObj>()) {
       this->template Write<uint32_t>(runtime::TypeIndex::kRuntimeRPCObjectRef);
       uint64_t handle = reinterpret_cast<uint64_t>(ref->object_handle());
       this->template Write<int64_t>(handle);
     } else {
       LOG(FATAL) << "ValueError: Object type is not supported in RPC calling convention: "
-                 << any_view_ptr->GetTypeKey() << " (type_index = " << any_view_ptr->type_index() << ")";
+                 << any_view_ptr->GetTypeKey() << " (type_index = " << any_view_ptr->type_index()
+                 << ")";
     }
   }
   uint64_t GetFFIAnyProtocolBytes(const TVMFFIAny* in) {
@@ -240,7 +241,8 @@ class RPCEndpoint::EventHandler : public dmlc::Stream {
       return sizeof(uint32_t) + sizeof(int64_t);
     } else {
       LOG(FATAL) << "ValueError: Object type is not supported in RPC calling convention: "
-                 << any_view_ptr->GetTypeKey() << " (type_index = " << any_view_ptr->type_index() << ")";
+                 << any_view_ptr->GetTypeKey() << " (type_index = " << any_view_ptr->type_index()
+                 << ")";
       TVM_FFI_UNREACHABLE();
     }
   }

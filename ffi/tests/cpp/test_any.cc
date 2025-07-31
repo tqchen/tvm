@@ -394,4 +394,15 @@ TEST(Any, ObjectMove) {
   EXPECT_TRUE(any1 == nullptr);
 }
 
+TEST(Any, AnyEqual) {
+  // small string
+  Any a = "a";
+  // on heap allocated string
+  Any b = String(std::string("a"));
+  EXPECT_EQ(a.type_index(), TypeIndex::kTVMFFISmallStr);
+  EXPECT_EQ(b.type_index(), TypeIndex::kTVMFFIStr);
+  EXPECT_TRUE(AnyEqual()(a, b));
+  EXPECT_EQ(AnyHash()(a), AnyHash()(b));
+}
+
 }  // namespace

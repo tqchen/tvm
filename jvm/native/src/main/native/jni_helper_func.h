@@ -223,10 +223,12 @@ jobject tvmRetValueToJava(JNIEnv* env, TVMFFIAny value) {
     case TypeIndex::kTVMFFINDArray: {
       return newNDArray(env, reinterpret_cast<jlong>(value.v_obj), false);
     }
+    case TypeIndex::kTVMFFISmallStr: {
+      TVMFFIByteArray arr = TVMFFISmallStrGetContentByteArray(&value);
+      return newTVMValueString(env, &arr);
+    }
     case TypeIndex::kTVMFFIStr: {
-      jobject ret = newTVMValueString(env, TVMFFIBytesGetByteArrayPtr(value.v_obj));
-      TVMFFIObjectFree(value.v_obj);
-      return ret;
+      return newTVMValueString(env, TVMFFIBytesGetByteArrayPtr(value.v_obj));
     }
     case TypeIndex::kTVMFFIBytes: {
       jobject ret = newTVMValueBytes(env, TVMFFIBytesGetByteArrayPtr(value.v_obj));

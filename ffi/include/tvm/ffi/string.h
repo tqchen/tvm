@@ -47,7 +47,9 @@
 namespace tvm {
 namespace ffi {
 namespace details {
-/*! \brief Base class for bytes and string. */
+/*!
+ * \brief Base class for bytes and string objects.
+ */
 class BytesObjBase : public Object, public TVMFFIByteArray {};
 
 /*!
@@ -198,7 +200,7 @@ class Bytes : public ObjectRef {
    *
    * \return true if the two char sequences are equal, false otherwise.
    */
-  static bool memequal(const char* lhs, const char* rhs, size_t lhs_count, size_t rhs_count) {
+  static bool memequal(const void* lhs, const void* rhs, size_t lhs_count, size_t rhs_count) {
     return lhs_count == rhs_count && (lhs == rhs || std::memcmp(lhs, rhs, lhs_count) == 0);
   }
 
@@ -232,9 +234,78 @@ class Bytes : public ObjectRef {
  *
  * \endcode
  */
-class String : public ObjectRef {
+class String {
  public:
-  String(std::nullptr_t) = delete;  // NOLINT(*)
+  /*!
+   * \brief constructor
+   */
+  String() {
+    data_.type_index = TypeIndex::kTVMFFISmallStr;
+    data_.zero_padding = 0;
+    data_.v_int64 = 0;
+  }
+  // constructors from Any
+  String(const String& other) : data_(other.data_) {
+    if (data_.type_index == TypeIndex::kTVMFFIStr) {
+      details::ObjectUnsafe::IncRefObjectHandle(data_.v_obj);
+    }
+  }
+
+  String(String&& other) : data_(other.data_) {
+    other.data_.type_index = TypeIndex::kTVMFFISmallStr;
+    other.data_.zero_padding = 0;
+    other.data_.v_int64 = 0;
+  }
+
+  /*!
+   * \brief Destructor
+   */
+  ~String() {
+    if (data_.type_index == TypeIndex::kTVMFFIStr) {
+      details::ObjectUnsafe::DecRefObjectHandle(data_.v_obj);
+    }
+  }
+
+  /*!
+   * \brief Swap this String with another string
+   * \param other The other string
+   */
+  TVM_FFI_INLINE void swap(String& other) noexcept {  // NOLINT(*)
+    std::swap(data_, other.data_);
+  }
+
+  TVM_FFI_INLINE String& operator=(const String& other) {
+    // copy-and-swap idiom
+    String(other).swap(*this);  // NOLINT(*)
+    return *this;
+  }
+
+  TVM_FFI_INLINE String& operator=(String&& other) {
+    // copy-and-swap idiom
+    String(std::move(other)).swap(*this);  // NOLINT(*)
+    return *this;
+  }
+
+  TVM_FFI_INLINE String& operator=(const std::string& other) {
+    String(other).swap(*this);  // NOLINT(*)
+    return *this;
+  }
+  TVM_FFI_INLINE String& operator=(std::string&& other) {
+    String(std::move(other)).swap(*this);  // NOLINT(*)
+    return *this;
+  }
+
+  TVM_FFI_INLINE String& operator=(const char* other) {
+    String(other).swap(*this);  // NOLINT(*)
+    return *this;
+  }
+
+  /*!
+   * \brief constructor from raw string
+   *
+   * \param other a char array.
+   */
+  String(const char* other, size_t size) { this->InitData(other, size); }
 
   /*!
    * \brief constructor from char [N]
@@ -242,65 +313,80 @@ class String : public ObjectRef {
    * \param other a char array.
    */
   template <size_t N>
-  String(const char other[N])  // NOLINT(*)
-      : ObjectRef(details::MakeInplaceBytes<details::StringObj>(other, N)) {}
-
-  /*!
-   * \brief constructor
-   */
-  String() : String("") {}
+  String(const char other[N]) {  // NOLINT(*)
+    this->InitData(other, N);
+  }
 
   /*!
    * \brief constructor from raw string
    *
    * \param other a char array.
    */
-  String(const char* other)  // NOLINT(*)
-      : ObjectRef(details::MakeInplaceBytes<details::StringObj>(other, std::strlen(other))) {}
-
-  /*!
-   * \brief constructor from raw string
-   *
-   * \param other a char array.
-   */
-  String(const char* other, size_t size)  // NOLINT(*)
-      : ObjectRef(details::MakeInplaceBytes<details::StringObj>(other, size)) {}
+  String(const char* other) {  // NOLINT(*)
+    this->InitData(other, std::strlen(other));
+  }
 
   /*!
    * \brief Construct a new string object
    * \param other The std::string object to be copied
    */
-  String(const std::string& other)  // NOLINT(*)
-      : ObjectRef(details::MakeInplaceBytes<details::StringObj>(other.data(), other.size())) {}
+  String(const std::string& other) {  // NOLINT(*)
+    this->InitData(other.data(), other.size());
+  }
 
   /*!
    * \brief Construct a new string object
    * \param other The std::string object to be moved
    */
-  String(std::string&& other)  // NOLINT(*)
-      : ObjectRef(make_object<details::BytesObjStdImpl<details::StringObj>>(std::move(other))) {}
+  String(std::string&& other) {  // NOLINT(*)
+    // exception safety, first set to none so if exception is thrown
+    // destructor works correctly
+    data_.type_index = TypeIndex::kTVMFFINone;
+    data_.zero_padding = 0;
+    TVM_FFI_CLEAR_PTR_PADDING_IN_FFI_ANY(&data_);
+    data_.v_obj = details::ObjectUnsafe::MoveObjectPtrToTVMFFIObjectPtr(
+        make_object<details::BytesObjStdImpl<details::StringObj>>(std::move(other)));
+    data_.type_index = TypeIndex::kTVMFFIStr;
+  }
 
   /*!
    * \brief constructor from TVMFFIByteArray
    *
    * \param other a TVMFFIByteArray.
    */
-  explicit String(TVMFFIByteArray other)
-      : ObjectRef(details::MakeInplaceBytes<details::StringObj>(other.data, other.size)) {}
+  explicit String(TVMFFIByteArray other) { this->InitData(other.data, other.size); }
 
   /*!
-   * \brief Swap this String with another string
-   * \param other The other string
+   * \brief Return the data pointer
+   *
+   * \return const char* data pointer
    */
-  void swap(String& other) {  // NOLINT(*)
-    std::swap(data_, other.data_);
+  const char* data() const noexcept {
+    if (data_.type_index != TypeIndex::kTVMFFIStr) {
+      return reinterpret_cast<const char*>(data_.small_str_header + 1);
+    } else {
+      return TVMFFIBytesGetByteArrayPtr(data_.v_obj)->data;
+    }
   }
 
-  template <typename T>
-  String& operator=(T&& other) {
-    // copy-and-swap idiom
-    String(std::forward<T>(other)).swap(*this);  // NOLINT(*)
-    return *this;
+  /*!
+   * \brief Returns a pointer to the char array in the string.
+   *
+   * \return const char*
+   */
+  const char* c_str() const noexcept { return data(); }
+
+  /*!
+   * \brief Return the length of the string
+   *
+   * \return size_t string length
+   */
+  size_t size() const noexcept {
+    if (data_.type_index != TypeIndex::kTVMFFIStr) {
+      return data_.small_str_header[0];
+    } else {
+      return TVMFFIBytesGetByteArrayPtr(data_.v_obj)->size;
+    }
   }
 
   /*!
@@ -363,23 +449,6 @@ class String : public ObjectRef {
   }
 
   /*!
-   * \brief Returns a pointer to the char array in the string.
-   *
-   * \return const char*
-   */
-  const char* c_str() const { return get()->data; }
-
-  /*!
-   * \brief Return the length of the string
-   *
-   * \return size_t string length
-   */
-  size_t size() const {
-    const auto* ptr = get();
-    return ptr->size;
-  }
-
-  /*!
    * \brief Return the length of the string
    *
    * \return size_t string length
@@ -408,22 +477,65 @@ class String : public ObjectRef {
   }
 
   /*!
-   * \brief Return the data pointer
-   *
-   * \return const char* data pointer
-   */
-  const char* data() const { return get()->data; }
-
-  /*!
    * \brief Convert String to an std::string object
    *
    * \return std::string
    */
-  operator std::string() const { return std::string{get()->data, size()}; }
-
-  TVM_FFI_DEFINE_NOTNULLABLE_OBJECT_REF_METHODS(String, ObjectRef, details::StringObj);
+  operator std::string() const { return std::string{data(), size()}; }
 
  private:
+  friend struct TypeTraits<String>;
+  template <typename, typename>
+  friend class Optional;
+  /*!
+   * \brief backing data of the string container
+   * \note Need to explicitly operate on raw TVMFFIAny to avoid dependency on AnyView/Any
+   */
+  TVMFFIAny data_;
+  // create a new String from TVMFFIAny, must keep private
+  explicit String(TVMFFIAny data) : data_(std::move(data)) {}
+  // special constructor only for Optional<String>
+  // we should not use this constructor directly and it is kept as private
+  explicit String(std::nullopt_t) {
+    data_.type_index = TypeIndex::kTVMFFINone;
+    data_.zero_padding = 0;
+    data_.v_int64 = 0;
+  }
+  /*!
+   * \brief Create a new empty space for a string
+   * \param size The size of the string
+   * \return A pointer to the empty space
+   */
+  char* InitSpaceForSize(size_t size) {
+    // need to reserve one byte for \0, plus two bytes from header
+    constexpr size_t kMaxSmallStrLen = sizeof(int64_t) + 2;
+    // first zero the content, this is important for exception safety
+    data_.type_index = TypeIndex::kTVMFFISmallStr;
+    data_.zero_padding = 0;
+    data_.v_int64 = 0;
+    if (size <= kMaxSmallStrLen) {
+      // set up the size accordingly
+      data_.small_str_header[0] = static_cast<uint8_t>(size);
+      return reinterpret_cast<char*>(data_.small_str_header + 1);
+    } else {
+      // allocate from heap
+      ObjectPtr<details::StringObj> ptr =
+          make_inplace_array_object<details::StringObj, char>(size + 1);
+      char* dest_data = reinterpret_cast<char*>(ptr.get()) + sizeof(details::StringObj);
+      ptr->data = dest_data;
+      ptr->size = size;
+      data_.v_obj = details::ObjectUnsafe::MoveObjectPtrToTVMFFIObjectPtr(std::move(ptr));
+      // now reset the type index to str
+      data_.type_index = TypeIndex::kTVMFFIStr;
+      return dest_data;
+    }
+  }
+  // create a new TVMFFIAny from the data and size
+  void InitData(const char* data, size_t size) {
+    char* dest_data = InitSpaceForSize(size);
+    std::memcpy(dest_data, data, size);
+    dest_data[size] = '\0';
+  }
   /*!
    * \brief Concatenate two char sequences
    *
@@ -435,9 +547,24 @@ class String : public ObjectRef {
    * \return The concatenated char sequence
    */
   static String Concat(const char* lhs, size_t lhs_size, const char* rhs, size_t rhs_size) {
-    std::string ret(lhs, lhs_size);
-    ret.append(rhs, rhs_size);
-    return String(ret);
+    String ret;
+    // disable stringop-overflow and restrict warnings
+    // gcc may produce false positive when we enable dest_data returned from small string path
+    // Because compiler is not able to detect the condition that the path is only triggered via
+    // size < kMaxSmallStrLen and can report it as a overflow case.
+#if (__GNUC__) && !(__clang__)
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wstringop-overflow"
+#pragma GCC diagnostic ignored "-Wrestrict"
+#endif
+    char* dest_data = ret.InitSpaceForSize(lhs_size + rhs_size);
+    std::memcpy(dest_data, lhs, lhs_size);
+    std::memcpy(dest_data + lhs_size, rhs, rhs_size);
+    dest_data[lhs_size + rhs_size] = '\0';
+#if (__GNUC__) && !(__clang__)
+#pragma GCC diagnostic pop
+#endif
+    return ret;
   }
 
   // Overload + operator
@@ -453,6 +580,65 @@ TVM_FFI_INLINE std::string_view ToStringView(TVMFFIByteArray str) {
   return std::string_view(str.data, str.size);
 }
 
+template <>
+inline constexpr bool use_default_type_traits_v<String> = false;
+
+// specialize to enable implicit conversion from const char*
+template <>
+struct TypeTraits<String> : public TypeTraitsBase {
+  // string can be union type of small string and object, so keep it as any
+  static constexpr int32_t field_static_type_index = TypeIndex::kTVMFFIAny;
+
+  TVM_FFI_INLINE static void CopyToAnyView(const String& src, TVMFFIAny* result) {
+    *result = src.data_;
+  }
+
+  TVM_FFI_INLINE static void MoveToAny(String src, TVMFFIAny* result) {
+    *result = src.data_;
+    src.data_.type_index = TypeIndex::kTVMFFINone;
+  }
+
+  TVM_FFI_INLINE static bool CheckAnyStrict(const TVMFFIAny* src) {
+    return src->type_index == TypeIndex::kTVMFFISmallStr ||
+           src->type_index == TypeIndex::kTVMFFIStr;
+  }
+
+  TVM_FFI_INLINE static String CopyFromAnyViewAfterCheck(const TVMFFIAny* src) {
+    if (src->type_index == TypeIndex::kTVMFFIStr) {
+      TVMFFIAny temp = *src;
+      details::ObjectUnsafe::IncRefObjectHandle(temp.v_obj);
+      return String(temp);
+    } else {
+      return String(*src);
+    }
+  }
+
+  TVM_FFI_INLINE static String MoveFromAnyAfterCheck(TVMFFIAny* src) {
+    TVMFFIAny temp = *src;
+    src->type_index = TypeIndex::kTVMFFINone;
+    src->zero_padding = 0;
+    src->v_int64 = 0;
+    return String(temp);
+  }
+
+  TVM_FFI_INLINE static std::optional<String> TryCastFromAnyView(const TVMFFIAny* src) {
+    if (src->type_index == TypeIndex::kTVMFFIRawStr) {
+      return String(src->v_c_str);
+    }
+    if (src->type_index == TypeIndex::kTVMFFISmallStr) {
+      return String(*src);
+    }
+    if (src->type_index == TypeIndex::kTVMFFIStr) {
+      TVMFFIAny temp = *src;
+      details::ObjectUnsafe::IncRefObjectHandle(temp.v_obj);
+      return String(temp);
+    }
+    return std::nullopt;
+  }
+
+  TVM_FFI_INLINE static std::string TypeStr() { return "str"; }
+};
+
 // const char*, requirement: not nullable, do not retain ownership
 template <int N>
 struct TypeTraits<char[N]> : public TypeTraitsBase {
@@ -461,12 +647,13 @@ struct TypeTraits<char[N]> : public TypeTraitsBase {
 
   TVM_FFI_INLINE static void CopyToAnyView(const char src[N], TVMFFIAny* result) {
     result->type_index = TypeIndex::kTVMFFIRawStr;
+    result->zero_padding = 0;
     result->v_c_str = src;
   }
 
   TVM_FFI_INLINE static void MoveToAny(const char src[N], TVMFFIAny* result) {
     // when we need to move to any, convert to owned object first
-    ObjectRefTypeTraitsBase<String>::MoveToAny(String(src), result);
+    TypeTraits<String>::MoveToAny(String(src), result);
   }
 };
 
@@ -477,12 +664,13 @@ struct TypeTraits<const char*> : public TypeTraitsBase {
   TVM_FFI_INLINE static void CopyToAnyView(const char* src, TVMFFIAny* result) {
     TVM_FFI_ICHECK_NOTNULL(src);
     result->type_index = TypeIndex::kTVMFFIRawStr;
+    result->zero_padding = 0;
     result->v_c_str = src;
   }
 
   TVM_FFI_INLINE static void MoveToAny(const char* src, TVMFFIAny* result) {
     // when we need to move to any, convert to owned object first
-    ObjectRefTypeTraitsBase<String>::MoveToAny(String(src), result);
+    TypeTraits<String>::MoveToAny(String(src), result);
   }
   // Do not allow const char* in a container, so we do not need CheckAnyStrict
   TVM_FFI_INLINE static std::optional<const char*> TryCastFromAnyView(const TVMFFIAny* src) {
@@ -504,6 +692,7 @@ struct TypeTraits<TVMFFIByteArray*> : public TypeTraitsBase {
   TVM_FFI_INLINE static void CopyToAnyView(TVMFFIByteArray* src, TVMFFIAny* result) {
     TVM_FFI_ICHECK_NOTNULL(src);
     result->type_index = TypeIndex::kTVMFFIByteArrayPtr;
+    result->zero_padding = 0;
     TVM_FFI_CLEAR_PTR_PADDING_IN_FFI_ANY(result);
     result->v_ptr = src;
   }
@@ -533,16 +722,6 @@ struct TypeTraits<Bytes> : public ObjectRefWithFallbackTraitsBase<Bytes, TVMFFIB
 };
 
 template <>
-inline constexpr bool use_default_type_traits_v<String> = false;
-
-// specialize to enable implicit conversion from const char*
-template <>
-struct TypeTraits<String> : public ObjectRefWithFallbackTraitsBase<String, const char*> {
-  static constexpr int32_t field_static_type_index = TypeIndex::kTVMFFIStr;
-  TVM_FFI_INLINE static String ConvertFallbackValue(const char* src) { return String(src); }
-};
-
-template <>
 inline constexpr bool use_default_type_traits_v<std::string> = false;
 
 template <>
@@ -550,12 +729,13 @@ struct TypeTraits<std::string>
     : public FallbackOnlyTraitsBase<std::string, const char*, TVMFFIByteArray*, Bytes, String> {
   TVM_FFI_INLINE static void CopyToAnyView(const std::string& src, TVMFFIAny* result) {
     result->type_index = TypeIndex::kTVMFFIRawStr;
+    result->zero_padding = 0;
     result->v_c_str = src.c_str();
   }
 
   TVM_FFI_INLINE static void MoveToAny(std::string src, TVMFFIAny* result) {
     // when we need to move to any, convert to owned object first
-    ObjectRefTypeTraitsBase<String>::MoveToAny(String(std::move(src)), result);
+    TypeTraits<String>::MoveToAny(String(std::move(src)), result);
   }
 
   TVM_FFI_INLINE static std::string TypeStr() { return "std::string"; }

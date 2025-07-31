@@ -60,6 +60,7 @@ struct StaticTypeKey {
   static constexpr const char* kTVMFFIFunction = "ffi.Function";
   static constexpr const char* kTVMFFIArray = "ffi.Array";
   static constexpr const char* kTVMFFIMap = "ffi.Map";
+  static constexpr const char* kTVMFFISmallStr = "ffi.SmallStr";
 };
 
 /*!

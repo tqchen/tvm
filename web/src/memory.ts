@@ -187,10 +187,28 @@ export class Memory {
     return this.loadByteArrayAsString(typeKeyPtr);
   }
   /**
+   * Load small string from value pointer.
+   * @param ffiAnyPtr The pointer to the value.
+   * @returns The small string.
+   */
+  loadSmallStr(ffiAnyPtr: Pointer): string {
+    if (this.buffer != this.memory.buffer) {
+      this.updateViews();
+    }
+    const sizePtr = ffiAnyPtr + SizeOf.I32;
+    const length = this.loadU8(sizePtr);
+    const strPtr = ffiAnyPtr + SizeOf.I32 + SizeOf.U8;
+    const ret = [];
+    for (let i = 0; i < length; i++) {
+      ret.push(String.fromCharCode(this.viewU8[strPtr + i]));
+    }
+    return ret.join("");
+  }
+  /**
    * Load bytearray as string from ptr.
    * @param byteArrayPtr The head address of the bytearray.
    */
- loadByteArrayAsString(byteArrayPtr: Pointer): string {
+  loadByteArrayAsString(byteArrayPtr: Pointer): string {
     if (this.buffer != this.memory.buffer) {
       this.updateViews();
     }

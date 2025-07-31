@@ -46,7 +46,9 @@ test("GetGlobal", () => {
   // check function argument with different types.
   assert(fecho(1123) == 1123);
   assert(fecho("xyz") == "xyz");
-
+  // test long string as the abi can be different from small str
+  const long_str = "1234567890123456789abcdefghijklmnopqrstuvwxyz";
+  assert(fecho(long_str) == long_str);
   let bytes = new Uint8Array([1, 2, 3]);
   let rbytes = fecho(bytes);
   assert(rbytes.length == bytes.length);
