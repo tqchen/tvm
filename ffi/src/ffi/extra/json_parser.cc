@@ -40,7 +40,7 @@ namespace json {
 class StringObjFromPool : public details::StringObj {
  public:
   explicit StringObjFromPool(ObjectPtr<Object> pool, const char* data, size_t size) : pool_(pool) {
-    this->data = begin;
+    this->data = data;
     this->size = size;
   }
 
@@ -56,9 +56,9 @@ class StringObjFromPool : public details::StringObj {
 class JSONParserContext {
  public:
   JSONParserContext(const char* begin, const char* end) {
-    buffer_ = make_object_ptr<details::BytesObjStdImpl<details::StringObj>>(std::string(begin, end - begin));
+    buffer_ = make_object<details::BytesObjStdImpl<details::StringObj>>(std::string(begin, end - begin));
     begin_ = buffer_->data;
-    cur_ = const_cast<char*>(begin_);
+    cur_ = begin_;
     end_ = begin_ + buffer_->size;
     last_line_begin_ = cur_;
   }
@@ -90,7 +90,7 @@ class JSONParserContext {
    * \param pos The new position.
    * \note implementation can do it as no-op if needed
    */
-  void SetCurrentPosForBetterErrorMsg(const char* pos) { cur_ = const_cast<char*>(pos); }
+  void SetCurrentPosForBetterErrorMsg(const char* pos) { cur_ = pos; }
 
   /*!
    * \brief Skip the space characters.
@@ -142,7 +142,7 @@ class JSONParserContext {
     // the loop focuses on simple string without escape characters
     for (; cur_ != end_; ++cur_) {
       if (*cur_ == '\"') {
-        SetString(out, start_pos + 1, cur_ - start_pos - 1);
+        SetString(out, start_pos + 1, cur_);
         ++cur_;
         return true;
       }
@@ -315,14 +315,14 @@ class JSONParserContext {
   // Full string parsing with escape and unicode handling
   bool NextStringWithFullHandling(Any* out, const char* start_pos) {
     // copy over the prefix that was already parsed
-    std::string out_str(start_pos + 1, cur_ - start_pos - 1);
+    char* write_ptr = const_cast<char*>(cur_);
     while (cur_ != end_) {
       if (*cur_ < ' ') {
         this->SetErrorInvalidControlCharacter();
         return false;
       }
       if (*cur_ == '\"') {
-        SetString(out, start_pos + 1, cur_mutable_);
+        SetString(out, start_pos + 1, write_ptr);
         ++cur_;
         return true;
       }
@@ -333,7 +333,7 @@ class JSONParserContext {
 #define HANDLE_ESCAPE_CHAR(pattern, val) \
   case pattern:                          \
     ++cur_;                              \
-    out_str.push_back(val);              \
+    *write_ptr++ = val;                  \
     break
           HANDLE_ESCAPE_CHAR('\"', '\"');
           HANDLE_ESCAPE_CHAR('\\', '\\');
@@ -409,37 +409,37 @@ class JSONParserContext {
             // 11110xxx 10xxxxxx 10xxxxxx 10xxxxxx    | 0x10000 - end
             // ------------------------------------------------------------
             if (code_point < 0x80) {
-              out_str.push_back(code_point);
+              *write_ptr++ = code_point;
             } else if (code_point < 0x800) {
               // first byte: 110xxxxx (5 effective bits)
               // second byte: 10xxxxxx (6 effecive bits)
               // shift by 6 bits to get the first bytes
-              out_str.push_back(0xC0 | (code_point >> 6));
+              *write_ptr++ = 0xC0 | (code_point >> 6);
               // mask by 6 effective bits
-              out_str.push_back(0x80 | (code_point & 0x3F));
+              *write_ptr++ = 0x80 | (code_point & 0x3F);
             } else if (code_point < 0x10000) {
               // first byte: 1110xxxx (4 effective bits)
               // second byte: 10xxxxxx (6 effecive bits)
               // third byte: 10xxxxxx (6 effecive bits)
               // shift by 12 bits to get the first bytes
-              out_str.push_back(0xE0 | (code_point >> 12));
+              *write_ptr++ = 0xE0 | (code_point >> 12);
               // shift by 6 bits to get the second bytes, mask by 6 effective bits
-              out_str.push_back(0x80 | ((code_point >> 6) & 0x3F));
+              *write_ptr++ = 0x80 | ((code_point >> 6) & 0x3F);
               // mask by 6 effective bits
-              out_str.push_back(0x80 | (code_point & 0x3F));
+              *write_ptr++ = 0x80 | (code_point & 0x3F);
             } else {
               // first byte: 11110xxx (3 effective bits)
               // second byte: 10xxxxxx (6 effecive bits)
               // third byte: 10xxxxxx (6 effecive bits)
               // fourth byte: 10xxxxxx (6 effecive bits)
               // shift by 18 bits to get the first bytes
-              out_str.push_back(0xF0 | (code_point >> 18));
+              *write_ptr++ = 0xF0 | (code_point >> 18);
               // shift by 12 bits to get the second bytes, mask by 6 effective bits
-              out_str.push_back(0x80 | ((code_point >> 12) & 0x3F));
+              *write_ptr++ = 0x80 | ((code_point >> 12) & 0x3F);
               // shift by 6 bits to get the third bytes, mask by 6 effective bits
-              out_str.push_back(0x80 | ((code_point >> 6) & 0x3F));
+              *write_ptr++ = 0x80 | ((code_point >> 6) & 0x3F);
               // mask by 6 effective bits
-              out_str.push_back(0x80 | (code_point & 0x3F));
+              *write_ptr++ = 0x80 | (code_point & 0x3F);
             }
             break;
           }
@@ -449,7 +449,7 @@ class JSONParserContext {
           }
         }
       } else {
-        out_str.push_back(*cur_);
+        *write_ptr++ = *cur_;
         ++cur_;
       }
     }
@@ -482,9 +482,10 @@ class JSONParserContext {
   }
 
   void SetString(json::Value* out, const char* begin, const char* end) {
+    *const_cast<char*>(end) = '\0';
     size_t size = end - begin;
     if (size < sizeof(uint64_t)) {
-      *out = StringObjFromPool(pool_, begin, size);
+      *out = String(begin, size);
     } else {
       *out = ObjectRef(make_object<StringObjFromPool>(buffer_, begin, size));
     }
@@ -495,7 +496,7 @@ class JSONParserContext {
   /*! \brief The beginning of the string */
   const char* begin_;
   /*! \brief The current pointer, in mutable form */
-  char* cur_;
+  const char* cur_;
   /*! \brief End of the string */
   const char* end_;
   /*! \brief The beginning of the last line */
