@@ -30,11 +30,23 @@
 #include <tvm/ffi/string.h>
 
 #include <cinttypes>
+#include <string>
 #include <limits>
 
 namespace tvm {
 namespace ffi {
 namespace json {
+
+class StringObjFromPool : public details::StringObj {
+ public:
+  explicit StringObjFromPool(ObjectPtr<Object> pool, const char* data, size_t size) : pool_(pool) {
+    this->data = begin;
+    this->size = size;
+  }
+
+ private:
+  ObjectPtr<Object> pool_;
+};
 
 /*!
  * \brief Helper class to parse a JSON string.
@@ -43,7 +55,11 @@ namespace json {
  */
 class JSONParserContext {
  public:
-  JSONParserContext(const char* begin, const char* end) : begin_(begin), cur_(begin), end_(end) {
+  JSONParserContext(const char* begin, const char* end) {
+    buffer_ = make_object_ptr<details::BytesObjStdImpl<details::StringObj>>(std::string(begin, end - begin));
+    begin_ = buffer_->data;
+    cur_ = const_cast<char*>(begin_);
+    end_ = begin_ + buffer_->size;
     last_line_begin_ = cur_;
   }
 
@@ -74,7 +90,7 @@ class JSONParserContext {
    * \param pos The new position.
    * \note implementation can do it as no-op if needed
    */
-  void SetCurrentPosForBetterErrorMsg(const char* pos) { cur_ = pos; }
+  void SetCurrentPosForBetterErrorMsg(const char* pos) { cur_ = const_cast<char*>(pos); }
 
   /*!
    * \brief Skip the space characters.
@@ -126,7 +142,7 @@ class JSONParserContext {
     // the loop focuses on simple string without escape characters
     for (; cur_ != end_; ++cur_) {
       if (*cur_ == '\"') {
-        *out = String(start_pos + 1, cur_ - start_pos - 1);
+        SetString(out, start_pos + 1, cur_ - start_pos - 1);
         ++cur_;
         return true;
       }
@@ -306,7 +322,7 @@ class JSONParserContext {
         return false;
       }
       if (*cur_ == '\"') {
-        *out = String(std::move(out_str));
+        SetString(out, start_pos + 1, cur_mutable_);
         ++cur_;
         return true;
       }
@@ -465,10 +481,21 @@ class JSONParserContext {
     return true;
   }
 
+  void SetString(json::Value* out, const char* begin, const char* end) {
+    size_t size = end - begin;
+    if (size < sizeof(uint64_t)) {
+      *out = StringObjFromPool(pool_, begin, size);
+    } else {
+      *out = ObjectRef(make_object<StringObjFromPool>(buffer_, begin, size));
+    }
+  }
+
+  /*! \brief Inplace buffer for string parsing */
+  ObjectPtr<details::StringObj> buffer_;
   /*! \brief The beginning of the string */
   const char* begin_;
-  /*! \brief The current pointer */
-  const char* cur_;
+  /*! \brief The current pointer, in mutable form */
+  char* cur_;
   /*! \brief End of the string */
   const char* end_;
   /*! \brief The beginning of the last line */
