@@ -317,16 +317,6 @@ constexpr const char* kKernelLaunchParams = "tir.kernel_launch_params";
 constexpr const char* kNoAlias = "tir.noalias";
 
 /*!
- * \brief Mark the function as the entry function of
- *        the final generated runtime module.
- *
- * Type: Integer
- *
- * \note There can only be one entry function per module.
- */
-constexpr const char* kIsEntryFunc = "tir.is_entry_func";
-
-/*!
  * \brief Mark the function as the global function called from the host.
  *
  * Type: Integer

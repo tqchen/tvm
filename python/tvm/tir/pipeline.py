@@ -89,7 +89,6 @@ def default_tir_pipeline():
                 tir.transform.VerifyVTCMLimit(),
                 tir.transform.LowerVtcmAlloc(),
                 tir.transform.VerifyMemory(),
-                tir.transform.AnnotateEntryFunc(),
             ]
         )
         if bool(config.get("tir.detect_global_barrier", False)):

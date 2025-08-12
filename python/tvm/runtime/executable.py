@@ -36,10 +36,6 @@ class Executable:
         """Get the PackedFunc from the jitted module."""
         return self.jit().get_function(name, query_imports=True)
 
-    def __call__(self, *args, **kwargs) -> Any:
-        """Call the executable."""
-        return self.jit().entry_func(*args, **kwargs)
-
     def jit(
         self,
         *,

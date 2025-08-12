@@ -50,11 +50,11 @@ class LibraryModuleNode final : public ModuleNode {
 
   ffi::Function GetFunction(const String& name, const ObjectPtr<Object>& sptr_to_self) final {
     TVMFFISafeCallType faddr;
-    if (name == runtime::symbol::tvm_module_main) {
+    if (name == runtime::symbol::tvm_ffi_main) {
       const char* entry_name =
-          reinterpret_cast<const char*>(lib_->GetSymbol(runtime::symbol::tvm_module_main));
+          reinterpret_cast<const char*>(lib_->GetSymbol(runtime::symbol::tvm_ffi_main));
       ICHECK(entry_name != nullptr)
-          << "Symbol " << runtime::symbol::tvm_module_main << " is not presented";
+          << "Symbol " << runtime::symbol::tvm_ffi_main << " is not presented";
       faddr = reinterpret_cast<TVMFFISafeCallType>(lib_->GetSymbol(entry_name));
     } else {
       faddr = reinterpret_cast<TVMFFISafeCallType>(lib_->GetSymbol(name.c_str()));

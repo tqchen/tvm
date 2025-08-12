@@ -190,15 +190,7 @@ ffi::Function LLVMModuleNode::GetFunction(const String& name,
 
   TVMFFISafeCallType faddr;
   With<LLVMTarget> llvm_target(*llvm_instance_, LLVMTarget::GetTargetMetadata(*module_));
-  if (name == runtime::symbol::tvm_module_main) {
-    const char* entry_name = reinterpret_cast<const char*>(
-        GetGlobalAddr(runtime::symbol::tvm_module_main, *llvm_target));
-    ICHECK(entry_name != nullptr) << "Symbol " << runtime::symbol::tvm_module_main
-                                  << " is not presented";
-    faddr = reinterpret_cast<TVMFFISafeCallType>(GetFunctionAddr(entry_name, *llvm_target));
-  } else {
-    faddr = reinterpret_cast<TVMFFISafeCallType>(GetFunctionAddr(name, *llvm_target));
-  }
+  faddr = reinterpret_cast<TVMFFISafeCallType>(GetFunctionAddr(name, *llvm_target));
   if (faddr == nullptr) return ffi::Function();
   return tvm::runtime::WrapFFIFunction(faddr, sptr_to_self);
 }
@@ -337,15 +329,9 @@ void LLVMModuleNode::Init(const IRModule& mod, const Target& target) {
     }
     auto f = Downcast<PrimFunc>(kv.second);
     auto global_symbol = f->GetAttr<String>(tvm::attr::kGlobalSymbol);
-    bool is_entry_func = f->HasNonzeroAttr(tir::attr::kIsEntryFunc);
-
-    ICHECK(global_symbol || !is_entry_func) << "The entry func must be exposed externally.";
 
     if (global_symbol) {
       function_names_.push_back(global_symbol.value());
-      if (is_entry_func) {
-        entry_func = global_symbol.value();
-      }
     }
   }
   // TODO(@jroesch): follow up on this condition.
@@ -355,11 +341,9 @@ void LLVMModuleNode::Init(const IRModule& mod, const Target& target) {
   cg->Init("TVMMod", llvm_target.get(), system_lib_prefix, system_lib_prefix.has_value(), false);
   cg->SetFastMathFlags(llvm_target->GetFastMathFlags());
   cg->AddFunctionsOrdered(mod->functions.begin(), mod->functions.end());
-  if (entry_func.length() != 0) {
-    cg->AddMainFunction(entry_func);
-  }
+  q
 
-  module_owning_ptr_ = cg->Finish();
+      module_owning_ptr_ = cg->Finish();
   module_ = module_owning_ptr_.get();
   jit_engine_ = llvm_target->GetJITEngine();
   llvm_target->SetTargetMetadata(module_);

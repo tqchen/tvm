@@ -196,7 +196,6 @@ def opt_gemm_mod_host():
             T.func_attr(
                 {
                     "tir.noalias": True,
-                    "tir.is_entry_func": True,
                     "calling_conv": 1,
                 }
             )
@@ -2242,7 +2241,6 @@ def opt_conv_tensorcore_mod_host():
             {
                 "tir.noalias": True,
                 "global_symbol": "default_function",
-                "tir.is_entry_func": True,
                 "calling_conv": 1,
             }
         )

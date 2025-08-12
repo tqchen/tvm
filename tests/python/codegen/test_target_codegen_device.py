@@ -95,7 +95,7 @@ def test_add_pipeline():
         dev = tvm.device(device, 0)
         target = tvm.target.Target(device, host)
         mhost = tvm.tir.build(sch.mod, target=target)
-        f = mhost.entry_func
+        f = mhost["main"]
         # launch the kernel.
         n = 1027
         a = tvm.nd.array(np.random.uniform(size=n).astype(A.dtype), dev)

@@ -80,8 +80,7 @@ def split_host_device_mods(mod: IRModule) -> Tuple[IRModule, Dict[Target, IRModu
             @T.prim_func
             def main(self_handle: T.handle, args: T.handle, num_args: T.int32, result: T.handle):
                 T.func_attr({"target": T.target({"keys": ["cpu"], "kind": "c"}),
-                            "calling_conv": 1,  # kCPackedFunc for entry functions
-                            "tir.is_entry_func": True})
+                            "calling_conv": 1})
                 # ... main function implementation
 
     The function will return:

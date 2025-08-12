@@ -25,12 +25,12 @@ namespace meta_schedule {
 
 /*!
  * \brief Find the entry function of the given IRModule, i.e, functions marked by
- * `tir::attr::kIsEntryFunc`, whose name is `main` or being the only PrimeFunc.
+ * whose name is `main` or being the only PrimeFunc.
  * \param mod The IRModule to find the entry function.
  * \return The entry function.
  */
 inline tir::PrimFunc FindEntryFunc(const IRModule& mod) {
-  // Priority 1: PrimFunc marked as `tir::attr::kIsEntryFunc`
+  // Priority 1: PrimFunc marked as `main`
   int num_prim_func = 0;
   const tir::PrimFuncNode* main_func = nullptr;
   const tir::PrimFuncNode* last_func = nullptr;
@@ -39,9 +39,6 @@ inline tir::PrimFunc FindEntryFunc(const IRModule& mod) {
     BaseFunc base_func = kv.second;
     if (const auto* func = base_func.as<tir::PrimFuncNode>()) {
       last_func = func;
-      if (func->HasNonzeroAttr(tir::attr::kIsEntryFunc)) {
-        return GetRef<tir::PrimFunc>(func);
-      }
       if (gv->name_hint == "main") {
         main_func = func;
       }
@@ -57,8 +54,7 @@ inline tir::PrimFunc FindEntryFunc(const IRModule& mod) {
     LOG(FATAL) << "ValueError: Cannot find any PrimFunc in the given IRModule: " << mod;
   }
   if (num_prim_func > 1) {
-    LOG(FATAL) << "ValueError: Multiple PrimFuncs exist in the IRModule, but none of them are "
-                  "annotated with `kIsEntryFunc`, i.e. `tir.is_entry_func`"
+    LOG(FATAL) << "ValueError: Multiple PrimFuncs exist in the IRModule, but none of them are main"
                << mod;
   }
   return GetRef<tir::PrimFunc>(last_func);

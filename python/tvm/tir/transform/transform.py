@@ -1018,17 +1018,6 @@ def BindTarget(target):
     return _ffi_api.BindTarget(target)  # type: ignore
 
 
-def AnnotateEntryFunc():
-    """Set a PrimFunc as the entry point if it is only function in IRModule.
-
-    Returns
-    -------
-    fpass : tvm.transform.Pass
-        The result pass
-    """
-    return _ffi_api.AnnotateEntryFunc()  # type: ignore
-
-
 def Filter(fcond: Callable):
     """Filter out PrimFuncs that does not satisfy the given condition.
     `fcond` should be a function that takes a primfunc and returns boolean.

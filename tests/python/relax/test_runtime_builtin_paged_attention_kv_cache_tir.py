@@ -142,7 +142,7 @@ def set_global_func(head_dim, dtype):
         with target:
             mod = dl.ApplyDefaultSchedule(dl.gpu.Fallback())(mod)
         f = tvm.tir.build(mod["main"], target=target)
-        builts.append(f.entry_func)
+        builts.append(f["main"])
 
     (
         ftranspose_append,

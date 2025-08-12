@@ -296,8 +296,6 @@ constexpr const char* tvm_set_device = "__tvm_set_device";
 constexpr const char* tvm_global_barrier_state = "__tvm_global_barrier_state";
 /*! \brief Prepare the global barrier before kernels that uses global barrier. */
 constexpr const char* tvm_prepare_global_barrier = "__tvm_prepare_global_barrier";
-/*! \brief Placeholder for the module's entry function. */
-constexpr const char* tvm_module_main = "__tvm_main__";
 }  // namespace symbol
 
 // implementations of inline functions.

@@ -21,27 +21,6 @@ from tvm.script import tir as T, ir as I
 import tvm.testing
 
 
-def test_annotate_entry_func_single_primfunc():
-    @tvm.script.ir_module
-    class MockModule:
-        @T.prim_func(private=True)
-        def func1(A: T.Buffer((16,), "float32")):
-            for i in T.serial(16):
-                if i == 5:
-                    if i == 5:
-                        A[i] = 0.0
-
-    mod = MockModule
-    assert mod
-    assert not mod["func1"].attrs
-    after = tvm.tir.transform.AnnotateEntryFunc()(mod)
-    assert (
-        after["func1"].attrs
-        and "tir.is_entry_func" in after["func1"].attrs
-        and after["func1"].attrs["tir.is_entry_func"]
-    )
-
-
 # Test module
 @tvm.script.ir_module
 class MockModule:
@@ -58,16 +37,6 @@ class MockModule:
             if i == 15:
                 if i == 15:
                     A[i] = 0.0
-
-
-@pytest.mark.xfail
-def test_annotate_entry_func_multiple_primfunc():
-    mod = MockModule
-    assert mod
-    assert not mod["func1"].attrs
-    assert not mod["func2"].attrs
-    # This should fail
-    after = tvm.tir.transform.AnnotateEntryFunc()(mod)
 
 
 def test_bind_target():

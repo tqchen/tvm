@@ -103,23 +103,7 @@ class Module(tvm.ffi.Object):
 
     def __new__(cls):
         instance = super(Module, cls).__new__(cls)  # pylint: disable=no-value-for-parameter
-        instance.entry_name = "__tvm_main__"
-        instance._entry = None
         return instance
-
-    @property
-    def entry_func(self):
-        """Get the entry function
-
-        Returns
-        -------
-        f : tvm.runtime.PackedFunc
-            The entry function if exist
-        """
-        if self._entry:
-            return self._entry
-        self._entry = self.get_function("__tvm_main__")
-        return self._entry
 
     def implements_function(self, name, query_imports=False):
         """Returns True if the module has a definition for the global function with name. Note
@@ -178,12 +162,6 @@ class Module(tvm.ffi.Object):
         if not isinstance(name, str):
             raise ValueError("Can only take string as function name")
         return self.get_function(name)
-
-    def __call__(self, *args):
-        if self._entry:
-            return self._entry(*args)
-        # pylint: disable=not-callable
-        return self.entry_func(*args)
 
     @property
     def type_key(self):

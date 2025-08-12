@@ -72,20 +72,6 @@ void CodeGenCHost::AddFunction(const GlobalVar& gvar, const PrimFunc& func,
 
   emit_fwd_func_decl_ = emit_fwd_func_decl;
   CodeGenC::AddFunction(gvar, func);
-  if (func->HasNonzeroAttr(tir::attr::kIsEntryFunc)) {
-    ICHECK(global_symbol.has_value())
-        << "CodeGenCHost: The entry func must have the global_symbol attribute, "
-        << "but function " << gvar << " only has attributes " << func->attrs;
-
-    function_names_.push_back(runtime::symbol::tvm_module_main);
-    stream << "// CodegenC: NOTE: Auto-generated entry function\n";
-    PrintFuncPrefix(stream);
-    PrintType(func->ret_type, stream);
-    stream << " " << tvm::runtime::symbol::tvm_module_main
-           << "(void* self, void* args,int num_args, void* result) {\n";
-    stream << "  return " << global_symbol.value() << "(self, args, num_args, result);\n";
-    stream << "}\n";
-  }
 }
 
 void CodeGenCHost::GenerateForwardFunctionDeclarations(String global_symbol,

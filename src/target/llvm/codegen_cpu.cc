@@ -234,7 +234,7 @@ void CodeGenCPU::AddMainFunction(const std::string& entry_func_name) {
   llvm::Type* type = llvm::ArrayType::get(t_char_, entry_func_name.length() + 1);
   llvm::GlobalVariable* global =
       new llvm::GlobalVariable(*module_, type, true, llvm::GlobalValue::WeakAnyLinkage, nullptr,
-                               runtime::symbol::tvm_module_main);
+                               runtime::symbol::tvm_ffi_main);
 #if TVM_LLVM_VERSION >= 100
   global->setAlignment(llvm::Align(1));
 #else
@@ -243,7 +243,7 @@ void CodeGenCPU::AddMainFunction(const std::string& entry_func_name) {
   // comdat is needed for windows select any linking to work
   // set comdat to Any(weak linking)
   if (llvm_target_->GetOrCreateTargetMachine()->getTargetTriple().isOSWindows()) {
-    llvm::Comdat* comdat = module_->getOrInsertComdat(runtime::symbol::tvm_module_main);
+    llvm::Comdat* comdat = module_->getOrInsertComdat(runtime::symbol::tvm_ffi_main);
     comdat->setSelectionKind(llvm::Comdat::Any);
     global->setComdat(comdat);
   }

@@ -104,9 +104,7 @@ def evaluate(hexagon_session, operations, expected, sch):
     number = 1
     repeat = 1
 
-    timer = module.time_evaluator(
-        "__tvm_main__", hexagon_session.device, number=number, repeat=repeat
-    )
+    timer = module.time_evaluator("main", hexagon_session.device, number=number, repeat=repeat)
     runtime = timer(a_hexagon, b_hexagon, c_hexagon)
 
     tvm.testing.assert_allclose(c_hexagon.numpy(), expected(a, b))

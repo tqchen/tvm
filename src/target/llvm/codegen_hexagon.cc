@@ -483,9 +483,6 @@ runtime::Module BuildHexagon(IRModule mod, Target target) {
   (void)CallOnce;
 
   auto cg = std::make_unique<CodeGenHexagon>();
-
-  std::string entry_func;
-
   for (auto kv : mod->functions) {
     if (!kv.second->IsInstance<PrimFuncNode>()) {
       // (@jroesch): we relax constraints here, relax functions will just be ignored.
@@ -493,18 +490,10 @@ runtime::Module BuildHexagon(IRModule mod, Target target) {
       continue;
     }
     auto f = Downcast<PrimFunc>(kv.second);
-    if (f->HasNonzeroAttr(tir::attr::kIsEntryFunc)) {
-      auto global_symbol = f->GetAttr<String>(tvm::attr::kGlobalSymbol);
-      ICHECK(global_symbol.has_value());
-      entry_func = global_symbol.value();
-    }
   }
 
   cg->Init("TVMHexagonModule", llvm_target.get(), std::nullopt, false, false);
   cg->AddFunctionsOrdered(mod->functions.begin(), mod->functions.end());
-  if (entry_func.length() != 0) {
-    cg->AddMainFunction(entry_func);
-  }
 
   // Uncomment to get the LLVM module right out of codegen, before optimizations.
   // std::cerr << "HexagonModule.0 {\n" << *cg->GetModulePtr() << "}\n";
