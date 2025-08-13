@@ -21,6 +21,9 @@
 #include <tvm/ffi/function.h>
 #include <tvm/ffi/reflection/registry.h>
 
+#include <unordered_set>
+#include <vector>
+
 #include "module_internal.h"
 
 namespace tvm {
@@ -38,6 +41,29 @@ Optional<Function> ModuleObj::GetFunction(const String& name, bool query_imports
     }
   }
   return std::nullopt;
+}
+
+void ModuleObj::Import(const Module& other) {
+  std::unordered_set<const ModuleObj*> visited{other.operator->()};
+  std::vector<const ModuleObj*> stack{other.operator->()};
+  while (!stack.empty()) {
+    const ModuleObj* n = stack.back();
+    stack.pop_back();
+    for (const Any& m : n->imports_) {
+      const ModuleObj* next = m.cast<const ModuleObj*>();
+      if (visited.count(next)) continue;
+      visited.insert(next);
+      stack.push_back(next);
+    }
+  }
+  if (visited.count(this)) {
+    TVM_FFI_THROW(RuntimeError) << "Cyclic dependency detected during import";
+  }
+  imports_.push_back(other);
+}
+
+void ModuleObj::ClearImports() {
+  imports_.clear();
 }
 
 bool ModuleObj::ImplementsFunction(const String& name, bool query_imports) {

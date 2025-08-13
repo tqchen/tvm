@@ -18,7 +18,7 @@
  */
 /*!
  * \file tvm/ffi/module.h
- * \brief A managed module in the TVM FFI.
+ * \brief A managed dynamic module in the TVM FFI.
  */
 #ifndef TVM_FFI_MODULE_H_
 #define TVM_FFI_MODULE_H_
@@ -52,6 +52,23 @@ class ModuleObj : public Object {
    */
   virtual int GetPropertyMask() const = 0;
   /*!
+   * \brief Get a ffi::Function from the module.
+   * \param name The name of the function.
+   * \return The function.
+   */
+  virtual Optional<Function> GetFunction(const String& name) = 0;
+  /*!
+   * \brief Returns true if this module has a definition for a function of \p name.
+   *
+   * Note that even if this function returns true the corresponding \p GetFunction result
+   * may be nullptr if the function is not yet callable without further compilation.
+   *
+   * The default implementation just checks if \p GetFunction is non-null.
+   * \param name The name of the function.
+   * \return True if the module implements the function, false otherwise.
+   */
+  virtual bool ImplementsFunction(const String& name) { return GetFunction(name).defined(); }
+ /*!
    * \brief Export the module to file with given format.
    *
    * \param file_name The file to be saved to.
@@ -84,35 +101,14 @@ class ModuleObj : public Object {
    */
   virtual String InspectSource(const Optional<String>& format = std::nullopt) { return String(); }
   /*!
-   * \brief Get a ffi::Function from the module.
-   * \param name The name of the function.
-   * \return The function.
-   */
-  virtual Optional<Function> GetFunction(const String& name) = 0;
-  /*!
-   * \brief Returns true if this module has a definition for a function of \p name.
-   *
-   * Note that even if this function returns true the corresponding \p GetFunction result
-   * may be nullptr if the function is not yet callable without further compilation.
-   *
-   * The default implementation just checks if \p GetFunction is non-null.
-   * \param name The name of the function.
-   * \return True if the module implements the function, false otherwise.
-   */
-  virtual bool ImplementsFunction(const String& name) { return GetFunction(name).defined(); }
-  /*!
    * \brief Import another module.
    * \param other The module to import.
    */
-  virtual void Import(const Module& other) {
-    imports_.push_back(other);
-  }
+  TVM_FFI_EXTRA_CXX_API virtual void Import(const Module& other);
   /*!
    * \brief Clear all imported modules.
    */
-  virtual void ClearImports() {
-    imports_.clear();
-  }
+  TVM_FFI_EXTRA_CXX_API virtual void ClearImports();
   /*!
    * \brief Overloaded fucntion to optionally query from imports.
    * \param name The name of the function.
