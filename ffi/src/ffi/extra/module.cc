@@ -109,7 +109,13 @@ Module Module::LoadFromFile(const String& file_name) {
 TVM_FFI_STATIC_INIT_BLOCK({
   namespace refl = tvm::ffi::reflection;
   refl::GlobalDef().def("ffi.load_module",
-                        [](const String& file_name) { return Module::LoadFromFile(file_name); });
+                        [](const String& file_name) { return Module::LoadFromFile(file_name); })
+.def("ffi.Module.import_module",
+                        [](const Module& module, const Module& other) {
+                          module->Import(other);
+                        })
+.def("ffi.Module.clear_imports",
+                        [](const Module& module) { module->ClearImports(); });
 });
 }  // namespace ffi
 }  // namespace tvm
