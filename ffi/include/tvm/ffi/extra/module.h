@@ -31,6 +31,9 @@
 namespace tvm {
 namespace ffi {
 
+// forward declare Module
+class Module;
+
 /*!
  * \brief A module that can dynamically load ffi::Functions or exportable source code.
  */
@@ -97,7 +100,19 @@ class ModuleObj : public Object {
    * \return True if the module implements the function, false otherwise.
    */
   virtual bool ImplementsFunction(const String& name) { return GetFunction(name).defined(); }
-
+  /*!
+   * \brief Import another module.
+   * \param other The module to import.
+   */
+  virtual void Import(const Module& other) {
+    imports_.push_back(other);
+  }
+  /*!
+   * \brief Clear all imported modules.
+   */
+  virtual void ClearImports() {
+    imports_.clear();
+  }
   /*!
    * \brief Overloaded fucntion to optionally query from imports.
    * \param name The name of the function.
