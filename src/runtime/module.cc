@@ -25,6 +25,7 @@
 #include <tvm/ffi/reflection/registry.h>
 #include <tvm/runtime/module.h>
 #include <tvm/ffi/extra/c_env_api.h>
+#include <tvm/runtime/c_backend_api.h>
 
 #include <cstring>
 #include <unordered_set>
@@ -68,24 +69,27 @@ bool RuntimeEnabled(const String& target_str) {
   return tvm::ffi::Function::GetGlobal(f_name).has_value();
 }
 
+#define TVM_INIT_CONTEXT_FUNC(FuncName)                                                                          \
+TVM_FFI_CHECK_SAFE_CALL(TVMFFIEnvRegisterContextSymbol("__" #FuncName, reinterpret_cast<void*>(FuncName)))     \
+
 TVM_FFI_STATIC_INIT_BLOCK({
   namespace refl = tvm::ffi::reflection;
-  #define TVM_INIT_CONTEXT_FUNC(FuncName)                                                                          \
-    TVM_FFI_CHECK_SAFE_CALL(TVMFFIEnvRegisterContextSymbol("__" #FuncName, reinterpret_cast<void*>(FuncName)))     \
-    // Initialize the functions
-    TVM_INIT_CONTEXT_FUNC(TVMFFIFunctionCall);
-    TVM_INIT_CONTEXT_FUNC(TVMFFIErrorSetRaisedFromCStr);
-    TVM_INIT_CONTEXT_FUNC(TVMBackendGetFuncFromEnv);
-    TVM_INIT_CONTEXT_FUNC(TVMBackendAllocWorkspace);
-    TVM_INIT_CONTEXT_FUNC(TVMBackendFreeWorkspace);
-    TVM_INIT_CONTEXT_FUNC(TVMBackendParallelLaunch);
-    TVM_INIT_CONTEXT_FUNC(TVMBackendParallelBarrier);
 
-  #undef TVM_INIT_CONTEXT_FUNC
+  // Initialize the functions
+  TVM_INIT_CONTEXT_FUNC(TVMFFIFunctionCall);
+  TVM_INIT_CONTEXT_FUNC(TVMFFIErrorSetRaisedFromCStr);
+  TVM_INIT_CONTEXT_FUNC(TVMBackendGetFuncFromEnv);
+  TVM_INIT_CONTEXT_FUNC(TVMBackendAllocWorkspace);
+  TVM_INIT_CONTEXT_FUNC(TVMBackendFreeWorkspace);
+  TVM_INIT_CONTEXT_FUNC(TVMBackendParallelLaunch);
+  TVM_INIT_CONTEXT_FUNC(TVMBackendParallelBarrier);
+
 
   refl::GlobalDef()
       .def("runtime.RuntimeEnabled", RuntimeEnabled);
 });
+
+#undef TVM_INIT_CONTEXT_FUNC
 
 }  // namespace runtime
 }  // namespace tvm
