@@ -107,8 +107,8 @@ struct ModuleVTableEntryHelper<void (T::*)(Args...)> {
   const char* kind() const final { return TypeKey; }                                     \
   ::tvm::ffi::Optional<::tvm::ffi::Function> GetFunction(const String& _name) override { \
     using SelfPtr = std::remove_cv_t<decltype(this)>;                                    \
-    ::tvm::ffi::ObjectRef _self = ::tvm::ffi::GetRef<::tvm::ffi::ObjectRef>(this);       \
-    #define TVM_MODULE_VTABLE_END() return std::nullopt;                                 \
+    ::tvm::ffi::ObjectPtr<::tvm::ffi::Object> _self = ::tvm::ffi::GetObjectPtr<::tvm::ffi::Object>(this);
+#define TVM_MODULE_VTABLE_END() return std::nullopt;                                 \
   }
 #define TVM_MODULE_VTABLE_END_WITH_DEFAULT(MemFunc) \
   {                                                 \

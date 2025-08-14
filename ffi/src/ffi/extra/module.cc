@@ -106,12 +106,23 @@ Module Module::LoadFromFile(const String& file_name) {
 
 TVM_FFI_STATIC_INIT_BLOCK({
   namespace refl = tvm::ffi::reflection;
+  ModuleObj::InternalUnsafe::RegisterReflection();
+
   refl::GlobalDef()
-      .def("ffi.load_module",
-           [](const String& file_name) { return Module::LoadFromFile(file_name); })
-      .def("ffi.Module.import_module",
-           [](const Module& module, const Module& other) { module->Import(other); })
-      .def("ffi.Module.clear_imports", [](const Module& module) { module->ClearImports(); });
+      .def("ffi.ModuleLoadFromFile", &Module::LoadFromFile)
+      .def_method("ffi.ModuleImplementsFunction", [](Module mod, String name, bool query_imports) {
+        return mod->ImplementsFunction(name, query_imports);
+      })
+      .def_method("ffi.ModuleGetFunction", [](Module mod, String name, bool query_imports) {
+        return mod->GetFunction(name, query_imports);
+      })
+      .def_method("ffi.ModuleGetPropertyMask", &ModuleObj::GetPropertyMask)
+      .def_method("ffi.ModuleInspectSource", &ModuleObj::InspectSource)
+      .def_method("ffi.ModuleGetKind", [](const Module& mod) -> String { return mod->kind(); })
+      .def_method("ffi.ModuleGetExportFormats", &ModuleObj::GetExportFormats)
+      .def_method("ffi.ModuleExportToFile", &ModuleObj::ExportToFile)
+      .def_method("ffi.ModuleImport", &ModuleObj::Import)
+      .def_method("ffi.ModuleClearImports", &ModuleObj::ClearImports);
 });
 }  // namespace ffi
 }  // namespace tvm

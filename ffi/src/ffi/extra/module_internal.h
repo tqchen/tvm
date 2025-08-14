@@ -25,6 +25,7 @@
 #define TVM_FFI_EXTRA_MODULE_INTERNAL_H_
 
 #include <tvm/ffi/extra/module.h>
+#include <tvm/ffi/reflection/registry.h>
 
 #include <mutex>
 
@@ -80,6 +81,12 @@ struct ModuleObj::InternalUnsafe {
     }
     module->import_lookup_cache_.Set(s_name, *opt_func);
     return const_cast<FunctionObj*>((*opt_func).operator->());
+  }
+
+  static void RegisterReflection() {
+    namespace refl = tvm::ffi::reflection;
+    refl::ObjectDef<ModuleObj>()
+      .def_ro("imports_", &ModuleObj::imports_);
   }
 };
 
