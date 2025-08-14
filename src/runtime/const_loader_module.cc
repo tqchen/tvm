@@ -27,14 +27,14 @@
  * code and constants significantly reduces the efforts for handling external
  * codegen and runtimes.
  */
+#include <dmlc/memory_io.h>
 #include <tvm/ffi/container/array.h>
 #include <tvm/ffi/container/map.h>
+#include <tvm/ffi/extra/module.h>
 #include <tvm/ffi/function.h>
 #include <tvm/ffi/reflection/registry.h>
 #include <tvm/ffi/string.h>
-#include <tvm/ffi/extra/module.h>
 #include <tvm/runtime/ndarray.h>
-#include <dmlc/memory_io.h>
 
 #include <cstdint>
 

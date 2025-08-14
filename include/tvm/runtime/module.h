@@ -27,14 +27,13 @@
 #define TVM_RUNTIME_MODULE_H_
 
 #include <dmlc/io.h>
+#include <tvm/ffi/cast.h>
+#include <tvm/ffi/extra/module.h>
 #include <tvm/ffi/function.h>
 #include <tvm/ffi/memory.h>
 #include <tvm/ffi/string.h>
 #include <tvm/runtime/base.h>
 #include <tvm/runtime/object.h>
-#include <tvm/ffi/cast.h>
-#include <tvm/ffi/extra/module.h>
-
 
 namespace tvm {
 namespace runtime {
@@ -104,15 +103,12 @@ struct ModuleVTableEntryHelper<void (T::*)(Args...)> {
 }  // namespace runtime
 }  // namespace tvm
 
-
-
-#define TVM_MODULE_VTABLE_BEGIN(TypeKey)                                                    \
-  const char* kind() const final { return TypeKey; }                                    \
+#define TVM_MODULE_VTABLE_BEGIN(TypeKey)                                                 \
+  const char* kind() const final { return TypeKey; }                                     \
   ::tvm::ffi::Optional<::tvm::ffi::Function> GetFunction(const String& _name) override { \
-    using SelfPtr = std::remove_cv_t<decltype(this)>;     \
-    ::tvm::ffi::ObjectRef _self = ::tvm::ffi::GetRef<::tvm::ffi::ObjectRef>(this);    \
-#define TVM_MODULE_VTABLE_END()  \
-  return std::nullopt; \
+    using SelfPtr = std::remove_cv_t<decltype(this)>;                                    \
+    ::tvm::ffi::ObjectRef _self = ::tvm::ffi::GetRef<::tvm::ffi::ObjectRef>(this);       \
+    #define TVM_MODULE_VTABLE_END() return std::nullopt;                                 \
   }
 #define TVM_MODULE_VTABLE_END_WITH_DEFAULT(MemFunc) \
   {                                                 \
