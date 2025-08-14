@@ -22,12 +22,12 @@
  * \brief Device specific implementations
  */
 #include <tvm/ffi/container/ndarray.h>
+#include <tvm/ffi/extra/c_env_api.h>
 #include <tvm/ffi/function.h>
 #include <tvm/ffi/optional.h>
 #include <tvm/ffi/reflection/registry.h>
 #include <tvm/ffi/rvalue_ref.h>
 #include <tvm/ffi/string.h>
-#include <tvm/ffi/extra/c_env_api.h>
 #include <tvm/runtime/base.h>
 #include <tvm/runtime/c_backend_api.h>
 #include <tvm/runtime/device_api.h>

@@ -110,12 +110,14 @@ TVM_FFI_STATIC_INIT_BLOCK({
 
   refl::GlobalDef()
       .def("ffi.ModuleLoadFromFile", &Module::LoadFromFile)
-      .def_method("ffi.ModuleImplementsFunction", [](Module mod, String name, bool query_imports) {
-        return mod->ImplementsFunction(name, query_imports);
-      })
-      .def_method("ffi.ModuleGetFunction", [](Module mod, String name, bool query_imports) {
-        return mod->GetFunction(name, query_imports);
-      })
+      .def_method("ffi.ModuleImplementsFunction",
+                  [](Module mod, String name, bool query_imports) {
+                    return mod->ImplementsFunction(name, query_imports);
+                  })
+      .def_method("ffi.ModuleGetFunction",
+                  [](Module mod, String name, bool query_imports) {
+                    return mod->GetFunction(name, query_imports);
+                  })
       .def_method("ffi.ModuleGetPropertyMask", &ModuleObj::GetPropertyMask)
       .def_method("ffi.ModuleInspectSource", &ModuleObj::InspectSource)
       .def_method("ffi.ModuleGetKind", [](const Module& mod) -> String { return mod->kind(); })

@@ -85,8 +85,7 @@ struct ModuleObj::InternalUnsafe {
 
   static void RegisterReflection() {
     namespace refl = tvm::ffi::reflection;
-    refl::ObjectDef<ModuleObj>()
-      .def_ro("imports_", &ModuleObj::imports_);
+    refl::ObjectDef<ModuleObj>().def_ro("imports_", &ModuleObj::imports_);
   }
 };
 

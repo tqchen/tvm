@@ -194,7 +194,8 @@ ObjectRef ShardLoaderObj::Create(const std::string& path_to_metadata, const std:
       ShardInfo& shard_info = shards[name];
       for (const ShardInfo::ShardFunc& shard_func : shard_info.funcs) {
         const std::string& name = shard_func.name;
-        if (Optional<ffi::Function> f = mod.has_value() ? (*mod)->GetFunction(name, true) : std::nullopt) {
+        if (Optional<ffi::Function> f =
+                mod.has_value() ? (*mod)->GetFunction(name, true) : std::nullopt) {
           n->shard_funcs_[name] = *f;
         } else if (const auto f = tvm::ffi::Function::GetGlobal(name)) {
           n->shard_funcs_[name] = *f;

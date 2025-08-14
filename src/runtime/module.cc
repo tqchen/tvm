@@ -21,11 +21,11 @@
  * \file module.cc
  * \brief TVM module system
  */
+#include <tvm/ffi/extra/c_env_api.h>
 #include <tvm/ffi/function.h>
 #include <tvm/ffi/reflection/registry.h>
-#include <tvm/runtime/module.h>
-#include <tvm/ffi/extra/c_env_api.h>
 #include <tvm/runtime/c_backend_api.h>
+#include <tvm/runtime/module.h>
 
 #include <cstring>
 #include <unordered_set>
@@ -34,7 +34,6 @@
 
 namespace tvm {
 namespace runtime {
-
 
 bool RuntimeEnabled(const String& target_str) {
   std::string target = target_str;
@@ -69,8 +68,9 @@ bool RuntimeEnabled(const String& target_str) {
   return tvm::ffi::Function::GetGlobal(f_name).has_value();
 }
 
-#define TVM_INIT_CONTEXT_FUNC(FuncName)                                                                          \
-TVM_FFI_CHECK_SAFE_CALL(TVMFFIEnvRegisterContextSymbol("__" #FuncName, reinterpret_cast<void*>(FuncName)))     \
+#define TVM_INIT_CONTEXT_FUNC(FuncName) \
+  TVM_FFI_CHECK_SAFE_CALL(              \
+      TVMFFIEnvRegisterContextSymbol("__" #FuncName, reinterpret_cast<void*>(FuncName)))
 
 TVM_FFI_STATIC_INIT_BLOCK({
   namespace refl = tvm::ffi::reflection;
@@ -84,9 +84,7 @@ TVM_FFI_STATIC_INIT_BLOCK({
   TVM_INIT_CONTEXT_FUNC(TVMBackendParallelLaunch);
   TVM_INIT_CONTEXT_FUNC(TVMBackendParallelBarrier);
 
-
-  refl::GlobalDef()
-      .def("runtime.RuntimeEnabled", RuntimeEnabled);
+  refl::GlobalDef().def("runtime.RuntimeEnabled", RuntimeEnabled);
 });
 
 #undef TVM_INIT_CONTEXT_FUNC
