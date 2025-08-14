@@ -45,18 +45,18 @@ class ModuleObj : public Object {
    */
   virtual const char* kind() const = 0;
   /*!
-   * \brief Get the property mask of the module.
-   * \return The property mask of the module.
-   *
-   * \sa ModulePropertyMask
-   */
-  virtual int GetPropertyMask() const = 0;
-  /*!
    * \brief Get a ffi::Function from the module.
    * \param name The name of the function.
    * \return The function.
    */
   virtual Optional<Function> GetFunction(const String& name) = 0;
+    /*!
+   * \brief Get the property mask of the module.
+   * \return The property mask of the module.
+   *
+   * \sa Module::ModulePropertyMask
+   */
+  virtual int GetPropertyMask() const { return 0b000; }
   /*!
    * \brief Returns true if this module has a definition for a function of \p name.
    *
@@ -123,6 +123,14 @@ class ModuleObj : public Object {
    * \return True if the module implements the function, false otherwise.
    */
   TVM_FFI_EXTRA_CXX_API bool ImplementsFunction(const String& name, bool query_imports);
+  /*!
+   * \brief Get the imports of the module.
+   * \return The imports of the module.
+   * \note Note the signature is not part of the public API.
+   */
+  const Array<Any>& imports() const {
+    return this->imports_;
+  }
 
   struct InternalUnsafe;
 
@@ -130,6 +138,7 @@ class ModuleObj : public Object {
   static constexpr const char* _type_key = StaticTypeKey::kTVMFFIModule;
   static const constexpr bool _type_final = true;
   TVM_FFI_DECLARE_STATIC_OBJECT_INFO(ModuleObj, Object);
+
 
  protected:
   friend struct InternalUnsafe;

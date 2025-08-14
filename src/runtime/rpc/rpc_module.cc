@@ -170,7 +170,7 @@ class RPCWrappedFunc : public Object {
 };
 
 // RPC that represents a remote module session.
-class RPCModuleNode final : public ModuleNode {
+class RPCModuleNode final : public ffi::ModuleObj {
  public:
   RPCModuleNode(void* module_handle, std::shared_ptr<RPCSession> sess)
       : module_handle_(module_handle), sess_(sess) {}
@@ -186,11 +186,11 @@ class RPCModuleNode final : public ModuleNode {
     }
   }
 
-  const char* type_key() const final { return "rpc"; }
+  const char* kind() const final { return "rpc"; }
   /*! \brief Get the property of the runtime module .*/
-  int GetPropertyMask() const final { return ModulePropertyMask::kRunnable; }
+  int GetPropertyMask() const final { return ffi::Module::ModulePropertyMask::kRunnable; }
 
-  ffi::Function GetFunction(const String& name, const ObjectPtr<Object>& sptr_to_self) final {
+  Optional<ffi::Function> GetFunction(const String& name) final {
     if (name == "CloseRPCConnection") {
       return ffi::Function([this](ffi::PackedArgs, ffi::Any*) { sess_->Shutdown(); });
     }
@@ -199,14 +199,10 @@ class RPCModuleNode final : public ModuleNode {
       return WrapRemoteFunc(sess_->GetFunction(name));
     } else {
       InitRemoteFunc(&remote_mod_get_function_, "tvm.rpc.server.ModuleGetFunction");
-      return remote_mod_get_function_(GetRef<Module>(this), name, true);
+      return remote_mod_get_function_(GetRef<ffi::Module>(this), name, true);
     }
   }
 
-  String GetSource(const String& format) final {
-    LOG(FATAL) << "GetSource for rpc Module is not supported";
-    throw;
-  }
 
   ffi::Function GetTimeEvaluator(const std::string& name, Device dev, int number, int repeat,
                                  int min_repeat_ms, int limit_zero_time_iterations,
@@ -225,20 +221,20 @@ class RPCModuleNode final : public ModuleNode {
           repeats_to_cooldown, cache_flush_bytes, f_preproc_name);
     } else {
       return remote_get_time_evaluator_(
-          Optional<Module>(std::nullopt), name, static_cast<int>(dev.device_type), dev.device_id,
+          Optional<ffi::Module>(std::nullopt), name, static_cast<int>(dev.device_type), dev.device_id,
           number, repeat, min_repeat_ms, limit_zero_time_iterations, cooldown_interval_ms,
           repeats_to_cooldown, cache_flush_bytes, f_preproc_name);
     }
   }
 
-  Module LoadModule(std::string name) {
+  ffi::Module LoadModule(std::string name) {
     InitRemoteFunc(&remote_load_module_, "tvm.rpc.server.load_module");
     return remote_load_module_(name);
   }
 
-  void ImportModule(Module other) {
+  void ImportModule(ffi::Module other) {
     InitRemoteFunc(&remote_import_module_, "tvm.rpc.server.ImportModule");
-    remote_import_module_(GetRef<Module>(this), other);
+    remote_import_module_(GetRef<ffi::Module>(this), other);
   }
 
   const std::shared_ptr<RPCSession>& sess() { return sess_; }
@@ -266,22 +262,22 @@ class RPCModuleNode final : public ModuleNode {
   // The local channel
   std::shared_ptr<RPCSession> sess_;
   // remote function to get time evaluator
-  ffi::TypedFunction<ffi::Function(Optional<Module>, std::string, int, int, int, int, int, int, int,
+  ffi::TypedFunction<ffi::Function(Optional<ffi::Module>, std::string, int, int, int, int, int, int, int,
                                    int, int, std::string)>
       remote_get_time_evaluator_;
   // remote function getter for modules.
-  ffi::TypedFunction<ffi::Function(Module, std::string, bool)> remote_mod_get_function_;
+  ffi::TypedFunction<ffi::Function(ffi::Module, std::string, bool)> remote_mod_get_function_;
   // remote function getter for load module
-  ffi::TypedFunction<Module(std::string)> remote_load_module_;
+  ffi::TypedFunction<ffi::Module(std::string)> remote_load_module_;
   // remote function getter for load module
-  ffi::TypedFunction<void(Module, Module)> remote_import_module_;
+  ffi::TypedFunction<void(ffi::Module, ffi::Module)> remote_import_module_;
 };
 
 void* RPCWrappedFunc::UnwrapRemoteValueToHandle(const AnyView& arg) const {
   // TODO(tqchen): only support Module unwrapping for now.
   if (arg.type_index() == ffi::TypeIndex::kTVMFFIModule) {
-    Module mod = arg.cast<Module>();
-    std::string tkey = mod->type_key();
+    ffi::Module mod = arg.cast<ffi::Module>();
+    std::string tkey = mod->kind();
     ICHECK_EQ(tkey, "rpc") << "ValueError: Cannot pass a non-RPC module to remote";
     auto* rmod = static_cast<RPCModuleNode*>(mod.operator->());
     ICHECK(rmod->sess() == sess_)
@@ -309,7 +305,7 @@ void RPCWrappedFunc::WrapRemoteReturnToValue(ffi::PackedArgs args, ffi::Any* rv)
     ICHECK_EQ(args.size(), 2);
     void* handle = args[1].cast<void*>();
     auto n = make_object<RPCModuleNode>(handle, sess_);
-    *rv = Module(n);
+    *rv = ffi::Module(n);
   } else if (type_index == ffi::TypeIndex::kTVMFFINDArray ||
              type_index == ffi::TypeIndex::kTVMFFIDLTensorPtr) {
     ICHECK_EQ(args.size(), 3);
@@ -335,14 +331,14 @@ void RPCWrappedFunc::WrapRemoteReturnToValue(ffi::PackedArgs args, ffi::Any* rv)
   }
 }
 
-Module CreateRPCSessionModule(std::shared_ptr<RPCSession> sess) {
+ffi::Module CreateRPCSessionModule(std::shared_ptr<RPCSession> sess) {
   auto n = make_object<RPCModuleNode>(nullptr, sess);
   RPCSession::InsertToSessionTable(sess);
-  return Module(n);
+  return ffi::Module(n);
 }
 
-std::shared_ptr<RPCSession> RPCModuleGetSession(Module mod) {
-  std::string tkey = mod->type_key();
+std::shared_ptr<RPCSession> RPCModuleGetSession(ffi::Module mod) {
+  std::string tkey = mod->kind();
   ICHECK_EQ(tkey, "rpc") << "ValueError: Cannot pass a non-RPC module to remote";
   auto* rmod = static_cast<RPCModuleNode*>(mod.operator->());
   return rmod->sess();
@@ -402,7 +398,7 @@ TVM_FFI_STATIC_INIT_BLOCK({
   namespace refl = tvm::ffi::reflection;
   refl::GlobalDef()
       .def("runtime.RPCTimeEvaluator",
-           [](Optional<Module> opt_mod, std::string name, int device_type, int device_id,
+           [](Optional<ffi::Module> opt_mod, std::string name, int device_type, int device_id,
               int number, int repeat, int min_repeat_ms, int limit_zero_time_iterations,
               int cooldown_interval_ms, int repeats_to_cooldown, int cache_flush_bytes,
               std::string f_preproc_name) {
@@ -455,9 +451,9 @@ TVM_FFI_STATIC_INIT_BLOCK({
   namespace refl = tvm::ffi::reflection;
   refl::GlobalDef()
       .def("tvm.rpc.server.ImportModule",
-           [](Module parent, Module child) { parent->Import(child); })
+           [](ffi::Module parent, ffi::Module child) { parent->Import(child); })
       .def("tvm.rpc.server.ModuleGetFunction",
-           [](Module parent, std::string name, bool query_imports) {
+           [](ffi::Module parent, std::string name, bool query_imports) {
              return parent->GetFunction(name, query_imports);
            });
 });
@@ -467,26 +463,26 @@ TVM_FFI_STATIC_INIT_BLOCK({
   namespace refl = tvm::ffi::reflection;
   refl::GlobalDef()
       .def("rpc.LoadRemoteModule",
-           [](Module sess, std::string name) {
-             std::string tkey = sess->type_key();
+           [](ffi::Module sess, std::string name) {
+             std::string tkey = sess->kind();
              ICHECK_EQ(tkey, "rpc");
              return static_cast<RPCModuleNode*>(sess.operator->())->LoadModule(name);
            })
       .def("rpc.ImportRemoteModule",
-           [](Module parent, Module child) {
-             std::string tkey = parent->type_key();
+           [](ffi::Module parent, ffi::Module child) {
+             std::string tkey = parent->kind();
              ICHECK_EQ(tkey, "rpc");
              static_cast<RPCModuleNode*>(parent.operator->())->ImportModule(child);
            })
       .def_packed("rpc.SessTableIndex",
                   [](ffi::PackedArgs args, ffi::Any* rv) {
-                    Module m = args[0].cast<Module>();
-                    std::string tkey = m->type_key();
+                    ffi::Module m = args[0].cast<ffi::Module>();
+                    std::string tkey = m->kind();
                     ICHECK_EQ(tkey, "rpc");
                     *rv = static_cast<RPCModuleNode*>(m.operator->())->sess()->table_index();
                   })
       .def("tvm.rpc.NDArrayFromRemoteOpaqueHandle",
-           [](Module mod, void* remote_array, DLTensor* template_tensor, Device dev,
+           [](ffi::Module mod, void* remote_array, DLTensor* template_tensor, Device dev,
               void* ndarray_handle) -> NDArray {
              return NDArrayFromRemoteOpaqueHandle(RPCModuleGetSession(mod), remote_array,
                                                   template_tensor, dev, ndarray_handle);
