@@ -135,7 +135,7 @@ class VMExecutable : public ffi::ModuleObj {
    * \param file_name The name of the file to write the serialized data to.
    * \param format The target format of the saved file.
    */
-  void ExportToFile(const String& file_name, const String& format);
+  void ExportToFile(const String& file_name, const String& format) const final;
   /*! \brief Create a Relax virtual machine and load `this` as the executable. */
   ffi::Module VMLoadExecutable() const;
   /*! \brief Create a Relax virtual machine with profiler and load `this` as the executable. */
@@ -176,22 +176,22 @@ class VMExecutable : public ffi::ModuleObj {
    * \brief Save the globals.
    * \param strm The input stream.
    */
-  void SaveGlobalSection(dmlc::Stream* strm);
+  void SaveGlobalSection(dmlc::Stream* strm) const;
   /*!
    * \brief Save the constant pool.
    * \param strm The input stream.
    */
-  void SaveConstantSection(dmlc::Stream* strm);
+  void SaveConstantSection(dmlc::Stream* strm) const;
   /*!
    * \brief Save the instructions.
    * \param strm The input stream.
    */
-  void SaveCodeSection(dmlc::Stream* strm);
+  void SaveCodeSection(dmlc::Stream* strm) const;
   /*!
    * \brief Save the packed functions.
    * \param strm The input stream.
    */
-  void SavePackedFuncNames(dmlc::Stream* strm);
+  void SavePackedFuncNames(dmlc::Stream* strm) const;
   /*!
    * \brief Load the globals.
    * \param strm The input stream.

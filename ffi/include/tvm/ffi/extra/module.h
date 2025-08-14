@@ -76,7 +76,7 @@ class ModuleObj : public Object {
    *
    * \note This function is mainly used by modules that
    */
-  virtual void ExportToFile(const String& file_name, const String& format) {
+  virtual void ExportToFile(const String& file_name, const String& format) const {
     TVM_FFI_THROW(RuntimeError) << "Module[" << kind() << "] does not support ExportToFile";
   }
   /*!
@@ -99,7 +99,7 @@ class ModuleObj : public Object {
    * \param format Format of the source code, can be empty by default.
    * \return Possible source code when available, or empty string if not available.
    */
-  virtual String InspectSource(const Optional<String>& format = std::nullopt) { return String(); }
+  virtual String InspectSource(const Optional<String>& format = std::nullopt) const { return String(); }
   /*!
    * \brief Import another module.
    * \param other The module to import.

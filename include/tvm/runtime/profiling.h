@@ -539,7 +539,7 @@ String ShapeString(const std::vector<int64_t>& shape, DLDataType dtype);
  *          and returns performance metrics as a `Map<String, ffi::Any>` where
  *          values can be `CountNode`, `DurationNode`, `PercentNode`.
  */
-ffi::Function ProfileFunction(Module mod, std::string func_name, int device_type, int device_id,
+ffi::Function ProfileFunction(ffi::Module mod, std::string func_name, int device_type, int device_id,
                               int warmup_iters, Array<MetricCollector> collectors);
 
 /*!

@@ -792,13 +792,14 @@ TVM_FFI_STATIC_INIT_BLOCK({
       .def("runtime.profiling.DeviceWrapper", [](Device dev) { return DeviceWrapper(dev); });
 });
 
-ffi::Function ProfileFunction(Module mod, std::string func_name, int device_type, int device_id,
+ffi::Function ProfileFunction(ffi::Module mod, std::string func_name, int device_type, int device_id,
                               int warmup_iters, Array<MetricCollector> collectors) {
   // Module::GetFunction is not const, so this lambda has to be mutable
   return ffi::Function::FromPacked(
       [=](const ffi::AnyView* args, int32_t num_args, ffi::Any* ret) mutable {
-        ffi::Function f = mod.GetFunction(func_name);
-        CHECK(f.defined()) << "There is no function called \"" << func_name << "\" in the module";
+        auto optf = mod->GetFunction(func_name);
+        CHECK(optf.has_value()) << "There is no function called \"" << func_name << "\" in the module";
+        auto f = *optf;
         Device dev{static_cast<DLDeviceType>(device_type), device_id};
 
         // warmup
@@ -842,9 +843,9 @@ TVM_FFI_STATIC_INIT_BLOCK({
   namespace refl = tvm::ffi::reflection;
   refl::GlobalDef().def(
       "runtime.profiling.ProfileFunction",
-      [](Module mod, String func_name, int device_type, int device_id, int warmup_iters,
+      [](ffi::Module mod, String func_name, int device_type, int device_id, int warmup_iters,
          Array<MetricCollector> collectors) {
-        if (mod->type_key() == std::string("rpc")) {
+        if (mod->kind() == std::string("rpc")) {
           LOG(FATAL)
               << "Profiling a module over RPC is not yet supported";  // because we can't send
                                                                       // MetricCollectors over rpc.
