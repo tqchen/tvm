@@ -86,7 +86,7 @@ class StaticLibraryNode final : public ffi::ModuleObj {
     return ffi::Module(n);
   }
 
-  void ExportToFile(const String& file_name, const String& format) final {
+  void ExportToFile(const String& file_name, const String& format) const final {
     VLOG(0) << "Saving static library of " << data_.size() << " bytes implementing " << FuncNames()
             << " to '" << file_name << "'";
     SaveBinaryToFile(file_name, data_);
@@ -101,7 +101,7 @@ class StaticLibraryNode final : public ffi::ModuleObj {
     return std::find(func_names_.begin(), func_names_.end(), name) != func_names_.end();
   }
 
-  std::string FuncNames() {
+  std::string FuncNames() const {
     std::ostringstream os;
     os << "[";
     bool first = true;

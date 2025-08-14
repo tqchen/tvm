@@ -508,7 +508,7 @@ void VirtualMachineImpl::SetInput(std::string func_name, bool with_param_module,
     for (int i = 0; i < args.size(); ++i) {
       if (with_param_module && i == args.size() - 1) {
         // call param func to get the arguments(usually corresponds to param pack.)
-        func_args[i] = (args[i].cast<Module>()).GetFunction("get_params")();
+        func_args[i] = (args[i].cast<ffi::Module>()).GetFunction("get_params")();
       } else {
         func_args[i] = ConvertArgToDevice(args[i], devices[0], allocators[0]);
       }
