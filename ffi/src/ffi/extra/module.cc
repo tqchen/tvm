@@ -62,9 +62,7 @@ void ModuleObj::Import(const Module& other) {
   imports_.push_back(other);
 }
 
-void ModuleObj::ClearImports() {
-  imports_.clear();
-}
+void ModuleObj::ClearImports() { imports_.clear(); }
 
 bool ModuleObj::ImplementsFunction(const String& name, bool query_imports) {
   if (this->ImplementsFunction(name)) {
@@ -108,14 +106,12 @@ Module Module::LoadFromFile(const String& file_name) {
 
 TVM_FFI_STATIC_INIT_BLOCK({
   namespace refl = tvm::ffi::reflection;
-  refl::GlobalDef().def("ffi.load_module",
-                        [](const String& file_name) { return Module::LoadFromFile(file_name); })
-.def("ffi.Module.import_module",
-                        [](const Module& module, const Module& other) {
-                          module->Import(other);
-                        })
-.def("ffi.Module.clear_imports",
-                        [](const Module& module) { module->ClearImports(); });
+  refl::GlobalDef()
+      .def("ffi.load_module",
+           [](const String& file_name) { return Module::LoadFromFile(file_name); })
+      .def("ffi.Module.import_module",
+           [](const Module& module, const Module& other) { module->Import(other); })
+      .def("ffi.Module.clear_imports", [](const Module& module) { module->ClearImports(); });
 });
 }  // namespace ffi
 }  // namespace tvm

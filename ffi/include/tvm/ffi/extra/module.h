@@ -68,7 +68,7 @@ class ModuleObj : public Object {
    * \return True if the module implements the function, false otherwise.
    */
   virtual bool ImplementsFunction(const String& name) { return GetFunction(name).defined(); }
- /*!
+  /*!
    * \brief Export the module to file with given format.
    *
    * \param file_name The file to be saved to.
