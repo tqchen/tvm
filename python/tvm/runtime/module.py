@@ -191,8 +191,7 @@ class Module(tvm.ffi.Object):
         """Get type key of the module."""
         return _mod_ffi_api.ModuleGetKind(self)
 
-    @property
-    def format(self):
+    def export_formats(self):
         """Get the format of the module."""
         return _mod_ffi_api.ModuleGetExportFormats(self)
 
@@ -509,29 +508,24 @@ class Module(tvm.ffi.Object):
         system_lib_prefix = None
         llvm_target_string = None
         global_object_format = "o"
+
+        def get_source_format_from_module(module):
+            for fmt in module.export_formats():
+                if fmt in ["c", "cc", "cpp", "cu"]:
+                    return fmt
+            raise ValueError(f"Module {module.type_key} does not exporting to c, cc, cpp or cu.")
+
         for index, module in enumerate(modules):
             if fcompile is not None and hasattr(fcompile, "object_format"):
                 if module.type_key == "c":
-                    assert module.format in [
-                        "c",
-                        "cc",
-                        "cpp",
-                        "cu",
-                    ], "The module.format needs to be either c, cc, cpp or cu."
-                    object_format = module.format
+                    object_format = get_source_format_from_module(module)
                     has_c_module = True
                 else:
                     global_object_format = object_format = fcompile.object_format
             else:
                 if module.type_key == "c":
-                    if len(module.format) > 0:
-                        assert module.format in [
-                            "c",
-                            "cc",
-                            "cpp",
-                            "cu",
-                        ], "The module.format needs to be either c, cc, cpp, or cu."
-                        object_format = module.format
+                    if len(module.export_formats()) > 0:
+                        object_format = get_source_format_from_module(module)
                     else:
                         object_format = "c"
                     if "cc" in kwargs:
