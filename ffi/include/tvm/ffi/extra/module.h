@@ -69,7 +69,7 @@ class ModuleObj : public Object {
    */
   virtual bool ImplementsFunction(const String& name) { return GetFunction(name).defined(); }
   /*!
-   * \brief Export the module to file with given format.
+   * \brief Export the module to file with given format (for further compilation).
    *
    * \param file_name The file to be saved to.
    * \param format The format of the file.
