@@ -567,7 +567,8 @@ TVM_FFI_STATIC_INIT_BLOCK({
   namespace refl = tvm::ffi::reflection;
   refl::GlobalDef()
       .def("runtime.BNNSJSONRuntimeCreate", BNNSJSONRuntimeCreate)
-      .def("runtime.module.loadbinary_bnns_json", BNNSJSONRuntime::LoadFromBinary<BNNSJSONRuntime>);
+      .def("ffi.Module.load_from_bytes.bnns_json",
+           JSONRuntimeBase::LoadFromBytes<BNNSJSONRuntime>);
 });
 
 }  // namespace contrib
