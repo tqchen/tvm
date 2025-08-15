@@ -98,7 +98,7 @@ class CUDAModuleNode : public ffi::ModuleObj {
     return ffi::Bytes(buffer);
   }
 
-  String InspectSource(const Optional<String>& format) const final {
+  String InspectSource(const String& format) const final {
     if (format == fmt_) return data_;
     if (cuda_source_.length() != 0) {
       return cuda_source_;

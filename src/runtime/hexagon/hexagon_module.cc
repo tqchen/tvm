@@ -46,7 +46,7 @@ Optional<ffi::Function> HexagonModuleNode::GetFunction(const String& name) {
   LOG(FATAL) << "HexagonModuleNode::GetFunction is not implemented.";
 }
 
-String HexagonModuleNode::InspectSource(const Optional<String>& format) const {
+String HexagonModuleNode::InspectSource(const String& format) const {
   if (format == "s" || format == "asm") {
     return asm_;
   }

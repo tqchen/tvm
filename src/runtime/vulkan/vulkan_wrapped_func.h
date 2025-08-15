@@ -102,7 +102,7 @@ class VulkanModuleNode final : public ffi::ModuleObj {
   void ExportToFile(const String& file_name, const String& format) const final;
 
   ffi::Bytes SaveToBytes() const final;
-  String InspectSource(const Optional<String>& format) const final;
+  String InspectSource(const String& format) const final;
 
  private:
   // function information table.

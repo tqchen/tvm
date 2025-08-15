@@ -427,7 +427,7 @@ ffi::Bytes VulkanModuleNode::SaveToBytes() const {
   return ffi::Bytes(buffer);
 }
 
-String VulkanModuleNode::InspectSource(const Optional<String>& format) const {
+String VulkanModuleNode::InspectSource(const String& format) const {
   // can only return disassembly code.
   return source_;
 }

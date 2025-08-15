@@ -99,7 +99,7 @@ class ModuleObj : public Object {
    * \param format Format of the source code, can be empty by default.
    * \return Possible source code when available, or empty string if not available.
    */
-  virtual String InspectSource(const Optional<String>& format = std::nullopt) const { return String(); }
+  virtual String InspectSource(const String& format = "") const { return String(); }
   /*!
    * \brief Import another module.
    * \param other The module to import.

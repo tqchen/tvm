@@ -60,7 +60,7 @@ class HexagonModuleNode : public ffi::ModuleObj {
                     std::unordered_map<std::string, FunctionInfo> fmap, std::string asm_str,
                     std::string obj_str, std::string ir_str, std::string bc_str);
   Optional<ffi::Function> GetFunction(const String& name) final;
-  String InspectSource(const Optional<String>& format) const final;
+  String InspectSource(const String& format) const final;
   const char* kind() const final { return "hexagon"; }
   /*! \brief Get the property of the runtime module .*/
   int GetPropertyMask() const final {

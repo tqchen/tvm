@@ -178,7 +178,7 @@ ffi::Bytes OpenCLModuleNode::SaveToBytes() const {
   return ffi::Bytes(buffer);
 }
 
-String OpenCLModuleNode::InspectSource(const Optional<String>& format) const {
+String OpenCLModuleNode::InspectSource(const String& format) const {
   if (format && format.value() == fmt_) return data_;
   if (fmt_ == "cl") {
     return data_;

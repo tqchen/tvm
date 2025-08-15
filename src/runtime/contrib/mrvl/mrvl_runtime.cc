@@ -121,7 +121,7 @@ class MarvellSimulatorModuleNode : public ffi::ModuleObj {
    * \param format the format to return.
    * \return A string of JSON.
    */
-  String InspectSource(const Optional<String>& format = std::nullopt) const override { return nodes_json_; }
+  String InspectSource(const String& format = std::nullopt) const override { return nodes_json_; }
 
  protected:
   std::string symbol_name_;

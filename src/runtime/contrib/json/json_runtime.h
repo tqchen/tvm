@@ -194,7 +194,7 @@ class JSONRuntimeBase : public ffi::ModuleObj {
    * \param format the format to return.
    * \return A string of JSON.
    */
-  String InspectSource(const Optional<String>& format) const override { return graph_json_; }
+  String InspectSource(const String& format) const override { return graph_json_; }
 
  protected:
   /*!

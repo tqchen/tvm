@@ -75,7 +75,7 @@ class MetalModuleNode final : public ffi::ModuleObj {
     stream->Write(fmt_);
     return ffi::Bytes(buffer);
   }
-  String InspectSource(const Optional<String>& format) const final {
+  String InspectSource(const String& format) const final {
     // return text source if available.
     return source_;
   }

@@ -516,7 +516,7 @@ class OpenCLModuleNode : public OpenCLModuleNodeBase {
   ffi::Bytes SaveToBytes() const final;
   void SetPreCompiledPrograms(const std::string& bytes);
   std::string GetPreCompiledPrograms();
-  String InspectSource(const Optional<String>& format) const final;
+  String InspectSource(const String& format) const final;
 
   // Initialize the programs
   void Init() override;
