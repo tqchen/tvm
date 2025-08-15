@@ -148,10 +148,10 @@ class CublasJSONRuntime : public JSONRuntimeBase {
   void Run() override { LOG(FATAL) << "Unreachable"; }
 };
 
-runtime::Module CublasJSONRuntimeCreate(String symbol_name, String graph_json,
+ffi::Module CublasJSONRuntimeCreate(String symbol_name, String graph_json,
                                         const Array<String>& const_names) {
   auto n = make_object<CublasJSONRuntime>(symbol_name, graph_json, const_names);
-  return runtime::Module(n);
+  return ffi::Module(n);
 }
 
 TVM_FFI_STATIC_INIT_BLOCK({

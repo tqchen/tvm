@@ -455,7 +455,7 @@ llvm::Value* CodeGenCPU::GetContextPtr(llvm::GlobalVariable* gv) {
 
 void CodeGenCPU::InitGlobalContext(bool dynamic_lookup) {
   std::string ctx_symbol =
-      system_lib_prefix_.value_or("") + tvm::runtime::symbol::tvm_ffi_library_ctx;
+      system_lib_prefix_.value_or("") + ffi::symbol::tvm_ffi_library_ctx;
   // Module context
   gv_mod_ctx_ = InitContextPtr(t_void_p_, ctx_symbol);
   // Register back the locations.

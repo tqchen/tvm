@@ -310,7 +310,7 @@ class CodeGenVM : public ExprFunctor<Instruction::Arg(const Expr&)> {
       String sym = op->global_symbol;
       String fmt = op->attrs.GetAttr<String>(kCSourceFmt).value_or("c");
       String code = opt_code.value();
-      Module c_source_module =
+      ffi::Module c_source_module =
           codegen::CSourceModuleCreate(/*code=*/code, /*fmt=*/fmt, /*func_names=*/{sym},
                                        /*const_vars=*/{});
       builder_->exec()->Import(c_source_module);
@@ -441,13 +441,13 @@ TVM_FFI_STATIC_INIT_BLOCK({
  * \return The created module.
  */
 void LinkModules(ObjectPtr<VMExecutable> exec, const Map<String, runtime::NDArray>& params,
-                 const tvm::runtime::Module& lib, const Array<runtime::Module>& ext_libs) {
+                 const tvm::ffi::Module& lib, const Array<ffi::Module>& ext_libs) {
   // query if we need const loader for ext_modules
   // Wrap all submodules in the initialization wrapper.
   std::unordered_map<std::string, std::vector<std::string>> const_vars_by_symbol;
-  for (tvm::runtime::Module mod : ext_libs) {
-    auto pf_sym = mod.GetFunction("get_symbol");
-    auto pf_var = mod.GetFunction("get_const_vars");
+  for (tvm::ffi::Module mod : ext_libs) {
+    auto pf_sym = mod->GetFunction("get_symbol").value();
+    auto pf_var = mod->GetFunction("get_const_vars").value();
     std::vector<std::string> symbol_const_vars;
     if (pf_sym != nullptr && pf_var != nullptr) {
       String symbol = pf_sym().cast<String>();
@@ -465,11 +465,11 @@ void LinkModules(ObjectPtr<VMExecutable> exec, const Map<String, runtime::NDArra
     for (const auto& [name, param] : params) {
       const_var_ndarray[name] = param;
     }
-    runtime::Module const_loader_mod =
+    ffi::Module const_loader_mod =
         runtime::ConstLoaderModuleCreate(const_var_ndarray, const_vars_by_symbol);
-    const_loader_mod.Import(lib);
+    const_loader_mod->Import(lib);
     for (const auto& it : ext_libs) {
-      const_loader_mod.Import(it);
+      const_loader_mod->Import(it);
     }
     exec->Import(const_loader_mod);
   } else {
@@ -484,14 +484,14 @@ void LinkModules(ObjectPtr<VMExecutable> exec, const Map<String, runtime::NDArra
 /*!
  * \brief Link the libraries together.
  */
-Module VMLink(ExecBuilder builder, Target target, Optional<Module> lib, Array<Module> ext_libs,
+ffi::Module VMLink(ExecBuilder builder, Target target, Optional<ffi::Module> lib, Array<ffi::Module> ext_libs,
               Map<String, runtime::NDArray> params) {
   ObjectPtr<VMExecutable> executable = builder->Get();
   if (!lib.defined()) {
     lib = codegen::CSourceModuleCreate(";", "", Array<String>{});
   }
   LinkModules(executable, params, lib.value(), ext_libs);
-  return Module(executable);
+  return ffi::Module(executable);
 }
 
 TVM_FFI_STATIC_INIT_BLOCK({

@@ -44,7 +44,7 @@ namespace runtime {
  * \param ir_str        String with the disassembled LLVM IR source.
  * \param bc_str        String with the bitcode LLVM IR.
  */
-Module HexagonModuleCreate(std::string data, std::string fmt,
+ffi::Module HexagonModuleCreate(std::string data, std::string fmt,
                            std::unordered_map<std::string, FunctionInfo> fmap, std::string asm_str,
                            std::string obj_str, std::string ir_str, std::string bc_str);
 

@@ -588,10 +588,10 @@ class ACLRuntime : public JSONRuntimeBase {
   }
 #endif
 };
-runtime::Module ACLRuntimeCreate(const String& symbol_name, const String& graph_json,
+ffi::Module ACLRuntimeCreate(const String& symbol_name, const String& graph_json,
                                  const Array<String>& const_names) {
   auto n = make_object<ACLRuntime>(symbol_name, graph_json, const_names);
-  return runtime::Module(n);
+  return ffi::Module(n);
 }
 
 TVM_FFI_STATIC_INIT_BLOCK({

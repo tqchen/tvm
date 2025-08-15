@@ -235,10 +235,10 @@ class NNAPIRuntime : public JSONRuntimeBase {
 #endif  // ifdef TVM_GRAPH_EXECUTOR_NNAPI
 };
 
-runtime::Module NNAPIRuntimeCreate(const String& symbol_name, const String& graph_json,
+ffi::Module NNAPIRuntimeCreate(const String& symbol_name, const String& graph_json,
                                    const Array<String>& const_names) {
   auto n = make_object<NNAPIRuntime>(symbol_name, graph_json, const_names);
-  return runtime::Module(n);
+  return ffi::Module(n);
 }
 
 TVM_FFI_STATIC_INIT_BLOCK({

@@ -232,10 +232,10 @@ class cuDNNJSONRuntime : public JSONRuntimeBase {
   std::vector<std::function<void()>> op_execs_;
 };
 
-runtime::Module cuDNNJSONRuntimeCreate(String symbol_name, String graph_json,
+ffi::Module cuDNNJSONRuntimeCreate(String symbol_name, String graph_json,
                                        const Array<String>& const_names) {
   auto n = make_object<cuDNNJSONRuntime>(symbol_name, graph_json, const_names);
-  return runtime::Module(n);
+  return ffi::Module(n);
 }
 
 TVM_FFI_STATIC_INIT_BLOCK({

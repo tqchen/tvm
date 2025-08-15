@@ -581,7 +581,7 @@ void LLVMModuleNode::InitORCJIT() {
   ICHECK(!err) << llvm::toString(std::move(err));
 
   if (void** ctx_addr = reinterpret_cast<void**>(
-          GetGlobalAddr(runtime::symbol::tvm_ffi_library_ctx, *llvm_target))) {
+          GetGlobalAddr(ffi::symbol::tvm_ffi_library_ctx, *llvm_target))) {
     *ctx_addr = this;
   }
   runtime::InitContextFunctions(
@@ -771,7 +771,7 @@ static void LLVMReflectionRegister() {
            })
       .def("target.llvm_version_major", []() -> int { return TVM_LLVM_VERSION / 10; })
       .def("runtime.module.loadfile_ll",
-           [](std::string filename, std::string fmt) -> runtime::Module {
+           [](std::string filename, std::string fmt) -> ffi::Module {
              auto n = make_object<LLVMModuleNode>();
              n->SetJITEngine("orcjit");
              n->LoadIR(filename);
@@ -786,7 +786,7 @@ static void LLVMReflectionRegister() {
            })
       .def("codegen.codegen_blob",
            [](std::string data, bool system_lib, std::string llvm_target_string,
-              std::string c_symbol_prefix) -> runtime::Module {
+              std::string c_symbol_prefix) -> ffi::Module {
              auto n = make_object<LLVMModuleNode>();
              auto llvm_instance = std::make_unique<LLVMInstance>();
              With<LLVMTarget> llvm_target(*llvm_instance, llvm_target_string);

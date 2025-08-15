@@ -179,7 +179,7 @@ ffi::Bytes OpenCLModuleNode::SaveToBytes() const {
 }
 
 String OpenCLModuleNode::InspectSource(const String& format) const {
-  if (format && format.value() == fmt_) return data_;
+  if (format == fmt_) return data_;
   if (fmt_ == "cl") {
     return data_;
   } else {
@@ -205,7 +205,7 @@ void OpenCLModuleNode::Init() {
   }
 
   // split into source artifacts for each kernel
-  parsed_kernels_ = SplitKernels(InspectSource(std::nullopt));
+  parsed_kernels_ = SplitKernels(InspectSource(""));
   ICHECK(!parsed_kernels_.empty()) << "The OpenCL module expects a kernel delimited "
                                    << "source from code generation, but no kernel "
                                    << "delimiter was found.";

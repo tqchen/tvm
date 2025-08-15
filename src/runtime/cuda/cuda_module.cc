@@ -210,7 +210,7 @@ class CUDAWrappedFunc {
          << " grid=(" << wl.grid_dim(0) << "," << wl.grid_dim(1) << "," << wl.grid_dim(2) << "), "
          << " block=(" << wl.block_dim(0) << "," << wl.block_dim(1) << "," << wl.block_dim(2)
          << ")\n";
-      std::string cuda = m_->InspectSource(std::nullopt);
+      std::string cuda = m_->InspectSource("");
       if (cuda.length() != 0) {
         os << "// func_name=" << func_name_ << "\n"
            << "// CUDA Source\n"

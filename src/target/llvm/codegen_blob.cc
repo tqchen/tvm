@@ -77,7 +77,7 @@ std::unique_ptr<llvm::Module> CodeGenBlob(const std::string& data, bool system_l
   llvm_target->SetTargetMetadata(module.get());
   module->setDataLayout(tm->createDataLayout());
   auto* blob_value = llvm::ConstantDataArray::getString(*ctx, data, false);
-  std::string mdev_blob_name = c_symbol_prefix + runtime::symbol::tvm_ffi_library_bin;
+  std::string mdev_blob_name = c_symbol_prefix + ffi::symbol::tvm_ffi_library_bin;
 
   auto* tvm_ffi_library_bin = new llvm::GlobalVariable(
       *module, blob_value->getType(), true, llvm::GlobalValue::ExternalLinkage, blob_value,

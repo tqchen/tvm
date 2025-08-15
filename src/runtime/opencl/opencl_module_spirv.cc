@@ -41,7 +41,7 @@ class OpenCLSPIRVModuleNode : public OpenCLModuleNodeBase {
 
   void ExportToFile(const String& file_name, const String& format) const final;
   ffi::Bytes SaveToBytes() const final;
-  String InspectSource(const Optional<String>&) const final { return spirv_text_; }
+  String InspectSource(const String& format) const final { return spirv_text_; }
 
   void Init() override;
   cl_kernel InstallKernel(cl::OpenCLWorkspace* w, cl::OpenCLThreadEntry* t,

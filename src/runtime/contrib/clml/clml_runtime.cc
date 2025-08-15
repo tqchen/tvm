@@ -1826,10 +1826,10 @@ class CLMLRuntime : public JSONRuntimeBase {
   std::string clml_symbol;
 };
 
-runtime::Module CLMLRuntimeCreate(const String& symbol_name, const String& graph_json,
+ffi::Module CLMLRuntimeCreate(const String& symbol_name, const String& graph_json,
                                   const Array<String>& const_names) {
   auto n = make_object<CLMLRuntime>(symbol_name, graph_json, const_names);
-  return runtime::Module(n);
+  return ffi::Module(n);
 }
 
 TVM_FFI_STATIC_INIT_BLOCK({

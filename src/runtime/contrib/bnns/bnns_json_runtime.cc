@@ -557,10 +557,10 @@ class BNNSJSONRuntime : public JSONRuntimeBase {
   std::vector<TensorPtr> tensors_eid_;
 };
 
-runtime::Module BNNSJSONRuntimeCreate(String symbol_name, String graph_json,
+ffi::Module BNNSJSONRuntimeCreate(String symbol_name, String graph_json,
                                       const Array<String>& const_names) {
   auto n = make_object<BNNSJSONRuntime>(symbol_name, graph_json, const_names);
-  return runtime::Module(n);
+  return ffi::Module(n);
 }
 
 TVM_FFI_STATIC_INIT_BLOCK({

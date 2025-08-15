@@ -200,7 +200,7 @@ class Module : public ObjectRef {
    * \note This function won't load the import relationship.
    *  Re-create import relationship by calling Import.
    */
-  static Module LoadFromFile(const String& file_name);
+  TVM_FFI_EXTRA_CXX_API static Module LoadFromFile(const String& file_name);
 
   TVM_FFI_DEFINE_MUTABLE_NOTNULLABLE_OBJECT_REF_METHODS(Module, ObjectRef, ModuleObj);
 };
@@ -213,6 +213,8 @@ namespace symbol {
 constexpr const char* tvm_ffi_library_ctx = "__tvm_ffi_library_ctx";
 /*! \brief Global variable to store binary data alongside a library module. */
 constexpr const char* tvm_ffi_library_bin = "__tvm_ffi_library_bin";
+/*! \brief Default entry function of a library module. */
+constexpr const char* tvm_ffi_main = "__tvm_ffi_main__";
 }  // namespace symbol
 }  // namespace ffi
 }  // namespace tvm

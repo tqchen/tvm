@@ -22,6 +22,7 @@
  */
 #include "codegen_webgpu.h"
 
+#include <dmlc/memory_io.h>
 #include <tvm/arith/analyzer.h>
 #include <tvm/ffi/reflection/registry.h>
 #include <tvm/tir/builtin.h>

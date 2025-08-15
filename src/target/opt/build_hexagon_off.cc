@@ -22,7 +22,7 @@
 namespace tvm {
 namespace runtime {
 
-Module HexagonModuleCreate(std::string data, std::string fmt,
+ffi::Module HexagonModuleCreate(std::string data, std::string fmt,
                            std::unordered_map<std::string, FunctionInfo> fmap, std::string asm_str,
                            std::string obj_str, std::string ir_str, std::string bc_str) {
   LOG(WARNING) << "Hexagon runtime is not enabled, return a source module...";

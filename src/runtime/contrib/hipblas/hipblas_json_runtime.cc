@@ -134,10 +134,10 @@ class HipblasJSONRuntime : public JSONRuntimeBase {
   void Run() override { LOG(FATAL) << "Unreachable"; }
 };
 
-runtime::Module HipblasJSONRuntimeCreate(String symbol_name, String graph_json,
+ffi::Module HipblasJSONRuntimeCreate(String symbol_name, String graph_json,
                                          const Array<String>& const_names) {
   auto n = make_object<HipblasJSONRuntime>(symbol_name, graph_json, const_names);
-  return runtime::Module(n);
+  return ffi::Module(n);
 }
 
 TVM_FFI_STATIC_INIT_BLOCK({
