@@ -93,7 +93,7 @@ void LogMessageImpl(const std::string& file, int lineno, int level, const std::s
 TVM_FFI_STATIC_INIT_BLOCK({
   namespace refl = tvm::ffi::reflection;
   refl::GlobalDef().def_packed(
-      "runtime.module.loadfile_hexagon", [](ffi::PackedArgs args, ffi::Any* rv) {
+      "ffi.Module.load_from_file.hexagon", [](ffi::PackedArgs args, ffi::Any* rv) {
         ObjectPtr<Library> n = CreateDSOLibraryObject(args[0].cast<String>());
         *rv = CreateModuleFromLibrary(n);
       });

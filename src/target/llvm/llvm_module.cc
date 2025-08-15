@@ -777,7 +777,7 @@ static void LLVMReflectionRegister() {
              return llvm_target.TargetHasCPUFeature(feature);
            })
       .def("target.llvm_version_major", []() -> int { return TVM_LLVM_VERSION / 10; })
-      .def("runtime.module.loadfile_ll",
+      .def("ffi.Module.load_from_file.ll",
            [](std::string filename, std::string fmt) -> ffi::Module {
              auto n = make_object<LLVMModuleNode>();
              n->SetJITEngine("orcjit");

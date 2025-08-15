@@ -189,7 +189,7 @@ class RuntimeContext implements Disposable {
     this.functionListGlobalNamesFunctor = getGlobalFunc(
       "ffi.FunctionListGlobalNamesFunctor"
     );
-    this.moduleGetFunction = getGlobalFunc("runtime.ModuleGetFunction");
+    this.moduleGetFunction = getGlobalFunc("ffi.ModuleGetFunction");
     this.moduleImport = getGlobalFunc("runtime.ModuleImport");
     this.ndarrayEmpty = getGlobalFunc("runtime.TVMArrayAllocWithScope");
     this.ndarrayCopyFromTo = getGlobalFunc("runtime.TVMArrayCopyFromTo");

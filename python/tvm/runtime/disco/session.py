@@ -94,7 +94,7 @@ class DModule(DRef):
         self.session = session
 
     def __getitem__(self, name: str) -> DPackedFunc:
-        func = self.session._get_cached_method("runtime.ModuleGetFunction")
+        func = self.session._get_cached_method("ffi.ModuleGetFunction")
         return DPackedFunc(func(self, name, False), self.session)
 
 
