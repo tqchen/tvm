@@ -91,7 +91,7 @@ class BNNSJSONRuntime : public JSONRuntimeBase {
                   const Array<String> const_names)
       : JSONRuntimeBase(symbol_name, graph_json, const_names) {}
 
-  const char* type_key() const override { return "bnns_json"; }
+  const char* kind() const override { return "bnns_json"; }
 
   void Init(const Array<NDArray>& consts) override {
     ICHECK_EQ(consts.size(), const_idx_.size())

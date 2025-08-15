@@ -151,8 +151,7 @@ NDArray TFLiteRuntime::GetOutput(int index) const {
   return ret;
 }
 
-ffi::Function TFLiteRuntime::GetFunction(const String& name,
-                                         const ObjectPtr<Object>& sptr_to_self) {
+ffi::Optional<ffi::Function> TFLiteRuntime::GetFunction(const String& name) {
   // Return member functions during query.
   if (name == "set_input") {
     return ffi::Function([sptr_to_self, this](ffi::PackedArgs args, ffi::Any* rv) {
@@ -174,7 +173,7 @@ ffi::Function TFLiteRuntime::GetFunction(const String& name,
       this->SetNumThreads(num_threads);
     });
   } else {
-    return ffi::Function();
+    return std::nullopt;
   }
 }
 

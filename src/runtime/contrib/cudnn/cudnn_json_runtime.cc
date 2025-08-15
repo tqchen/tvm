@@ -69,7 +69,7 @@ class cuDNNJSONRuntime : public JSONRuntimeBase {
     }
   }
 
-  const char* type_key() const override { return "cudnn_json"; }  // May be overridden
+  const char* kind() const override { return "cudnn_json"; }  // May be overridden
 
   void Run() override {
     for (const auto& f : op_execs_) {
@@ -242,8 +242,8 @@ TVM_FFI_STATIC_INIT_BLOCK({
   namespace refl = tvm::ffi::reflection;
   refl::GlobalDef()
       .def("runtime.cuDNNJSONRuntimeCreate", cuDNNJSONRuntimeCreate)
-      .def("runtime.module.loadbinary_cudnn_json",
-           JSONRuntimeBase::LoadFromBinary<cuDNNJSONRuntime>);
+      .def("ffi.Module.load_from_bytes.cudnn_json",
+           JSONRuntimeBase::LoadFromBytes<cuDNNJSONRuntime>);
 });
 
 }  // namespace contrib

@@ -193,7 +193,7 @@ class CLMLRuntime : public JSONRuntimeBase {
    *
    * \return module type key.
    */
-  const char* type_key() const override { return "clml"; }
+  const char* kind() const override { return "clml"; }
 
   /*!
    * \brief Initialize runtime. Create CLML layer from JSON
@@ -1836,7 +1836,7 @@ TVM_FFI_STATIC_INIT_BLOCK({
   namespace refl = tvm::ffi::reflection;
   refl::GlobalDef()
       .def("runtime.clml_runtime_create", CLMLRuntimeCreate)
-      .def("runtime.module.loadbinary_clml", JSONRuntimeBase::LoadFromBinary<CLMLRuntime>);
+      .def("ffi.Module.load_from_bytes.clml", JSONRuntimeBase::LoadFromBytes<CLMLRuntime>);
 });
 }  //  namespace contrib
 }  //  namespace runtime

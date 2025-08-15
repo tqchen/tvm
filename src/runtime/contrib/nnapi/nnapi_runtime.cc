@@ -245,7 +245,7 @@ TVM_FFI_STATIC_INIT_BLOCK({
   namespace refl = tvm::ffi::reflection;
   refl::GlobalDef()
       .def("runtime.nnapi_runtime_create", NNAPIRuntimeCreate)
-      .def("runtime.module.loadbinary_nnapi", JSONRuntimeBase::LoadFromBinary<NNAPIRuntime>);
+      .def("ffi.Module.load_from_bytes.nnapi", JSONRuntimeBase::LoadFromBytes<NNAPIRuntime>);
 });
 
 }  // namespace contrib

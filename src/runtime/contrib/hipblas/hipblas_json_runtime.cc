@@ -47,21 +47,22 @@ class HipblasJSONRuntime : public JSONRuntimeBase {
 
   void Init(const Array<NDArray>& consts) override {}
 
-  ffi::Function GetFunction(const String& name, const ObjectPtr<Object>& sptr_to_self) override {
+  ffi::Optional<ffi::Function> GetFunction(const String& name) override {
     // JSONRuntimeBase::SetInputOutputBuffers(...) is not thread safe. Since HipblasJSONRuntime
     // can be used by multiple GPUs running on different threads, we avoid using that function
     // and directly call hipBLAS on the inputs from ffi::PackedArgs.
+    ObjectPtr<Object> sptr_to_self = ffi::GetObjectPtr<Object>(this);
     if (this->symbol_name_ == name) {
       return ffi::Function([sptr_to_self, this](ffi::PackedArgs args, ffi::Any* rv) {
         ICHECK(this->initialized_) << "The module has not been initialized";
         this->Run(args);
       });
     } else {
-      return JSONRuntimeBase::GetFunction(name, sptr_to_self);
+      return JSONRuntimeBase::GetFunction(name);
     }
   }
 
-  const char* type_key() const override { return "hipblas_json"; }  // May be overridden
+  const char* kind() const override { return "hipblas_json"; }  // May be overridden
 
   void Run(ffi::PackedArgs args) {
     auto* entry_ptr = tvm::contrib::HipBlasLtThreadEntry::ThreadLocal();
@@ -144,8 +145,8 @@ TVM_FFI_STATIC_INIT_BLOCK({
   namespace refl = tvm::ffi::reflection;
   refl::GlobalDef()
       .def("runtime.HipblasJSONRuntimeCreate", HipblasJSONRuntimeCreate)
-      .def("runtime.module.loadbinary_hipblas_json",
-           JSONRuntimeBase::LoadFromBinary<HipblasJSONRuntime>);
+      .def("ffi.Module.load_from_bytes.hipblas_json",
+           JSONRuntimeBase::LoadFromBytes<HipblasJSONRuntime>);
 });
 
 }  // namespace contrib
