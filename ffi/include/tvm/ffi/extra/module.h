@@ -201,6 +201,12 @@ class Module : public ObjectRef {
    *  Re-create import relationship by calling Import.
    */
   TVM_FFI_EXTRA_CXX_API static Module LoadFromFile(const String& file_name);
+  /*
+   * \brief Query context symbols that is registered via TVMEnvRegisterSymbols.
+   * \param callback The callback to be called with the symbol name and address.
+   * \note This helper can be used to implement custom Module that needs to access context symbols.
+   */
+  TVM_FFI_EXTRA_CXX_API static void VisitContextSymbols(const ffi::TypedFunction<void(String, void*)>& callback);
 
   TVM_FFI_DEFINE_MUTABLE_NOTNULLABLE_OBJECT_REF_METHODS(Module, ObjectRef, ModuleObj);
 };

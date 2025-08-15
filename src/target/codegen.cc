@@ -253,10 +253,9 @@ ffi::Module DeserializeModuleFromBytes(std::string blob) {
 
   for (size_t i = 0; i < modules.size(); ++i) {
     for (size_t j = import_tree_row_ptr[i]; j < import_tree_row_ptr[i + 1]; ++j) {
-      auto module_import_addr = ffi::ModuleInternal::GetImportsAddr(modules[i].operator->());
       auto child_index = import_tree_child_indices[j];
       ICHECK(child_index < modules.size());
-      module_import_addr->emplace_back(modules[child_index]);
+      modules[i]->Import(modules[child_index]);
     }
   }
 

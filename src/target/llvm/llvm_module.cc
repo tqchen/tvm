@@ -312,7 +312,7 @@ String LLVMModuleNode::InspectSource(const String& format) const {
     module_->print(rso, nullptr);
     return rso.str();
   } else {
-    LOG(FATAL) << "Do not know how to get source code with format: " << format) << "\'";
+    LOG(FATAL) << "Do not know how to get source code with format: " << format << "\'";
   }
   return "";
 }
@@ -443,8 +443,12 @@ void LLVMModuleNode::InitMCJIT() {
           GetGlobalAddr(ffi::symbol::tvm_ffi_library_ctx, *llvm_target))) {
     *ctx_addr = this;
   }
-  runtime::InitContextFunctions(
-      [this, &llvm_target](const char* name) { return GetGlobalAddr(name, *llvm_target); });
+
+  ffi::Module::VisitContextSymbols([this, &llvm_target](const String& name, void* symbol) {
+    if (void** ctx_addr = reinterpret_cast<void**>(GetGlobalAddr(name, *llvm_target))) {
+      *ctx_addr = symbol;
+    }
+  });
   // There is a problem when a JITed function contains a call to a runtime function.
   // The runtime function (e.g. __truncsfhf2) may not be resolved, and calling it will
   // lead to a runtime crash.
@@ -584,8 +588,11 @@ void LLVMModuleNode::InitORCJIT() {
           GetGlobalAddr(ffi::symbol::tvm_ffi_library_ctx, *llvm_target))) {
     *ctx_addr = this;
   }
-  runtime::InitContextFunctions(
-      [this, &llvm_target](const char* name) { return GetGlobalAddr(name, *llvm_target); });
+  ffi::Module::VisitContextSymbols([this, &llvm_target](const String& name, void* symbol) {
+    if (void** ctx_addr = reinterpret_cast<void**>(GetGlobalAddr(name, *llvm_target))) {
+      *ctx_addr = symbol;
+    }
+  });
 }
 
 bool LLVMModuleNode::IsCompatibleWithHost(const llvm::TargetMachine* tm) const {

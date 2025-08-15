@@ -236,11 +236,11 @@ void CodeGenCPU::AddMainFunction(const std::string& entry_func_name) {
   // Create wrapper function
   llvm::Function* wrapper_func =
       llvm::Function::Create(target_func->getFunctionType(), llvm::Function::WeakAnyLinkage,
-                             runtime::symbol::tvm_ffi_main, module_.get());
+                             ffi::symbol::tvm_ffi_main, module_.get());
 
   // Set attributes (Windows comdat, DLL export, etc.)
   if (llvm_target_->GetOrCreateTargetMachine()->getTargetTriple().isOSWindows()) {
-    llvm::Comdat* comdat = module_->getOrInsertComdat(runtime::symbol::tvm_ffi_main);
+    llvm::Comdat* comdat = module_->getOrInsertComdat(ffi::symbol::tvm_ffi_main);
     comdat->setSelectionKind(llvm::Comdat::Any);
     wrapper_func->setComdat(comdat);
   }

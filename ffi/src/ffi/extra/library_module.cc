@@ -146,6 +146,12 @@ class ContextSymbolRegistry {
     }
   }
 
+  void VisitContextSymbols(const ffi::TypedFunction<void(String, void*)>& callback) {
+    for (const auto& [name, symbol] : context_symbols_) {
+      callback(name, symbol);
+    }
+  }
+
   void Register(String name, void* symbol) { context_symbols_.emplace_back(name, symbol); }
 
   static ContextSymbolRegistry* Global() {
@@ -156,6 +162,10 @@ class ContextSymbolRegistry {
  private:
   std::vector<std::pair<String, void*>> context_symbols_;
 };
+
+void Module::VisitContextSymbols(const ffi::TypedFunction<void(String, void*)>& callback) {
+  ContextSymbolRegistry::Global()->VisitContextSymbols(callback);
+}
 
 Module CreateLibraryModule(ObjectPtr<Library> lib) {
   const char* library_bin =
