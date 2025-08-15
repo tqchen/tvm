@@ -55,8 +55,6 @@ class JSONRuntimeBase : public ffi::ModuleObj {
     LoadGraph(graph_json_);
   }
 
-  ~JSONRuntimeBase() override = default;
-
   const char* kind() const override { return "json"; }  // May be overridden
 
   /*! \brief Get the property of the runtime module .*/
@@ -95,7 +93,8 @@ class JSONRuntimeBase : public ffi::ModuleObj {
    * \param sptr_to_self The pointer to the module node.
    * \return The packed function.
    */
-  ffi::Function GetFunction(const String& name, const ObjectPtr<Object>& sptr_to_self) override {
+  Optional<ffi::Function> GetFunction(const String& name) override {
+    ObjectPtr<Object> sptr_to_self = ffi::GetObjectPtr<Object>(this);
     if (name == "get_symbol") {
       return ffi::Function(
           [sptr_to_self, this](ffi::PackedArgs args, ffi::Any* rv) { *rv = this->symbol_name_; });
@@ -148,11 +147,14 @@ class JSONRuntimeBase : public ffi::ModuleObj {
         *rv = 0;
       });
     } else {
-      return ffi::Function(nullptr);
+      return std::nullopt;
     }
   }
 
-  void SaveToBinary(dmlc::Stream* stream) override {
+  ffi::Bytes SaveToBytes() const override {
+    std::string buffer;
+    dmlc::MemoryStringStream ms(&buffer);
+    dmlc::Stream* stream = &ms;
     // Save the symbol
     stream->Write(symbol_name_);
     // Save the graph
@@ -163,12 +165,14 @@ class JSONRuntimeBase : public ffi::ModuleObj {
       consts.push_back(it);
     }
     stream->Write(consts);
+    return ffi::Bytes(buffer);
   }
 
   template <typename T,
             typename = typename std::enable_if<std::is_base_of<JSONRuntimeBase, T>::value>::type>
-  static Module LoadFromBinary(void* strm) {
-    dmlc::Stream* stream = static_cast<dmlc::Stream*>(strm);
+  static ffi::Module LoadFromBytes(const ffi::Bytes& bytes) {
+    dmlc::MemoryFixedSizeStream ms(const_cast<char*>(bytes.data()), bytes.size());
+    dmlc::Stream* stream = &ms;
     std::string symbol;
     std::string graph_json;
     std::vector<std::string> consts;
@@ -181,7 +185,7 @@ class JSONRuntimeBase : public ffi::ModuleObj {
       const_names.push_back(it);
     }
     auto n = make_object<T>(symbol, graph_json, const_names);
-    return Module(n);
+    return ffi::Module(n);
   }
 
   /*!
@@ -190,7 +194,7 @@ class JSONRuntimeBase : public ffi::ModuleObj {
    * \param format the format to return.
    * \return A string of JSON.
    */
-  String GetSource(const String& format = "json") override { return graph_json_; }
+  String InspectSource(const Optional<String>& format) const override { return graph_json_; }
 
  protected:
   /*!

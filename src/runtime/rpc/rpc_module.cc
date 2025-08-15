@@ -216,7 +216,7 @@ class RPCModuleNode final : public ffi::ModuleObj {
 
     if (module_handle_ != nullptr) {
       return remote_get_time_evaluator_(
-          GetRef<Module>(this), name, static_cast<int>(dev.device_type), dev.device_id, number,
+          GetRef<ffi::Module>(this), name, static_cast<int>(dev.device_type), dev.device_id, number,
           repeat, min_repeat_ms, limit_zero_time_iterations, cooldown_interval_ms,
           repeats_to_cooldown, cache_flush_bytes, f_preproc_name);
     } else {
@@ -406,8 +406,8 @@ TVM_FFI_STATIC_INIT_BLOCK({
              dev.device_type = static_cast<DLDeviceType>(device_type);
              dev.device_id = device_id;
              if (opt_mod.defined()) {
-               Module m = opt_mod.value();
-               std::string tkey = m->type_key();
+               ffi::Module m = opt_mod.value();
+               std::string tkey = m->kind();
                if (tkey == "rpc") {
                  return static_cast<RPCModuleNode*>(m.operator->())
                      ->GetTimeEvaluator(name, dev, number, repeat, min_repeat_ms,
@@ -421,10 +421,10 @@ TVM_FFI_STATIC_INIT_BLOCK({
                        << "Cannot find " << f_preproc_name << " in the global function";
                    f_preproc = *pf_preproc;
                  }
-                 ffi::Function pf = m.GetFunction(name, true);
-                 CHECK(pf != nullptr) << "Cannot find " << name << "` in the global registry";
+                 Optional<ffi::Function> pf = m->GetFunction(name);
+                 CHECK(pf.has_value()) << "Cannot find " << name << "` in the global registry";
                  return profiling::WrapTimeEvaluator(
-                     pf, dev, number, repeat, min_repeat_ms, limit_zero_time_iterations,
+                     *pf, dev, number, repeat, min_repeat_ms, limit_zero_time_iterations,
                      cooldown_interval_ms, repeats_to_cooldown, cache_flush_bytes, f_preproc);
                }
              } else {

@@ -65,7 +65,7 @@ class MSCTensorRTRuntime : public JSONRuntimeBase {
                               const Array<String>& const_names)
       : JSONRuntimeBase(symbol_name, graph_json, const_names) {}
 
-  ~MSCTensorRTRuntime() override {
+  ~MSCTensorRTRuntime() {
     VLOG(1) << "Destroying MSC TensorRT runtime";
     DestroyEngine();
   }
@@ -75,11 +75,11 @@ class MSCTensorRTRuntime : public JSONRuntimeBase {
    *
    * \return module type key.
    */
-  const char* type_key() const final { return "msc_tensorrt"; }
+  const char* kind() const final { return "msc_tensorrt"; }
 
   /*! \brief Get the property of the runtime module .*/
   int GetPropertyMask() const final {
-    return ModulePropertyMask::kBinarySerializable | ModulePropertyMask::kRunnable;
+    return ffi::Module::kBinarySerializable | ffi::Module::kRunnable;
   }
 
   /*!
@@ -353,8 +353,8 @@ TVM_FFI_STATIC_INIT_BLOCK({
   namespace refl = tvm::ffi::reflection;
   refl::GlobalDef()
       .def("runtime.msc_tensorrt_runtime_create", MSCTensorRTRuntimeCreate)
-      .def("runtime.module.loadbinary_msc_tensorrt",
-           JSONRuntimeBase::LoadFromBinary<MSCTensorRTRuntime>);
+      .def("ffi.Module.load_from_bytes.msc_tensorrt",
+           JSONRuntimeBase::LoadFromBytes<MSCTensorRTRuntime>);
 });
 
 }  // namespace contrib

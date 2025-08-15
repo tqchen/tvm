@@ -205,7 +205,7 @@ void OpenCLModuleNode::Init() {
   }
 
   // split into source artifacts for each kernel
-  parsed_kernels_ = SplitKernels(GetSource("cl"));
+  parsed_kernels_ = SplitKernels(InspectSource(std::nullopt));
   ICHECK(!parsed_kernels_.empty()) << "The OpenCL module expects a kernel delimited "
                                    << "source from code generation, but no kernel "
                                    << "delimiter was found.";
