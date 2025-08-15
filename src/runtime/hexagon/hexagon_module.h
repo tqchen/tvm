@@ -21,7 +21,7 @@
 #define TVM_RUNTIME_HEXAGON_HEXAGON_MODULE_H_
 
 #include <tvm/runtime/logging.h>
-#include <tvm/runtime/module.h>
+#include <tvm/ffi/extra/module.h>
 
 #include <array>
 #include <memory>
@@ -54,21 +54,21 @@ Module HexagonModuleCreate(std::string data, std::string fmt,
          See docstring for HexagonModuleCreate for
          construction parameter details.
  */
-class HexagonModuleNode : public runtime::ModuleNode {
+class HexagonModuleNode : public ffi::ModuleObj {
  public:
   HexagonModuleNode(std::string data, std::string fmt,
                     std::unordered_map<std::string, FunctionInfo> fmap, std::string asm_str,
                     std::string obj_str, std::string ir_str, std::string bc_str);
-  ffi::Function GetFunction(const String& name, const ObjectPtr<Object>& sptr_to_self) override;
-  String GetSource(const String& format) override;
-  const char* type_key() const final { return "hexagon"; }
+  Optional<ffi::Function> GetFunction(const String& name) final;
+  String InspectSource(const Optional<String>& format) const final;
+  const char* kind() const final { return "hexagon"; }
   /*! \brief Get the property of the runtime module .*/
-  int GetPropertyMask() const override {
-    return ModulePropertyMask::kBinarySerializable | ModulePropertyMask::kDSOExportable |
-           ModulePropertyMask::kRunnable;
+  int GetPropertyMask() const final {
+    return ffi::Module::kBinarySerializable | ffi::Module::kCompilationExportable |
+           ffi::Module::kRunnable;
   }
-  void SaveToFile(const String& file_name, const String& format) override;
-  void SaveToBinary(dmlc::Stream* stream) override;
+  void ExportToFile(const String& file_name, const String& format) const final;
+  ffi::Bytes SaveToBytes() const final;
 
  protected:
   std::string data_;

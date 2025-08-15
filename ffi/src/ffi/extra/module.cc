@@ -101,7 +101,7 @@ Module Module::LoadFromFile(const String& file_name) {
                                 << "Ensure that you have loaded the correct runtime code, and"
                                 << "that you are on the correct hardware architecture.";
   }
-  return (*floader)(file_name).cast<Module>();
+  return (*floader)(file_name, format).cast<Module>();
 }
 
 TVM_FFI_STATIC_INIT_BLOCK({

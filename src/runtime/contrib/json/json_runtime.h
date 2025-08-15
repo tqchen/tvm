@@ -25,7 +25,7 @@
 #ifndef TVM_RUNTIME_CONTRIB_JSON_JSON_RUNTIME_H_
 #define TVM_RUNTIME_CONTRIB_JSON_JSON_RUNTIME_H_
 
-#include <tvm/runtime/module.h>
+#include <tvm/ffi/extra/module.h>
 #include <tvm/runtime/ndarray.h>
 #include <tvm/runtime/profiling.h>
 
@@ -47,7 +47,7 @@ namespace json {
  * \brief A json runtime that executes the serialized JSON format. This runtime
  * can be extended by user defined runtime for execution.
  */
-class JSONRuntimeBase : public ModuleNode {
+class JSONRuntimeBase : public ffi::ModuleObj {
  public:
   JSONRuntimeBase(const std::string& symbol_name, const std::string& graph_json,
                   const Array<String> const_names)
@@ -57,11 +57,11 @@ class JSONRuntimeBase : public ModuleNode {
 
   ~JSONRuntimeBase() override = default;
 
-  const char* type_key() const override { return "json"; }  // May be overridden
+  const char* kind() const override { return "json"; }  // May be overridden
 
   /*! \brief Get the property of the runtime module .*/
   int GetPropertyMask() const override {
-    return ModulePropertyMask::kBinarySerializable | ModulePropertyMask::kRunnable;
+    return ffi::Module::kBinarySerializable | ffi::Module::kRunnable;
   }
 
   /*! \brief Initialize a specific json runtime. */
