@@ -45,7 +45,9 @@ const TVMFFIByteArray* TVMFFITraceback(const char* filename, int lineno, const c
   tvm::ffi::TracebackStorage traceback;
   traceback.stop_at_boundary = cross_ffi_boundary == 0;
   if (filename != nullptr && func != nullptr) {
-    traceback.skip_frame_count = 1;
+    // need to skip TVMFFITraceback and the caller function
+    // which is already included in filename and func
+    traceback.skip_frame_count = 2;
     traceback.Append(filename, func, lineno);
   }
 
@@ -112,9 +114,6 @@ const TVMFFIByteArray* TVMFFITraceback(const char* filename, int lineno, const c
     DWORD64 displacement = 0;
     if (SymFromAddr(process, stack.AddrPC.Offset, &displacement, symbol_info)) {
       symbol = symbol_info->Name;
-    }
-    if (IsTracebackFunction(filename, symbol)) {
-      continue;
     }
     if (traceback.stop_at_boundary && DetectFFIBoundary(filename, symbol)) {
       break;

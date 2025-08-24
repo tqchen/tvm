@@ -24,6 +24,7 @@
 #ifndef TVM_FFI_TRACEBACK_H_
 #define TVM_FFI_TRACEBACK_H_
 
+#include <tvm/ffi/base_details.h>
 #include <cstring>
 #include <sstream>
 #include <string>
@@ -48,27 +49,21 @@ inline int32_t GetTracebackLimit() {
 #pragma warning(pop)
 #endif
 
-bool IsTracebackFunction(const char*, const char* symbol) {
-  if (symbol != nullptr) {
-    if (strncmp(symbol, "TVMFFITraceback", 15) == 0) {
-      return true;
-    }
-    if (strncmp(symbol, "TVMFFIErrorSetRaisedFromCStr", 28) == 0) {
-      return true;
-    }
-  }
-  return false;
-}
-
 /*!
  * \brief List frame patterns that should be excluded as they contain less information
  */
-inline bool ShouldExcludeFrame(const char* filename, const char* symbol) {
+ inline bool ShouldExcludeFrame(const char* filename, const char* symbol) {
   if (symbol != nullptr) {
     if (strncmp(symbol, "tvm::ffi::Function", 18) == 0) {
       return true;
     }
     if (strncmp(symbol, "tvm::ffi::details::", 19) == 0) {
+      return true;
+    }
+    if (strncmp(symbol, "TVMFFITraceback", 15) == 0) {
+      return true;
+    }
+    if (strncmp(symbol, "TVMFFIErrorSetRaisedFromCStr", 28) == 0) {
       return true;
     }
   }
@@ -115,9 +110,16 @@ inline bool ShouldExcludeFrame(const char* filename, const char* symbol) {
  * \return true if the frame should stop the traceback.
  * \note We stop traceback at the FFI boundary.
  */
-inline bool DetectFFIBoundary(const char* filename, const char* symbol) {
+ inline bool DetectFFIBoundary(const char* filename, const char* symbol) {
   if (symbol != nullptr) {
     if (strncmp(symbol, "TVMFFIFunctionCall", 18) == 0) {
+      return true;
+    }
+    // python ABI functions
+    if (strncmp(symbol, "slot_tp_call", 12) == 0) {
+      return true;
+    }
+    if (strncmp(symbol, "object_is_not_callable", 11) == 0) {
       return true;
     }
     // Python interpreter stack frames

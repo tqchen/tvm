@@ -95,7 +95,6 @@ int BacktraceFullCallback(void* data, uintptr_t pc, const char* filename, int li
     backtrace_syminfo(_bt_state, pc, BacktraceSyminfoCallback, BacktraceErrorCallback, &symbol_str);
   }
   symbol = symbol_str.data();
-  if (IsTracebackFunction(filename, symbol)) return 0;
   if (stack_trace->ExceedTracebackLimit()) {
     return 1;
   }
@@ -127,8 +126,12 @@ const TVMFFIByteArray* TVMFFITraceback(const char* filename, int lineno, const c
   tvm::ffi::TracebackStorage traceback;
   traceback.stop_at_boundary = cross_ffi_boundary == 0;
   if (filename != nullptr && func != nullptr) {
-    traceback.skip_frame_count = 1;
-    traceback.Append(filename, func, lineno);
+    // need to skip TVMFFITraceback and the caller function
+    // which is already included in filename and func
+    traceback.skip_frame_count = 2;
+    if (!tvm::ffi::ShouldExcludeFrame(filename, func)) {
+      traceback.Append(filename, func, lineno);
+    }
   }
   // libbacktrace eats memory if run on multiple threads at the same time, so we guard against it
   if (tvm::ffi::_bt_state != nullptr) {
