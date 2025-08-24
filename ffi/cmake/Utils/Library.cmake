@@ -57,12 +57,19 @@ function(tvm_ffi_add_target_from_obj target_name obj_target_name)
     LIBRARY_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/lib"
     RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/lib"
   )
-  if (MSVC)
+  if (WIN32)
     target_compile_definitions(${obj_target_name} PRIVATE TVM_FFI_EXPORTS)
     # set the output directory for each config type so msbuild also get into lib
     # without appending the config type to the output directory
-    foreach(CONFIG_TYPE Debug Release RelWithDebInfo MinSizeRel)
+    # do both Release and RELEASE suffix, since while cmake docs suggest Release is ok.
+    # real runs on MSbuild suggest that we might need RELEASE instead
+    foreach(CONFIG_TYPE Release RELEASE)
       set_target_properties(${target_name}_shared PROPERTIES
+        RUNTIME_OUTPUT_DIRECTORY_${CONFIG_TYPE} "${CMAKE_BINARY_DIR}/lib"
+        LIBRARY_OUTPUT_DIRECTORY_${CONFIG_TYPE} "${CMAKE_BINARY_DIR}/lib"
+        ARCHIVE_OUTPUT_DIRECTORY_${CONFIG_TYPE} "${CMAKE_BINARY_DIR}/lib"
+      )
+      set_target_properties(${target_name}_static PROPERTIES
         RUNTIME_OUTPUT_DIRECTORY_${CONFIG_TYPE} "${CMAKE_BINARY_DIR}/lib"
         LIBRARY_OUTPUT_DIRECTORY_${CONFIG_TYPE} "${CMAKE_BINARY_DIR}/lib"
         ARCHIVE_OUTPUT_DIRECTORY_${CONFIG_TYPE} "${CMAKE_BINARY_DIR}/lib"

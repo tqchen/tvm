@@ -175,7 +175,16 @@ endif()
 
 install(DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/include/tvm/ffi/ DESTINATION include/tvm/ffi/)
 install(DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/3rdparty/dlpack/include/ DESTINATION include/)
-install(DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/lib/ DESTINATION lib)
+
+if (WIN32)
+  # on windows, install by target is more robust as sometimes target may
+  # append subfolders lib/Release in msbuild
+  install(TARGETS tvm_ffi_shared tvm_ffi_static DESTINATION lib)
+else()
+  # on mac and other platforms, install by dir helps to also copy
+  # .dSYM over for debugging symbols
+  install(DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/lib/ DESTINATION lib)
+endif()
 
 ########## Adding python module ##########
 option(TVM_FFI_BUILD_PYTHON_MODULE "Adding python module." OFF)
