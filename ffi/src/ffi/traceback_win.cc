@@ -36,12 +36,14 @@
 
 #include "./traceback.h"
 
-const TVMFFIByteArray* TVMFFITraceback(const char* filename, int lineno, const char* func) {
+const TVMFFIByteArray* TVMFFITraceback(const char* filename, int lineno, const char* func,
+                                       int cross_ffi_boundary) {
   static thread_local std::string traceback_str;
   static thread_local TVMFFIByteArray traceback_array;
 
   // pass in current line as here so last line of traceback is always accurate
   tvm::ffi::TracebackStorage traceback;
+  traceback.stop_at_boundary = cross_ffi_boundary == 0;
   if (filename != nullptr && func != nullptr) {
     traceback.skip_frame_count = 1;
     traceback.Append(filename, func, lineno);
@@ -114,7 +116,7 @@ const TVMFFIByteArray* TVMFFITraceback(const char* filename, int lineno, const c
     if (IsTracebackFunction(filename, symbol)) {
       continue;
     }
-    if (ShouldStopTraceback(filename, symbol)) {
+    if (traceback.stop_at_boundary && DetectFFIBoundary(filename, symbol)) {
       break;
     }
     // skip extra frames

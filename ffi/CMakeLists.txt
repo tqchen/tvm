@@ -148,7 +148,7 @@ option(TVM_FFI_BUILD_TESTS "Adding test targets." OFF)
 if(CMAKE_CXX_COMPILER_ID MATCHES "GNU|Clang")
   if (TVM_FFI_USE_RELEASE_FLAGS)
     message(STATUS "Targeting global CXX flags to -O3 for optimized build")
-    target_compile_options(tvm_ffi_objs PRIVATE -O3 -g)
+    target_compile_options(tvm_ffi_objs PRIVATE -O3)
     target_compile_options(tvm_ffi_shared PRIVATE -O3)
     target_compile_options(tvm_ffi_static PRIVATE -O3)
   endif()
@@ -158,7 +158,9 @@ endif()
 include(cmake/Utils/CxxWarning.cmake)
 include(cmake/Utils/Sanitizer.cmake)
 
-tvm_ffi_add_cxx_warning(tvm_ffi_objs)
+# remap the file name to the source directory so we can see the
+# exact file name in traceback relative to the project source root
+tvm_ffi_add_prefix_map(tvm_ffi_objs ${CMAKE_SOURCE_DIR})
 
 ########## Adding cpp tests ##########
 
@@ -169,6 +171,7 @@ if (TVM_FFI_BUILD_TESTS)
   message(STATUS "Enable Testing")
   include(cmake/Utils/AddGoogleTest.cmake)
   add_subdirectory(tests/cpp/)
+  tvm_ffi_add_cxx_warning(tvm_ffi_objs)
 endif()
 
 ########## Install the related for normal cmake library ##########
@@ -208,9 +211,12 @@ if (TVM_FFI_BUILD_PYTHON_MODULE)
     ${CMAKE_CURRENT_SOURCE_DIR}/python/tvm_ffi/cython/object.pxi
     ${CMAKE_CURRENT_SOURCE_DIR}/python/tvm_ffi/cython/string.pxi
   )
+  # set working directory to source so we can see the exact file name in traceback
+  # relatived to the project source root
   add_custom_command(
       OUTPUT ${core_cpp}
       COMMAND ${Python_EXECUTABLE} -m cython --cplus ${core_pyx} -o ${core_cpp}
+      WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
       COMMENT "Transpiling ${core_pyx} to ${core_cpp}"
       DEPENDS ${cython_sources}
       VERBATIM

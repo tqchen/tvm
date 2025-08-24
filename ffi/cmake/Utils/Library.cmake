@@ -14,6 +14,14 @@
 # KIND, either express or implied.  See the License for the
 # specific language governing permissions and limitations
 # under the License.
+
+function(tvm_ffi_add_prefix_map target_name prefix_path)
+  # Add prefix map so the path displayed becomes relative to prefix_path
+  if(CMAKE_CXX_COMPILER_ID MATCHES "GNU|Clang")
+    target_compile_options(${target_name} PRIVATE "-ffile-prefix-map=${prefix_path}/=")
+  endif()
+endfunction()
+
 function(tvm_ffi_add_apple_dsymutil target_name)
   # running dsymutil on macos to generate debugging symbols for backtraces
   if(APPLE AND TVM_FFI_USE_LIBBACKTRACE)

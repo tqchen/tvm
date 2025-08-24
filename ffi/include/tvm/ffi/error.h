@@ -216,7 +216,7 @@ class ErrorBuilder {
  */
 #define TVM_FFI_THROW(ErrorKind)                                                           \
   ::tvm::ffi::details::ErrorBuilder(#ErrorKind,                                            \
-                                    TVMFFITraceback(__FILE__, __LINE__, TVM_FFI_FUNC_SIG), \
+                                    TVMFFITraceback(__FILE__, __LINE__, TVM_FFI_FUNC_SIG, 0), \
                                     TVM_FFI_ALWAYS_LOG_BEFORE_THROW)                       \
       .stream()
 
@@ -229,7 +229,7 @@ class ErrorBuilder {
  */
 #define TVM_FFI_LOG_AND_THROW(ErrorKind)                                                         \
   ::tvm::ffi::details::ErrorBuilder(#ErrorKind,                                                  \
-                                    TVMFFITraceback(__FILE__, __LINE__, TVM_FFI_FUNC_SIG), true) \
+                                    TVMFFITraceback(__FILE__, __LINE__, TVM_FFI_FUNC_SIG, 0), true) \
       .stream()
 
 // Glog style checks with TVM_FFI prefix
