@@ -141,21 +141,14 @@ if (NOT ${PROJECT_NAME} STREQUAL ${CMAKE_PROJECT_NAME})
   return()
 endif()
 
-option(TVM_FFI_WHEEL_RELEASE_FLAGS "Set release flags for wheel building" OFF)
+option(TVM_FFI_ATTACH_DEBUG_SYMBOLS "Attach debug symbols even in release mode" OFF)
 option(TVM_FFI_BUILD_TESTS "Adding test targets." OFF)
 
-# related options
-if(CMAKE_CXX_COMPILER_ID MATCHES "GNU|Clang")
-  if (TVM_FFI_WHEEL_RELEASE_FLAGS)
-    message(STATUS "Targeting global CXX flags to -O3 for optimized build")
-    if (APPLE)
-      # dSYM file in apple platform is pretty small
-      # always shipping them can help debugging
-      target_compile_options(tvm_ffi_objs PRIVATE -g)
-    endif()
+if (TVM_FFI_ATTACH_DEBUG_SYMBOLS)
+  if(CMAKE_CXX_COMPILER_ID MATCHES "GNU|Clang")
+    target_compile_options(tvm_ffi_objs PRIVATE -g1)
   endif()
 endif()
-
 
 include(cmake/Utils/CxxWarning.cmake)
 include(cmake/Utils/Sanitizer.cmake)
@@ -174,21 +167,6 @@ if (TVM_FFI_BUILD_TESTS)
   include(cmake/Utils/AddGoogleTest.cmake)
   add_subdirectory(tests/cpp/)
   tvm_ffi_add_cxx_warning(tvm_ffi_objs)
-endif()
-
-########## Install the related for normal cmake library ##########
-
-install(DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/include/tvm/ffi/ DESTINATION include/tvm/ffi/)
-install(DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/3rdparty/dlpack/include/ DESTINATION include/)
-
-if (WIN32)
-  # on windows, install by target is more robust as sometimes target may
-  # append subfolders lib/Release in msbuild
-  install(TARGETS tvm_ffi_shared tvm_ffi_static DESTINATION lib)
-else()
-  # on mac and other platforms, install by dir helps to also copy
-  # .dSYM over for debugging symbols
-  install(DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/lib/ DESTINATION lib)
 endif()
 
 ########## Adding python module ##########
@@ -254,4 +232,19 @@ if (TVM_FFI_BUILD_PYTHON_MODULE)
   install(DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/cmake/Utils/ DESTINATION cmake/Utils/)
   install(FILES ${CMAKE_CURRENT_SOURCE_DIR}/CMakeLists.txt DESTINATION .)
   install(FILES ${CMAKE_CURRENT_SOURCE_DIR}/cmake/tvm_ffi-config.cmake DESTINATION lib/cmake/tvm_ffi/)
+endif()
+
+########## Install the related for normal cmake library ##########
+
+install(DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/include/tvm/ffi/ DESTINATION include/tvm/ffi/)
+install(DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/3rdparty/dlpack/include/ DESTINATION include/)
+install(TARGETS tvm_ffi_shared  DESTINATION lib)
+# ship additional dSYM files for debugging symbols on if available
+if (APPLE)
+  install(DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/lib/ DESTINATION lib FILES_MATCHING PATTERN "*.dSYM")
+endif()
+
+if (NOT TVM_FFI_BUILD_PYTHON_MODULE)
+  # when building wheel, we do not ship static as we already ships source and dll
+  install(TARGETS tvm_ffi_static DESTINATION lib)
 endif()
