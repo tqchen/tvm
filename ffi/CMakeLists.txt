@@ -141,16 +141,18 @@ if (NOT ${PROJECT_NAME} STREQUAL ${CMAKE_PROJECT_NAME})
   return()
 endif()
 
-option(TVM_FFI_USE_RELEASE_FLAGS "Set O3 with RelWithDebInfo, useful to get lineno" OFF)
+option(TVM_FFI_WHEEL_RELEASE_FLAGS "Set release flags for wheel building" OFF)
 option(TVM_FFI_BUILD_TESTS "Adding test targets." OFF)
 
 # related options
 if(CMAKE_CXX_COMPILER_ID MATCHES "GNU|Clang")
-  if (TVM_FFI_USE_RELEASE_FLAGS)
+  if (TVM_FFI_WHEEL_RELEASE_FLAGS)
     message(STATUS "Targeting global CXX flags to -O3 for optimized build")
-    target_compile_options(tvm_ffi_objs PRIVATE -O3)
-    target_compile_options(tvm_ffi_shared PRIVATE -O3)
-    target_compile_options(tvm_ffi_static PRIVATE -O3)
+    if (APPLE)
+      # dSYM file in apple platform is pretty small
+      # always shipping them can help debugging
+      target_compile_options(tvm_ffi_objs PRIVATE -g)
+    endif()
   endif()
 endif()
 
