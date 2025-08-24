@@ -36,12 +36,17 @@
 
 #include "./traceback.h"
 
-namespace tvm {
-namespace ffi {
-namespace {
+const TVMFFIByteArray* TVMFFITraceback(const char* filename, int lineno, const char* func) {
+  static thread_local std::string traceback_str;
+  static thread_local TVMFFIByteArray traceback_array;
 
-std::string Traceback() {
-  TracebackStorage traceback;
+  // pass in current line as here so last line of traceback is always accurate
+  tvm::ffi::TracebackStorage traceback;
+  if (filename != nullptr && func != nullptr) {
+    traceback.skip_frame_count = 1;
+    traceback.Append(filename, func, lineno);
+  }
+
   HANDLE process = GetCurrentProcess();
   HANDLE thread = GetCurrentThread();
 
@@ -106,9 +111,16 @@ std::string Traceback() {
     if (SymFromAddr(process, stack.AddrPC.Offset, &displacement, symbol_info)) {
       symbol = symbol_info->Name;
     }
-
+    if (IsTracebackFunction(filename, symbol)) {
+      continue;
+    }
     if (ShouldStopTraceback(filename, symbol)) {
       break;
+    }
+    // skip extra frames
+    if (traceback.skip_frame_count > 0) {
+      traceback.skip_frame_count--;
+      continue;
     }
     if (ShouldExcludeFrame(filename, symbol)) {
       continue;
@@ -116,16 +128,7 @@ std::string Traceback() {
     traceback.Append(filename, symbol, lineno);
   }
   SymCleanup(process);
-  return traceback.GetTraceback();
-}
-}  // namespace
-}  // namespace ffi
-}  // namespace tvm
-
-const TVMFFIByteArray* TVMFFITraceback(const char* filename, int lineno, const char* func) {
-  static thread_local std::string traceback_str;
-  static thread_local TVMFFIByteArray traceback_array;
-  traceback_str = ::tvm::ffi::Traceback();
+  traceback_str = traceback.GetTraceback();
   traceback_array.data = traceback_str.data();
   traceback_array.size = traceback_str.size();
   return &traceback_array;

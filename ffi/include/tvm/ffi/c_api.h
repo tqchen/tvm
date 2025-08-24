@@ -838,8 +838,8 @@ TVM_FFI_DLL const TVMFFITypeAttrColumn* TVMFFIGetTypeAttrColumn(const TVMFFIByte
  * \param func The current function
  * \return The traceback string
  *
- * \note filename func and lino are only used as a backup info, most cases they are not needed.
- *  The return value is set to const char* to be more compatible across dll boundaries.
+ * \note filename/func can be nullptr, then these info are skipped, they are useful
+ *       for cases when debug symbols is not available.
  */
 TVM_FFI_DLL const TVMFFIByteArray* TVMFFITraceback(const char* filename, int lineno,
                                                    const char* func);

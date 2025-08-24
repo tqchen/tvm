@@ -56,7 +56,7 @@ class TestObjectDerived : public TestObjectBase {
 };
 
 void TestRaiseError(String kind, String msg) {
-  throw ffi::Error(kind, msg, TVM_FFI_TRACEBACK_HERE);
+  throw ffi::Error(kind, msg, TVMFFITraceback(__FILE__, __LINE__, TVM_FFI_FUNC_SIG));
 }
 
 void TestApply(Function f, PackedArgs args, Any* ret) { f.CallPacked(args, ret); }

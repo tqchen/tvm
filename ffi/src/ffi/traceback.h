@@ -48,6 +48,18 @@ inline int32_t GetTracebackLimit() {
 #pragma warning(pop)
 #endif
 
+bool IsTracebackFunction(const char*, const char* symbol) {
+  if (symbol != nullptr) {
+    if (strncmp(symbol, "TVMFFITraceback", 15) == 0) {
+      return true;
+    }
+    if (strncmp(symbol, "TVMFFIErrorSetRaisedFromCStr", 28) == 0) {
+      return true;
+    }
+  }
+  return false;
+}
+
 /*!
  * \brief List frame patterns that should be excluded as they contain less information
  */
@@ -66,12 +78,6 @@ inline bool ShouldExcludeFrame(const char* filename, const char* symbol) {
     if (strstr(filename, "include/tvm/ffi/any.h")) {
       return true;
     }
-    if (strstr(filename, "include/tvm/runtime/logging.h")) {
-      return true;
-    }
-    if (strstr(filename, "src/ffi/traceback.cc")) {
-      return true;
-    }
     // C++ stdlib frames
     if (strstr(filename, "include/c++/")) {
       return true;
@@ -83,9 +89,6 @@ inline bool ShouldExcludeFrame(const char* filename, const char* symbol) {
     if (strstr(symbol, "__libc_")) {
       return true;
     }
-  }
-  if (strncmp(symbol, "TVMFFIErrorSetRaisedFromCStr", 28) == 0) {
-    return true;
   }
   // libffi.so stack frames.  These may also show up as numeric
   // addresses with no symbol name.  This could be improved in the
@@ -126,6 +129,8 @@ struct TracebackStorage {
   std::vector<std::string> lines;
   /*! \brief Maximum size of the traceback. */
   size_t max_frame_size = GetTracebackLimit();
+  /*! \brief Number of frames to skip. */
+  size_t skip_frame_count = 0;
 
   void Append(const char* filename, const char* func, int lineno) {
     // skip frames with empty filename
