@@ -151,6 +151,9 @@ struct TracebackStorage {
         if (strncmp(func, "0x0", 3) == 0) {
           return;
         }
+        if (strncmp(func, "<unknown>", 9) == 0) {
+          return;
+        }
         filename = "<unknown>";
       } else {
         return;

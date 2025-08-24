@@ -108,14 +108,19 @@ const TVMFFIByteArray* TVMFFITraceback(const char* filename, int lineno, const c
     size_t total_u64_words = (total_symbol_bytes + 7) / 8;
     static_assert(8 % alignof(SYMBOL_INFO) == 0);
     std::vector<uint64_t> symbol_buffer(total_u64_words, 0);
-    PSYMBOL_INFO symbol_info = reinterpret_cast<PSYMBOL_INFO>(symbol_buffer.data());
-    symbol_info->SizeOfStruct = sizeof(SYMBOL_INFO);
-    symbol_info->MaxNameLen = MAX_SYM_NAME;
-    DWORD64 displacement = 0;
-    if (SymFromAddr(process, stack.AddrPC.Offset, &displacement, symbol_info)) {
-      symbol = symbol_info->Name;
+    if (filename != nullptr) {
+      // only run symbol translation if we have the file name
+      // this is because SymFromAddr can return wrong symbol which becomes even more
+      // confusing when pdb file do not exist
+      PSYMBOL_INFO symbol_info = reinterpret_cast<PSYMBOL_INFO>(symbol_buffer.data());
+      symbol_info->SizeOfStruct = sizeof(SYMBOL_INFO);
+      symbol_info->MaxNameLen = MAX_SYM_NAME;
+      DWORD64 displacement = 0;
+      if (SymFromAddr(process, stack.AddrPC.Offset, &displacement, symbol_info)) {
+        symbol = symbol_info->Name;
+      }
     }
-    if (traceback.stop_at_boundary && DetectFFIBoundary(filename, symbol)) {
+    if (traceback.stop_at_boundary && tvm::ffi::DetectFFIBoundary(filename, symbol)) {
       break;
     }
     // skip extra frames
@@ -123,7 +128,7 @@ const TVMFFIByteArray* TVMFFITraceback(const char* filename, int lineno, const c
       traceback.skip_frame_count--;
       continue;
     }
-    if (ShouldExcludeFrame(filename, symbol)) {
+    if (tvm::ffi::ShouldExcludeFrame(filename, symbol)) {
       continue;
     }
     traceback.Append(filename, symbol, lineno);

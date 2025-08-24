@@ -126,6 +126,8 @@ if (MSVC)
   target_link_libraries(tvm_ffi_objs PRIVATE DbgHelp.lib)
   target_link_libraries(tvm_ffi_shared PRIVATE DbgHelp.lib)
   target_link_libraries(tvm_ffi_static PRIVATE DbgHelp.lib)
+  # produce pdb file
+  target_link_options(tvm_ffi_shared PRIVATE /DEBUG)
 endif ()
 
 # expose the headers as public dependencies
