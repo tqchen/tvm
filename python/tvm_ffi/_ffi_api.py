@@ -1,4 +1,3 @@
-#!/bin/bash
 # Licensed to the Apache Software Foundation (ASF) under one
 # or more contributor license agreements.  See the NOTICE file
 # distributed with this work for additional information
@@ -15,12 +14,8 @@
 # KIND, either express or implied.  See the License for the
 # specific language governing permissions and limitations
 # under the License.
-set -euxo pipefail
+"""FFI API."""
+from .registry import _init_api
 
-BUILD_TYPE=Release
 
-rm -rf build/CMakeFiles build/CMakeCache.txt
-cmake -G Ninja -S . -B build  -DTVM_FFI_BUILD_TESTS=ON -DCMAKE_BUILD_TYPE=${BUILD_TYPE} \
-  -DCMAKE_EXPORT_COMPILE_COMMANDS=ON -DCMAKE_CXX_COMPILER_LAUNCHER=ccache -DCMAKE_CXX_FLAGS="-O3"
-cmake --build build --parallel 16 --clean-first --config ${BUILD_TYPE} --target tvm_ffi_tests
-GTEST_COLOR=1 ctest -V -C ${BUILD_TYPE} --test-dir build --output-on-failure
+_init_api("ffi", __name__)
