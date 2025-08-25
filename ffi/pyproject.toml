@@ -17,7 +17,7 @@
 
 [project]
 name = "apache-tvm-ffi"
-version = "0.1.0a0"
+version = "0.1.0a2"
 description = "tvm ffi"
 
 authors = [{ name = "TVM FFI team" }]
@@ -128,14 +128,11 @@ skip = [
   "cp36-*",
   "cp37-*",
   "cp38-*",
-  "cp39-*",
-  "cp310-*",
-  "cp311-*",
   "pp*",
   "*musllinux*",
-] # pypy doesn't play nice with pybind11
+]
 build-frontend = "build[uv]"
-test-command = "pytest {project}/tests -m "
+test-command = "pytest {project}/tests/python -m "
 test-extras = ["test"]
 
 [tool.cibuildwheel.linux]
