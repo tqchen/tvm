@@ -17,7 +17,11 @@
 
 [project]
 name = "apache-tvm-ffi"
+<<<<<<< HEAD
 version = "0.1.0a3"
+=======
+version = "0.1.0a2"
+>>>>>>> 7cdde49793 ([FFI][CI] Add wheel publishing)
 description = "tvm ffi"
 
 authors = [{ name = "TVM FFI team" }]

@@ -19,8 +19,11 @@ set -euxo pipefail
 
 BUILD_TYPE=RelWithDebugInfo
 
+<<<<<<< HEAD
 rm -rf build/CMakeCache.txt
 
+=======
+>>>>>>> 7cdde49793 ([FFI][CI] Add wheel publishing)
 cmake -G Ninja -S . -B build -DTVM_FFI_BUILD_TESTS=ON -DCMAKE_BUILD_TYPE=${BUILD_TYPE} \
   -DCMAKE_EXPORT_COMPILE_COMMANDS=ON -DCMAKE_CXX_COMPILER_LAUNCHER=ccache
 cmake --build build --clean-first --config ${BUILD_TYPE} --target tvm_ffi_tests
