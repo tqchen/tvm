@@ -323,7 +323,7 @@ def load_torch_extension_to_dlpack():
         cpp_sources=[open(os.path.join(os.path.dirname(__file__), "dlpack.cc")).read()],
         cuda_sources=[],
         extra_cflags=["-O3"],
-        extra_include_paths=cpp_extension.include_paths("cuda"),
+        extra_include_paths=[tvm_ffi.libinfo.find_dlpack_include_path()],
         functions=["toDLPack"],
     )
     return module.toDLPack
