@@ -315,6 +315,36 @@ def bench_torch_utils_to_dlpack(repeat):
     print_speed("torch.utils.dlpack.to_dlpack", speed)
 
 
+def load_torch_extension_to_dlpack():
+    """Load torch.to_dlpack through cpp extension."""
+    from torch.utils import cpp_extension
+    module = cpp_extension.load_inline(
+        name="dlpack",
+        cpp_sources=[open(os.path.join(os.path.dirname(__file__), "dlpack.cc")).read()],
+        cuda_sources=[],
+        extra_cflags=["-O3"],
+        extra_include_paths=cpp_extension.include_paths("cuda"),
+        functions=["toDLPack"],
+    )
+    return module.toDLPack
+
+
+def bench_torch_extension_to_dlpack(repeat):
+    """
+    Measures overhead of running to_dlpack[cpp-extension]
+    """
+    x = torch.arange(1)
+    to_dlpack = load_torch_extension_to_dlpack()
+    to_dlpack(x)
+    start = time.time()
+    for i in range(repeat):
+        torch.utils.dlpack.to_dlpack(x)
+    end = time.time()
+    speed = (end - start) / repeat
+    print_speed("to_dlpack[cpp-extension]", speed)
+
+
+
 def torch_get_cuda_stream_native(device_id):
     return torch.cuda.current_stream(device_id).cuda_stream
 
@@ -359,6 +389,8 @@ def bench_torch_get_current_stream(repeat, name, func):
     print_speed(f"torch.cuda.current_stream[{name}]", speed)
 
 
+
+
 def main():
     repeat = 10000
     print("-----------------------------")
@@ -381,6 +413,7 @@ def main():
     print("Benchmark x.__dlpack__ overhead")
     print("-------------------------------")
     bench_torch_utils_to_dlpack(repeat)
+    bench_torch_extension_to_dlpack(repeat)
     bench_to_dlpack(torch.arange(1), "torch.__dlpack__", repeat)
     bench_to_dlpack(np.arange(1), "numpy.__dlpack__", repeat)
     bench_to_dlpack(tvm_ffi.from_dlpack(torch.arange(1)), "tvm.__dlpack__", repeat)
