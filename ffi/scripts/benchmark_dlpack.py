@@ -323,7 +323,7 @@ def load_torch_extension_to_dlpack():
         cpp_sources=[open(os.path.join(os.path.dirname(__file__), "dlpack.cc")).read()],
         cuda_sources=[],
         extra_cflags=["-O3"],
-        extra_include_paths=[tvm_ffi.libinfo.find_dlpack_include_path()],
+        extra_include_paths=[tvm_ffi.libinfo.find_dlpack_include_path(), tvm_ffi.libinfo.find_include_path()],
         functions=["toDLPack"],
     )
     return module.toDLPack
@@ -338,7 +338,7 @@ def bench_torch_extension_to_dlpack(repeat):
     to_dlpack(x)
     start = time.time()
     for i in range(repeat):
-        torch.utils.dlpack.to_dlpack(x)
+        to_dlpack(x)
     end = time.time()
     speed = (end - start) / repeat
     print_speed("to_dlpack[cpp-extension]", speed)

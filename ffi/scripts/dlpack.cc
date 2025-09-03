@@ -1,7 +1,8 @@
+#include <dlpack/dlpack.h>
 #include <pybind11/pybind11.h>
 #include <ATen/DLConvertor.h>
 #include <ATen/Functions.h>
-#include <dlpack/dlpack.h>
+#include <tvm/ffi/container/ndarray.h>
 
 
 namespace at_hack {
@@ -317,28 +318,31 @@ namespace at_hack {
   T* toDLPackImpl(const Tensor& src) {
     // create a new tensor with possibly normalized strides
     // gh-83069
-    auto shape = src.sizes();
-    auto strides = src.strides().vec();
+    //auto shape = src.sizes();
+    // auto strides = src.strides().vec();
+    /*
     for (int i = 0; i < src.dim(); i++) {
       if (shape[i] < 2) {
         strides[i] = 1;
       }
     }
-
-    auto view = src.as_strided(shape, strides, src.storage_offset());
+    */
+    // auto view = src.as_strided(shape, strides, src.storage_offset());
+    auto view = src;
     ATenDLMTensor<T>* atDLMTensor(new ATenDLMTensor<T>);
     atDLMTensor->handle = view;
     atDLMTensor->tensor.manager_ctx = atDLMTensor;
     atDLMTensor->tensor.deleter = &deleter<T>;
+    /*
     atDLMTensor->tensor.dl_tensor.data = view.data_ptr();
     atDLMTensor->tensor.dl_tensor.device = torchDeviceToDLDevice(src.device());
     atDLMTensor->tensor.dl_tensor.ndim = static_cast<int32_t>(src.dim());
-    atDLMTensor->tensor.dl_tensor.dtype = getDLDataTypeX(src);
+    // atDLMTensor->tensor.dl_tensor.dtype = getDLDataTypeX(src);
     atDLMTensor->tensor.dl_tensor.shape = view.sizes().data();
     atDLMTensor->tensor.dl_tensor.strides = view.strides().data();
     atDLMTensor->tensor.dl_tensor.byte_offset = 0;
     fillVersion(&atDLMTensor->tensor);
-
+    */
     return &(atDLMTensor->tensor);
   }
 
@@ -360,3 +364,7 @@ void toDLPack(at::Tensor& tensor) {
   dlpack->deleter(dlpack);
 }
 
+
+void toTVMFFINDArray() {
+
+}
