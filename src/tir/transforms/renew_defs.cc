@@ -37,7 +37,7 @@ namespace tir {
     Stmt stmt = StmtExprMutator::VisitStmt_(op); \
     op = stmt.as<NODE>();                        \
     ICHECK(op != nullptr);                       \
-    auto n = make_object<NODE>(*op);             \
+    auto n = ffi::make_object<NODE>(*op);             \
     n->FIELD = std::move(new_var);               \
     return Stmt(n);                              \
   }
@@ -130,7 +130,7 @@ class RenewDefMutator : public StmtExprMutator {
         op->writes.Map(std::bind(&RenewDefMutator::VisitBufferRegion, this, std::placeholders::_1));
 
     // Step 5. Regenerate block. Since the defs are changed, we need to create a new block
-    auto n = make_object<BlockNode>(*op);
+    auto n = ffi::make_object<BlockNode>(*op);
     n->iter_vars = std::move(iter_vars);
     n->alloc_buffers = std::move(alloc_buffers);
     n->match_buffers = std::move(match_buffers);
@@ -150,7 +150,7 @@ class RenewDefMutator : public StmtExprMutator {
     if (buffer.same_as(op->buffer)) {
       return stmt;
     } else {
-      auto n = make_object<BufferStoreNode>(*op);
+      auto n = ffi::make_object<BufferStoreNode>(*op);
       n->buffer = std::move(buffer);
       return BufferStore(n);
     }
@@ -164,7 +164,7 @@ class RenewDefMutator : public StmtExprMutator {
     if (buffer.same_as(op->buffer)) {
       return expr;
     } else {
-      auto n = make_object<BufferLoadNode>(*op);
+      auto n = ffi::make_object<BufferLoadNode>(*op);
       n->buffer = std::move(buffer);
       return BufferLoad(n);
     }
@@ -172,7 +172,7 @@ class RenewDefMutator : public StmtExprMutator {
 
  private:
   Var ReDefineVar(const Var& var) {
-    Var new_var = Var(make_object<VarNode>(*var.get()));
+    Var new_var = Var(ffi::make_object<VarNode>(*var.get()));
     this->AddDefRemap(var, new_var);
     return new_var;
   }
@@ -210,7 +210,7 @@ class RenewDefMutator : public StmtExprMutator {
     // update elem_offset
     PrimExpr elem_offset = redefine_if_is_var(buffer->elem_offset);
 
-    auto n = make_object<BufferNode>(*buffer.get());
+    auto n = ffi::make_object<BufferNode>(*buffer.get());
     n->data = std::move(data);
     n->shape = std::move(shape);
     n->strides = std::move(strides);
@@ -249,7 +249,7 @@ class RenewDefMutator : public StmtExprMutator {
         buffer->strides.Map(std::bind(&RenewDefMutator::VisitExpr, this, std::placeholders::_1));
     PrimExpr elem_offset = VisitExpr(buffer->elem_offset);
 
-    auto n = make_object<BufferNode>(*buffer.get());
+    auto n = ffi::make_object<BufferNode>(*buffer.get());
     n->data = std::move(data);
     n->shape = std::move(shape);
     n->strides = std::move(strides);

@@ -201,7 +201,7 @@ class VerifyGPUCodeNode : public PostprocNode {
   }
 
   Postproc Clone() const {
-    ObjectPtr<VerifyGPUCodeNode> n = make_object<VerifyGPUCodeNode>(*this);
+    ObjectPtr<VerifyGPUCodeNode> n = ffi::make_object<VerifyGPUCodeNode>(*this);
     n->target_constraints_ = this->target_constraints_;
     return Postproc(n);
   }
@@ -211,7 +211,7 @@ class VerifyGPUCodeNode : public PostprocNode {
 };
 
 Postproc Postproc::VerifyGPUCode() {
-  ObjectPtr<VerifyGPUCodeNode> n = make_object<VerifyGPUCodeNode>();
+  ObjectPtr<VerifyGPUCodeNode> n = ffi::make_object<VerifyGPUCodeNode>();
   return Postproc(n);
 }
 

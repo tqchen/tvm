@@ -227,7 +227,7 @@ class PyExprVisitor : public ObjectRef {
       ffi::Function f_visit_dataflow_block_, ffi::Function f_visit_var_def,
       ffi::Function f_visit_var_def_, ffi::Function f_visit_dataflow_var_def_,
       ffi::Function f_visit_span) {
-    ObjectPtr<PyExprVisitorNode> n = make_object<PyExprVisitorNode>();
+    ObjectPtr<PyExprVisitorNode> n = ffi::make_object<PyExprVisitorNode>();
     n->f_visit_expr = f_visit_expr;
     n->f_visit_binding = f_visit_binding;
     n->f_visit_binding_block = f_visit_binding_block;
@@ -510,7 +510,7 @@ class PyExprMutator : public ObjectRef {
       ffi::Function f_visit_dataflow_block_, ffi::Function f_visit_var_def,
       ffi::Function f_visit_var_def_, ffi::Function f_visit_dataflow_var_def_,
       ffi::Function f_visit_span) {
-    ObjectPtr<PyExprMutatorNode> n = make_object<PyExprMutatorNode>();
+    ObjectPtr<PyExprMutatorNode> n = ffi::make_object<PyExprMutatorNode>();
     n->builder_ = builder_;
     n->f_visit_expr = f_visit_expr;
     n->f_visit_constant_ = f_visit_constant_;

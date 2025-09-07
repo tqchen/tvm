@@ -44,7 +44,7 @@ namespace relax {
  */
 #define RELAX_REGISTER_STATISTICAL_OP_INTERFACE(OpName)                           \
   Expr OpName(Expr x, Optional<Array<Integer>> axis, bool keepdims) {             \
-    ObjectPtr<StatisticalAttrs> attrs = make_object<StatisticalAttrs>();          \
+    ObjectPtr<StatisticalAttrs> attrs = ffi::make_object<StatisticalAttrs>();          \
     attrs->axis = std::move(axis);                                                \
     attrs->keepdims = keepdims;                                                   \
     static const Op& op = Op::Get("relax." #OpName);                              \

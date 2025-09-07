@@ -53,7 +53,7 @@ ObjectPtr<Object> GetSourceNameNode(const String& name) {
 
   auto sn = source_map.find(name);
   if (sn == source_map.end()) {
-    ObjectPtr<SourceNameNode> n = make_object<SourceNameNode>();
+    ObjectPtr<SourceNameNode> n = ffi::make_object<SourceNameNode>();
     source_map[name] = n;
     n->name = std::move(name);
     return n;
@@ -80,7 +80,7 @@ TVM_STATIC_IR_FUNCTOR(ReprPrinter, vtable)
     });
 
 Span::Span(SourceName source_name, int line, int end_line, int column, int end_column) {
-  auto n = make_object<SpanNode>();
+  auto n = ffi::make_object<SpanNode>();
   n->source_name = std::move(source_name);
   n->line = line;
   n->end_line = end_line;
@@ -100,7 +100,7 @@ Span Span::Merge(const Span& other) const {
 }
 
 SequentialSpan::SequentialSpan(tvm::Array<Span> spans) {
-  auto n = make_object<SequentialSpanNode>();
+  auto n = ffi::make_object<SequentialSpanNode>();
   tvm::Array<Span> tmp_spans;
   for (const Span& s : spans) {
     if (const SequentialSpanNode* seq_s = s.as<SequentialSpanNode>()) {
@@ -120,7 +120,7 @@ SequentialSpan::SequentialSpan(tvm::Array<Span> spans) {
 }
 
 SequentialSpan::SequentialSpan(std::initializer_list<Span> init) {
-  auto n = make_object<SequentialSpanNode>();
+  auto n = ffi::make_object<SequentialSpanNode>();
   tvm::Array<Span> spans = tvm::Array<Span>(init);
   tvm::Array<Span> tmp_spans;
   for (const Span& s : spans) {
@@ -172,7 +172,7 @@ TVM_STATIC_IR_FUNCTOR(ReprPrinter, vtable)
 
 /*! \brief Construct a source from a string. */
 Source::Source(SourceName src_name, std::string source) {
-  auto n = make_object<SourceNode>();
+  auto n = ffi::make_object<SourceNode>();
   n->source_name = std::move(src_name);
   n->source = std::move(source);
 
@@ -219,7 +219,7 @@ tvm::String Source::GetLine(int line) {
 }
 
 SourceMap::SourceMap(Map<SourceName, Source> source_map) {
-  auto n = make_object<SourceMapObj>();
+  auto n = ffi::make_object<SourceMapObj>();
   n->source_map = std::move(source_map);
   data_ = std::move(n);
 }

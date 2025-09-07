@@ -37,7 +37,7 @@ namespace msc {
 
 PluginAttr::PluginAttr(const String& name, const String& type, const String& default_value,
                        const String& describe) {
-  ObjectPtr<PluginAttrNode> n = make_object<PluginAttrNode>();
+  ObjectPtr<PluginAttrNode> n = ffi::make_object<PluginAttrNode>();
   n->name = std::move(name);
   n->type = std::move(type);
   n->default_value = std::move(default_value);
@@ -46,13 +46,13 @@ PluginAttr::PluginAttr(const String& name, const String& type, const String& def
 }
 
 PluginAttr::PluginAttr(const JsonPluginAttr& j_attr) {
-  ObjectPtr<PluginAttrNode> n = make_object<PluginAttrNode>();
+  ObjectPtr<PluginAttrNode> n = ffi::make_object<PluginAttrNode>();
   n->FromJson(j_attr);
   data_ = std::move(n);
 }
 
 PluginAttr::PluginAttr(const std::string& json_str) {
-  ObjectPtr<PluginAttrNode> n = make_object<PluginAttrNode>();
+  ObjectPtr<PluginAttrNode> n = ffi::make_object<PluginAttrNode>();
   n->FromJson(json_str);
   data_ = std::move(n);
 }
@@ -83,7 +83,7 @@ void PluginAttrNode::FromJson(const std::string& json_str) {
 
 PluginTensor::PluginTensor(const String& name, const String& dtype, const Integer& ndim,
                            const String& device, const String& describe) {
-  ObjectPtr<PluginTensorNode> n = make_object<PluginTensorNode>();
+  ObjectPtr<PluginTensorNode> n = ffi::make_object<PluginTensorNode>();
   n->name = std::move(name);
   n->dtype = std::move(dtype);
   n->ndim = std::move(ndim);
@@ -93,13 +93,13 @@ PluginTensor::PluginTensor(const String& name, const String& dtype, const Intege
 }
 
 PluginTensor::PluginTensor(const JsonPluginTensor& j_tensor) {
-  ObjectPtr<PluginTensorNode> n = make_object<PluginTensorNode>();
+  ObjectPtr<PluginTensorNode> n = ffi::make_object<PluginTensorNode>();
   n->FromJson(j_tensor);
   data_ = std::move(n);
 }
 
 PluginTensor::PluginTensor(const std::string& json_str) {
-  ObjectPtr<PluginTensorNode> n = make_object<PluginTensorNode>();
+  ObjectPtr<PluginTensorNode> n = ffi::make_object<PluginTensorNode>();
   n->FromJson(json_str);
   data_ = std::move(n);
 }
@@ -132,7 +132,7 @@ void PluginTensorNode::FromJson(const std::string& json_str) {
 
 PluginExtern::PluginExtern(const String& name, const String& header, const String& source,
                            const String& lib, const String& describe) {
-  ObjectPtr<PluginExternNode> n = make_object<PluginExternNode>();
+  ObjectPtr<PluginExternNode> n = ffi::make_object<PluginExternNode>();
   n->name = std::move(name);
   n->header = std::move(header);
   n->source = std::move(source);
@@ -142,13 +142,13 @@ PluginExtern::PluginExtern(const String& name, const String& header, const Strin
 }
 
 PluginExtern::PluginExtern(const JsonPluginExtern& j_extern) {
-  ObjectPtr<PluginExternNode> n = make_object<PluginExternNode>();
+  ObjectPtr<PluginExternNode> n = ffi::make_object<PluginExternNode>();
   n->FromJson(j_extern);
   data_ = std::move(n);
 }
 
 PluginExtern::PluginExtern(const std::string& json_str) {
-  ObjectPtr<PluginExternNode> n = make_object<PluginExternNode>();
+  ObjectPtr<PluginExternNode> n = ffi::make_object<PluginExternNode>();
   n->FromJson(json_str);
   data_ = std::move(n);
 }
@@ -185,7 +185,7 @@ Plugin::Plugin(const String& name, const String& version, const String& describe
                const Map<String, PluginExtern>& externs,
                const Map<String, Array<String>>& support_dtypes,
                const Map<String, String>& options) {
-  ObjectPtr<PluginNode> n = make_object<PluginNode>();
+  ObjectPtr<PluginNode> n = ffi::make_object<PluginNode>();
   n->name = std::move(name);
   n->version = std::move(version);
   n->describe = std::move(describe);
@@ -200,13 +200,13 @@ Plugin::Plugin(const String& name, const String& version, const String& describe
 }
 
 Plugin::Plugin(const JsonPlugin& j_plugin) {
-  ObjectPtr<PluginNode> n = make_object<PluginNode>();
+  ObjectPtr<PluginNode> n = ffi::make_object<PluginNode>();
   n->FromJson(j_plugin);
   data_ = std::move(n);
 }
 
 Plugin::Plugin(const std::string& json_str) {
-  ObjectPtr<PluginNode> n = make_object<PluginNode>();
+  ObjectPtr<PluginNode> n = ffi::make_object<PluginNode>();
   n->FromJson(json_str);
   data_ = std::move(n);
 }

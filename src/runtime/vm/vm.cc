@@ -39,7 +39,7 @@ namespace vm {
 //---------------------------------------------
 
 VMClosure::VMClosure(String func_name, ffi::Function impl) {
-  auto ptr = make_object<VMClosureObj>();
+  auto ptr = ffi::make_object<VMClosureObj>();
   ptr->func_name = func_name;
   ptr->impl = std::move(impl);
   data_ = std::move(ptr);
@@ -846,7 +846,7 @@ void VirtualMachineImpl::RunLoop() {
   }
 }
 
-ObjectPtr<VirtualMachine> VirtualMachine::Create() { return make_object<VirtualMachineImpl>(); }
+ObjectPtr<VirtualMachine> VirtualMachine::Create() { return ffi::make_object<VirtualMachineImpl>(); }
 
 //--------------------------------------------------------------------
 // FFI related code
@@ -1074,7 +1074,7 @@ class VirtualMachineProfiler : public VirtualMachineImpl {
 };
 
 ObjectPtr<VirtualMachine> VirtualMachine::CreateProfiler() {
-  return make_object<VirtualMachineProfiler>();
+  return ffi::make_object<VirtualMachineProfiler>();
 }
 
 #else

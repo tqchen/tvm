@@ -49,7 +49,7 @@ TVM_FFI_STATIC_INIT_BLOCK({
 });
 
 IterMark::IterMark(PrimExpr source, PrimExpr extent) {
-  auto n = make_object<IterMarkNode>();
+  auto n = ffi::make_object<IterMarkNode>();
   n->source = std::move(source);
   n->extent = std::move(extent);
   data_ = std::move(n);
@@ -68,7 +68,7 @@ TVM_STATIC_IR_FUNCTOR(ReprPrinter, vtable)
     });
 
 IterSplitExpr::IterSplitExpr(IterMark source) {
-  auto n = make_object<IterSplitExprNode>();
+  auto n = ffi::make_object<IterSplitExprNode>();
   auto one = make_const(source->source->dtype, 1);
   n->dtype = source->source->dtype;
   n->source = std::move(source);
@@ -79,7 +79,7 @@ IterSplitExpr::IterSplitExpr(IterMark source) {
 }
 
 IterSplitExpr::IterSplitExpr(IterMark source, PrimExpr scale) {
-  auto n = make_object<IterSplitExprNode>();
+  auto n = ffi::make_object<IterSplitExprNode>();
   auto one = make_const(source->source->dtype, 1);
   n->dtype = source->source->dtype;
   n->source = std::move(source);
@@ -91,7 +91,7 @@ IterSplitExpr::IterSplitExpr(IterMark source, PrimExpr scale) {
 
 IterSplitExpr::IterSplitExpr(IterMark source, PrimExpr lower_factor, PrimExpr extent,
                              PrimExpr scale) {
-  auto n = make_object<IterSplitExprNode>();
+  auto n = ffi::make_object<IterSplitExprNode>();
   n->dtype = source->source->dtype;
   n->source = std::move(source);
   n->lower_factor = std::move(lower_factor);
@@ -116,7 +116,7 @@ TVM_STATIC_IR_FUNCTOR(ReprPrinter, vtable)
     });
 
 IterSumExpr::IterSumExpr(Array<IterSplitExpr> args, PrimExpr base) {
-  auto n = make_object<IterSumExprNode>();
+  auto n = ffi::make_object<IterSumExprNode>();
   n->dtype = base->dtype;
   n->args = std::move(args);
   n->base = std::move(base);

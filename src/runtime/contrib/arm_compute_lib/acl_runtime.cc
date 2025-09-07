@@ -590,7 +590,7 @@ class ACLRuntime : public JSONRuntimeBase {
 };
 ffi::Module ACLRuntimeCreate(const String& symbol_name, const String& graph_json,
                              const Array<String>& const_names) {
-  auto n = make_object<ACLRuntime>(symbol_name, graph_json, const_names);
+  auto n = ffi::make_object<ACLRuntime>(symbol_name, graph_json, const_names);
   return ffi::Module(n);
 }
 

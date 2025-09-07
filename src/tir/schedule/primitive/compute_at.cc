@@ -304,7 +304,7 @@ class ScopeReconstructor : private StmtMutator {
     }
     Array<Stmt> subtrees = AsArray(loop_->body);
     subtrees.insert(subtrees.begin() + insert_position, std::move(new_subtree));
-    ObjectPtr<ForNode> new_loop = make_object<ForNode>(*loop_.get());
+    ObjectPtr<ForNode> new_loop = ffi::make_object<ForNode>(*loop_.get());
     new_loop->body = SeqStmt(std::move(subtrees));
     this->new_loop_ = For(std::move(new_loop));
   }

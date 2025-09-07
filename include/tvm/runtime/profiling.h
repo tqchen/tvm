@@ -137,7 +137,7 @@ class Timer : public ObjectRef {
    *  TVM_FFI_STATIC_INIT_BLOCK({
    *    namespace refl = tvm::ffi::reflection;
    *    refl::GlobalDef().def("profiling.timer.cpu", [](Device dev) {
-   *      return Timer(make_object<CPUTimerNode>());
+   *      return Timer(ffi::make_object<CPUTimerNode>());
    *    });
    *  });
    * \endcode
@@ -174,7 +174,7 @@ struct DeviceWrapperNode : public Object {
 /*! \brief Wrapper for `Device`. */
 class DeviceWrapper : public ObjectRef {
  public:
-  explicit DeviceWrapper(Device dev) { data_ = make_object<DeviceWrapperNode>(dev); }
+  explicit DeviceWrapper(Device dev) { data_ = ffi::make_object<DeviceWrapperNode>(dev); }
   TVM_DEFINE_MUTABLE_OBJECT_REF_METHODS(DeviceWrapper, ObjectRef, DeviceWrapperNode);
 };
 

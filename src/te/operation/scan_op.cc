@@ -53,7 +53,7 @@ ScanOp::ScanOp(std::string name, std::string tag, Optional<Map<String, ffi::Any>
   if (!attrs.defined()) {
     attrs = Map<String, ffi::Any>();
   }
-  auto n = make_object<ScanOpNode>();
+  auto n = ffi::make_object<ScanOpNode>();
   ICHECK_EQ(init.size(), update.size());
   ICHECK_EQ(init.size(), state_placeholder.size());
   arith::Analyzer analyzer;

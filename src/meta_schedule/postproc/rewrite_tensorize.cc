@@ -73,7 +73,7 @@ class RewriteTensorizeNode : public PostprocNode {
   bool Apply(const tir::Schedule& sch) final;
 
   Postproc Clone() const {
-    ObjectPtr<RewriteTensorizeNode> n = make_object<RewriteTensorizeNode>(*this);
+    ObjectPtr<RewriteTensorizeNode> n = ffi::make_object<RewriteTensorizeNode>(*this);
     return Postproc(n);
   }
 
@@ -105,7 +105,7 @@ bool RewriteTensorizeNode::Apply(const tir::Schedule& sch) {
 }
 
 Postproc Postproc::RewriteTensorize(bool vectorize_init_loop) {
-  ObjectPtr<RewriteTensorizeNode> n = make_object<RewriteTensorizeNode>();
+  ObjectPtr<RewriteTensorizeNode> n = ffi::make_object<RewriteTensorizeNode>();
   n->vectorize_init_loop = vectorize_init_loop;
   return Postproc(n);
 }

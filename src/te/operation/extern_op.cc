@@ -52,7 +52,7 @@ ExternOp::ExternOp(std::string name, std::string tag, Map<String, ffi::Any> attr
   if (!attrs.defined()) {
     attrs = Map<String, ffi::Any>();
   }
-  auto n = make_object<ExternOpNode>();
+  auto n = ffi::make_object<ExternOpNode>();
   n->name = std::move(name);
   n->tag = std::move(tag);
   n->attrs = std::move(attrs);

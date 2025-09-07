@@ -103,7 +103,7 @@ class FunctionPass : public Pass {
 
 FunctionPass::FunctionPass(std::function<Function(Function, IRModule, PassContext)> pass_func,
                            PassInfo pass_info) {
-  auto n = make_object<FunctionPassNode>();
+  auto n = ffi::make_object<FunctionPassNode>();
   n->pass_func = std::move(pass_func);
   n->pass_info = std::move(pass_info);
   data_ = std::move(n);
@@ -325,7 +325,7 @@ class DataflowBlockPass : public Pass {
 DataflowBlockPass::DataflowBlockPass(
     std::function<DataflowBlock(DataflowBlock, IRModule, PassContext)> pass_func,
     PassInfo pass_info) {
-  auto n = make_object<DataflowBlockPassNode>();
+  auto n = ffi::make_object<DataflowBlockPassNode>();
   n->pass_func = std::move(pass_func);
   n->pass_info = std::move(pass_info);
   data_ = std::move(n);

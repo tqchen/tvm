@@ -64,7 +64,7 @@ class DefaultTimerNode : public TimerNode {
   Device device_;
 };
 
-Timer DefaultTimer(Device dev) { return Timer(make_object<DefaultTimerNode>(dev)); }
+Timer DefaultTimer(Device dev) { return Timer(ffi::make_object<DefaultTimerNode>(dev)); }
 
 class CPUTimerNode : public TimerNode {
  public:
@@ -84,7 +84,7 @@ class CPUTimerNode : public TimerNode {
 TVM_FFI_STATIC_INIT_BLOCK({
   namespace refl = tvm::ffi::reflection;
   refl::GlobalDef().def("profiling.timer.cpu",
-                        [](Device dev) { return Timer(make_object<CPUTimerNode>()); });
+                        [](Device dev) { return Timer(ffi::make_object<CPUTimerNode>()); });
 });
 
 // keep track of which timers are not defined but we have already warned about
@@ -127,7 +127,7 @@ Profiler::Profiler(std::vector<Device> devs, std::vector<MetricCollector> metric
   is_running_ = false;
   std::vector<DeviceWrapper> wrapped_devs;
   for (auto dev : devs) {
-    wrapped_devs.push_back(DeviceWrapper(make_object<DeviceWrapperNode>(dev)));
+    wrapped_devs.push_back(DeviceWrapper(ffi::make_object<DeviceWrapperNode>(dev)));
   }
   for (auto& x : collectors_) {
     x->Init(wrapped_devs);
@@ -136,7 +136,7 @@ Profiler::Profiler(std::vector<Device> devs, std::vector<MetricCollector> metric
   threading::ResetThreadPool();
 
   configuration_[String("Number of threads")] =
-      ObjectRef(make_object<CountNode>(threading::NumThreads()));
+      ObjectRef(ffi::make_object<CountNode>(threading::NumThreads()));
 }
 
 void Profiler::Start() {
@@ -395,25 +395,25 @@ Any AggregateMetric(const std::vector<ffi::Any>& metrics) {
     for (auto& metric : metrics) {
       sum += metric.as<DurationNode>()->microseconds;
     }
-    return ObjectRef(make_object<DurationNode>(sum));
+    return ObjectRef(ffi::make_object<DurationNode>(sum));
   } else if (metrics[0].as<CountNode>()) {
     int64_t sum = 0;
     for (auto& metric : metrics) {
       sum += metric.as<CountNode>()->value;
     }
-    return ObjectRef(make_object<CountNode>(sum));
+    return ObjectRef(ffi::make_object<CountNode>(sum));
   } else if (metrics[0].as<PercentNode>()) {
     double sum = 0;
     for (auto& metric : metrics) {
       sum += metric.as<PercentNode>()->percent;
     }
-    return ObjectRef(make_object<PercentNode>(sum));
+    return ObjectRef(ffi::make_object<PercentNode>(sum));
   } else if (metrics[0].as<RatioNode>()) {
     double sum = 0;
     for (auto& metric : metrics) {
       sum += metric.as<RatioNode>()->ratio;
     }
-    return ObjectRef(make_object<RatioNode>(sum / metrics.size()));
+    return ObjectRef(ffi::make_object<RatioNode>(sum / metrics.size()));
   } else if (auto opt_str = metrics[0].as<ffi::String>()) {
     for (auto& m : metrics) {
       if (*opt_str != m.as<ffi::String>()) {
@@ -548,21 +548,21 @@ String ReportNode::AsTable(bool sort, bool aggregate, bool compute_col_sums) con
           if (it != col_sums.end()) {
             val += it->second.as<CountNode>()->value;
           }
-          col_sums[p.first] = ObjectRef(make_object<CountNode>(val));
+          col_sums[p.first] = ObjectRef(ffi::make_object<CountNode>(val));
         } else if (p.second.as<DurationNode>()) {
           double val = p.second.as<DurationNode>()->microseconds;
           auto it = col_sums.find(p.first);
           if (it != col_sums.end()) {
             val += it->second.as<DurationNode>()->microseconds;
           }
-          col_sums[p.first] = ObjectRef(make_object<DurationNode>(val));
+          col_sums[p.first] = ObjectRef(ffi::make_object<DurationNode>(val));
         } else if (p.second.as<PercentNode>()) {
           double val = p.second.as<PercentNode>()->percent;
           auto it = col_sums.find(p.first);
           if (it != col_sums.end()) {
             val += it->second.as<PercentNode>()->percent;
           }
-          col_sums[p.first] = ObjectRef(make_object<PercentNode>(val));
+          col_sums[p.first] = ObjectRef(ffi::make_object<PercentNode>(val));
         } else if (p.second.as<RatioNode>()) {
           // It does not make sense to sum ratios
         }
@@ -664,8 +664,8 @@ Report Profiler::Report() {
   for (auto& cf : calls_) {
     std::unordered_map<String, ffi::Any> row;
     double us = cf.timer->SyncAndGetElapsedNanos() / 1e3;
-    row["Duration (us)"] = ObjectRef(make_object<DurationNode>(us));
-    row["Count"] = ObjectRef(make_object<CountNode>(1));
+    row["Duration (us)"] = ObjectRef(ffi::make_object<DurationNode>(us));
+    row["Count"] = ObjectRef(ffi::make_object<CountNode>(1));
     row["Name"] = cf.name;
     row["Device"] = String(DeviceString(cf.dev));
     for (auto p : cf.extra_metrics) {
@@ -687,7 +687,7 @@ Report Profiler::Report() {
 
   // Calculate percentages
   for (auto& row : rows) {
-    row["Percent"] = ObjectRef(make_object<PercentNode>(
+    row["Percent"] = ObjectRef(ffi::make_object<PercentNode>(
         row["Duration (us)"].as<DurationNode>()->microseconds / overall_time_us * 100));
   }
 
@@ -703,7 +703,7 @@ Report Profiler::Report() {
 Report::Report(Array<Map<String, ffi::Any>> calls,
                Map<String, Map<String, ffi::Any>> device_metrics,
                Map<String, ffi::Any> configuration) {
-  auto node = make_object<ReportNode>();
+  auto node = ffi::make_object<ReportNode>();
   node->calls = std::move(calls);
   node->device_metrics = std::move(device_metrics);
   node->configuration = std::move(configuration);
@@ -721,19 +721,19 @@ Map<String, ffi::Any> parse_metrics(dmlc::JSONReader* reader) {
     if (metric_value_name == "microseconds") {
       double microseconds;
       reader->Read(&microseconds);
-      o = ObjectRef(make_object<DurationNode>(microseconds));
+      o = ObjectRef(ffi::make_object<DurationNode>(microseconds));
     } else if (metric_value_name == "percent") {
       double percent;
       reader->Read(&percent);
-      o = ObjectRef(make_object<PercentNode>(percent));
+      o = ObjectRef(ffi::make_object<PercentNode>(percent));
     } else if (metric_value_name == "count") {
       int64_t count;
       reader->Read(&count);
-      o = ObjectRef(make_object<CountNode>(count));
+      o = ObjectRef(ffi::make_object<CountNode>(count));
     } else if (metric_value_name == "ratio") {
       double ratio;
       reader->Read(&ratio);
-      o = ObjectRef(make_object<RatioNode>(ratio));
+      o = ObjectRef(ffi::make_object<RatioNode>(ratio));
     } else if (metric_value_name == "string") {
       std::string s;
       reader->Read(&s);
@@ -930,13 +930,13 @@ TVM_FFI_STATIC_INIT_BLOCK({
              return Report(calls, device_metrics, configuration);
            })
       .def("runtime.profiling.Count",
-           [](int64_t count) { return ObjectRef(make_object<CountNode>(count)); })
+           [](int64_t count) { return ObjectRef(ffi::make_object<CountNode>(count)); })
       .def("runtime.profiling.Percent",
-           [](double percent) { return ObjectRef(make_object<PercentNode>(percent)); })
+           [](double percent) { return ObjectRef(ffi::make_object<PercentNode>(percent)); })
       .def("runtime.profiling.Duration",
-           [](double duration) { return ObjectRef(make_object<DurationNode>(duration)); })
+           [](double duration) { return ObjectRef(ffi::make_object<DurationNode>(duration)); })
       .def("runtime.profiling.Ratio",
-           [](double ratio) { return ObjectRef(make_object<RatioNode>(ratio)); });
+           [](double ratio) { return ObjectRef(ffi::make_object<RatioNode>(ratio)); });
 });
 
 }  // namespace profiling

@@ -53,7 +53,7 @@ class ScopeReplacer : public StmtMutator {
  public:
   static Block Replace(const BlockNode* scope_block, const Buffer& dst, const ForNode* old_loop,
                        const ForNode* new_loop) {
-    ObjectPtr<BlockNode> new_scope_block = make_object<BlockNode>(*scope_block);
+    ObjectPtr<BlockNode> new_scope_block = ffi::make_object<BlockNode>(*scope_block);
     new_scope_block->body = ScopeReplacer(old_loop, new_loop)(std::move(new_scope_block->body));
     new_scope_block->alloc_buffers.push_back(dst);
     return Block(new_scope_block);
@@ -88,7 +88,7 @@ class ReadWriteAtBufferReplacer : public StmtExprMutator {
   Stmt VisitStmt_(const BufferStoreNode* _store) final {
     BufferStore store = Downcast<BufferStore>(StmtExprMutator::VisitStmt_(_store));
     if (store->buffer.same_as(src_)) {
-      ObjectPtr<BufferStoreNode> new_store = make_object<BufferStoreNode>(*store.get());
+      ObjectPtr<BufferStoreNode> new_store = ffi::make_object<BufferStoreNode>(*store.get());
       new_store->buffer = dst_;
       return BufferStore(new_store);
     }
@@ -98,7 +98,7 @@ class ReadWriteAtBufferReplacer : public StmtExprMutator {
   PrimExpr VisitExpr_(const BufferLoadNode* _load) final {
     BufferLoad load = Downcast<BufferLoad>(StmtExprMutator::VisitExpr_(_load));
     if (load->buffer.same_as(src_)) {
-      ObjectPtr<BufferLoadNode> new_load = make_object<BufferLoadNode>(*load.get());
+      ObjectPtr<BufferLoadNode> new_load = ffi::make_object<BufferLoadNode>(*load.get());
       new_load->buffer = dst_;
       return BufferLoad(new_load);
     }
@@ -108,7 +108,7 @@ class ReadWriteAtBufferReplacer : public StmtExprMutator {
   Stmt VisitStmt_(const BlockNode* _block) final {
     Block old_block = GetRef<Block>(_block);
     Block block = Downcast<Block>(StmtExprMutator::VisitStmt_(_block));
-    ObjectPtr<BlockNode> new_block = make_object<BlockNode>(*block.get());
+    ObjectPtr<BlockNode> new_block = ffi::make_object<BlockNode>(*block.get());
     new_block->reads = ReplaceBuffer(new_block->reads, src_, dst_);
     new_block->writes = ReplaceBuffer(new_block->writes, src_, dst_);
     block_sref_reuse_->Set(old_block, Block(new_block));
@@ -256,7 +256,7 @@ struct ReadWriteAtImpl {
             ? MakeBlock(src_, dst_, new_block_name_hint, GetLoopDomain(loop_sref_.get()), domain)
             : MakeBlock(dst_, src_, new_block_name_hint, GetLoopDomain(loop_sref_.get()), domain);
     subtrees.insert(subtrees.begin() + insert_pos, realize);
-    ObjectPtr<ForNode> new_loop = make_object<ForNode>(*loop_);
+    ObjectPtr<ForNode> new_loop = ffi::make_object<ForNode>(*loop_);
     new_loop->body = SeqStmt(std::move(subtrees));
     return {For(new_loop), realize};
   }
@@ -284,14 +284,14 @@ struct ReadWriteAtImpl {
           return (*it).second;
         }
         Range range = loop_domain.at(var);
-        ObjectPtr<VarNode> v = make_object<VarNode>(*var.get());
+        ObjectPtr<VarNode> v = ffi::make_object<VarNode>(*var.get());
         v->name_hint = "v" + std::to_string(iter_vars.size());
         bindings.Set(var, Var(v));
         iter_values.push_back(var);
         iter_vars.push_back(IterVar(range, Var(v), IterVarType::kDataPar));
         return Var(v);
       };
-      ObjectPtr<RangeNode> dom = make_object<RangeNode>(*domain[i].get());
+      ObjectPtr<RangeNode> dom = ffi::make_object<RangeNode>(*domain[i].get());
       dom->min = Substitute(std::move(dom->min), f_substitute);
       dom->extent = Substitute(std::move(dom->extent), f_substitute);
       domain.Set(i, Range(dom));

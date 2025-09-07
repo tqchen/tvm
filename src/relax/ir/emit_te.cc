@@ -39,7 +39,7 @@ TVM_STATIC_IR_FUNCTOR(ReprPrinter, vtable)
 TVM_FFI_STATIC_INIT_BLOCK({ RXPlaceholderOpNode::RegisterReflection(); });
 
 te::Tensor TETensor(Expr value, Map<tir::Var, PrimExpr> tir_var_map, std::string name) {
-  auto n = make_object<RXPlaceholderOpNode>();
+  auto n = ffi::make_object<RXPlaceholderOpNode>();
   n->name = name;
   n->value = value;
 

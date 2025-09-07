@@ -76,7 +76,7 @@ class ScheduleFnNode : public SpaceGeneratorNode {
   }
 
   SpaceGenerator Clone() const final {
-    ObjectPtr<ScheduleFnNode> n = make_object<ScheduleFnNode>(*this);
+    ObjectPtr<ScheduleFnNode> n = ffi::make_object<ScheduleFnNode>(*this);
     CloneRules(this, n.get());
     return SpaceGenerator(n);
   }
@@ -89,7 +89,7 @@ SpaceGenerator SpaceGenerator::ScheduleFn(ffi::Function schedule_fn,
                                           Optional<Array<ScheduleRule>> sch_rules,
                                           Optional<Array<Postproc>> postprocs,
                                           Optional<Map<Mutator, FloatImm>> mutator_probs) {
-  ObjectPtr<ScheduleFnNode> n = make_object<ScheduleFnNode>();
+  ObjectPtr<ScheduleFnNode> n = ffi::make_object<ScheduleFnNode>();
   n->sch_rules = std::move(sch_rules);
   n->postprocs = std::move(postprocs);
   n->mutator_probs = std::move(mutator_probs);

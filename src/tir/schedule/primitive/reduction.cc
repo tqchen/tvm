@@ -204,8 +204,8 @@ StmtSRef DecomposeReduction(ScheduleState self, const StmtSRef& block_sref,
     LoopHeightError::CheckLoopHigherThanReduceLoops(self->mod, block, realize, loops, loop_sref);
   }
   // IR Manipulation
-  ObjectPtr<BlockNode> init_block = make_object<BlockNode>();
-  ObjectPtr<BlockRealizeNode> init_realize = make_object<BlockRealizeNode>();
+  ObjectPtr<BlockNode> init_block = ffi::make_object<BlockNode>();
+  ObjectPtr<BlockRealizeNode> init_realize = ffi::make_object<BlockRealizeNode>();
   init_block->name_hint = block->name_hint + "_init";
   init_block->annotations = block->annotations;
   init_realize->iter_values = {};
@@ -628,7 +628,7 @@ Array<Buffer> CreateRFactorBuffers(const Array<BufferStore>& buf_stores, int fac
     Array<PrimExpr> rf_shape = buffer->shape;
     rf_shape.insert(rf_shape.begin() + factor_axis, rf_loop->extent);
 
-    ObjectPtr<BufferNode> n = make_object<BufferNode>(*buffer.get());
+    ObjectPtr<BufferNode> n = ffi::make_object<BufferNode>(*buffer.get());
     n->shape = rf_shape;
     n->name = buffer->name + ".rf";
     n->data = buffer->data.copy_with_suffix(".rf");
@@ -1065,7 +1065,7 @@ Stmt CreateLoopOutsideRfactorBlock(BlockRealize rf_block_realize, const Array<Fo
   // Step 3. Wrap `rf_block_realize` with outer loops.
   Stmt rf_body = rf_block_realize;
   for (int i = n_loops - 1; i >= 0; --i) {
-    ObjectPtr<ForNode> p_loop = make_object<ForNode>(*loops[i].get());
+    ObjectPtr<ForNode> p_loop = ffi::make_object<ForNode>(*loops[i].get());
     p_loop->loop_var = Downcast<Var>(new_loop_var_map[loops[i]->loop_var.get()]);
     p_loop->body = rf_body;
     rf_body = For(std::move(p_loop));

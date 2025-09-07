@@ -232,7 +232,7 @@ class ConstLoaderModuleObj : public ffi::ModuleObj {
       const_vars_by_symbol[symbols[i]] = const_vars[i];
     }
 
-    auto n = make_object<ConstLoaderModuleObj>(const_var_tensor, const_vars_by_symbol);
+    auto n = ffi::make_object<ConstLoaderModuleObj>(const_var_tensor, const_vars_by_symbol);
     return ffi::Module(n);
   }
 
@@ -251,7 +251,7 @@ class ConstLoaderModuleObj : public ffi::ModuleObj {
 ffi::Module ConstLoaderModuleCreate(
     const std::unordered_map<std::string, Tensor>& const_var_tensor,
     const std::unordered_map<std::string, std::vector<std::string>>& const_vars_by_symbol) {
-  auto n = make_object<ConstLoaderModuleObj>(const_var_tensor, const_vars_by_symbol);
+  auto n = ffi::make_object<ConstLoaderModuleObj>(const_var_tensor, const_vars_by_symbol);
   return ffi::Module(n);
 }
 

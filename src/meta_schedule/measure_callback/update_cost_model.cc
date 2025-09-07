@@ -60,7 +60,7 @@ class UpdateCostModelNode : public MeasureCallbackNode {
 };
 
 MeasureCallback MeasureCallback::UpdateCostModel() {
-  ObjectPtr<UpdateCostModelNode> n = make_object<UpdateCostModelNode>();
+  ObjectPtr<UpdateCostModelNode> n = ffi::make_object<UpdateCostModelNode>();
   return MeasureCallback(n);
 }
 

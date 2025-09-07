@@ -142,7 +142,7 @@ TVM_REGISTER_OP("relax.broadcast_to")
 /* relax.concat */
 
 Expr concat(Expr tensors, Optional<int64_t> axis) {
-  ObjectPtr<ConcatAttrs> attrs = make_object<ConcatAttrs>();
+  ObjectPtr<ConcatAttrs> attrs = ffi::make_object<ConcatAttrs>();
   attrs->axis = std::move(axis);
 
   static const Op& op = Op::Get("relax.concat");
@@ -343,7 +343,7 @@ InferLayoutOutput InferLayoutConcat(const Call& call,
     input_layouts.push_back(layout);
   }
   output_layouts.push_back(layout);
-  ObjectPtr<ConcatAttrs> new_attrs = make_object<ConcatAttrs>(*attrs);
+  ObjectPtr<ConcatAttrs> new_attrs = ffi::make_object<ConcatAttrs>(*attrs);
   new_attrs->axis = FindAxis(layout->layout, attrs->axis.value_or(0));
   return InferLayoutOutput({NLayout(input_layouts)}, output_layouts, Attrs(new_attrs));
 }
@@ -360,7 +360,7 @@ TVM_REGISTER_OP("relax.concat")
 /* relax.expand_dims */
 
 Expr expand_dims(Expr x, Array<Integer> axis) {
-  ObjectPtr<ExpandDimsAttrs> attrs = make_object<ExpandDimsAttrs>();
+  ObjectPtr<ExpandDimsAttrs> attrs = ffi::make_object<ExpandDimsAttrs>();
   attrs->axis = std::move(axis);
 
   static const Op& op = Op::Get("relax.expand_dims");
@@ -660,7 +660,7 @@ TVM_REGISTER_OP("relax.index_tensor")
 Expr layout_transform(Expr x, tir::IndexMap index_map, Optional<PrimValue> pad_value,
                       Optional<Array<IntImm>> axis_separators,
                       Optional<Array<IntImm>> input_axis_separators) {
-  ObjectPtr<LayoutTransformAttrs> attrs = make_object<LayoutTransformAttrs>();
+  ObjectPtr<LayoutTransformAttrs> attrs = ffi::make_object<LayoutTransformAttrs>();
   attrs->index_map = std::move(index_map);
   attrs->pad_value = std::move(pad_value);
   attrs->axis_separators = std::move(axis_separators);
@@ -732,7 +732,7 @@ TVM_REGISTER_OP("relax.layout_transform")
 /* relax.permute_dims */
 
 Expr permute_dims(Expr x, Optional<Array<Integer>> axes) {
-  ObjectPtr<PermuteDimsAttrs> attrs = make_object<PermuteDimsAttrs>();
+  ObjectPtr<PermuteDimsAttrs> attrs = ffi::make_object<PermuteDimsAttrs>();
   attrs->axes = std::move(axes);
 
   static const Op& op = Op::Get("relax.permute_dims");
@@ -836,7 +836,7 @@ InferLayoutOutput InferLayoutPermuteDims(const Call& call,
   for (size_t i = 0; i < new_axes.size(); ++i) {
     new_order.push_back(Integer(new_axes.at(i) - 'A'));
   }
-  ObjectPtr<PermuteDimsAttrs> new_attrs = make_object<PermuteDimsAttrs>(*attrs);
+  ObjectPtr<PermuteDimsAttrs> new_attrs = ffi::make_object<PermuteDimsAttrs>(*attrs);
   new_attrs->axes = new_order;
   return InferLayoutOutput({existing_layout}, {InitialLayoutDecision(ndim)}, Attrs(new_attrs));
 }
@@ -1012,7 +1012,7 @@ TVM_REGISTER_OP("relax.reshape")
 /* relax.split */
 
 Expr split(Expr x, Variant<IntImm, Array<IntImm>> indices_or_sections, int axis) {
-  ObjectPtr<SplitAttrs> attrs = make_object<SplitAttrs>();
+  ObjectPtr<SplitAttrs> attrs = ffi::make_object<SplitAttrs>();
   ObjectRef indices_or_sections_obj;
 
   if (const auto* indices = indices_or_sections.as<ffi::ArrayObj>()) {
@@ -1168,7 +1168,7 @@ InferLayoutOutput InferLayoutSplit(const Call& call,
     }
   }
 
-  ObjectPtr<SplitAttrs> new_attrs = make_object<SplitAttrs>(*attrs);
+  ObjectPtr<SplitAttrs> new_attrs = ffi::make_object<SplitAttrs>(*attrs);
   new_attrs->axis = FindAxis(existing_layout->layout, attrs->axis);
   ICHECK(out_tuple != nullptr) << "Invalid Call";
   NLayout tuple_layouts(Array<NLayout>(out_tuple->fields.size(), existing_layout));
@@ -1187,7 +1187,7 @@ TVM_REGISTER_OP("relax.split")
 /* relax.squeeze */
 
 Expr squeeze(Expr x, Optional<Array<Integer>> axis) {
-  ObjectPtr<SqueezeAttrs> attrs = make_object<SqueezeAttrs>();
+  ObjectPtr<SqueezeAttrs> attrs = ffi::make_object<SqueezeAttrs>();
   attrs->axis = std::move(axis);
 
   static const Op& op = Op::Get("relax.squeeze");
@@ -1333,7 +1333,7 @@ InferLayoutOutput InferLayoutSqueeze(const Call& call,
   output_layout.erase(std::remove(output_layout.begin(), output_layout.end(), '1'),
                       output_layout.end());
 
-  ObjectPtr<SqueezeAttrs> new_attrs = make_object<SqueezeAttrs>(*attrs);
+  ObjectPtr<SqueezeAttrs> new_attrs = ffi::make_object<SqueezeAttrs>(*attrs);
   new_attrs->axis = new_axis;
   return InferLayoutOutput({existing_layout}, {LayoutDecision(Layout(output_layout))},
                            Attrs(new_attrs));
@@ -1389,7 +1389,7 @@ void CheckCollapseShape(const Call& call, const BlockBuilder& ctx,
 /* relax.stack */
 
 Expr stack(Expr tensors, Optional<Integer> axis) {
-  ObjectPtr<StackAttrs> attrs = make_object<StackAttrs>();
+  ObjectPtr<StackAttrs> attrs = ffi::make_object<StackAttrs>();
   attrs->axis = std::move(axis);
 
   static const Op& op = Op::Get("relax.stack");
@@ -1583,7 +1583,7 @@ InferLayoutOutput InferLayoutStack(const Call& call,
   Layout output_layout = Layout(layout_str);
   output_layouts.push_back(LayoutDecision(output_layout));
 
-  ObjectPtr<StackAttrs> new_attrs = make_object<StackAttrs>(*attrs);
+  ObjectPtr<StackAttrs> new_attrs = ffi::make_object<StackAttrs>(*attrs);
   new_attrs->axis = Integer(FindAxis(layout->layout, axis));
   return InferLayoutOutput({NLayout(input_layouts)}, output_layouts, Attrs(new_attrs));
 }
@@ -1701,7 +1701,7 @@ TVM_REGISTER_OP("relax.collapse_sum_to")
 /* relax.repeat */
 
 Expr repeat(Expr data, int repeats, Optional<int64_t> axis) {
-  auto attrs = make_object<RepeatAttrs>();
+  auto attrs = ffi::make_object<RepeatAttrs>();
   attrs->repeats = std::move(repeats);
   attrs->axis = std::move(axis);
 
@@ -1769,7 +1769,7 @@ TVM_REGISTER_OP("relax.repeat")
 /* relax.tile */
 
 Expr tile(Expr data, Array<Integer> repeats) {
-  auto attrs = make_object<TileAttrs>();
+  auto attrs = ffi::make_object<TileAttrs>();
   attrs->repeats = std::move(repeats);
 
   static const Op& op = Op::Get("relax.tile");
@@ -1835,7 +1835,7 @@ TVM_REGISTER_OP("relax.tile")
 /* relax.flip */
 
 Expr flip(Expr data, Integer axis) {
-  auto attrs = make_object<FlipAttrs>();
+  auto attrs = ffi::make_object<FlipAttrs>();
   attrs->axis = std::move(axis);
   static const Op& op = Op::Get("relax.flip");
   return Call(op, {std::move(data)}, Attrs{attrs}, {});
@@ -1874,7 +1874,7 @@ TVM_REGISTER_OP("relax.flip")
 /* relax.gather_elements */
 
 Expr gather_elements(Expr data, Expr indices, int axis) {
-  auto attrs = make_object<GatherElementsAttrs>();
+  auto attrs = ffi::make_object<GatherElementsAttrs>();
   attrs->axis = Integer(axis);
   static const Op& op = Op::Get("relax.gather_elements");
   return Call(op, {data, indices}, Attrs(attrs), {});
@@ -1945,7 +1945,7 @@ TVM_REGISTER_OP("relax.gather_elements")
 /* relax.gather_nd */
 
 Expr gather_nd(Expr data, Expr indices, int batch_dims) {
-  auto attrs = make_object<GatherNDAttrs>();
+  auto attrs = ffi::make_object<GatherNDAttrs>();
   attrs->batch_dims = Integer(batch_dims);
   static const Op& op = Op::Get("relax.gather_nd");
   return Call(op, {data, indices}, Attrs(attrs), {});
@@ -2041,7 +2041,7 @@ TVM_REGISTER_OP("relax.gather_nd")
 /* relax.index_put */
 
 Expr index_put(Expr data, Expr indices, Expr values, bool accumulate) {
-  auto attrs = make_object<IndexPutAttrs>();
+  auto attrs = ffi::make_object<IndexPutAttrs>();
   attrs->accumulate = std::move(accumulate);
   static const Op& op = Op::Get("relax.index_put");
   return Call(op, {data, indices, values}, Attrs(attrs), {});
@@ -2166,7 +2166,7 @@ TVM_REGISTER_OP("relax.index_put")
 /* relax.meshgrid */
 
 Expr meshgrid(Expr tensors, Optional<String> indexing) {
-  ObjectPtr<MeshgridAttrs> attrs = make_object<MeshgridAttrs>();
+  ObjectPtr<MeshgridAttrs> attrs = ffi::make_object<MeshgridAttrs>();
   attrs->indexing = indexing;
   static const Op& op = Op::Get("relax.meshgrid");
   return Call(op, {std::move(tensors)}, Attrs(attrs), {});
@@ -2271,7 +2271,7 @@ TVM_REGISTER_OP("relax.meshgrid")
 /* relax.scatter_elements */
 
 Expr scatter_elements(Expr data, Expr indices, Expr updates, int axis, String reduction) {
-  auto attrs = make_object<ScatterElementsAttrs>();
+  auto attrs = ffi::make_object<ScatterElementsAttrs>();
   attrs->axis = std::move(axis);
   attrs->reduction = std::move(reduction);
   static const Op& op = Op::Get("relax.scatter_elements");
@@ -2388,7 +2388,7 @@ TVM_REGISTER_OP("relax.scatter_elements")
 /* relax.scatter_nd */
 
 Expr scatter_nd(Expr data, Expr indices, Expr updates, String reduction) {
-  auto attrs = make_object<ScatterNDAttrs>();
+  auto attrs = ffi::make_object<ScatterNDAttrs>();
   attrs->reduction = std::move(reduction);
   static const Op& op = Op::Get("relax.scatter_nd");
   return Call(op, {data, indices, updates}, Attrs(attrs), {});
@@ -2524,7 +2524,7 @@ TVM_REGISTER_OP("relax.scatter_nd")
 /* relax.scatter_nd */
 
 Expr slice_scatter(Expr input, Expr src, int axis, PrimValue start, PrimValue end, PrimValue step) {
-  auto attrs = make_object<SliceScatterAttrs>();
+  auto attrs = ffi::make_object<SliceScatterAttrs>();
   attrs->axis = std::move(axis);
   static const Op& op = Op::Get("relax.slice_scatter");
   return Call(op, {input, src, start, end, step}, Attrs(attrs), {});
@@ -2681,7 +2681,7 @@ TVM_REGISTER_OP("relax.slice_scatter")
 /* relax.one_hot */
 
 Expr one_hot(Expr indices, PrimValue on_value, PrimValue off_value, int depth, int axis) {
-  ObjectPtr<OneHotAttrs> attrs = make_object<OneHotAttrs>();
+  ObjectPtr<OneHotAttrs> attrs = ffi::make_object<OneHotAttrs>();
   attrs->depth = depth;
   attrs->axis = axis;
 

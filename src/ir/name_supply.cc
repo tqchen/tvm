@@ -31,7 +31,7 @@
 namespace tvm {
 
 NameSupply::NameSupply(const String& prefix, std::unordered_map<std::string, int> name_map) {
-  auto n = make_object<NameSupplyNode>(prefix, std::move(name_map));
+  auto n = ffi::make_object<NameSupplyNode>(prefix, std::move(name_map));
   data_ = std::move(n);
 }
 

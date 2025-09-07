@@ -212,7 +212,7 @@ Optional<ffi::Function> ROCMModuleNode::GetFunction(const String& name) {
 ffi::Module ROCMModuleCreate(std::string data, std::string fmt,
                              std::unordered_map<std::string, FunctionInfo> fmap,
                              std::string hip_source, std::string assembly) {
-  auto n = make_object<ROCMModuleNode>(data, fmt, fmap, hip_source, assembly);
+  auto n = ffi::make_object<ROCMModuleNode>(data, fmt, fmap, hip_source, assembly);
   return ffi::Module(n);
 }
 

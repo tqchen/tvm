@@ -437,7 +437,7 @@ RewriteSpec PatternContextRewriterNode::RewriteBindings(const Array<Binding>& bi
 PatternContextRewriter::PatternContextRewriter(
     PatternContext pattern,
     ffi::TypedFunction<Map<Var, Expr>(Map<DFPattern, Var>, Map<Var, Expr>)> rewriter_func) {
-  auto node = make_object<PatternContextRewriterNode>();
+  auto node = ffi::make_object<PatternContextRewriterNode>();
   node->pattern = std::move(pattern);
   node->rewriter_func = std::move(rewriter_func);
   data_ = std::move(node);

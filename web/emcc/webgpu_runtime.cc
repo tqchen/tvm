@@ -237,7 +237,7 @@ ffi::Module WebGPUModuleLoadFromBytes(const ffi::Bytes& bytes) {
 
   stream->Read(&fmap);
   stream->Read(&smap);
-  return ffi::Module(make_object<WebGPUModuleNode>(smap, fmap));
+  return ffi::Module(ffi::make_object<WebGPUModuleNode>(smap, fmap));
 }
 
 // for now webgpu is hosted via a vulkan module.

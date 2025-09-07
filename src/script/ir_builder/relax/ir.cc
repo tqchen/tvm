@@ -54,7 +54,7 @@ TVM_STATIC_IR_FUNCTOR(Namer, vtable)
 /////////////////////////////// Function ////////////////////////////////
 
 FunctionFrame Function(const Bool& is_pure, const Bool& is_private) {
-  ObjectPtr<FunctionFrameNode> n = make_object<FunctionFrameNode>();
+  ObjectPtr<FunctionFrameNode> n = ffi::make_object<FunctionFrameNode>();
   const IRBuilder& ir_builder = IRBuilder::Current();
   Optional<tvm::IRModule> mod = std::nullopt;
   if (const Optional<ir::IRModuleFrame> mod_frame = ir_builder->GetLastFrame<ir::IRModuleFrame>()) {
@@ -159,14 +159,14 @@ TVM_FFI_STATIC_INIT_BLOCK({
 ///////////////////////////// BindingBlock //////////////////////////////
 
 BlockFrame Dataflow() {
-  ObjectPtr<BlockFrameNode> n = make_object<BlockFrameNode>();
+  ObjectPtr<BlockFrameNode> n = ffi::make_object<BlockFrameNode>();
   n->is_dataflow = true;
   n->block_ended = false;
   return BlockFrame(n);
 }
 
 BlockFrame BindingBlock() {
-  ObjectPtr<BlockFrameNode> n = make_object<BlockFrameNode>();
+  ObjectPtr<BlockFrameNode> n = ffi::make_object<BlockFrameNode>();
   n->is_dataflow = false;
   n->block_ended = false;
   return BlockFrame(n);
@@ -255,7 +255,7 @@ TVM_FFI_STATIC_INIT_BLOCK({
 /////////////////////////////// SeqExpr ///////////////////////////////
 
 SeqExprFrame SeqExpr() {
-  ObjectPtr<SeqExprFrameNode> n = make_object<SeqExprFrameNode>();
+  ObjectPtr<SeqExprFrameNode> n = ffi::make_object<SeqExprFrameNode>();
   return SeqExprFrame(n);
 }
 
@@ -267,7 +267,7 @@ TVM_FFI_STATIC_INIT_BLOCK({
 ///////////////////////////// If Then Else /////////////////////////////
 
 IfFrame If(tvm::relax::Expr condition) {
-  ObjectPtr<IfFrameNode> n = make_object<IfFrameNode>();
+  ObjectPtr<IfFrameNode> n = ffi::make_object<IfFrameNode>();
   n->condition = condition;
   n->then_expr = std::nullopt;
   n->else_expr = std::nullopt;
@@ -275,12 +275,12 @@ IfFrame If(tvm::relax::Expr condition) {
 }
 
 ThenFrame Then() {
-  ObjectPtr<ThenFrameNode> n = make_object<ThenFrameNode>();
+  ObjectPtr<ThenFrameNode> n = ffi::make_object<ThenFrameNode>();
   return ThenFrame(n);
 }
 
 ElseFrame Else() {
-  ObjectPtr<ElseFrameNode> n = make_object<ElseFrameNode>();
+  ObjectPtr<ElseFrameNode> n = ffi::make_object<ElseFrameNode>();
   return ElseFrame(n);
 }
 

@@ -65,7 +65,7 @@ class ApplyCustomRuleNode : public ScheduleRuleNode {
 
   // Inherited from ScheduleRuleNode
   ScheduleRule Clone() const final {
-    ObjectPtr<ApplyCustomRuleNode> n = make_object<ApplyCustomRuleNode>(*this);
+    ObjectPtr<ApplyCustomRuleNode> n = ffi::make_object<ApplyCustomRuleNode>(*this);
     n->target_ = target_;
     return ScheduleRule(n);
   }
@@ -83,7 +83,7 @@ class ApplyCustomRuleNode : public ScheduleRuleNode {
 };
 
 ScheduleRule ScheduleRule::ApplyCustomRule() {
-  ObjectPtr<ApplyCustomRuleNode> n = make_object<ApplyCustomRuleNode>();
+  ObjectPtr<ApplyCustomRuleNode> n = ffi::make_object<ApplyCustomRuleNode>();
   return ScheduleRule(n);
 }
 

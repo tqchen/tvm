@@ -27,10 +27,10 @@ TVM_FFI_STATIC_INIT_BLOCK({ TraceNode::RegisterReflection(); });
 
 /**************** Constructors  ****************/
 
-Trace::Trace() { data_ = make_object<TraceNode>(); }
+Trace::Trace() { data_ = ffi::make_object<TraceNode>(); }
 
 Trace::Trace(Array<Instruction> insts, Map<Instruction, Any> decisions) {
-  ObjectPtr<TraceNode> n = make_object<TraceNode>();
+  ObjectPtr<TraceNode> n = ffi::make_object<TraceNode>();
   n->insts = std::move(insts);
   n->decisions = std::move(decisions);
   data_ = std::move(n);

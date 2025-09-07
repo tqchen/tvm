@@ -302,7 +302,7 @@ class PadEinsumBufferReplacer : public StmtExprMutator {
     iter_vars.reserve(block->iter_vars.size());
     for (const IterVar& iter_var : block->iter_vars) {
       if (Optional<PrimExpr> new_dom = iter2padded_extents.Get(iter_var->var)) {
-        ObjectPtr<IterVarNode> new_iter_var = make_object<IterVarNode>(*iter_var.get());
+        ObjectPtr<IterVarNode> new_iter_var = ffi::make_object<IterVarNode>(*iter_var.get());
         new_iter_var->dom = Range::FromMinExtent(iter_var->dom->min, new_dom.value());
         iter_vars.push_back(IterVar(new_iter_var));
       } else {
@@ -338,7 +338,7 @@ class PadEinsumBufferReplacer : public StmtExprMutator {
     For old_for = GetRef<For>(old_for_ptr);
     For new_for = Downcast<For>(StmtMutator::VisitStmt_(old_for_ptr));
     if (Optional<PrimExpr> new_extent = loop_var2padded_extent.Get(new_for->loop_var)) {
-      ObjectPtr<ForNode> new_for_ptr = make_object<ForNode>(*new_for.get());
+      ObjectPtr<ForNode> new_for_ptr = ffi::make_object<ForNode>(*new_for.get());
       new_for_ptr->extent = new_extent.value();
       new_for = For(new_for_ptr);
     }
@@ -462,7 +462,7 @@ void PadEinsum(ScheduleState self, const StmtSRef& block_sref, const Array<Integ
   // Step 7. Create new scope
   Block new_scope_block{nullptr};
   {
-    ObjectPtr<BlockNode> n = make_object<BlockNode>(*scope_block);
+    ObjectPtr<BlockNode> n = ffi::make_object<BlockNode>(*scope_block);
     n->body = SeqStmt::Flatten(new_scope_body);
     n->alloc_buffers.insert(n->alloc_buffers.end(), alloc_buffers.begin(), alloc_buffers.end());
     new_scope_block = Block(n);

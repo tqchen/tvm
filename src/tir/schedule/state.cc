@@ -371,7 +371,7 @@ class BlockInfoCollector : private StmtVisitor {
 
 ScheduleState::ScheduleState(IRModule mod, int debug_mask, bool enable_check) {
   CHECK_GE(debug_mask, -1) << "ValueError: negative `debug_mask` other than -1 is not supported";
-  ObjectPtr<ScheduleStateNode> n = make_object<ScheduleStateNode>();
+  ObjectPtr<ScheduleStateNode> n = ffi::make_object<ScheduleStateNode>();
   ScheduleStateNode* self = n.get();
   // Set `n->mod`
   n->mod = std::move(mod);
@@ -767,7 +767,7 @@ class ChildReplacer : private StmtMutator {
         // Case 2. stmt is BlockRealize, src_stmt is Block
         if (realize->block.get() == src_stmt) {
           const auto* tgt_block = TVM_TYPE_AS(tgt_stmt_, BlockNode);
-          ObjectPtr<BlockRealizeNode> new_realize = make_object<BlockRealizeNode>(*realize);
+          ObjectPtr<BlockRealizeNode> new_realize = ffi::make_object<BlockRealizeNode>(*realize);
           new_realize->block = GetRef<Block>(tgt_block);
           new_stmt = BlockRealize(std::move(new_realize));
         }
@@ -962,7 +962,7 @@ void ScheduleStateNode::Replace(const tir::StmtSRef& _src_sref, const Stmt& tgt_
     const auto* realize = TVM_TYPE_AS(g_func->body, BlockRealizeNode);
     // Make `child_tgt_stmt` the root block
     const auto* child_block = TVM_TYPE_AS(child_tgt_stmt, BlockNode);
-    ObjectPtr<BlockRealizeNode> new_realize = make_object<BlockRealizeNode>(*realize);
+    ObjectPtr<BlockRealizeNode> new_realize = ffi::make_object<BlockRealizeNode>(*realize);
     new_realize->block = GetRef<Block>(child_block);
     new_func->body = BlockRealize(std::move(new_realize));
     // Finally, move the `ref_new_func` back and update `this->mod`

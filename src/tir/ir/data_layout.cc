@@ -75,7 +75,7 @@ const LayoutAxis& LayoutAxis::Get(const std::string& name) {
 }
 
 Layout::Layout(const Array<IterVar>& axes) {
-  auto node = make_object<LayoutNode>();
+  auto node = ffi::make_object<LayoutNode>();
   node->axes = axes;
   std::ostringstream repr;
   for (const IterVar& axis : axes) {
@@ -97,7 +97,7 @@ Layout::Layout(const std::string& name, DataType dtype) {  // NOLINT(*)
   CHECK(dtype.is_int()) << "TypeError: The input dtype should be integer type";
   if (name == "__undef__") return;
 
-  auto node = make_object<LayoutNode>();
+  auto node = ffi::make_object<LayoutNode>();
   node->name = name;
 
   if (name.empty()) return;  // scalar
@@ -410,7 +410,7 @@ Array<PrimExpr> BijectiveLayout::BackwardShape(const Array<PrimExpr>& shape) con
 }
 
 BijectiveLayout::BijectiveLayout(Layout src_layout, Layout dst_layout) {
-  auto n = make_object<BijectiveLayoutNode>();
+  auto n = ffi::make_object<BijectiveLayoutNode>();
 
   n->src_layout = std::move(src_layout);
   n->dst_layout = std::move(dst_layout);

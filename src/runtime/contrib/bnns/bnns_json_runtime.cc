@@ -559,7 +559,7 @@ class BNNSJSONRuntime : public JSONRuntimeBase {
 
 ffi::Module BNNSJSONRuntimeCreate(String symbol_name, String graph_json,
                                   const Array<String>& const_names) {
-  auto n = make_object<BNNSJSONRuntime>(symbol_name, graph_json, const_names);
+  auto n = ffi::make_object<BNNSJSONRuntime>(symbol_name, graph_json, const_names);
   return ffi::Module(n);
 }
 

@@ -71,7 +71,7 @@ class SourceModuleNode : public ffi::ModuleObj {
 };
 
 ffi::Module SourceModuleCreate(std::string code, std::string fmt) {
-  auto n = make_object<SourceModuleNode>(code, fmt);
+  auto n = ffi::make_object<SourceModuleNode>(code, fmt);
   return ffi::Module(n);
 }
 
@@ -144,7 +144,7 @@ class CSourceModuleNode : public ffi::ModuleObj {
     Array<String> const_vars;
     for (auto const_var : tmp_const_vars) const_vars.push_back(String(const_var));
 
-    auto n = make_object<CSourceModuleNode>(code, fmt, func_names, const_vars);
+    auto n = ffi::make_object<CSourceModuleNode>(code, fmt, func_names, const_vars);
     return ffi::Module(n);
   }
 
@@ -176,7 +176,7 @@ class CSourceModuleNode : public ffi::ModuleObj {
 
 ffi::Module CSourceModuleCreate(const String& code, const String& fmt,
                                 const Array<String>& func_names, const Array<String>& const_vars) {
-  auto n = make_object<CSourceModuleNode>(code.operator std::string(), fmt.operator std::string(),
+  auto n = ffi::make_object<CSourceModuleNode>(code.operator std::string(), fmt.operator std::string(),
                                           func_names, const_vars);
   return ffi::Module(n);
 }
@@ -257,7 +257,7 @@ ffi::Module DeviceSourceModuleCreate(std::string data, std::string fmt,
                                      std::unordered_map<std::string, FunctionInfo> fmap,
                                      std::string type_key,
                                      std::function<std::string(const std::string&)> fget_source) {
-  auto n = make_object<DeviceSourceModuleNode>(data, fmt, fmap, type_key, fget_source);
+  auto n = ffi::make_object<DeviceSourceModuleNode>(data, fmt, fmap, type_key, fget_source);
   return ffi::Module(n);
 }
 

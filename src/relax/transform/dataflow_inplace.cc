@@ -541,7 +541,7 @@ TVM_FFI_STATIC_INIT_BLOCK({ InplaceOpportunityNode::RegisterReflection(); });
 class InplaceOpportunity : public ObjectRef {
  public:
   TVM_DLL InplaceOpportunity(const Integer& binding_idx, const Array<Integer>& arg_idxs) {
-    auto node = make_object<InplaceOpportunityNode>();
+    auto node = ffi::make_object<InplaceOpportunityNode>();
     node->binding_idx = binding_idx;
     node->arg_idxs = arg_idxs;
     data_ = std::move(node);
@@ -939,7 +939,7 @@ class ModuleInplaceTransformer : public ExprMutator {
     new_args.Set(0, new_gv);
     legalized_call_cow->args = new_args;
 
-    ObjectPtr<CallTIRInplaceAttrs> attrs = make_object<CallTIRInplaceAttrs>();
+    ObjectPtr<CallTIRInplaceAttrs> attrs = ffi::make_object<CallTIRInplaceAttrs>();
     attrs->inplace_indices = inplace_indices;
     legalized_call_cow->attrs = Attrs(attrs);
 

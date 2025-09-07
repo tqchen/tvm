@@ -66,7 +66,7 @@ LetStmt::LetStmt(Var var, PrimExpr value, Stmt body, Span span) {
     ICHECK_EQ(value.dtype(), var.dtype());
   }
 
-  ObjectPtr<LetStmtNode> node = make_object<LetStmtNode>();
+  ObjectPtr<LetStmtNode> node = ffi::make_object<LetStmtNode>();
   node->var = std::move(var);
   node->value = std::move(value);
   node->body = std::move(body);
@@ -83,7 +83,7 @@ TVM_FFI_STATIC_INIT_BLOCK({
 
 // AttrStmt
 AttrStmt::AttrStmt(ffi::Any node, String attr_key, PrimExpr value, Stmt body, Span span) {
-  auto n = make_object<AttrStmtNode>();
+  auto n = ffi::make_object<AttrStmtNode>();
   n->node = node;
   n->attr_key = std::move(attr_key);
   n->value = std::move(value);
@@ -114,7 +114,7 @@ AssertStmt::AssertStmt(PrimExpr condition, PrimExpr message, Stmt body, Span spa
   ICHECK(message.dtype() == DataType::Int(32) || message.as<StringImmNode>())
       << "TypeError: AssertStmt message must be an int or string:" << message << "\n";
 
-  ObjectPtr<AssertStmtNode> node = make_object<AssertStmtNode>();
+  ObjectPtr<AssertStmtNode> node = ffi::make_object<AssertStmtNode>();
   node->condition = std::move(condition);
   node->message = std::move(message);
   node->body = std::move(body);
@@ -168,7 +168,7 @@ For::For(Var loop_var, PrimExpr min, PrimExpr extent, ForKind kind, Stmt body,
   ICHECK(loop_var.dtype() == min.dtype()) << loop_var.dtype() << " vs " << min.dtype();
   ICHECK(loop_var.dtype() == extent.dtype()) << loop_var.dtype() << " vs " << extent.dtype();
 
-  ObjectPtr<ForNode> node = make_object<ForNode>();
+  ObjectPtr<ForNode> node = ffi::make_object<ForNode>();
   node->loop_var = std::move(loop_var);
   node->min = std::move(min);
   node->extent = std::move(extent);
@@ -218,7 +218,7 @@ While::While(PrimExpr condition, Stmt body, Span span) {
   ICHECK(condition.as<tir::IntImmNode>() == nullptr) << "The condition should not be trivial.";
   ICHECK(body.defined());
 
-  ObjectPtr<WhileNode> node = make_object<WhileNode>();
+  ObjectPtr<WhileNode> node = ffi::make_object<WhileNode>();
   node->condition = std::move(condition);
   node->body = std::move(body);
   node->span = std::move(span);
@@ -250,7 +250,7 @@ Allocate::Allocate(Var buffer_var, DataType dtype, Array<PrimExpr> extents, Prim
   ICHECK(condition.defined());
   ICHECK(condition.dtype().is_bool());
 
-  ObjectPtr<AllocateNode> node = make_object<AllocateNode>();
+  ObjectPtr<AllocateNode> node = ffi::make_object<AllocateNode>();
   node->buffer_var = std::move(buffer_var);
   node->dtype = dtype;
   node->extents = std::move(extents);
@@ -305,7 +305,7 @@ AllocateConst::AllocateConst(Var buffer_var, DataType dtype, Array<PrimExpr> ext
   ICHECK(body.defined());
   ICHECK(data_or_idx.defined());
 
-  ObjectPtr<AllocateConstNode> node = make_object<AllocateConstNode>();
+  ObjectPtr<AllocateConstNode> node = ffi::make_object<AllocateConstNode>();
   node->buffer_var = std::move(buffer_var);
   node->dtype = dtype;
   node->extents = std::move(extents);
@@ -351,7 +351,7 @@ TVM_FFI_STATIC_INIT_BLOCK({
 
 // DeclBuffer
 DeclBuffer::DeclBuffer(Buffer buffer, Stmt body, Span span) {
-  ObjectPtr<DeclBufferNode> node = make_object<DeclBufferNode>();
+  ObjectPtr<DeclBufferNode> node = ffi::make_object<DeclBufferNode>();
   node->buffer = std::move(buffer);
   node->body = std::move(body);
   node->span = std::move(span);
@@ -386,7 +386,7 @@ SeqStmt::SeqStmt(Array<Stmt> seq, Span span) {
                            << "Use the node " << seq[0] << "directly, "
                            << "or for dynamic usage, normalize using SeqStmt::Flatten()";
 
-  auto node = make_object<SeqStmtNode>();
+  auto node = ffi::make_object<SeqStmtNode>();
   node->seq = std::move(seq);
   node->span = std::move(span);
   data_ = std::move(node);
@@ -403,7 +403,7 @@ IfThenElse::IfThenElse(PrimExpr condition, Stmt then_case, Optional<Stmt> else_c
   ICHECK(condition.defined());
   ICHECK(then_case.defined());
   // else_case may be null.
-  ObjectPtr<IfThenElseNode> node = make_object<IfThenElseNode>();
+  ObjectPtr<IfThenElseNode> node = ffi::make_object<IfThenElseNode>();
   node->condition = std::move(condition);
   node->then_case = std::move(then_case);
   node->else_case = std::move(else_case);
@@ -423,7 +423,7 @@ TVM_FFI_STATIC_INIT_BLOCK({
 Evaluate::Evaluate(PrimExpr value, Span span) {
   ICHECK(value.defined());
 
-  ObjectPtr<EvaluateNode> node = make_object<EvaluateNode>();
+  ObjectPtr<EvaluateNode> node = ffi::make_object<EvaluateNode>();
   node->value = std::move(value);
   node->span = std::move(span);
   data_ = std::move(node);
@@ -502,7 +502,7 @@ BufferStore::BufferStore(Buffer buffer, PrimExpr value, Array<PrimExpr> indices,
                << "`, but RHS's dtype is `" << value.dtype() << "`";
   }
 
-  ObjectPtr<BufferStoreNode> node = make_object<BufferStoreNode>();
+  ObjectPtr<BufferStoreNode> node = ffi::make_object<BufferStoreNode>();
   node->buffer = std::move(buffer);
   node->value = std::move(value);
   node->indices = std::move(indices);
@@ -522,7 +522,7 @@ TVM_FFI_STATIC_INIT_BLOCK({
 // BufferRealize
 BufferRealize::BufferRealize(Buffer buffer, Array<Range> bounds, PrimExpr condition, Stmt body,
                              Span span) {
-  data_ = make_object<BufferRealizeNode>(buffer, bounds, condition, body, span);
+  data_ = ffi::make_object<BufferRealizeNode>(buffer, bounds, condition, body, span);
 }
 
 TVM_FFI_STATIC_INIT_BLOCK({
@@ -554,7 +554,7 @@ BufferRegion::BufferRegion(Buffer buffer, Array<Range> region) {
   CHECK_EQ(buffer->shape.size(), region.size())
       << "The dimension between " << buffer << " and region " << region
       << " mismatched, the buffer is " << buffer;
-  ObjectPtr<BufferRegionNode> node = make_object<BufferRegionNode>();
+  ObjectPtr<BufferRegionNode> node = ffi::make_object<BufferRegionNode>();
   node->buffer = std::move(buffer);
   node->region = std::move(region);
   data_ = std::move(node);
@@ -633,7 +633,7 @@ MatchBufferRegion::MatchBufferRegion(Buffer buffer, BufferRegion source) {
   // Note that we do not check elem_offset and strides in this function
 
   // Construction
-  ObjectPtr<MatchBufferRegionNode> node = make_object<MatchBufferRegionNode>();
+  ObjectPtr<MatchBufferRegionNode> node = ffi::make_object<MatchBufferRegionNode>();
   node->buffer = std::move(buffer);
   node->source = std::move(source);
   data_ = std::move(node);
@@ -650,7 +650,7 @@ TVM_FFI_STATIC_INIT_BLOCK({
 Block::Block(Array<IterVar> iter_vars, Array<BufferRegion> reads, Array<BufferRegion> writes,
              String name_hint, Stmt body, Optional<Stmt> init, Array<Buffer> alloc_buffers,
              Array<MatchBufferRegion> match_buffers, Map<String, Any> annotations, Span span) {
-  ObjectPtr<BlockNode> node = make_object<BlockNode>();
+  ObjectPtr<BlockNode> node = ffi::make_object<BlockNode>();
   node->iter_vars = std::move(iter_vars);
   node->reads = std::move(reads);
   node->writes = std::move(writes);
@@ -681,7 +681,7 @@ BlockRealize::BlockRealize(Array<PrimExpr> values, PrimExpr predicate, Block blo
   CHECK_EQ(block->iter_vars.size(), values.size())
       << "ValueError: BlockRealize needs to have the same number of iter_vars and binding values";
   CHECK(predicate.dtype().is_bool()) << "TypeError: Expect Block.predicate to be a bool expression";
-  ObjectPtr<BlockRealizeNode> node = make_object<BlockRealizeNode>();
+  ObjectPtr<BlockRealizeNode> node = ffi::make_object<BlockRealizeNode>();
   node->iter_values = std::move(values);
   node->predicate = std::move(predicate);
   node->block = std::move(block);

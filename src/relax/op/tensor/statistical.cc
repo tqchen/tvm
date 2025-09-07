@@ -145,7 +145,7 @@ InferLayoutOutput InferLayoutStatistical(const Call& call,
     output_layout.push_back(output_layout_ref[i]);
   }
 
-  ObjectPtr<StatisticalAttrs> new_attrs = make_object<StatisticalAttrs>(*attrs);
+  ObjectPtr<StatisticalAttrs> new_attrs = ffi::make_object<StatisticalAttrs>(*attrs);
   new_attrs->axis = new_axis;
   return InferLayoutOutput({exisiting_layout},
                            {attrs->keepdims ? exisiting_layout : Layout(output_layout)},
@@ -182,7 +182,7 @@ StructInfo InferStructInfoScan(const Call& call, const BlockBuilder& ctx) {
 
 /* relax.cumprod */
 Expr cumprod(Expr data, Optional<int64_t> axis, Optional<DataType> dtype, Bool exclusive) {
-  auto attrs = make_object<ScanopAttrs>();
+  auto attrs = ffi::make_object<ScanopAttrs>();
   attrs->axis = std::move(axis);
   attrs->dtype = std::move(dtype.value_or(DataType::Void()));
   attrs->exclusive = std::move(exclusive);
@@ -205,7 +205,7 @@ TVM_REGISTER_OP("relax.cumprod")
 
 /* relax.cumsum */
 Expr cumsum(Expr data, Optional<int64_t> axis, Optional<DataType> dtype, Bool exclusive) {
-  auto attrs = make_object<ScanopAttrs>();
+  auto attrs = ffi::make_object<ScanopAttrs>();
   attrs->axis = std::move(axis);
   attrs->dtype = std::move(dtype.value_or(DataType::Void()));
   attrs->exclusive = std::move(exclusive);

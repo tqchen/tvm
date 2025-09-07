@@ -68,7 +68,7 @@ class MutateUnrollNode : public MutatorNode {
   Optional<Trace> Apply(const Trace& trace, TRandState* rand_state) final;
   // Inherit from `MutatorNode`
   Mutator Clone() const final {
-    ObjectPtr<MutateUnrollNode> n = make_object<MutateUnrollNode>(*this);
+    ObjectPtr<MutateUnrollNode> n = ffi::make_object<MutateUnrollNode>(*this);
     return Mutator(n);
   }
 };
@@ -141,7 +141,7 @@ Optional<Trace> MutateUnrollNode::Apply(const Trace& trace, TRandState* rand_sta
   return trace->WithDecision(candidate.inst, Integer(result), /*remove_postproc=*/true);
 }
 
-Mutator Mutator::MutateUnroll() { return Mutator(make_object<MutateUnrollNode>()); }
+Mutator Mutator::MutateUnroll() { return Mutator(ffi::make_object<MutateUnrollNode>()); }
 
 TVM_FFI_STATIC_INIT_BLOCK({ MutateUnrollNode::RegisterReflection(); });
 

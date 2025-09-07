@@ -24,7 +24,7 @@ namespace tvm {
 namespace meta_schedule {
 
 RunnerInput::RunnerInput(String artifact_path, String device_type, Array<ArgInfo> args_info) {
-  ObjectPtr<RunnerInputNode> n = make_object<RunnerInputNode>();
+  ObjectPtr<RunnerInputNode> n = ffi::make_object<RunnerInputNode>();
   n->artifact_path = artifact_path;
   n->device_type = device_type;
   n->args_info = args_info;
@@ -32,21 +32,21 @@ RunnerInput::RunnerInput(String artifact_path, String device_type, Array<ArgInfo
 }
 
 RunnerResult::RunnerResult(Optional<Array<FloatImm>> run_secs, Optional<String> error_msg) {
-  ObjectPtr<RunnerResultNode> n = make_object<RunnerResultNode>();
+  ObjectPtr<RunnerResultNode> n = ffi::make_object<RunnerResultNode>();
   n->run_secs = run_secs;
   n->error_msg = error_msg;
   this->data_ = n;
 }
 
 RunnerFuture::RunnerFuture(RunnerFuture::FDone f_done, RunnerFuture::FResult f_result) {
-  ObjectPtr<RunnerFutureNode> n = make_object<RunnerFutureNode>();
+  ObjectPtr<RunnerFutureNode> n = ffi::make_object<RunnerFutureNode>();
   n->f_done = f_done;
   n->f_result = f_result;
   this->data_ = n;
 }
 
 Runner Runner::PyRunner(Runner::FRun f_run) {
-  ObjectPtr<PyRunnerNode> n = make_object<PyRunnerNode>();
+  ObjectPtr<PyRunnerNode> n = ffi::make_object<PyRunnerNode>();
   n->f_run = f_run;
   return Runner(n);
 }

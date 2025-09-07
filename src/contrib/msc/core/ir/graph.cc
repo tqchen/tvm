@@ -38,7 +38,7 @@ namespace msc {
 
 MSCTensor::MSCTensor(const String& name, const DataType& dtype, const String& layout,
                      const Array<Integer>& shape, const String& alias, const Array<String>& prims) {
-  ObjectPtr<MSCTensorNode> n = make_object<MSCTensorNode>();
+  ObjectPtr<MSCTensorNode> n = ffi::make_object<MSCTensorNode>();
   n->name = std::move(name);
   n->alias = std::move(alias);
   n->dtype = std::move(dtype);
@@ -49,13 +49,13 @@ MSCTensor::MSCTensor(const String& name, const DataType& dtype, const String& la
 }
 
 MSCTensor::MSCTensor(const JsonMSCTensor& j_tensor) {
-  ObjectPtr<MSCTensorNode> n = make_object<MSCTensorNode>();
+  ObjectPtr<MSCTensorNode> n = ffi::make_object<MSCTensorNode>();
   n->FromJson(j_tensor);
   data_ = std::move(n);
 }
 
 MSCTensor::MSCTensor(const std::string& json_str) {
-  ObjectPtr<MSCTensorNode> n = make_object<MSCTensorNode>();
+  ObjectPtr<MSCTensorNode> n = ffi::make_object<MSCTensorNode>();
   n->FromJson(json_str);
   data_ = std::move(n);
 }
@@ -317,7 +317,7 @@ MSCJoint::MSCJoint(int index, const String& name, const String& shared_ref, cons
                    const Map<String, String>& attrs, const Array<String>& scope,
                    const std::vector<std::pair<BaseJoint, size_t>>& inputs,
                    const Array<MSCTensor>& outputs, const Map<String, MSCTensor>& weights) {
-  ObjectPtr<MSCJointNode> n = make_object<MSCJointNode>();
+  ObjectPtr<MSCJointNode> n = ffi::make_object<MSCJointNode>();
   n->index = index;
   n->name = std::move(name);
   n->shared_ref = std::move(shared_ref);
@@ -353,13 +353,13 @@ MSCJoint::MSCJoint(int index, const String& name, const String& shared_ref, cons
 }
 
 MSCJoint::MSCJoint(const JsonMSCJoint& j_joint, const Map<String, BaseJoint>& nodes) {
-  ObjectPtr<MSCJointNode> n = make_object<MSCJointNode>();
+  ObjectPtr<MSCJointNode> n = ffi::make_object<MSCJointNode>();
   n->FromJson(j_joint, nodes);
   data_ = std::move(n);
 }
 
 MSCJoint::MSCJoint(const std::string& json_str, const Map<String, BaseJoint>& nodes) {
-  ObjectPtr<MSCJointNode> n = make_object<MSCJointNode>();
+  ObjectPtr<MSCJointNode> n = ffi::make_object<MSCJointNode>();
   n->FromJson(json_str, nodes);
   data_ = std::move(n);
 }
@@ -520,7 +520,7 @@ const std::pair<MSCJoint, size_t> MSCJointNode::ProducerAndIdxOf(const MSCTensor
 
 MSCPrim::MSCPrim(int index, const String& name, const String& optype,
                  const Array<BaseJoint>& parents, const Map<String, String>& attrs) {
-  ObjectPtr<MSCPrimNode> n = make_object<MSCPrimNode>();
+  ObjectPtr<MSCPrimNode> n = ffi::make_object<MSCPrimNode>();
   n->index = index;
   n->name = std::move(name);
   n->optype = std::move(optype);
@@ -532,13 +532,13 @@ MSCPrim::MSCPrim(int index, const String& name, const String& optype,
 }
 
 MSCPrim::MSCPrim(const JsonMSCPrim& j_prim, const Map<String, BaseJoint>& prims) {
-  ObjectPtr<MSCPrimNode> n = make_object<MSCPrimNode>();
+  ObjectPtr<MSCPrimNode> n = ffi::make_object<MSCPrimNode>();
   n->FromJson(j_prim, prims);
   data_ = std::move(n);
 }
 
 MSCPrim::MSCPrim(const std::string& json_str, const Map<String, BaseJoint>& prims) {
-  ObjectPtr<MSCPrimNode> n = make_object<MSCPrimNode>();
+  ObjectPtr<MSCPrimNode> n = ffi::make_object<MSCPrimNode>();
   n->FromJson(json_str, prims);
   data_ = std::move(n);
 }
@@ -592,7 +592,7 @@ WeightJoint::WeightJoint(int index, const String& name, const String& shared_ref
                          const String& weight_type, const MSCTensor& weight,
                          const Array<BaseJoint> parents, const Map<String, String>& attrs,
                          const Array<BaseJoint>& friends) {
-  ObjectPtr<WeightJointNode> n = make_object<WeightJointNode>();
+  ObjectPtr<WeightJointNode> n = ffi::make_object<WeightJointNode>();
   n->index = index;
   n->name = std::move(name);
   n->shared_ref = std::move(shared_ref);
@@ -607,13 +607,13 @@ WeightJoint::WeightJoint(int index, const String& name, const String& shared_ref
 }
 
 WeightJoint::WeightJoint(const JsonWeightJoint& j_joint, const Map<String, BaseJoint>& nodes) {
-  ObjectPtr<WeightJointNode> n = make_object<WeightJointNode>();
+  ObjectPtr<WeightJointNode> n = ffi::make_object<WeightJointNode>();
   n->FromJson(j_joint, nodes);
   data_ = std::move(n);
 }
 
 WeightJoint::WeightJoint(const std::string& json_str, const Map<String, BaseJoint>& nodes) {
-  ObjectPtr<WeightJointNode> n = make_object<WeightJointNode>();
+  ObjectPtr<WeightJointNode> n = ffi::make_object<WeightJointNode>();
   n->FromJson(json_str, nodes);
   data_ = std::move(n);
 }
@@ -679,7 +679,7 @@ const bool BaseGraphNode::HasNode(const String& name) const {
 MSCGraph::MSCGraph(const String& name, const Array<MSCJoint>& nodes,
                    const Array<String>& input_names, const Array<String>& output_names,
                    const Array<MSCPrim>& prims) {
-  ObjectPtr<MSCGraphNode> n = make_object<MSCGraphNode>();
+  ObjectPtr<MSCGraphNode> n = ffi::make_object<MSCGraphNode>();
   n->name = std::move(name);
   for (const auto& node : nodes) {
     n->node_names.push_back(node->name);
@@ -696,13 +696,13 @@ MSCGraph::MSCGraph(const String& name, const Array<MSCJoint>& nodes,
 }
 
 MSCGraph::MSCGraph(const JsonMSCGraph& j_graph) {
-  ObjectPtr<MSCGraphNode> n = make_object<MSCGraphNode>();
+  ObjectPtr<MSCGraphNode> n = ffi::make_object<MSCGraphNode>();
   n->FromJson(j_graph);
   data_ = std::move(n);
 }
 
 MSCGraph::MSCGraph(const std::string& json_str) {
-  ObjectPtr<MSCGraphNode> n = make_object<MSCGraphNode>();
+  ObjectPtr<MSCGraphNode> n = ffi::make_object<MSCGraphNode>();
   n->FromJson(json_str);
   data_ = std::move(n);
 }
@@ -1002,20 +1002,20 @@ void MSCGraphNode::AnalysisGraph() {
 
 WeightGraph::WeightGraph(const MSCGraph& graph, const Map<String, Array<String>>& main_wtypes,
                          const Map<String, String>& relation_wtypes) {
-  ObjectPtr<WeightGraphNode> n = make_object<WeightGraphNode>();
+  ObjectPtr<WeightGraphNode> n = ffi::make_object<WeightGraphNode>();
   n->name = graph->name + "_weights";
   n->Build(graph, main_wtypes, relation_wtypes);
   data_ = std::move(n);
 }
 
 WeightGraph::WeightGraph(const JsonWeightGraph& j_graph) {
-  ObjectPtr<WeightGraphNode> n = make_object<WeightGraphNode>();
+  ObjectPtr<WeightGraphNode> n = ffi::make_object<WeightGraphNode>();
   n->FromJson(j_graph);
   data_ = std::move(n);
 }
 
 WeightGraph::WeightGraph(const std::string& json_str) {
-  ObjectPtr<WeightGraphNode> n = make_object<WeightGraphNode>();
+  ObjectPtr<WeightGraphNode> n = ffi::make_object<WeightGraphNode>();
   n->FromJson(json_str);
   data_ = std::move(n);
 }

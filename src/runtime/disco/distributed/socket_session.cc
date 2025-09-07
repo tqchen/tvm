@@ -300,7 +300,7 @@ TVM_FFI_STATIC_INIT_BLOCK({
 
 Session SocketSession(int num_nodes, int num_workers_per_node, int num_groups, const String& host,
                       int port) {
-  auto n = make_object<SocketSessionObj>(num_nodes, num_workers_per_node, num_groups, host, port);
+  auto n = ffi::make_object<SocketSessionObj>(num_nodes, num_workers_per_node, num_groups, host, port);
   return Session(n);
 }
 

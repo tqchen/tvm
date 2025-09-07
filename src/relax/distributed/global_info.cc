@@ -31,7 +31,7 @@ DeviceMesh::DeviceMesh(ffi::Shape shape, Array<Integer> device_ids) {
   for (int i = 0; i < static_cast<int>(shape.size()); i++) {
     prod *= shape[i];
   }
-  ObjectPtr<DeviceMeshNode> n = make_object<DeviceMeshNode>();
+  ObjectPtr<DeviceMeshNode> n = ffi::make_object<DeviceMeshNode>();
   CHECK_EQ(prod, static_cast<int>(device_ids.size()))
       << "The number of device ids must match the product of the shape";
   n->shape = std::move(shape);
@@ -40,7 +40,7 @@ DeviceMesh::DeviceMesh(ffi::Shape shape, Array<Integer> device_ids) {
 }
 
 DeviceMesh::DeviceMesh(ffi::Shape shape, Range device_range) {
-  ObjectPtr<DeviceMeshNode> n = make_object<DeviceMeshNode>();
+  ObjectPtr<DeviceMeshNode> n = ffi::make_object<DeviceMeshNode>();
   Array<Integer> device_ids;
   int range_start = device_range->min.as<IntImmNode>()->value;
   int range_extent = device_range->extent.as<IntImmNode>()->value;

@@ -286,7 +286,7 @@ ffi::Module MetalModuleCreate(std::unordered_map<std::string, std::string> smap,
                               std::unordered_map<std::string, FunctionInfo> fmap, std::string fmt,
                               std::string source) {
   ObjectPtr<Object> n;
-  AUTORELEASEPOOL { n = make_object<MetalModuleNode>(smap, fmap, fmt, source); };
+  AUTORELEASEPOOL { n = ffi::make_object<MetalModuleNode>(smap, fmap, fmt, source); };
   return ffi::Module(n);
 }
 

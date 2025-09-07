@@ -30,7 +30,7 @@ namespace relax {
 
 Expr attention(Expr query, Expr key, Expr value, Optional<Expr> bias, Optional<FloatImm> scale,
                Optional<String> causal_mask, Optional<IntImm> window_size) {
-  ObjectPtr<AttentionAttrs> attrs = make_object<AttentionAttrs>();
+  ObjectPtr<AttentionAttrs> attrs = ffi::make_object<AttentionAttrs>();
   attrs->scale = scale;
   attrs->causal_mask = causal_mask;
   attrs->window_size = window_size;
@@ -47,7 +47,7 @@ Expr attention(Expr query, Expr key, Expr value, Optional<Expr> bias, Optional<F
 Expr attention_var_len(Expr query, Expr key, Expr value, Expr seqstart_q, Expr seqstart_k,
                        Expr max_seqlen_q, Expr max_seqlen_k, Optional<FloatImm> scale,
                        Optional<String> causal_mask, Optional<IntImm> window_size) {
-  ObjectPtr<AttentionAttrs> attrs = make_object<AttentionAttrs>();
+  ObjectPtr<AttentionAttrs> attrs = ffi::make_object<AttentionAttrs>();
   attrs->scale = scale;
   attrs->causal_mask = causal_mask;
   attrs->window_size = window_size;

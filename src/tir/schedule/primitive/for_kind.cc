@@ -168,7 +168,7 @@ void ParallelizeComputation(const ScheduleState& self, const StmtSRef& loop_sref
                                                  : runtime::ThreadScope{-1, -1});
 
   // Step 3. Loop update and IR replacement
-  ObjectPtr<ForNode> new_loop = make_object<ForNode>(*loop);
+  ObjectPtr<ForNode> new_loop = ffi::make_object<ForNode>(*loop);
   new_loop->kind = for_kind;
   if (thread_axis.has_value()) {
     new_loop->thread_binding = IterVar(/*dom=*/Range(nullptr),                                    //
@@ -195,7 +195,7 @@ void Bind(ScheduleState self, const StmtSRef& loop_sref, const String& thread_ax
 
 void Unroll(ScheduleState self, const StmtSRef& loop_sref) {
   const ForNode* loop = TVM_SREF_TO_FOR(loop_sref);
-  ObjectPtr<ForNode> new_loop = make_object<ForNode>(*loop);
+  ObjectPtr<ForNode> new_loop = ffi::make_object<ForNode>(*loop);
   new_loop->kind = ForKind::kUnrolled;
   new_loop->thread_binding = std::nullopt;
   self->Replace(loop_sref, For(new_loop), {});

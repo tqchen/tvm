@@ -181,7 +181,7 @@ Session Session::ProcessSession(int num_workers, int num_group, String process_p
   CHECK(pf) << "ValueError: Cannot find function " << process_pool_creator
             << " in the registry. Please check if it is registered.";
   auto process_pool = (*pf)(num_workers, num_group, entrypoint).cast<ffi::Function>();
-  auto n = make_object<ProcessSessionObj>(num_workers, num_group, process_pool);
+  auto n = ffi::make_object<ProcessSessionObj>(num_workers, num_group, process_pool);
   return Session(n);
 }
 

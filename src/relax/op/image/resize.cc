@@ -38,7 +38,7 @@ TVM_FFI_STATIC_INIT_BLOCK({ Resize2DAttrs::RegisterReflection(); });
 Expr resize2d(Expr data, Expr size, Array<FloatImm> roi, String layout, String method,
               String coordinate_transformation_mode, String rounding_method, double cubic_alpha,
               int cubic_exclude, double extrapolation_value, Optional<DataType> out_dtype) {
-  ObjectPtr<Resize2DAttrs> attrs = make_object<Resize2DAttrs>();
+  ObjectPtr<Resize2DAttrs> attrs = ffi::make_object<Resize2DAttrs>();
   attrs->roi = std::move(roi);
   attrs->layout = std::move(layout);
   attrs->method = std::move(method);
@@ -116,7 +116,7 @@ InferLayoutOutput InferLayoutResize2d(const Call& call,
   ICHECK(attrs) << "Invalid Call";
 
   LayoutDecision data_layout;
-  ObjectPtr<Resize2DAttrs> new_attrs = make_object<Resize2DAttrs>(*attrs);
+  ObjectPtr<Resize2DAttrs> new_attrs = ffi::make_object<Resize2DAttrs>(*attrs);
 
   if (it != desired_layouts.end()) {
     // We have a desired layout for resize2d.

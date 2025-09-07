@@ -245,7 +245,7 @@ class SymbolicVarRenewMutator : public ExprMutator, tir::ExprMutator {
     if (it != var_map_.end()) {
       return (*it).second;
     } else {
-      auto n = make_object<tir::VarNode>(*op);
+      auto n = ffi::make_object<tir::VarNode>(*op);
       tir::Var v(n);
       var_map_.Set(GetRef<tir::Var>(op), v);
       return v;

@@ -511,7 +511,7 @@ class BlockRemover : public StmtExprMutator {
 
   Stmt VisitStmt_(const BlockNode* op) final {
     Block block = Downcast<Block>(StmtExprMutator::VisitStmt_(op));
-    ObjectPtr<BlockNode> n = make_object<BlockNode>(*block.operator->());
+    ObjectPtr<BlockNode> n = ffi::make_object<BlockNode>(*block.operator->());
     if (op->name_hint != "root") {
       ICHECK(block_partition.count(GetRef<Block>(op)));
       bool block_is_library = block_partition[GetRef<Block>(op)]->value;
@@ -725,7 +725,7 @@ class SplitMutator : public ExprMutator {
       ICHECK(lib_func->IsInstance<ExternFuncNode>());
       builder_->UpdateFunction(gv, lib_func);
       // emit the call to the library kernel
-      ObjectPtr<CallNode> new_call = make_object<CallNode>(*call.operator->());
+      ObjectPtr<CallNode> new_call = ffi::make_object<CallNode>(*call.operator->());
       new_call->op = this->call_dps_packed_;
       new_call->args = {lib_func, call->args[1]};
       return Call(new_call);

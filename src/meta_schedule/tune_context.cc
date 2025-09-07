@@ -30,7 +30,7 @@ TuneContext::TuneContext(Optional<IRModule> mod, Optional<Target> target,
                          Optional<SearchStrategy> search_strategy, Optional<String> task_name,
                          int num_threads, TRandState rand_state, ffi::Function logger) {
   CHECK(rand_state == -1 || rand_state >= 0) << "ValueError: Invalid random state: " << rand_state;
-  ObjectPtr<TuneContextNode> n = make_object<TuneContextNode>();
+  ObjectPtr<TuneContextNode> n = ffi::make_object<TuneContextNode>();
   n->mod = mod;
   n->target = target;
   n->space_generator = space_generator;
@@ -43,7 +43,7 @@ TuneContext::TuneContext(Optional<IRModule> mod, Optional<Target> target,
 }
 
 TuneContext TuneContextNode::Clone() const {
-  ObjectPtr<TuneContextNode> n = make_object<TuneContextNode>(*this);
+  ObjectPtr<TuneContextNode> n = ffi::make_object<TuneContextNode>(*this);
   if (this->space_generator.defined()) {
     n->space_generator = this->space_generator.value()->Clone();
   }

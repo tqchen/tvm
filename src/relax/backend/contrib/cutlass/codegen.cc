@@ -94,7 +94,7 @@ class CodegenResultNode : public Object {
 class CodegenResult : public ObjectRef {
  public:
   CodegenResult(String code, Array<String> headers) {
-    auto n = make_object<CodegenResultNode>();
+    auto n = ffi::make_object<CodegenResultNode>();
     n->code = std::move(code);
     n->headers = std::move(headers);
     data_ = std::move(n);

@@ -117,7 +117,7 @@ class CrossThreadReductionNode : public ScheduleRuleNode {
 
   // Inherited from ScheduleRuleNode
   ScheduleRule Clone() const final {
-    ObjectPtr<CrossThreadReductionNode> n = make_object<CrossThreadReductionNode>(*this);
+    ObjectPtr<CrossThreadReductionNode> n = ffi::make_object<CrossThreadReductionNode>(*this);
     return ScheduleRule(n);
   }
 
@@ -289,7 +289,7 @@ ScheduleRule ScheduleRule::CrossThreadReduction(Array<Integer> thread_extents) {
   for (const auto& extent : thread_extents) {
     CHECK(extent->value > 0) << "ValueError: The candidates of thread extent must be positive";
   }
-  ObjectPtr<CrossThreadReductionNode> n = make_object<CrossThreadReductionNode>();
+  ObjectPtr<CrossThreadReductionNode> n = ffi::make_object<CrossThreadReductionNode>();
   n->thread_extents = std::move(thread_extents);
   return ScheduleRule(n);
 }

@@ -71,7 +71,7 @@ IntImm::IntImm(DataType dtype, int64_t value, Span span) {
     ICHECK_LT(value, 1LL << (dtype.bits() - 1))
         << "ValueError: Literal value " << value << " exceeds maximum of " << dtype;
   }
-  ObjectPtr<IntImmNode> node = make_object<IntImmNode>();
+  ObjectPtr<IntImmNode> node = ffi::make_object<IntImmNode>();
   node->dtype = dtype;
   node->value = value;
   node->span = span;
@@ -174,7 +174,7 @@ FloatImm::FloatImm(DataType dtype, double value, Span span) {
                               << dtype;
     }
   }
-  ObjectPtr<FloatImmNode> node = make_object<FloatImmNode>();
+  ObjectPtr<FloatImmNode> node = ffi::make_object<FloatImmNode>();
   node->dtype = dtype;
   node->value = value;
   node->span = span;
@@ -189,10 +189,10 @@ TVM_FFI_STATIC_INIT_BLOCK({
 });
 
 Range::Range(PrimExpr begin, PrimExpr end, Span span)
-    : Range(make_object<RangeNode>(begin, tir::is_zero(begin) ? end : (end - begin), span)) {}
+    : Range(ffi::make_object<RangeNode>(begin, tir::is_zero(begin) ? end : (end - begin), span)) {}
 
 Range Range::FromMinExtent(PrimExpr min, PrimExpr extent, Span span) {
-  return Range(make_object<RangeNode>(min, extent, span));
+  return Range(ffi::make_object<RangeNode>(min, extent, span));
 }
 
 TVM_FFI_STATIC_INIT_BLOCK({
@@ -209,7 +209,7 @@ TVM_FFI_STATIC_INIT_BLOCK({
 });
 
 GlobalVar::GlobalVar(String name_hint, Span span) {
-  ObjectPtr<GlobalVarNode> n = make_object<GlobalVarNode>();
+  ObjectPtr<GlobalVarNode> n = ffi::make_object<GlobalVarNode>();
   n->name_hint = std::move(name_hint);
   n->span = std::move(span);
   data_ = std::move(n);

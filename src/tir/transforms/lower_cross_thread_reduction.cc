@@ -349,14 +349,14 @@ Stmt TransformReductionBlock(const BlockRealizeNode* realize,            //
     // then replace `wb_buffers` with `it_buffers` accordingly in given BlockRealize
     // otherwise, directly remove given BlockRealize
     if (it_buffers.defined()) {
-      ObjectPtr<BlockNode> new_block = make_object<BlockNode>(*block);
+      ObjectPtr<BlockNode> new_block = ffi::make_object<BlockNode>(*block);
       new_block->reads = std::move(new_block->reads);
       new_block->writes = it_buffer_regions.value();
       new_block->name_hint = new_block->name_hint + "_in_thread";
       new_block->body =
           BufferReplacer::Run(wb_buffers, it_buffers.value(), std::move(new_block->body));
       new_block->init = std::nullopt;
-      ObjectPtr<BlockRealizeNode> n = make_object<BlockRealizeNode>(*realize);
+      ObjectPtr<BlockRealizeNode> n = ffi::make_object<BlockRealizeNode>(*realize);
       n->block = Block(new_block);
       new_realize = BlockRealize(n);
     }
@@ -437,8 +437,8 @@ Stmt TransformReductionBlock(const BlockRealizeNode* realize,            //
       if (iter_var->iter_type != kCommReduce) {
         IterVar new_iter_var{nullptr};
         {
-          ObjectPtr<IterVarNode> n = make_object<IterVarNode>(*iter_var.get());
-          ObjectPtr<VarNode> v = make_object<VarNode>(*iter_var->var.get());
+          ObjectPtr<IterVarNode> n = ffi::make_object<IterVarNode>(*iter_var.get());
+          ObjectPtr<VarNode> v = ffi::make_object<VarNode>(*iter_var->var.get());
           n->var = Var(v);
           new_iter_var = IterVar(n);
         }
@@ -520,7 +520,7 @@ Stmt TransformReductionBlock(const BlockRealizeNode* realize,            //
   for (auto rit = reduction_loops.rbegin(); rit != reduction_loops.rend(); ++rit) {
     const ForNode* loop = *rit;
     if (loop->thread_binding.defined()) {
-      ObjectPtr<ForNode> n = make_object<ForNode>(*loop);
+      ObjectPtr<ForNode> n = ffi::make_object<ForNode>(*loop);
       n->body = std::move(new_stmt);
       new_stmt = For(n);
     }
@@ -859,7 +859,7 @@ class CrossThreadReductionTransformer : public StmtMutator {
     }
 
     // Step 2. Update the BlockRealize with the new predicate.
-    ObjectPtr<BlockRealizeNode> p_realize = make_object<BlockRealizeNode>(*realize);
+    ObjectPtr<BlockRealizeNode> p_realize = ffi::make_object<BlockRealizeNode>(*realize);
     p_realize->predicate = std::move(predicate);
 
     // Step 3. Wrap the updated BlockRealize with the new loops.

@@ -58,7 +58,7 @@ class RelaxFrameNode : public FrameNode {
 class RelaxFrame : public Frame {
  public:
   explicit RelaxFrame(const IRDocsifier& d) {
-    ObjectPtr<RelaxFrameNode> n = make_object<RelaxFrameNode>();
+    ObjectPtr<RelaxFrameNode> n = ffi::make_object<RelaxFrameNode>();
     n->stmts.clear();
     n->d = d.get();
     n->is_func = false;

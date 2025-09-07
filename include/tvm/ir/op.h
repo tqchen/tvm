@@ -331,7 +331,7 @@ inline OpRegEntry& OpRegEntry::describe(const std::string& descr) {  // NOLINT(*
 
 inline OpRegEntry& OpRegEntry::add_argument(const std::string& name, const std::string& type,
                                             const std::string& description) {
-  auto n = make_object<AttrFieldInfoNode>();
+  auto n = ffi::make_object<AttrFieldInfoNode>();
   n->name = name;
   n->type_info = type;
   n->description = description;

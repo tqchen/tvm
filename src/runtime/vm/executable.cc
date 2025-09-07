@@ -189,7 +189,7 @@ ffi::Module VMExecutable::LoadFromBytes(const ffi::Bytes& bytes) {
   std::string code;
   dmlc::MemoryFixedSizeStream strm(const_cast<char*>(bytes.data()), bytes.size());
 
-  ObjectPtr<VMExecutable> exec = make_object<VMExecutable>();
+  ObjectPtr<VMExecutable> exec = ffi::make_object<VMExecutable>();
 
   // Load header.
   LoadHeader(&strm);

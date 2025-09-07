@@ -71,7 +71,7 @@ class StaticLibraryNode final : public ffi::ModuleObj {
   static ffi::Module LoadFromBytes(ffi::Bytes bytes) {
     dmlc::MemoryFixedSizeStream ms(const_cast<char*>(bytes.data()), bytes.size());
     dmlc::Stream* stream = &ms;
-    auto n = make_object<StaticLibraryNode>();
+    auto n = ffi::make_object<StaticLibraryNode>();
     // load data
     std::string data;
     ICHECK(stream->Read(&data)) << "Loading data failed";
@@ -125,7 +125,7 @@ class StaticLibraryNode final : public ffi::ModuleObj {
 }  // namespace
 
 ffi::Module LoadStaticLibrary(const std::string& filename, Array<String> func_names) {
-  auto node = make_object<StaticLibraryNode>();
+  auto node = ffi::make_object<StaticLibraryNode>();
   LoadBinaryFromFile(filename, &node->data_);
   node->func_names_ = std::move(func_names);
   VLOG(0) << "Loaded static library from '" << filename << "' implementing " << node->FuncNames();

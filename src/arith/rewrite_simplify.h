@@ -71,7 +71,7 @@ struct RewriteSimplifierStatsNode : Object {
 
 struct RewriteSimplifierStats : ObjectRef {
   explicit RewriteSimplifierStats(RewriteSimplifierStatsNode data) {
-    data_ = make_object<RewriteSimplifierStatsNode>(data);
+    data_ = ffi::make_object<RewriteSimplifierStatsNode>(data);
   }
 
   TVM_DEFINE_OBJECT_REF_METHODS(RewriteSimplifierStats, ObjectRef, RewriteSimplifierStatsNode);

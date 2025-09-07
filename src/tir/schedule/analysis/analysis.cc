@@ -1773,7 +1773,7 @@ Optional<TensorizeInfo> GetTensorizeLoopMapping(const tir::ScheduleState& self,
   const std::vector<const ForNode*>& desc_loops = desc_info.desc_loops;
   const std::unordered_set<const VarNode*>& desc_loop_vars = desc_info.desc_loop_vars;
   const BlockRealizeNode* desc_block = desc_info.desc_block;
-  ObjectPtr<TensorizeInfoNode> ret = make_object<TensorizeInfoNode>();
+  ObjectPtr<TensorizeInfoNode> ret = ffi::make_object<TensorizeInfoNode>();
   const int n_block_vars = block->iter_values.size();
   const int n_desc_vars = desc_block->iter_values.size();
   const int offset = n_block_vars - n_desc_vars;
@@ -2126,7 +2126,7 @@ Optional<AutoTensorizeMappingInfo> GetAutoTensorizeMappingInfo(const tir::Schedu
   if (mappings.empty()) {
     return std::nullopt;
   }
-  ObjectPtr<AutoTensorizeMappingInfoNode> ret = make_object<AutoTensorizeMappingInfoNode>();
+  ObjectPtr<AutoTensorizeMappingInfoNode> ret = ffi::make_object<AutoTensorizeMappingInfoNode>();
   ret->mappings = std::move(mappings);
   ret->lhs_buffer_map = std::move(extractor.lhs_buffer_map_);
   ret->rhs_buffer_indices = std::move(extractor.rhs_buffer_indices_map_);

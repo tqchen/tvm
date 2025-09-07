@@ -50,7 +50,7 @@ void IRBuilderFrameNode::AddCallback(ffi::TypedFunction<void()> callback) {
 }
 
 IRBuilder::IRBuilder() {
-  ObjectPtr<IRBuilderNode> n = make_object<IRBuilderNode>();
+  ObjectPtr<IRBuilderNode> n = ffi::make_object<IRBuilderNode>();
   n->frames.clear();
   n->result = std::nullopt;
   data_ = n;

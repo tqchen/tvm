@@ -38,7 +38,7 @@ struct BcastSessionObj::Internal {
   }
 
   static DRef MakeDRef(int reg_id, Session session) {
-    ObjectPtr<DRefObj> p = make_object<DRefObj>();
+    ObjectPtr<DRefObj> p = ffi::make_object<DRefObj>();
     p->reg_id = reg_id;
     p->session = session;
     return DRef(std::move(p));

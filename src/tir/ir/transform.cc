@@ -102,7 +102,7 @@ class PrimFuncPass : public Pass {
 
 PrimFuncPass::PrimFuncPass(std::function<PrimFunc(PrimFunc, IRModule, PassContext)> pass_func,
                            PassInfo pass_info) {
-  auto n = make_object<PrimFuncPassNode>();
+  auto n = ffi::make_object<PrimFuncPassNode>();
   n->pass_func = std::move(pass_func);
   n->pass_info = std::move(pass_info);
   data_ = std::move(n);

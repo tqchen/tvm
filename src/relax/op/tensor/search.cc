@@ -40,7 +40,7 @@ TVM_FFI_STATIC_INIT_BLOCK({
 /* relax.bucketize */
 
 Expr bucketize(Expr input_tensor, Expr boundaries, bool out_int32, bool right) {
-  auto attrs = make_object<BucketizeAttrs>();
+  auto attrs = ffi::make_object<BucketizeAttrs>();
   attrs->out_int32 = std::move(out_int32);
   attrs->right = std::move(right);
   static const Op& op = Op::Get("relax.bucketize");
@@ -248,7 +248,7 @@ StructInfo InferStructInfoArgmaxArgmin(const Call& call, const BlockBuilder& ctx
 
 #define RELAX_REGISTER_ARGMAX_ARGMIN_OP(OpName)                                    \
   Expr OpName(Expr x, Optional<int64_t> axis, bool keepdims) {                     \
-    ObjectPtr<ArgmaxArgminAttrs> attrs = make_object<ArgmaxArgminAttrs>();         \
+    ObjectPtr<ArgmaxArgminAttrs> attrs = ffi::make_object<ArgmaxArgminAttrs>();         \
     attrs->axis = std::move(axis);                                                 \
     attrs->keepdims = std::move(keepdims);                                         \
     static const Op& op = Op::Get("relax." #OpName);                               \

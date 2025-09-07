@@ -77,7 +77,7 @@ class LayoutDecisionNode : public Object {
 class LayoutDecision : public ObjectRef {
  public:
   LayoutDecision(Layout layout, bool is_unknown_dim = false) {  // NOLINT(*)
-    auto n = make_object<LayoutDecisionNode>();
+    auto n = ffi::make_object<LayoutDecisionNode>();
     n->layout = std::move(layout);
     n->is_unknown_dim = is_unknown_dim;
     data_ = n;
@@ -128,7 +128,7 @@ class InferLayoutOutput : public ObjectRef {
  public:
   explicit InferLayoutOutput(Array<NLayout> input_layouts, Array<NLayout> output_layouts,
                              Attrs new_attrs, Map<Integer, Expr> new_args = {}) {
-    auto n = make_object<InferLayoutOutputNode>();
+    auto n = ffi::make_object<InferLayoutOutputNode>();
     n->input_layouts = std::move(input_layouts);
     n->output_layouts = std::move(output_layouts);
     n->new_attrs = std::move(new_attrs);

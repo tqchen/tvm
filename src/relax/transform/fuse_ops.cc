@@ -1398,7 +1398,7 @@ namespace transform {
 FusionPattern::FusionPattern(String name, DFPattern pattern,
                              Map<String, DFPattern> annotation_patterns,
                              Optional<ffi::Function> check, Optional<ffi::Function> attrs_getter) {
-  ObjectPtr<FusionPatternNode> n = make_object<FusionPatternNode>();
+  ObjectPtr<FusionPatternNode> n = ffi::make_object<FusionPatternNode>();
   n->name = std::move(name);
   n->pattern = std::move(pattern);
   n->annotation_patterns = std::move(annotation_patterns);
@@ -1421,7 +1421,7 @@ PatternCheckContext::PatternCheckContext(Expr matched_expr, Map<String, Expr> an
                                          Map<Var, Expr> matched_bindings,
                                          Map<Var, Array<Var>> var_usages,
                                          Map<Expr, Var> value_to_bound_var) {
-  ObjectPtr<PatternCheckContextNode> n = make_object<PatternCheckContextNode>();
+  ObjectPtr<PatternCheckContextNode> n = ffi::make_object<PatternCheckContextNode>();
   n->matched_expr = std::move(matched_expr);
   n->annotated_expr = std::move(annotated_expr);
   n->matched_bindings = std::move(matched_bindings);

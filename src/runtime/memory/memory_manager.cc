@@ -36,7 +36,7 @@ namespace runtime {
 namespace memory {
 
 Storage::Storage(Buffer buffer, Allocator* allocator) {
-  auto n = make_object<StorageObj>();
+  auto n = ffi::make_object<StorageObj>();
   n->buffer = std::move(buffer);
   n->allocator = allocator;
   data_ = std::move(n);

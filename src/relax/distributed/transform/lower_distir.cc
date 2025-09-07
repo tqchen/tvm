@@ -78,7 +78,7 @@ class DistIRSharder : public ExprMutator {
     TensorStructInfo tensor_sinfo = orig_sinfo->tensor_sinfo;
     ICHECK(tensor_sinfo->shape);
     const auto* orig_shape = tensor_sinfo->shape.as<ShapeExprNode>();
-    auto new_tensor_sinfo = make_object<TensorStructInfoNode>(*tensor_sinfo.get());
+    auto new_tensor_sinfo = ffi::make_object<TensorStructInfoNode>(*tensor_sinfo.get());
     new_tensor_sinfo->shape =
         ShardShape(GetRef<ShapeExpr>(orig_shape), orig_sinfo->device_mesh, orig_sinfo->placement);
     return TensorStructInfo(new_tensor_sinfo);
@@ -217,19 +217,19 @@ class DistIRSharder : public ExprMutator {
       ICHECK(call->args[1].as<ShapeExprNode>());
       const auto* out_sinfo = GetStructInfoAs<DTensorStructInfoNode>(binding_var);
       ICHECK(out_sinfo);
-      auto new_call_node = make_object<CallNode>(*call);
+      auto new_call_node = ffi::make_object<CallNode>(*call);
       new_call_node->args.Set(1, ShardShape(Downcast<ShapeExpr>(call->args[1]),
                                             out_sinfo->device_mesh, out_sinfo->placement));
       return Call(new_call_node);
     } else if (call->op.same_as(call_tir_local_view_op)) {
-      auto new_call_node = make_object<CallNode>(*call);
+      auto new_call_node = ffi::make_object<CallNode>(*call);
       new_call_node->op = call_tir_op;
       new_call_node->sinfo_args = {ConvertSinfo(GetStructInfo(binding_var), true)};
       return Call(new_call_node);
     } else if (call->op.same_as(call_tir_op)) {
       LOG(FATAL) << "call_tir should be lowered to call_tir_local_view before lowering to relax";
     } else if (const auto* extern_func = call->op.as<ExternFuncNode>()) {
-      auto new_call_node = make_object<CallNode>(*call);
+      auto new_call_node = ffi::make_object<CallNode>(*call);
       if (extern_func->global_symbol == "vm.builtin.distributed.attention_kv_cache_append") {
         new_call_node->op = ExternFunc("vm.builtin.attention_kv_cache_append");
       } else if (extern_func->global_symbol == "vm.builtin.distributed.attention_kv_cache_view") {

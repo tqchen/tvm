@@ -88,7 +88,7 @@ class AttrAttacher : public ExprMutator {
     // So we don't need to worry about the duplicate insertion
     GlobalVar new_gv = builder_->AddFunction(func, gv->name_hint);
     // Create a new call node with the updated tir::PrimFunc
-    auto n = make_object<CallNode>(*op);
+    auto n = ffi::make_object<CallNode>(*op);
     n->args = {new_gv, Tuple(call_tir_args)};
     return Call(n);
   }

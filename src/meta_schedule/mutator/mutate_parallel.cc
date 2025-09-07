@@ -192,7 +192,7 @@ class MutateParallelNode : public MutatorNode {
   Optional<Trace> Apply(const Trace& trace, TRandState* rand_state) final;
   // Inherit from `MutatorNode`
   Mutator Clone() const final {
-    ObjectPtr<MutateParallelNode> n = make_object<MutateParallelNode>(*this);
+    ObjectPtr<MutateParallelNode> n = ffi::make_object<MutateParallelNode>(*this);
     return Mutator(n);
   }
 };
@@ -308,7 +308,7 @@ Optional<Trace> MutateParallelNode::Apply(const Trace& trace, TRandState* rand_s
 }
 
 Mutator Mutator::MutateParallel(int64_t max_jobs_per_core) {
-  ObjectPtr<MutateParallelNode> n = make_object<MutateParallelNode>();
+  ObjectPtr<MutateParallelNode> n = ffi::make_object<MutateParallelNode>();
   n->max_jobs_per_core = max_jobs_per_core;
   return Mutator(n);
 }

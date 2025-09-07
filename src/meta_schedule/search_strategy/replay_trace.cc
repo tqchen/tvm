@@ -133,7 +133,7 @@ class ReplayTraceNode : public SearchStrategyNode {
   }
 
   SearchStrategy Clone() const final {
-    ObjectPtr<ReplayTraceNode> n = make_object<ReplayTraceNode>();
+    ObjectPtr<ReplayTraceNode> n = ffi::make_object<ReplayTraceNode>();
     n->max_fail_count = this->max_fail_count;
     n->rand_state_ = this->rand_state_;
     n->state_ = nullptr;  // cleared the state
@@ -183,7 +183,7 @@ inline void ReplayTraceNode::State::NotifyRunnerResults(const Array<RunnerResult
 }
 
 SearchStrategy SearchStrategy::ReplayTrace(int max_fail_count) {
-  ObjectPtr<ReplayTraceNode> n = make_object<ReplayTraceNode>();
+  ObjectPtr<ReplayTraceNode> n = ffi::make_object<ReplayTraceNode>();
   n->max_fail_count = max_fail_count;
   return SearchStrategy(n);
 }

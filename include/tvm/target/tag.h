@@ -128,7 +128,7 @@ class TargetTagRegEntry {
   String name;
 
   /*! \brief private constructor */
-  explicit TargetTagRegEntry(uint32_t reg_index) : tag_(make_object<TargetTagNode>()) {
+  explicit TargetTagRegEntry(uint32_t reg_index) : tag_(ffi::make_object<TargetTagNode>()) {
     tag_->index_ = reg_index;
   }
   template <typename, typename>

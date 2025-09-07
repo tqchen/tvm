@@ -40,7 +40,7 @@ TVM_FFI_STATIC_INIT_BLOCK({
 /* relax.sort */
 
 Expr sort(Expr data, int axis, bool descending) {
-  auto attrs = make_object<SortAttrs>();
+  auto attrs = ffi::make_object<SortAttrs>();
   attrs->axis = std::move(axis);
   attrs->descending = std::move(descending);
 
@@ -67,7 +67,7 @@ TVM_REGISTER_OP("relax.sort")
 /* relax.argsort */
 
 Expr argsort(Expr data, int axis, bool descending, DataType dtype) {
-  auto attrs = make_object<ArgsortAttrs>();
+  auto attrs = ffi::make_object<ArgsortAttrs>();
   attrs->axis = std::move(axis);
   attrs->descending = std::move(descending);
   attrs->dtype = std::move(dtype);
@@ -101,7 +101,7 @@ TVM_REGISTER_OP("relax.argsort")
 /* relax.topk */
 
 Expr topk(Expr data, int k, int axis, String ret_type, bool largest, DataType dtype) {
-  auto attrs = make_object<TopKAttrs>();
+  auto attrs = ffi::make_object<TopKAttrs>();
   attrs->k = std::move(k);
   attrs->axis = std::move(axis);
   attrs->ret_type = std::move(ret_type);

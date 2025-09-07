@@ -909,7 +909,7 @@ class CacheReadRewriter : public StmtExprMutator {
     // Check the insertion point
     if (loop == info_->loc_sref->stmt) {
       // Insert cache stage into the loop if it is the right place
-      ObjectPtr<ForNode> n = make_object<ForNode>(*stmt.as<ForNode>());
+      ObjectPtr<ForNode> n = ffi::make_object<ForNode>(*stmt.as<ForNode>());
       n->body = InsertCacheStage(n->body, info_->loc_pos, info_->cache_stage);
       stmt = Stmt(n);
     }
@@ -941,14 +941,14 @@ class CacheReadRewriter : public StmtExprMutator {
     // Check the insertion point
     if (block == info_->loc_sref->stmt) {
       // Insert cache stage into the block if it is the right place
-      ObjectPtr<BlockNode> n = make_object<BlockNode>(*stmt.as<BlockNode>());
+      ObjectPtr<BlockNode> n = ffi::make_object<BlockNode>(*stmt.as<BlockNode>());
       n->body = InsertCacheStage(n->body, info_->loc_pos, info_->cache_stage);
       stmt = Block(n);
     }
     // Check if it is the block corresponding to the parent scope
     if (block == scope_sref_->stmt) {
       // If so, put buffer allocation on the parent scope
-      ObjectPtr<BlockNode> n = make_object<BlockNode>(*stmt.as<BlockNode>());
+      ObjectPtr<BlockNode> n = ffi::make_object<BlockNode>(*stmt.as<BlockNode>());
       // In cache_inplace case, alloc_buffer may be already exits.
       if (info_->alloc.defined()) {
         n->alloc_buffers.push_back(info_->alloc.value());
@@ -962,7 +962,7 @@ class CacheReadRewriter : public StmtExprMutator {
         Array<BufferRegion> reads = update_access_regions(stmt->reads);
         Array<MatchBufferRegion> match_buffers = update_match_buffers(stmt->match_buffers);
         if (!reads.same_as(stmt->reads) || !match_buffers.same_as(stmt->match_buffers)) {
-          ObjectPtr<BlockNode> n = make_object<BlockNode>(*stmt.as<BlockNode>());
+          ObjectPtr<BlockNode> n = ffi::make_object<BlockNode>(*stmt.as<BlockNode>());
           n->reads = std::move(reads);
           n->match_buffers = std::move(match_buffers);
           stmt = Block(n);
@@ -983,7 +983,7 @@ class CacheReadRewriter : public StmtExprMutator {
 
   PrimExpr VisitExpr_(const BufferLoadNode* load) override {
     if (load->buffer.same_as(info_->read_buffer) && current_block_consumes) {
-      ObjectPtr<BufferLoadNode> n = make_object<BufferLoadNode>(*load);
+      ObjectPtr<BufferLoadNode> n = ffi::make_object<BufferLoadNode>(*load);
       n->buffer = info_->write_buffer;
       if (!cache_full_region_) {
         n->indices = RewriteIndices(load->indices);
@@ -1076,7 +1076,7 @@ class ReindexCacheReadRewriter : public CacheReadRewriter {
 
   PrimExpr VisitExpr_(const BufferLoadNode* load) final {
     if (load->buffer.same_as(info_->read_buffer) && current_block_consumes) {
-      ObjectPtr<BufferLoadNode> n = make_object<BufferLoadNode>(*load);
+      ObjectPtr<BufferLoadNode> n = ffi::make_object<BufferLoadNode>(*load);
       n->buffer = info_->write_buffer;
       n->indices = new_indices_;
       return PrimExpr(n);
@@ -1166,7 +1166,7 @@ class CacheWriteRewriter : public StmtExprMutator {
     // Check the insertion point
     if (loop == info_->loc_sref->stmt) {
       // Insert cache stage into the loop if it is the right place
-      ObjectPtr<ForNode> n = make_object<ForNode>(*stmt.as<ForNode>());
+      ObjectPtr<ForNode> n = ffi::make_object<ForNode>(*stmt.as<ForNode>());
       n->body = InsertCacheStage(n->body, info_->loc_pos, info_->cache_stage);
       stmt = Stmt(n);
     }
@@ -1213,13 +1213,13 @@ class CacheWriteRewriter : public StmtExprMutator {
 
     // Find the insertion point
     if (block == info_->loc_sref->stmt) {
-      ObjectPtr<BlockNode> n = make_object<BlockNode>(*stmt.as<BlockNode>());
+      ObjectPtr<BlockNode> n = ffi::make_object<BlockNode>(*stmt.as<BlockNode>());
       n->body = InsertCacheStage(n->body, info_->loc_pos, info_->cache_stage);
       stmt = Block(n);
     }
     // Put buffer allocation on the parent scope
     if (block == scope_sref_->stmt) {
-      ObjectPtr<BlockNode> n = make_object<BlockNode>(*stmt.as<BlockNode>());
+      ObjectPtr<BlockNode> n = ffi::make_object<BlockNode>(*stmt.as<BlockNode>());
       // In cache_inplace case, alloc_buffer may be already exits.
       if (info_->alloc.defined()) {
         n->alloc_buffers.push_back(info_->alloc.value());
@@ -1232,7 +1232,7 @@ class CacheWriteRewriter : public StmtExprMutator {
       auto match_buffers = update_match_buffers(block->match_buffers);
       if (!writes.same_as(block->writes) || !reads.same_as(block->reads) ||
           !match_buffers.same_as(block->match_buffers)) {
-        ObjectPtr<BlockNode> n = make_object<BlockNode>(*stmt.as<BlockNode>());
+        ObjectPtr<BlockNode> n = ffi::make_object<BlockNode>(*stmt.as<BlockNode>());
         n->writes = std::move(writes);
         n->reads = std::move(reads);
         n->match_buffers = std::move(match_buffers);
@@ -1267,7 +1267,7 @@ class CacheWriteRewriter : public StmtExprMutator {
 
   PrimExpr VisitExpr_(const BufferLoadNode* load) override {
     if (load->buffer.same_as(info_->write_buffer)) {
-      ObjectPtr<BufferLoadNode> n = make_object<BufferLoadNode>(*load);
+      ObjectPtr<BufferLoadNode> n = ffi::make_object<BufferLoadNode>(*load);
       n->buffer = info_->read_buffer;
       if (!cache_full_region_) {
         n->indices = RewriteIndices(n->indices);
@@ -1377,7 +1377,7 @@ class ReindexCacheWriteRewriter : public CacheWriteRewriter {
 
   PrimExpr VisitExpr_(const BufferLoadNode* load) final {
     if (load->buffer.same_as(info_->write_buffer)) {
-      ObjectPtr<BufferLoadNode> n = make_object<BufferLoadNode>(*load);
+      ObjectPtr<BufferLoadNode> n = ffi::make_object<BufferLoadNode>(*load);
       n->buffer = info_->read_buffer;
       n->indices = new_indices_;
       return PrimExpr(n);
@@ -1398,8 +1398,8 @@ class ReindexCacheWriteRewriter : public CacheWriteRewriter {
  */
 Buffer CreateReindexBuffer(const Buffer& buffer, const Array<IterVar>& block_iters,
                            const std::unordered_set<Var>& covered) {
-  ObjectPtr<BufferNode> new_buffer = make_object<BufferNode>(*buffer.get());
-  ObjectPtr<VarNode> new_var = make_object<VarNode>(*buffer->data.get());
+  ObjectPtr<BufferNode> new_buffer = ffi::make_object<BufferNode>(*buffer.get());
+  ObjectPtr<VarNode> new_var = ffi::make_object<VarNode>(*buffer->data.get());
   std::vector<PrimExpr> new_shape;
   std::vector<PrimExpr> new_strides;
   for (const auto& iter : block_iters) {
@@ -1560,7 +1560,7 @@ class ReIndexRewriter : public StmtExprMutator {
       is_scope_ = false;
       Block stmt = Downcast<Block>(StmtExprMutator::VisitStmt_(block));
       // Insert cache stage into the loop
-      ObjectPtr<BlockNode> n = make_object<BlockNode>(*stmt.as<BlockNode>());
+      ObjectPtr<BlockNode> n = ffi::make_object<BlockNode>(*stmt.as<BlockNode>());
       n->body = InsertCacheStage(n->body, info_->loc_pos, info_->cache_stage);
       n->alloc_buffers.push_back(info_->alloc.value());
       stmt = Block(n);
@@ -1587,7 +1587,7 @@ class ReIndexRewriter : public StmtExprMutator {
                                                BufferRegion{new_buffer_, region_});
       if (!writes.same_as(block->writes) || !reads.same_as(block->reads) ||
           !match_buffers.same_as(block->match_buffers)) {
-        ObjectPtr<BlockNode> n = make_object<BlockNode>(*stmt.as<BlockNode>());
+        ObjectPtr<BlockNode> n = ffi::make_object<BlockNode>(*stmt.as<BlockNode>());
         n->writes = std::move(writes);
         n->reads = std::move(reads);
         n->match_buffers = std::move(match_buffers);
@@ -1959,8 +1959,8 @@ void CollectReindexCacheStageInfoAndCreateBuffer(
   }
 
   // Create new buffer
-  ObjectPtr<BufferNode> new_buffer = make_object<BufferNode>(*old_buffer.get());
-  ObjectPtr<VarNode> new_var = make_object<VarNode>(*old_buffer->data.get());
+  ObjectPtr<BufferNode> new_buffer = ffi::make_object<BufferNode>(*old_buffer.get());
+  ObjectPtr<VarNode> new_var = ffi::make_object<VarNode>(*old_buffer->data.get());
   const auto* ptr_type = TVM_TYPE_AS(old_buffer->data->type_annotation, PointerTypeNode);
   new_var->type_annotation = PointerType(ptr_type->element_type, storage_scope);
   new_buffer->data = Var(new_var->name_hint + "_" + storage_scope, new_var->type_annotation);

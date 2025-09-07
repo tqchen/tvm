@@ -814,7 +814,7 @@ TVM_FFI_STATIC_INIT_BLOCK({
 TVM_FFI_STATIC_INIT_BLOCK({
   namespace refl = tvm::ffi::reflection;
   refl::GlobalDef().def("profiling.timer.opencl",
-                        [](Device dev) { return Timer(make_object<OpenCLTimerNode>(dev)); });
+                        [](Device dev) { return Timer(ffi::make_object<OpenCLTimerNode>(dev)); });
 });
 
 class OpenCLPooledAllocator final : public memory::PooledAllocator {

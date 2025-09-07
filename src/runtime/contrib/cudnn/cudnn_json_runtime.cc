@@ -240,7 +240,7 @@ class cuDNNJSONRuntime : public JSONRuntimeBase {
 
 ffi::Module cuDNNJSONRuntimeCreate(String symbol_name, String graph_json,
                                    const Array<String>& const_names) {
-  auto n = make_object<cuDNNJSONRuntime>(symbol_name, graph_json, const_names);
+  auto n = ffi::make_object<cuDNNJSONRuntime>(symbol_name, graph_json, const_names);
   return ffi::Module(n);
 }
 

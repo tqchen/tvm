@@ -199,7 +199,7 @@ class SplitPrimFuncLayoutRewrite : public StmtMutator {
 
       auto new_annotations = op->annotations;
       new_annotations.erase(attr::meta_schedule_layout_rewrite_preproc);
-      auto n = make_object<BlockNode>(*block.get());
+      auto n = ffi::make_object<BlockNode>(*block.get());
       n->annotations = new_annotations;
       return Block(n);
     }

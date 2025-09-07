@@ -93,7 +93,7 @@ ffi::Module HexagonModuleCreate(std::string data, std::string fmt,
                                 std::unordered_map<std::string, FunctionInfo> fmap,
                                 std::string asm_str, std::string obj_str, std::string ir_str,
                                 std::string bc_str) {
-  auto n = make_object<HexagonModuleNode>(data, fmt, fmap, asm_str, obj_str, ir_str, bc_str);
+  auto n = ffi::make_object<HexagonModuleNode>(data, fmt, fmap, asm_str, obj_str, ir_str, bc_str);
   return ffi::Module(n);
 }
 

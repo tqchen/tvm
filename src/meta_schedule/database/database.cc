@@ -75,7 +75,7 @@ Workload Workload::FromJSON(const ObjectRef& json_obj) {
 
 TuningRecord::TuningRecord(tir::Trace trace, Workload workload, Optional<Array<FloatImm>> run_secs,
                            Optional<Target> target, Optional<Array<ArgInfo>> args_info) {
-  ObjectPtr<TuningRecordNode> n = make_object<TuningRecordNode>();
+  ObjectPtr<TuningRecordNode> n = ffi::make_object<TuningRecordNode>();
   n->trace = trace;
   n->workload = workload;
   n->run_secs = run_secs;
@@ -265,7 +265,7 @@ Database Database::PyDatabase(PyDatabaseNode::FHasWorkload f_has_workload,
                               PyDatabaseNode::FQuerySchedule f_query_schedule,
                               PyDatabaseNode::FQueryIRModule f_query_ir_module,
                               PyDatabaseNode::FSize f_size, String mod_eq_name) {
-  ObjectPtr<PyDatabaseNode> n = make_object<PyDatabaseNode>(mod_eq_name);
+  ObjectPtr<PyDatabaseNode> n = ffi::make_object<PyDatabaseNode>(mod_eq_name);
   n->f_has_workload = f_has_workload;
   n->f_commit_workload = f_commit_workload;
   n->f_commit_tuning_record = f_commit_tuning_record;

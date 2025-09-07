@@ -201,7 +201,7 @@ class PrimFuncSpecializer : public StmtExprMutator {
     if (new_buf.same_as(op->buffer)) {
       return GetRef<BufferLoad>(op);
     } else {
-      auto n = make_object<BufferLoadNode>(*op);
+      auto n = ffi::make_object<BufferLoadNode>(*op);
       n->buffer = new_buf;
       return PrimExpr(n);
     }
@@ -252,7 +252,7 @@ class PrimFuncSpecializer : public StmtExprMutator {
         buffer->shape.same_as(shape) && buffer->strides.same_as(strides)) {
       return buffer;
     } else {
-      auto n = make_object<BufferNode>(*buffer.get());
+      auto n = ffi::make_object<BufferNode>(*buffer.get());
       n->data = std::move(data);
       n->elem_offset = std::move(elem_offset);
       n->shape = std::move(shape);

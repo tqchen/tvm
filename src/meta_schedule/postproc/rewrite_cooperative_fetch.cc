@@ -135,7 +135,7 @@ class RewriteCooperativeFetchNode : public PostprocNode {
   bool Apply(const tir::Schedule& sch) final;
 
   Postproc Clone() const {
-    ObjectPtr<RewriteCooperativeFetchNode> n = make_object<RewriteCooperativeFetchNode>(*this);
+    ObjectPtr<RewriteCooperativeFetchNode> n = ffi::make_object<RewriteCooperativeFetchNode>(*this);
     return Postproc(n);
   }
 
@@ -227,7 +227,7 @@ bool RewriteCooperativeFetchNode::Apply(const tir::Schedule& sch) {
 }
 
 Postproc Postproc::RewriteCooperativeFetch() {
-  ObjectPtr<RewriteCooperativeFetchNode> n = make_object<RewriteCooperativeFetchNode>();
+  ObjectPtr<RewriteCooperativeFetchNode> n = ffi::make_object<RewriteCooperativeFetchNode>();
   return Postproc(n);
 }
 

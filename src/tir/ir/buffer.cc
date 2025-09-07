@@ -471,7 +471,7 @@ Buffer Buffer::MakeStrideView() const {
   std::vector<PrimExpr> temp;
   const BufferNode* self = operator->();
   ICHECK(self != nullptr);
-  auto n = make_object<BufferNode>(*self);
+  auto n = ffi::make_object<BufferNode>(*self);
   PrimExpr acc = make_const(n->DefaultIndexType(), 1);
   for (size_t i = n->shape.size(); i != 0; --i) {
     temp.push_back(acc);
@@ -584,7 +584,7 @@ Buffer::Buffer(Var data, DataType dtype, Array<PrimExpr> shape, Array<PrimExpr> 
 
   ValidateAxisSeparators(axis_separators, shape.size());
 
-  auto n = make_object<BufferNode>();
+  auto n = ffi::make_object<BufferNode>();
   n->data = std::move(data);
   n->dtype = dtype;
 

@@ -1077,7 +1077,7 @@ For ConstructNewLoopChain(const ScheduleState& self, std::vector<const StmtSRefN
       copy = loop_sref->StmtAs<ForNode>();
     }
     ICHECK(copy != nullptr);
-    ObjectPtr<ForNode> n = make_object<ForNode>(*copy);
+    ObjectPtr<ForNode> n = ffi::make_object<ForNode>(*copy);
     if (new_loop.defined()) {
       n->body = new_loop;
     } else {

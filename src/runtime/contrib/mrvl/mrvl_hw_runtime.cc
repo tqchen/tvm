@@ -274,7 +274,7 @@ class MarvellHardwareModuleNode : public ffi::ModuleObj {
     ICHECK(stream->Read(&num_inputs)) << "Loading num_inputs failed";
     ICHECK(stream->Read(&num_outputs)) << "Loading num_outputs failed";
     ICHECK(stream->Read(&batch_size)) << "Loading batch_size failed";
-    auto n = make_object<MarvellHardwareModuleNode>(symbol_name, nodes_json, bin_code, num_inputs,
+    auto n = ffi::make_object<MarvellHardwareModuleNode>(symbol_name, nodes_json, bin_code, num_inputs,
                                                     num_outputs, batch_size);
     return ffi::Module(n);
   }
@@ -472,7 +472,7 @@ class MarvellHardwareModuleNode : public ffi::ModuleObj {
 ffi::Module MarvellHardwareModuleRuntimeCreate(const String& symbol_name, const String& nodes_json,
                                                const String& bin_code, int num_input,
                                                int num_output, int batch_size) {
-  auto n = make_object<MarvellHardwareModuleNode>(symbol_name, nodes_json, bin_code, num_input,
+  auto n = ffi::make_object<MarvellHardwareModuleNode>(symbol_name, nodes_json, bin_code, num_input,
                                                   num_output, batch_size);
   return ffi::Module(n);
 }

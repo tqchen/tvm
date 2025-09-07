@@ -180,7 +180,7 @@ ffi::Optional<ffi::Function> TFLiteRuntime::GetFunction(const String& name) {
 }
 
 ffi::Module TFLiteRuntimeCreate(const std::string& tflite_model_bytes, Device dev) {
-  auto exec = make_object<TFLiteRuntime>();
+  auto exec = ffi::make_object<TFLiteRuntime>();
   exec->Init(tflite_model_bytes, dev);
   return ffi::Module(exec);
 }

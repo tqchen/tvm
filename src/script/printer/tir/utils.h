@@ -65,7 +65,7 @@ class TIRFrame : public Frame {
  public:
   /*! \brief Constructor */
   explicit TIRFrame(const IRDocsifier& d, const ObjectRef& tir) {
-    ObjectPtr<TIRFrameNode> n = make_object<TIRFrameNode>();
+    ObjectPtr<TIRFrameNode> n = ffi::make_object<TIRFrameNode>();
     n->stmts.clear();
     n->d = d.get();
     n->tir = tir;

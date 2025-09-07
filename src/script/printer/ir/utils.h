@@ -51,7 +51,7 @@ class IRFrameNode : public FrameNode {
 class IRFrame : public Frame {
  public:
   explicit IRFrame(const IRDocsifier& d) {
-    ObjectPtr<IRFrameNode> n = make_object<IRFrameNode>();
+    ObjectPtr<IRFrameNode> n = ffi::make_object<IRFrameNode>();
     n->stmts.clear();
     n->d = d.get();
     n->global_infos = nullptr;

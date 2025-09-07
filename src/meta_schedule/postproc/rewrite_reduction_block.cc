@@ -122,7 +122,7 @@ class RewriteReductionBlockNode : public PostprocNode {
   bool Apply(const tir::Schedule& sch) final;
 
   Postproc Clone() const {
-    ObjectPtr<RewriteReductionBlockNode> n = make_object<RewriteReductionBlockNode>(*this);
+    ObjectPtr<RewriteReductionBlockNode> n = ffi::make_object<RewriteReductionBlockNode>(*this);
     return Postproc(n);
   }
 
@@ -172,7 +172,7 @@ bool RewriteReductionBlockNode::Apply(const tir::Schedule& sch) {
 }
 
 Postproc Postproc::RewriteReductionBlock() {
-  ObjectPtr<RewriteReductionBlockNode> n = make_object<RewriteReductionBlockNode>();
+  ObjectPtr<RewriteReductionBlockNode> n = ffi::make_object<RewriteReductionBlockNode>();
   return Postproc(n);
 }
 

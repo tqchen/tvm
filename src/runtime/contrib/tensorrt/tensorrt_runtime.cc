@@ -521,7 +521,7 @@ class TensorRTRuntime : public JSONRuntimeBase {
 
 ffi::Module TensorRTRuntimeCreate(const String& symbol_name, const String& graph_json,
                                   const Array<String>& const_names) {
-  auto n = make_object<TensorRTRuntime>(symbol_name, graph_json, const_names);
+  auto n = ffi::make_object<TensorRTRuntime>(symbol_name, graph_json, const_names);
   return ffi::Module(n);
 }
 

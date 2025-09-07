@@ -52,7 +52,7 @@ void AddDependency(BlockScopeNode* self, const StmtSRef& src, const StmtSRef& ds
 /******** Constructors ********/
 
 StmtSRef::StmtSRef(const StmtNode* stmt, StmtSRefNode* parent, int64_t seq_index) {
-  ObjectPtr<StmtSRefNode> n = make_object<StmtSRefNode>();
+  ObjectPtr<StmtSRefNode> n = ffi::make_object<StmtSRefNode>();
   n->stmt = stmt;
   n->parent = parent;
   n->seq_index = seq_index;
@@ -70,17 +70,17 @@ StmtSRef StmtSRef::RootMark() {
 }
 
 Dependency::Dependency(StmtSRef src, StmtSRef dst, DepKind kind) {
-  ObjectPtr<DependencyNode> node = make_object<DependencyNode>();
+  ObjectPtr<DependencyNode> node = ffi::make_object<DependencyNode>();
   node->src = std::move(src);
   node->dst = std::move(dst);
   node->kind = kind;
   data_ = std::move(node);
 }
 
-BlockScope::BlockScope() { data_ = make_object<BlockScopeNode>(); }
+BlockScope::BlockScope() { data_ = ffi::make_object<BlockScopeNode>(); }
 
 BlockScope::BlockScope(const Array<StmtSRef>& child_block_srefs) {
-  ObjectPtr<BlockScopeNode> n = make_object<BlockScopeNode>();
+  ObjectPtr<BlockScopeNode> n = ffi::make_object<BlockScopeNode>();
   SMap<Buffer, Array<StmtSRef>> buffer_readers;
   SMap<Buffer, Array<StmtSRef>>& buffer_writers = n->buffer_writers;
   for (const StmtSRef& child_block_sref : child_block_srefs) {

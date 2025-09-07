@@ -45,7 +45,7 @@ TVM_FFI_STATIC_INIT_BLOCK({
 /* relax.take */
 
 Expr take(Expr x, Expr indices, Optional<int64_t> axis, String mode) {
-  ObjectPtr<TakeAttrs> attrs = make_object<TakeAttrs>();
+  ObjectPtr<TakeAttrs> attrs = ffi::make_object<TakeAttrs>();
   attrs->axis = std::move(axis);
   attrs->mode = std::move(mode);
 
@@ -165,7 +165,7 @@ Expr strided_slice(Expr x, Expr axes, Expr begin, Expr end, Optional<Expr> strid
   check_tuple("end", end);
   if (strides.defined()) check_tuple("strides", strides.value());
 
-  ObjectPtr<StridedSliceAttrs> attrs = make_object<StridedSliceAttrs>();
+  ObjectPtr<StridedSliceAttrs> attrs = ffi::make_object<StridedSliceAttrs>();
   attrs->assume_inbound = assume_inbound;
 
   Array<Expr> args = {x, axes, begin, end};

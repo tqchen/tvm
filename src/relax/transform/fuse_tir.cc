@@ -180,7 +180,7 @@ class FuseTIRBufferSubstitutor : private StmtExprMutator {
         elem_offset.same_as(buffer->elem_offset)) {
       return buffer;
     } else {
-      auto n = make_object<BufferNode>(*buffer.get());
+      auto n = ffi::make_object<BufferNode>(*buffer.get());
       n->shape = std::move(shape);
       n->strides = std::move(strides);
       n->elem_offset = std::move(elem_offset);
@@ -206,7 +206,7 @@ class FuseTIRBufferSubstitutor : private StmtExprMutator {
       return load;
 
     } else {
-      auto n = make_object<BufferLoadNode>(*load.get());
+      auto n = ffi::make_object<BufferLoadNode>(*load.get());
       n->buffer = buffer;
       return BufferLoad(n);
     }
@@ -219,7 +219,7 @@ class FuseTIRBufferSubstitutor : private StmtExprMutator {
       return store;
 
     } else {
-      auto n = make_object<BufferStoreNode>(*store.get());
+      auto n = ffi::make_object<BufferStoreNode>(*store.get());
       n->buffer = buffer;
       return BufferStore(n);
     }
@@ -239,7 +239,7 @@ class FuseTIRBufferSubstitutor : private StmtExprMutator {
           region.same_as(match_buffer->source->region)) {
         return match_buffer;
       } else {
-        auto n = make_object<MatchBufferRegionNode>(*match_buffer.get());
+        auto n = ffi::make_object<MatchBufferRegionNode>(*match_buffer.get());
         n->buffer = tgt_buffer;
         n->source = BufferRegion(src_buffer, region);
         return MatchBufferRegion(n);
@@ -883,7 +883,7 @@ class FusedTIRConstructor : public ExprVisitor {
         return unique_name;
       };
       // Update buffer with new symbolic shape according to the sinfo
-      auto n = make_object<tir::BufferNode>(*buffer.get());
+      auto n = ffi::make_object<tir::BufferNode>(*buffer.get());
       n->shape = output_shapes[i];
       n->name = unify_name_hints();
       tir::Buffer new_buffer(n);
@@ -1229,7 +1229,7 @@ class TIRFuseMutator : public ExprMutator {
     Attrs call_attrs = call->attrs;
     if (replacement.inplace_indices.size()) {
       call_op = call_tir_inplace_op_;
-      auto inplace_attrs = make_object<CallTIRInplaceAttrs>();
+      auto inplace_attrs = ffi::make_object<CallTIRInplaceAttrs>();
       inplace_attrs->inplace_indices = replacement.inplace_indices;
       call_attrs = Attrs(inplace_attrs);
     }

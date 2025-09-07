@@ -47,7 +47,7 @@ class DistBufferReplacer : public StmtExprMutator {
   Stmt VisitStmt_(const BufferStoreNode* _store) final {
     BufferStore store = Downcast<BufferStore>(StmtExprMutator::VisitStmt_(_store));
     if (buffer_map_.count(store->buffer)) {
-      ObjectPtr<BufferStoreNode> new_store = make_object<BufferStoreNode>(*store.get());
+      ObjectPtr<BufferStoreNode> new_store = ffi::make_object<BufferStoreNode>(*store.get());
       new_store->buffer = buffer_map_[store->buffer];
       return BufferStore(new_store);
     }
@@ -57,7 +57,7 @@ class DistBufferReplacer : public StmtExprMutator {
   PrimExpr VisitExpr_(const BufferLoadNode* _load) final {
     BufferLoad load = Downcast<BufferLoad>(StmtExprMutator::VisitExpr_(_load));
     if (buffer_map_.count(load->buffer)) {
-      ObjectPtr<BufferLoadNode> new_load = make_object<BufferLoadNode>(*load.get());
+      ObjectPtr<BufferLoadNode> new_load = ffi::make_object<BufferLoadNode>(*load.get());
       new_load->buffer = buffer_map_[load->buffer];
       return BufferLoad(new_load);
     }
@@ -67,7 +67,7 @@ class DistBufferReplacer : public StmtExprMutator {
   Stmt VisitStmt_(const BlockNode* _block) final {
     Block old_block = GetRef<Block>(_block);
     Block block = Downcast<Block>(StmtExprMutator::VisitStmt_(_block));
-    ObjectPtr<BlockNode> new_block = make_object<BlockNode>(*block.get());
+    ObjectPtr<BlockNode> new_block = ffi::make_object<BlockNode>(*block.get());
     new_block->reads = ReplaceBuffer(new_block->reads, buffer_map_);
     new_block->writes = ReplaceBuffer(new_block->writes, buffer_map_);
     return Block(new_block);
@@ -162,7 +162,7 @@ class DistributedBufferCompactor : StmtExprMutator {
     }
     Stmt new_body = compactor(prim_func->body);
     new_body = DistBufferReplacer::BufferReplace(new_body, replace_buffer_map);
-    ObjectPtr<PrimFuncNode> new_func = make_object<PrimFuncNode>(*prim_func.get());
+    ObjectPtr<PrimFuncNode> new_func = ffi::make_object<PrimFuncNode>(*prim_func.get());
     new_func->buffer_map = new_func_buffer_map;
     new_func->body = new_body;
     return std::make_tuple(PrimFunc(new_func), compactor.add_allreduce_kind_);
@@ -267,7 +267,7 @@ class DistributedBufferCompactor : StmtExprMutator {
         shape.push_back(buffer->shape[i]);
       }
     }
-    ObjectPtr<BufferNode> new_buffer = make_object<BufferNode>(*buffer.get());
+    ObjectPtr<BufferNode> new_buffer = ffi::make_object<BufferNode>(*buffer.get());
     new_buffer->shape = shape;
     return Buffer(new_buffer);
   }
@@ -295,7 +295,7 @@ class DistributedBufferCompactor : StmtExprMutator {
         break;
       }
     }
-    ObjectPtr<BlockNode> new_block = make_object<BlockNode>(*block.operator->());
+    ObjectPtr<BlockNode> new_block = ffi::make_object<BlockNode>(*block.operator->());
     new_block->iter_vars = new_iter_vars;
     new_block->alloc_buffers = new_alloc_buffers;
     if (new_block->name_hint == "root") {
@@ -366,7 +366,7 @@ class LowerTIRToLocalView : public ExprMutator {
         continue;
       }
       Expr new_func_body = this->VisitExpr(func_->body);
-      ObjectPtr<FunctionNode> new_func = make_object<FunctionNode>(*func_);
+      ObjectPtr<FunctionNode> new_func = ffi::make_object<FunctionNode>(*func_);
       new_func->body = new_func_body;
       builder_->UpdateFunction(gv, Function(new_func));
     }
@@ -414,12 +414,12 @@ class LowerTIRToLocalView : public ExprMutator {
         tir::DistributedBufferCompactor::DistBufferCompact(sharding_specs, prim_func);
     auto new_gvar = builder_->AddFunction(new_prim_func, gvar->name_hint);
     Call call = Downcast<Call>(this->VisitExpr(binding->value));
-    ObjectPtr<CallNode> new_call_node = make_object<CallNode>(*call.get());
+    ObjectPtr<CallNode> new_call_node = ffi::make_object<CallNode>(*call.get());
     new_call_node->op = Op::Get("relax.dist.call_tir_local_view");
     new_call_node->args.Set(0, new_gvar);
     Call new_call(new_call_node);
     if (allreduce_kind != "") {
-      ObjectPtr<AllReduceAttrs> attrs = make_object<AllReduceAttrs>();
+      ObjectPtr<AllReduceAttrs> attrs = ffi::make_object<AllReduceAttrs>();
       attrs->op_type = allreduce_kind;
       new_call = Call(Op::Get("relax.ccl.allreduce"), {new_call}, Attrs(attrs), {});
     }

@@ -54,7 +54,7 @@ struct PassContextThreadLocalEntry {
   /*! \brief The current pass context. */
   std::stack<PassContext> context_stack;
 
-  PassContextThreadLocalEntry() { default_context = PassContext(make_object<PassContextNode>()); }
+  PassContextThreadLocalEntry() { default_context = PassContext(ffi::make_object<PassContextNode>()); }
 };
 
 /*! \brief Thread local store to hold the pass context. */
@@ -182,7 +182,7 @@ Map<String, Map<String, String>> PassContext::ListConfigs() {
   return PassConfigManager::Global()->ListConfigs();
 }
 
-PassContext PassContext::Create() { return PassContext(make_object<PassContextNode>()); }
+PassContext PassContext::Create() { return PassContext(ffi::make_object<PassContextNode>()); }
 
 namespace {
 struct ClearOnError {
@@ -379,7 +379,7 @@ class ModulePass : public Pass {
 };
 
 PassInfo::PassInfo(int opt_level, String name, tvm::Array<String> required, bool traceable) {
-  auto pass_info = make_object<PassInfoNode>();
+  auto pass_info = ffi::make_object<PassInfoNode>();
   pass_info->opt_level = opt_level;
   pass_info->name = std::move(name);
   pass_info->required = std::move(required);
@@ -389,7 +389,7 @@ PassInfo::PassInfo(int opt_level, String name, tvm::Array<String> required, bool
 
 ModulePass::ModulePass(std::function<IRModule(IRModule, PassContext)> pass_func,
                        PassInfo pass_info) {
-  auto n = make_object<ModulePassNode>();
+  auto n = ffi::make_object<ModulePassNode>();
   n->pass_func = std::move(pass_func);
   n->pass_info = std::move(pass_info);
   data_ = std::move(n);
@@ -430,14 +430,14 @@ IRModule ModulePassNode::operator()(IRModule mod, const PassContext& pass_ctx) c
 }
 
 Sequential::Sequential(tvm::Array<Pass> passes, PassInfo pass_info) {
-  auto n = make_object<SequentialNode>();
+  auto n = ffi::make_object<SequentialNode>();
   n->passes = std::move(passes);
   n->pass_info = std::move(pass_info);
   data_ = std::move(n);
 }
 
 Sequential::Sequential(tvm::Array<Pass> passes, String name) {
-  auto n = make_object<SequentialNode>();
+  auto n = ffi::make_object<SequentialNode>();
   n->passes = std::move(passes);
   PassInfo pass_info = PassInfo(0, std::move(name), {}, /* traceable */ false);
   n->pass_info = std::move(pass_info);

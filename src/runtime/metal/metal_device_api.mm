@@ -397,7 +397,7 @@ class MetalTimerNode : public TimerNode {
 TVM_FFI_STATIC_INIT_BLOCK({
   namespace refl = tvm::ffi::reflection;
   refl::GlobalDef().def("profiling.timer.metal",
-                        [](Device dev) { return Timer(make_object<MetalTimerNode>(dev)); });
+                        [](Device dev) { return Timer(ffi::make_object<MetalTimerNode>(dev)); });
 });
 
 }  // namespace metal

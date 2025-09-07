@@ -85,7 +85,7 @@ PrimFunc::PrimFunc(Array<tir::Var> params, Stmt body, Type ret_type,
     ret_type = VoidType();
   }
 
-  auto n = make_object<PrimFuncNode>();
+  auto n = ffi::make_object<PrimFuncNode>();
   n->params = std::move(params);
   n->body = std::move(body);
   n->ret_type = std::move(ret_type);
@@ -129,7 +129,7 @@ TensorIntrin::TensorIntrin(PrimFunc desc, PrimFunc impl) {
   }
   ICHECK_EQ(desc->buffer_map.size(), impl->buffer_map.size());
 
-  ObjectPtr<TensorIntrinNode> n = make_object<TensorIntrinNode>();
+  ObjectPtr<TensorIntrinNode> n = ffi::make_object<TensorIntrinNode>();
   n->desc = std::move(desc);
   n->impl = std::move(impl);
   data_ = std::move(n);

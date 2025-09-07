@@ -680,7 +680,7 @@ class CanonicalSimplifier::Impl : public RewriteSimplifier::Impl {
     if (const auto* op = expr.as<CanonicalExprNode>()) {
       expr = op->Normalize();
     }
-    ObjectPtr<SplitExprNode> n = make_object<SplitExprNode>();
+    ObjectPtr<SplitExprNode> n = ffi::make_object<SplitExprNode>();
     n->dtype = expr.dtype();
     n->index = std::move(expr);
     n->div_mode = kTruncDiv;
@@ -717,7 +717,7 @@ class CanonicalSimplifier::Impl : public RewriteSimplifier::Impl {
     if (auto op = expr.as<SumExpr>()) {
       return op.value();
     }
-    ObjectPtr<SumExprNode> n = make_object<SumExprNode>();
+    ObjectPtr<SumExprNode> n = ffi::make_object<SumExprNode>();
     n->dtype = expr.dtype();
     if (const auto* op = expr.as<IntImmNode>()) {
       n->base = op->value;
@@ -825,8 +825,8 @@ PrimExpr CanonicalSimplifier::Impl::VisitExpr_(const MulNode* op) {
 void CanonicalSimplifier::Impl::SeparateDivisibleParts(const SumExprNode* psum, int64_t coeff,
                                                        SumExpr* out_divisible,
                                                        SumExpr* out_non_divisible) {
-  auto divisible = make_object<SumExprNode>();
-  auto non_divisible = make_object<SumExprNode>();
+  auto divisible = ffi::make_object<SumExprNode>();
+  auto non_divisible = ffi::make_object<SumExprNode>();
   divisible->dtype = psum->dtype;
   non_divisible->dtype = psum->dtype;
 

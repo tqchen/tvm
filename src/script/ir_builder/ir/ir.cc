@@ -32,7 +32,7 @@ namespace ir_builder {
 namespace ir {
 
 IRModuleFrame IRModule() {
-  ObjectPtr<IRModuleFrameNode> n = make_object<IRModuleFrameNode>();
+  ObjectPtr<IRModuleFrameNode> n = ffi::make_object<IRModuleFrameNode>();
   n->global_var_map.clear();
   n->functions.clear();
   return IRModuleFrame(n);

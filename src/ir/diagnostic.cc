@@ -47,7 +47,7 @@ TVM_FFI_STATIC_INIT_BLOCK({
 });
 
 Diagnostic::Diagnostic(DiagnosticLevel level, Span span, const std::string& message) {
-  auto n = make_object<DiagnosticNode>();
+  auto n = ffi::make_object<DiagnosticNode>();
   n->level = level;
   n->span = span;
   n->message = message;
@@ -108,7 +108,7 @@ void DiagnosticRenderer::Render(const DiagnosticContext& ctx) { (*this)->rendere
 
 TVM_DLL DiagnosticRenderer::DiagnosticRenderer(
     ffi::TypedFunction<void(DiagnosticContext ctx)> renderer) {
-  auto n = make_object<DiagnosticRendererNode>();
+  auto n = ffi::make_object<DiagnosticRendererNode>();
   n->renderer = renderer;
   data_ = std::move(n);
 }
@@ -152,7 +152,7 @@ TVM_FFI_STATIC_INIT_BLOCK({
 
 DiagnosticContext::DiagnosticContext(const IRModule& module, const DiagnosticRenderer& renderer) {
   CHECK(renderer.defined()) << "can not initialize a diagnostic renderer with a null function";
-  auto n = make_object<DiagnosticContextNode>();
+  auto n = ffi::make_object<DiagnosticContextNode>();
   n->module = module;
   n->renderer = renderer;
   data_ = std::move(n);

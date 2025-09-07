@@ -95,7 +95,7 @@ class PostOrderApplyNode : public SpaceGeneratorNode {
   }
 
   SpaceGenerator Clone() const final {
-    ObjectPtr<PostOrderApplyNode> n = make_object<PostOrderApplyNode>(*this);
+    ObjectPtr<PostOrderApplyNode> n = ffi::make_object<PostOrderApplyNode>(*this);
     CloneRules(this, n.get());
     return SpaceGenerator(n);
   }
@@ -107,7 +107,7 @@ SpaceGenerator SpaceGenerator::PostOrderApply(ffi::Function f_block_filter,
                                               Optional<Array<ScheduleRule>> sch_rules,
                                               Optional<Array<Postproc>> postprocs,
                                               Optional<Map<Mutator, FloatImm>> mutator_probs) {
-  ObjectPtr<PostOrderApplyNode> n = make_object<PostOrderApplyNode>();
+  ObjectPtr<PostOrderApplyNode> n = ffi::make_object<PostOrderApplyNode>();
   n->sch_rules = std::move(sch_rules);
   n->postprocs = std::move(postprocs);
   n->mutator_probs = std::move(mutator_probs);

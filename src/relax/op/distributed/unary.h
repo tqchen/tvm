@@ -47,7 +47,7 @@ StructInfo InferDistStructInfoUnary(const Call& call, const BlockBuilder& ctx,
         << " requires the input tensor to have float dtype. However, the given input dtype is "
         << input_tensor_sinfo->dtype);
   }
-  auto output_sinfo = make_object<TensorStructInfoNode>(*input_tensor_sinfo.get());
+  auto output_sinfo = ffi::make_object<TensorStructInfoNode>(*input_tensor_sinfo.get());
   output_sinfo->dtype = f_compute_out_dtype(input_tensor_sinfo);
   TensorStructInfo out_tensor_sinfo(output_sinfo);
   return distributed::DTensorStructInfo(out_tensor_sinfo, input_dtensor_sinfo->device_mesh,

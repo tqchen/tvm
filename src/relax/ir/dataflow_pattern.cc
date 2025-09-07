@@ -64,7 +64,7 @@ TVM_FFI_STATIC_INIT_BLOCK({
       })
 
 ExternFuncPattern::ExternFuncPattern(String global_symbol) {
-  ObjectPtr<ExternFuncPatternNode> n = make_object<ExternFuncPatternNode>();
+  ObjectPtr<ExternFuncPatternNode> n = ffi::make_object<ExternFuncPatternNode>();
   n->global_symbol_ = std::move(global_symbol);
   data_ = std::move(n);
 }
@@ -78,7 +78,7 @@ RELAX_PATTERN_PRINTER_DEF(ExternFuncPatternNode, [](auto p, auto node) {
 });
 
 VarPattern::VarPattern(String name_hint) {
-  ObjectPtr<VarPatternNode> n = make_object<VarPatternNode>();
+  ObjectPtr<VarPatternNode> n = ffi::make_object<VarPatternNode>();
   n->name = std::move(name_hint);
   data_ = std::move(n);
 }
@@ -97,7 +97,7 @@ TVM_FFI_STATIC_INIT_BLOCK({
                         [](String name_hint) { return DataflowVarPattern(name_hint); });
 });
 DataflowVarPattern::DataflowVarPattern(String name_hint) {
-  ObjectPtr<DataflowVarPatternNode> n = make_object<DataflowVarPatternNode>();
+  ObjectPtr<DataflowVarPatternNode> n = ffi::make_object<DataflowVarPatternNode>();
   n->name = std::move(name_hint);
   data_ = std::move(n);
 }
@@ -106,7 +106,7 @@ RELAX_PATTERN_PRINTER_DEF(DataflowVarPatternNode, [](auto p, auto node) {
 });
 
 GlobalVarPattern::GlobalVarPattern(String name_hint) {
-  ObjectPtr<GlobalVarPatternNode> n = make_object<GlobalVarPatternNode>();
+  ObjectPtr<GlobalVarPatternNode> n = ffi::make_object<GlobalVarPatternNode>();
   n->name = std::move(name_hint);
   data_ = std::move(n);
 }
@@ -120,7 +120,7 @@ RELAX_PATTERN_PRINTER_DEF(GlobalVarPatternNode, [](auto p, auto node) {
 });
 
 ExprPattern::ExprPattern(Expr expr) {
-  ObjectPtr<ExprPatternNode> n = make_object<ExprPatternNode>();
+  ObjectPtr<ExprPatternNode> n = ffi::make_object<ExprPatternNode>();
   n->expr = std::move(expr);
   data_ = std::move(n);
 }
@@ -133,7 +133,7 @@ RELAX_PATTERN_PRINTER_DEF(ExprPatternNode, [](auto p, auto node) { p->Print(node
 TVM_FFI_STATIC_INIT_BLOCK({
   namespace refl = tvm::ffi::reflection;
   refl::GlobalDef().def("relax.dpl.ConstantPattern", []() {
-    auto c = ConstantPattern(make_object<ConstantPatternNode>());
+    auto c = ConstantPattern(ffi::make_object<ConstantPatternNode>());
     return c;
   });
 });
@@ -141,7 +141,7 @@ RELAX_PATTERN_PRINTER_DEF(ConstantPatternNode,
                           [](auto p, auto node) { p->stream << "ConstantPattern()"; });
 
 CallPattern::CallPattern(DFPattern op, Array<DFPattern> args, bool varg_default_wildcard) {
-  ObjectPtr<CallPatternNode> n = make_object<CallPatternNode>();
+  ObjectPtr<CallPatternNode> n = ffi::make_object<CallPatternNode>();
   n->op = std::move(op);
   n->args = std::move(args);
   n->varg_default_wildcard = varg_default_wildcard;
@@ -168,7 +168,7 @@ RELAX_PATTERN_PRINTER_DEF(CallPatternNode, [](auto p, auto node) {
 });
 
 PrimArrPattern::PrimArrPattern(Array<PrimExpr> arr) {
-  ObjectPtr<PrimArrPatternNode> n = make_object<PrimArrPatternNode>();
+  ObjectPtr<PrimArrPatternNode> n = ffi::make_object<PrimArrPatternNode>();
   n->fields = std::move(arr);
   data_ = std::move(n);
 }
@@ -182,7 +182,7 @@ RELAX_PATTERN_PRINTER_DEF(PrimArrPatternNode, [](auto p, auto node) {
 });
 
 FunctionPattern::FunctionPattern(Array<DFPattern> params, DFPattern body) {
-  ObjectPtr<FunctionPatternNode> n = make_object<FunctionPatternNode>();
+  ObjectPtr<FunctionPatternNode> n = ffi::make_object<FunctionPatternNode>();
   n->params = std::move(params);
   n->body = std::move(body);
   data_ = std::move(n);
@@ -198,7 +198,7 @@ RELAX_PATTERN_PRINTER_DEF(FunctionPatternNode, [](auto p, auto node) {
 });
 
 TuplePattern::TuplePattern(tvm::Array<DFPattern> fields) {
-  ObjectPtr<TuplePatternNode> n = make_object<TuplePatternNode>();
+  ObjectPtr<TuplePatternNode> n = ffi::make_object<TuplePatternNode>();
   n->fields = std::move(fields);
   data_ = std::move(n);
 }
@@ -212,7 +212,7 @@ RELAX_PATTERN_PRINTER_DEF(TuplePatternNode, [](auto p, auto node) {
 });
 
 UnorderedTuplePattern::UnorderedTuplePattern(tvm::Array<DFPattern> fields) {
-  ObjectPtr<UnorderedTuplePatternNode> n = make_object<UnorderedTuplePatternNode>();
+  ObjectPtr<UnorderedTuplePatternNode> n = ffi::make_object<UnorderedTuplePatternNode>();
   n->fields = std::move(fields);
   data_ = std::move(n);
 }
@@ -226,7 +226,7 @@ RELAX_PATTERN_PRINTER_DEF(UnorderedTuplePatternNode, [](auto p, auto node) {
 });
 
 TupleGetItemPattern::TupleGetItemPattern(DFPattern tuple, int index) {
-  ObjectPtr<TupleGetItemPatternNode> n = make_object<TupleGetItemPatternNode>();
+  ObjectPtr<TupleGetItemPatternNode> n = ffi::make_object<TupleGetItemPatternNode>();
   n->tuple = std::move(tuple);
   n->index = index;
   data_ = std::move(n);
@@ -242,7 +242,7 @@ RELAX_PATTERN_PRINTER_DEF(TupleGetItemPatternNode, [](auto p, auto node) {
 });
 
 AndPattern::AndPattern(DFPattern left, DFPattern right) {
-  ObjectPtr<AndPatternNode> n = make_object<AndPatternNode>();
+  ObjectPtr<AndPatternNode> n = ffi::make_object<AndPatternNode>();
   n->left = std::move(left);
   n->right = std::move(right);
   data_ = std::move(n);
@@ -257,7 +257,7 @@ RELAX_PATTERN_PRINTER_DEF(AndPatternNode, [](auto p, auto node) {
 });
 
 OrPattern::OrPattern(DFPattern left, DFPattern right) {
-  ObjectPtr<OrPatternNode> n = make_object<OrPatternNode>();
+  ObjectPtr<OrPatternNode> n = ffi::make_object<OrPatternNode>();
   n->left = std::move(left);
   n->right = std::move(right);
   data_ = std::move(n);
@@ -272,7 +272,7 @@ RELAX_PATTERN_PRINTER_DEF(OrPatternNode, [](auto p, auto node) {
 });
 
 NotPattern::NotPattern(DFPattern reject) {
-  ObjectPtr<NotPatternNode> n = make_object<NotPatternNode>();
+  ObjectPtr<NotPatternNode> n = ffi::make_object<NotPatternNode>();
   n->reject = std::move(reject);
   data_ = std::move(n);
 }
@@ -284,7 +284,7 @@ TVM_FFI_STATIC_INIT_BLOCK({
 RELAX_PATTERN_PRINTER_DEF(NotPatternNode,
                           [](auto p, auto node) { p->stream << "!(" << node->reject << ")"; });
 
-WildcardPattern::WildcardPattern() { data_ = make_object<WildcardPatternNode>(); }
+WildcardPattern::WildcardPattern() { data_ = ffi::make_object<WildcardPatternNode>(); }
 TVM_FFI_STATIC_INIT_BLOCK({
   namespace refl = tvm::ffi::reflection;
   refl::GlobalDef().def("relax.dpl.WildcardPattern", []() { return WildcardPattern(); });
@@ -292,7 +292,7 @@ TVM_FFI_STATIC_INIT_BLOCK({
 RELAX_PATTERN_PRINTER_DEF(WildcardPatternNode, [](auto p, auto node) { p->stream << "*"; });
 
 StructInfoPattern::StructInfoPattern(DFPattern pattern, StructInfo struct_info) {
-  ObjectPtr<StructInfoPatternNode> n = make_object<StructInfoPatternNode>();
+  ObjectPtr<StructInfoPatternNode> n = ffi::make_object<StructInfoPatternNode>();
   n->pattern = std::move(pattern);
   n->struct_info = std::move(struct_info);
   data_ = std::move(n);
@@ -310,7 +310,7 @@ RELAX_PATTERN_PRINTER_DEF(StructInfoPatternNode, [](auto p, auto node) {
 });
 
 ShapePattern::ShapePattern(DFPattern pattern, Array<PrimExpr> shape) {
-  ObjectPtr<ShapePatternNode> n = make_object<ShapePatternNode>();
+  ObjectPtr<ShapePatternNode> n = ffi::make_object<ShapePatternNode>();
   n->pattern = std::move(pattern);
   n->shape = std::move(shape);
   data_ = std::move(n);
@@ -326,7 +326,7 @@ RELAX_PATTERN_PRINTER_DEF(ShapePatternNode, [](auto p, auto node) {
 });
 
 SameShapeConstraint::SameShapeConstraint(Array<DFPattern> args) {
-  ObjectPtr<SameShapeConstraintNode> n = make_object<SameShapeConstraintNode>();
+  ObjectPtr<SameShapeConstraintNode> n = ffi::make_object<SameShapeConstraintNode>();
   n->args = std::move(args);
   data_ = std::move(n);
 
@@ -351,7 +351,7 @@ RELAX_PATTERN_PRINTER_DEF(SameShapeConstraintNode, [](auto p, auto node) {
 });
 
 DataTypePattern::DataTypePattern(DFPattern pattern, DataType dtype) {
-  ObjectPtr<DataTypePatternNode> n = make_object<DataTypePatternNode>();
+  ObjectPtr<DataTypePatternNode> n = ffi::make_object<DataTypePatternNode>();
   n->pattern = std::move(pattern);
   n->dtype = std::move(dtype);
   data_ = std::move(n);
@@ -367,7 +367,7 @@ RELAX_PATTERN_PRINTER_DEF(DataTypePatternNode, [](auto p, auto node) {
 });
 
 AttrPattern::AttrPattern(DFPattern pattern, DictAttrs attrs) {
-  ObjectPtr<AttrPatternNode> n = make_object<AttrPatternNode>();
+  ObjectPtr<AttrPatternNode> n = ffi::make_object<AttrPatternNode>();
   n->pattern = std::move(pattern);
   n->attrs = std::move(attrs);
   data_ = std::move(n);
@@ -396,10 +396,10 @@ class DFPatternDuplicator : public DFPatternFunctor<DFPattern(const DFPattern&)>
   DFPattern VisitDFPattern_(const NotPatternNode* op) override { return NotPattern(op->reject); }
   DFPattern VisitDFPattern_(const VarPatternNode* op) override { return VarPattern(op->name); }
   DFPattern VisitDFPattern_(const ConstantPatternNode* op) override {
-    return ConstantPattern(make_object<ConstantPatternNode>());
+    return ConstantPattern(ffi::make_object<ConstantPatternNode>());
   }
   DFPattern VisitDFPattern_(const WildcardPatternNode* op) override {
-    return WildcardPattern(make_object<WildcardPatternNode>());
+    return WildcardPattern(ffi::make_object<WildcardPatternNode>());
   }
   DFPattern VisitDFPattern_(const ExprPatternNode* op) override { return ExprPattern(op->expr); }
   DFPattern VisitDFPattern_(const GlobalVarPatternNode* op) override {
@@ -480,7 +480,7 @@ Optional<PatternContext> PatternContext::Current() {
 }
 
 PatternContext::PatternContext(bool incremental) {
-  auto n = make_object<PatternContextNode>();
+  auto n = ffi::make_object<PatternContextNode>();
   if (incremental) {
     ICHECK(!pattern_ctx_stack().empty())
         << "Incremental context needs to be built inside a existing context.";
@@ -506,7 +506,7 @@ static void sync_graph_constraints(const DFPattern& lhs, const DFPattern& rhs, P
 }
 
 PatternSeq::PatternSeq(DFPattern init_pattern) {
-  ObjectPtr<PatternSeqNode> n = make_object<PatternSeqNode>();
+  ObjectPtr<PatternSeqNode> n = ffi::make_object<PatternSeqNode>();
   n->patterns = {init_pattern};
   n->pair_constraints = {};
   data_ = std::move(n);
@@ -515,7 +515,7 @@ PatternSeq::PatternSeq(tvm::Array<DFPattern> patterns, bool only_used_by) {
   ICHECK_GE(patterns.size(), 1) << "PatternSeq must have at least one pattern";
   const auto cons = PairCons(only_used_by ? PairCons::kOnlyUsedBy : PairCons::kUsedBy);
 
-  ObjectPtr<PatternSeqNode> n = make_object<PatternSeqNode>();
+  ObjectPtr<PatternSeqNode> n = ffi::make_object<PatternSeqNode>();
   n->patterns = std::move(patterns);
   n->pair_constraints = std::vector<PairCons>(n->patterns.size() - 1, cons);
   data_ = std::move(n);
@@ -532,7 +532,7 @@ PatternSeq PatternSeq::OnlyUsedBy(PatternSeq other, int index) const {
 PatternSeq PatternSeq::dup() const {
   PatternSeq ret;
 
-  ObjectPtr<PatternSeqNode> n = make_object<PatternSeqNode>();
+  ObjectPtr<PatternSeqNode> n = ffi::make_object<PatternSeqNode>();
   n->patterns = Array<DFPattern>{};
   n->patterns.reserve(get()->patterns.size());
   n->pair_constraints = this->get()->pair_constraints;
@@ -591,7 +591,7 @@ PatternSeq UsedBy(const PatternSeq& lhs, const PatternSeq& rhs, int index) {
   pair_constraints.insert(pair_constraints.end(), rhs->pair_constraints.begin(),
                           rhs->pair_constraints.end());
 
-  ObjectPtr<PatternSeqNode> n = make_object<PatternSeqNode>();
+  ObjectPtr<PatternSeqNode> n = ffi::make_object<PatternSeqNode>();
   n->patterns = std::move(patterns);
   n->pair_constraints = std::move(pair_constraints);
   ret.data_ = std::move(n);
@@ -618,7 +618,7 @@ PatternSeq OnlyUsedBy(const PatternSeq& lhs, const PatternSeq& rhs, int index) {
   pair_constraints.insert(pair_constraints.end(), rhs->pair_constraints.begin(),
                           rhs->pair_constraints.end());
 
-  ObjectPtr<PatternSeqNode> n = make_object<PatternSeqNode>();
+  ObjectPtr<PatternSeqNode> n = ffi::make_object<PatternSeqNode>();
   n->patterns = std::move(patterns);
   n->pair_constraints = std::move(pair_constraints);
   ret.data_ = std::move(n);
@@ -628,8 +628,8 @@ PatternSeq OnlyUsedBy(const PatternSeq& lhs, const PatternSeq& rhs, int index) {
 PatternSeq operator>>(const PatternSeq& lhs, const PatternSeq& rhs) { return lhs.OnlyUsedBy(rhs); }
 
 VarPattern IsVar(const String& name) { return VarPattern(name); }
-ConstantPattern IsConst() { return ConstantPattern(make_object<ConstantPatternNode>()); }
-WildcardPattern Wildcard() { return WildcardPattern(make_object<WildcardPatternNode>()); }
+ConstantPattern IsConst() { return ConstantPattern(ffi::make_object<ConstantPatternNode>()); }
+WildcardPattern Wildcard() { return WildcardPattern(ffi::make_object<WildcardPatternNode>()); }
 ExprPattern IsExpr(const Expr& expr) { return ExprPattern(expr); }
 ExprPattern IsOp(const String& op_name) { return IsExpr(Op::Get(op_name)); }
 CallPattern IsCallTIR(const String& name, Optional<TuplePattern> var_args,

@@ -780,7 +780,7 @@ ffi::Module BuildWebGPU(IRModule mod, Target target) {
     smap[f_name] = code;
   }
 
-  auto n = make_object<WebGPUSourceModuleNode>(smap, fmap);
+  auto n = ffi::make_object<WebGPUSourceModuleNode>(smap, fmap);
   return ffi::Module(n);
 }
 

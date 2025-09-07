@@ -110,7 +110,7 @@ class ReplayFuncNode : public SearchStrategyNode {
   }
 
   SearchStrategy Clone() const final {
-    ObjectPtr<ReplayFuncNode> n = make_object<ReplayFuncNode>();
+    ObjectPtr<ReplayFuncNode> n = ffi::make_object<ReplayFuncNode>();
     n->rand_state_ = -1;
     n->mod_ = std::nullopt;
     n->space_generator_ = std::nullopt;
@@ -156,7 +156,7 @@ inline void ReplayFuncNode::State::NotifyRunnerResults(const Array<RunnerResult>
 }
 
 SearchStrategy SearchStrategy::ReplayFunc() {
-  ObjectPtr<ReplayFuncNode> n = make_object<ReplayFuncNode>();
+  ObjectPtr<ReplayFuncNode> n = ffi::make_object<ReplayFuncNode>();
   return SearchStrategy(n);
 }
 

@@ -58,7 +58,7 @@ using tir::Schedule;
 TVM_FFI_STATIC_INIT_BLOCK({ MultiLevelTilingNode::RegisterReflection(); });
 
 State::State(tir::Schedule sch, tir::BlockRV block_rv, Array<Array<tir::LoopRV>> tiles) {
-  ObjectPtr<StateNode> node = make_object<StateNode>();
+  ObjectPtr<StateNode> node = ffi::make_object<StateNode>();
   node->sch = std::move(sch);
   node->block_rv = std::move(block_rv);
   node->tiles = std::move(tiles);
@@ -66,7 +66,7 @@ State::State(tir::Schedule sch, tir::BlockRV block_rv, Array<Array<tir::LoopRV>>
 }
 
 State StateNode::Copy() const {
-  ObjectPtr<StateNode> node = make_object<StateNode>(*this);
+  ObjectPtr<StateNode> node = ffi::make_object<StateNode>(*this);
   node->sch = sch->Copy();
   return State(node);
 }
@@ -118,7 +118,7 @@ Array<Schedule> MultiLevelTilingNode::Apply(const Schedule& sch, const BlockRV& 
 
 // Inherited from ScheduleRuleNode
 ScheduleRule MultiLevelTilingNode::Clone() const {
-  ObjectPtr<MultiLevelTilingNode> n = make_object<MultiLevelTilingNode>(*this);
+  ObjectPtr<MultiLevelTilingNode> n = ffi::make_object<MultiLevelTilingNode>(*this);
   return ScheduleRule(n);
 }
 

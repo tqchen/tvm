@@ -96,7 +96,7 @@ struct DiscoDebugObject : public Object {
 
   /*! \brief Wrap an Tensor or reflection-capable TVM object into the debug extension. */
   static ObjectRef Wrap(const ffi::Any& data) {
-    ObjectPtr<DiscoDebugObject> n = make_object<DiscoDebugObject>();
+    ObjectPtr<DiscoDebugObject> n = ffi::make_object<DiscoDebugObject>();
     n->data = data;
     return ObjectRef(n);
   }
@@ -182,7 +182,7 @@ inline void DiscoProtocol<SubClassType>::ReadFFIAny(TVMFFIAny* out) {
   uint32_t type_index;
   self->template Read<uint32_t>(&type_index);
   if (type_index == TypeIndex::kRuntimeDiscoDRef) {
-    ObjectPtr<DRefObj> dref = make_object<DRefObj>();
+    ObjectPtr<DRefObj> dref = ffi::make_object<DRefObj>();
     self->template Read<int64_t>(&dref->reg_id);
     dref->session = Session{nullptr};
     result = ObjectRef(std::move(dref));
@@ -247,7 +247,7 @@ inline ObjectPtr<DiscoDebugObject> DiscoDebugObject::LoadFromStr(std::string jso
   ICHECK(!json_str.empty());
   char control_bit = json_str.back();
   json_str.pop_back();
-  ObjectPtr<DiscoDebugObject> result = make_object<DiscoDebugObject>();
+  ObjectPtr<DiscoDebugObject> result = ffi::make_object<DiscoDebugObject>();
   if (control_bit == '0') {
     const auto f = tvm::ffi::Function::GetGlobal("node.LoadJSON");
     CHECK(f.has_value()) << "ValueError: Cannot deserialize object in non-debugging mode";

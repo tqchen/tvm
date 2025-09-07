@@ -129,7 +129,7 @@ void UnsafeHideBufferAccess(ScheduleState self, const StmtSRef& block_sref, cons
 
   /* Step 1: Replace old block with the new block */
 
-  auto n = make_object<BlockNode>(*block);
+  auto n = ffi::make_object<BlockNode>(*block);
   n->reads = reads;
   n->writes = writes;
   Block new_block = Block(n);

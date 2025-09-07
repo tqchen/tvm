@@ -24,7 +24,7 @@ namespace tvm {
 namespace meta_schedule {
 
 MeasureCandidate::MeasureCandidate(tir::Schedule sch, Array<ArgInfo> args_info) {
-  ObjectPtr<MeasureCandidateNode> n = make_object<MeasureCandidateNode>();
+  ObjectPtr<MeasureCandidateNode> n = ffi::make_object<MeasureCandidateNode>();
   n->sch = sch;
   n->args_info = args_info;
   data_ = std::move(n);
@@ -74,7 +74,7 @@ SearchStrategy SearchStrategy::PySearchStrategy(
     PySearchStrategyNode::FGenerateMeasureCandidates f_generate_measure_candidates,   //
     PySearchStrategyNode::FNotifyRunnerResults f_notify_runner_results,               //
     PySearchStrategyNode::FClone f_clone) {
-  ObjectPtr<PySearchStrategyNode> n = make_object<PySearchStrategyNode>();
+  ObjectPtr<PySearchStrategyNode> n = ffi::make_object<PySearchStrategyNode>();
   n->f_initialize_with_tune_context = f_initialize_with_tune_context;
   n->f_pre_tuning = f_pre_tuning;
   n->f_post_tuning = f_post_tuning;

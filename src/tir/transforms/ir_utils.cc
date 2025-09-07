@@ -41,48 +41,48 @@ Stmt MergeNest(const std::vector<Stmt>& nest, Stmt body) {
   for (auto ri = nest.rbegin(); ri != nest.rend(); ++ri) {
     Stmt s = *ri;
     if (const auto* for_ = s.as<ForNode>()) {
-      auto n = make_object<ForNode>(*for_);
+      auto n = ffi::make_object<ForNode>(*for_);
       ICHECK(is_no_op(n->body));
       n->body = body;
       body = Stmt(n);
     } else if (const auto* let = s.as<LetStmtNode>()) {
-      auto n = make_object<LetStmtNode>(*let);
+      auto n = ffi::make_object<LetStmtNode>(*let);
       ICHECK(is_no_op(n->body));
       n->body = body;
       body = Stmt(n);
     } else if (const auto* attr = s.as<AttrStmtNode>()) {
-      auto n = make_object<AttrStmtNode>(*attr);
+      auto n = ffi::make_object<AttrStmtNode>(*attr);
       ICHECK(is_no_op(n->body));
       n->body = body;
       body = Stmt(n);
     } else if (const auto* ite = s.as<IfThenElseNode>()) {
-      auto n = make_object<IfThenElseNode>(*ite);
+      auto n = ffi::make_object<IfThenElseNode>(*ite);
       ICHECK(is_no_op(n->then_case));
       ICHECK(!n->else_case);
       n->then_case = body;
       body = Stmt(n);
     } else if (const auto* seq = s.as<SeqStmtNode>()) {
-      auto n = make_object<SeqStmtNode>(*seq);
+      auto n = ffi::make_object<SeqStmtNode>(*seq);
       ICHECK(n->size() != 0 && is_no_op(n->seq[n->size() - 1]));
       n->seq.Set(n->size() - 1, body);
       body = Stmt(n);
     } else if (const auto* assert_ = s.as<AssertStmtNode>()) {
-      auto n = make_object<AssertStmtNode>(*assert_);
+      auto n = ffi::make_object<AssertStmtNode>(*assert_);
       ICHECK(is_no_op(n->body));
       n->body = body;
       body = Stmt(n);
     } else if (const auto* alloc = s.as<AllocateNode>()) {
-      auto n = make_object<AllocateNode>(*alloc);
+      auto n = ffi::make_object<AllocateNode>(*alloc);
       ICHECK(is_no_op(n->body));
       n->body = body;
       body = Stmt(n);
     } else if (const auto* alloc = s.as<AllocateConstNode>()) {
-      auto n = make_object<AllocateConstNode>(*alloc);
+      auto n = ffi::make_object<AllocateConstNode>(*alloc);
       ICHECK(is_no_op(n->body));
       n->body = body;
       body = Stmt(n);
     } else if (const auto* decl_buffer = s.as<DeclBufferNode>()) {
-      auto n = make_object<DeclBufferNode>(*decl_buffer);
+      auto n = ffi::make_object<DeclBufferNode>(*decl_buffer);
       ICHECK(is_no_op(n->body));
       n->body = body;
       body = Stmt(n);

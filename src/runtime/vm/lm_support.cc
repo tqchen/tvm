@@ -240,7 +240,7 @@ class AttentionKVCacheLegacy : public ObjectRef {
    */
   static AttentionKVCacheLegacy Create(Tensor init_data, ffi::Shape reserve_shape,
                                        int init_fill_count) {
-    auto n = make_object<AttentionKVCacheLegacyObj>();
+    auto n = ffi::make_object<AttentionKVCacheLegacyObj>();
     n->data = Tensor::Empty(reserve_shape, init_data->dtype, init_data->device);
     n->fill_count = 0;
     n->Append(init_data);

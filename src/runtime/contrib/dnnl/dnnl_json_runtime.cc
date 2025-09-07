@@ -925,7 +925,7 @@ class DNNLJSONRuntime : public JSONRuntimeBase {
 
 ffi::Module DNNLJSONRuntimeCreate(String symbol_name, String graph_json,
                                   const Array<String>& const_names) {
-  auto n = make_object<DNNLJSONRuntime>(symbol_name, graph_json, const_names);
+  auto n = ffi::make_object<DNNLJSONRuntime>(symbol_name, graph_json, const_names);
   return ffi::Module(n);
 }
 

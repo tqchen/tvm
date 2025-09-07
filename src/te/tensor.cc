@@ -93,7 +93,7 @@ String TensorNode::GetNameHint() const {
 PrimExpr TensorNode::ToPrimExpr() const { return GetRef<Tensor>(this)(); }
 
 Tensor Operation::output(size_t i) const {
-  auto node = make_object<TensorNode>();
+  auto node = ffi::make_object<TensorNode>();
   node->op = *this;
   node->value_index = i;
   node->dtype = (*this)->output_dtype(i);
@@ -102,7 +102,7 @@ Tensor Operation::output(size_t i) const {
 }
 
 Tensor::Tensor(Array<PrimExpr> shape, DataType dtype, Operation op, int value_index) {
-  auto n = make_object<TensorNode>();
+  auto n = ffi::make_object<TensorNode>();
   n->shape = std::move(shape);
   n->dtype = dtype;
   n->op = op;

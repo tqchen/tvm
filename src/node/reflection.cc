@@ -43,7 +43,7 @@ void MakeNode(const ffi::PackedArgs& args, ffi::Any* rv) {
   TVMFFIByteArray type_key_array = TVMFFIByteArray{type_key.data(), type_key.size()};
   TVM_FFI_CHECK_SAFE_CALL(TVMFFITypeKeyToIndex(&type_key_array, &type_index));
   if (type_index == DictAttrsNode::RuntimeTypeIndex()) {
-    ObjectPtr<DictAttrsNode> attrs = make_object<DictAttrsNode>();
+    ObjectPtr<DictAttrsNode> attrs = ffi::make_object<DictAttrsNode>();
     attrs->InitByPackedArgs(args.Slice(1), false);
     *rv = ObjectRef(attrs);
   } else {

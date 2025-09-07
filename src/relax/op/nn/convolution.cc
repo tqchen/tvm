@@ -145,7 +145,7 @@ InferLayoutOutput InferLayoutConv1d(const Call& call,
   ICHECK(attrs) << "Invalid Call";
 
   LayoutDecision data_layout, weight_layout, output_layout;
-  ObjectPtr<Conv1DAttrs> new_attrs = make_object<Conv1DAttrs>(*attrs);
+  ObjectPtr<Conv1DAttrs> new_attrs = ffi::make_object<Conv1DAttrs>(*attrs);
 
   if (it != desired_layouts.end()) {
     // We have a desired layout for conv1d.
@@ -315,7 +315,7 @@ InferLayoutOutput InferLayoutConv2d(const Call& call,
   ICHECK(attrs) << "Invalid Call";
 
   LayoutDecision data_layout, weight_layout, output_layout;
-  ObjectPtr<Conv2DAttrs> new_attrs = make_object<Conv2DAttrs>(*attrs);
+  ObjectPtr<Conv2DAttrs> new_attrs = ffi::make_object<Conv2DAttrs>(*attrs);
 
   if (it != desired_layouts.end()) {
     // We have a desired layout for conv2d.
@@ -522,7 +522,7 @@ InferLayoutOutput InferLayoutConv3d(const Call& call,
   ICHECK(attrs) << "Invalid Call";
 
   LayoutDecision data_layout, weight_layout, output_layout;
-  ObjectPtr<Conv3DAttrs> new_attrs = make_object<Conv3DAttrs>(*attrs);
+  ObjectPtr<Conv3DAttrs> new_attrs = ffi::make_object<Conv3DAttrs>(*attrs);
 
   if (it != desired_layouts.end()) {
     // We have a desired layout for conv3d.
@@ -593,7 +593,7 @@ Expr conv1d_transpose(Expr data, Expr weight, Array<IntImm> strides, Array<IntIm
       << "The input dilation length is expected to be 1. However, the given dilation is "
       << dilation;
 
-  auto attrs = make_object<Conv1DTransposeAttrs>();
+  auto attrs = ffi::make_object<Conv1DTransposeAttrs>();
   attrs->strides = ConvertIntImmToInt64(strides);
   attrs->padding = ConvertIntImmToInt64(padding);
   attrs->output_padding = ConvertIntImmToInt64(output_padding);
@@ -732,7 +732,7 @@ Expr conv2d_transpose(Expr data, Expr weight, Array<IntImm> strides, Array<IntIm
       << "The input dilation length is expected to be 2. However, the given dilation is "
       << dilation;
 
-  auto attrs = make_object<Conv2DTransposeAttrs>();
+  auto attrs = ffi::make_object<Conv2DTransposeAttrs>();
   attrs->strides = ConvertIntImmToInt64(strides);
   attrs->padding = ConvertIntImmToInt64(padding);
   attrs->output_padding = ConvertIntImmToInt64(output_padding);

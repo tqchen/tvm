@@ -61,7 +61,7 @@ RELAX_REGISTER_UNARY_NN_OP_AND_IMPL(silu, "nn.silu", /*require_float_dtype=*/tru
 /* relax.nn.leakyrelu */
 
 Expr leakyrelu(Expr data, double alpha) {
-  auto attrs = make_object<LeakyReluAttrs>();
+  auto attrs = ffi::make_object<LeakyReluAttrs>();
   attrs->alpha = alpha;
   static const Op& op = Op::Get("relax.nn.leakyrelu");
   return Call(op, {data}, Attrs(attrs), {});
@@ -83,7 +83,7 @@ TVM_REGISTER_OP("relax.nn.leakyrelu")
 /* relax.nn.softplus */
 
 Expr softplus(Expr data, double beta, double threshold) {
-  auto attrs = make_object<SoftplusAttrs>();
+  auto attrs = ffi::make_object<SoftplusAttrs>();
   attrs->beta = beta;
   attrs->threshold = threshold;
   static const Op& op = Op::Get("relax.nn.softplus");
@@ -106,7 +106,7 @@ TVM_REGISTER_OP("relax.nn.softplus")
 /* relax.nn.prelu */
 
 Expr prelu(Expr data, Expr alpha, int axis = 1) {
-  auto attrs = make_object<PReluAttrs>();
+  auto attrs = ffi::make_object<PReluAttrs>();
   attrs->axis = axis;
   static const Op& op = Op::Get("relax.nn.prelu");
   return Call(op, {data, alpha}, Attrs(attrs), {});
@@ -151,7 +151,7 @@ InferLayoutOutput InferLayoutPRelu(const Call& call,
     layout = LayoutDecision(InitialLayout(ndim));
   }
 
-  ObjectPtr<PReluAttrs> new_attrs = make_object<PReluAttrs>(*attrs);
+  ObjectPtr<PReluAttrs> new_attrs = ffi::make_object<PReluAttrs>(*attrs);
   new_attrs->axis = FindAxis(layout->layout, attrs->axis);
 
   LayoutDecision alpha_layout = GetLayoutDecision(var_layout_map, call->args[1]);
@@ -170,7 +170,7 @@ TVM_REGISTER_OP("relax.nn.prelu")
 /* relax.nn.softmax */
 
 Expr softmax(Expr data, int axis) {
-  auto attrs = make_object<SoftmaxAttrs>();
+  auto attrs = ffi::make_object<SoftmaxAttrs>();
   attrs->axis = axis;
   static const Op& op = Op::Get("relax.nn.softmax");
   return Call(op, {data}, Attrs(attrs), {});
@@ -216,7 +216,7 @@ InferLayoutOutput InferLayoutSoftmax(const Call& call,
     layout = LayoutDecision(InitialLayout(ndim));
   }
 
-  ObjectPtr<SoftmaxAttrs> new_attrs = make_object<SoftmaxAttrs>(*attrs);
+  ObjectPtr<SoftmaxAttrs> new_attrs = ffi::make_object<SoftmaxAttrs>(*attrs);
   new_attrs->axis = FindAxis(layout->layout, attrs->axis);
   return InferLayoutOutput({layout}, {layout}, Attrs(new_attrs));
 }
@@ -231,7 +231,7 @@ TVM_REGISTER_OP("relax.nn.softmax")
 
 /* relax.nn.log_softmax */
 Expr log_softmax(Expr data, int axis) {
-  auto attrs = make_object<SoftmaxAttrs>();
+  auto attrs = ffi::make_object<SoftmaxAttrs>();
   attrs->axis = axis;
   static const Op& op = Op::Get("relax.nn.log_softmax");
   return Call(op, {data}, Attrs(attrs), {});
@@ -252,7 +252,7 @@ TVM_REGISTER_OP("relax.nn.log_softmax")
 /* relax.nn.pad */
 
 Expr pad(Expr data, Array<Integer> pad_width, String pad_mode, double pad_value) {
-  auto attrs = make_object<PadAttrs>();
+  auto attrs = ffi::make_object<PadAttrs>();
   attrs->pad_width = std::move(pad_width);
   attrs->pad_mode = std::move(pad_mode);
   attrs->pad_value = pad_value;
@@ -299,7 +299,7 @@ TVM_REGISTER_OP("relax.nn.pad")
 /* relax.nn.pixel_shuffle */
 
 Expr pixel_shuffle(Expr data, int upscale_factor) {
-  auto attrs = make_object<PixelShuffleAttrs>();
+  auto attrs = ffi::make_object<PixelShuffleAttrs>();
   attrs->upscale_factor = upscale_factor;
   static const Op& op = Op::Get("relax.nn.pixel_shuffle");
   return Call(op, {data}, Attrs(attrs), {});
@@ -442,7 +442,7 @@ bool NormCheckDtypeAndShape(const Call& call, const BlockBuilder& ctx,
 
 Expr batch_norm(Expr data, Expr gamma, Expr beta, Expr moving_mean, Expr moving_var,  //
                 int axis, double epsilon, bool center, bool scale, double momentum, bool training) {
-  ObjectPtr<BatchNormAttrs> attrs = make_object<BatchNormAttrs>();
+  ObjectPtr<BatchNormAttrs> attrs = ffi::make_object<BatchNormAttrs>();
   attrs->axis = axis;
   attrs->epsilon = epsilon;
   attrs->center = center;
@@ -502,7 +502,7 @@ InferLayoutOutput InferLayoutBatchNorm(const Call& call,
     layout = LayoutDecision(InitialLayout(ndim));
   }
 
-  ObjectPtr<BatchNormAttrs> new_attrs = make_object<BatchNormAttrs>(*attrs);
+  ObjectPtr<BatchNormAttrs> new_attrs = ffi::make_object<BatchNormAttrs>(*attrs);
   new_attrs->axis = FindAxis(layout->layout, (attrs->axis + ndim) % ndim);
   return InferLayoutOutput(
       {layout, initial_layouts[1], initial_layouts[2], initial_layouts[3], initial_layouts[4]},
@@ -525,7 +525,7 @@ TVM_REGISTER_OP("relax.nn.batch_norm")
 
 Expr layer_norm(Expr data, Expr gamma, Expr beta, Array<Integer> axes, double epsilon, bool center,
                 bool scale) {
-  ObjectPtr<LayerNormAttrs> attrs = make_object<LayerNormAttrs>();
+  ObjectPtr<LayerNormAttrs> attrs = ffi::make_object<LayerNormAttrs>();
   attrs->axes = std::move(axes);
   attrs->epsilon = epsilon;
   attrs->center = center;
@@ -566,7 +566,7 @@ InferLayoutOutput InferLayoutLayerNorm(const Call& call,
   ICHECK(attrs) << "Invalid Call";
 
   LayoutDecision layout = GetLayoutDecision(var_layout_map, call->args[0]);
-  ObjectPtr<LayerNormAttrs> new_attrs = make_object<LayerNormAttrs>(*attrs);
+  ObjectPtr<LayerNormAttrs> new_attrs = ffi::make_object<LayerNormAttrs>(*attrs);
   const auto* input_sinfo = GetStructInfoAs<TensorStructInfoNode>(call->args[0]);
   int ndim = input_sinfo->ndim;
   std::vector<Integer> new_axis;
@@ -593,7 +593,7 @@ TVM_REGISTER_OP("relax.nn.layer_norm")
 
 Expr group_norm(Expr data, Expr gamma, Expr beta, int num_groups, int channel_axis,
                 Array<Integer> axes, double epsilon, bool center, bool scale) {
-  ObjectPtr<GroupNormAttrs> attrs = make_object<GroupNormAttrs>();
+  ObjectPtr<GroupNormAttrs> attrs = ffi::make_object<GroupNormAttrs>();
   attrs->num_groups = num_groups;
   attrs->channel_axis = channel_axis;
   attrs->axes = std::move(axes);
@@ -681,7 +681,7 @@ InferLayoutOutput InferLayoutGroupNorm(const Call& call,
   ICHECK(attrs) << "Invalid Call";
 
   LayoutDecision layout = GetLayoutDecision(var_layout_map, call->args[0]);
-  ObjectPtr<GroupNormAttrs> new_attrs = make_object<GroupNormAttrs>(*attrs);
+  ObjectPtr<GroupNormAttrs> new_attrs = ffi::make_object<GroupNormAttrs>(*attrs);
   std::vector<Integer> new_axes;
   for (const auto& axis : attrs->axes) {
     new_axes.push_back(FindAxis(layout->layout, axis->value));
@@ -707,7 +707,7 @@ TVM_REGISTER_OP("relax.nn.group_norm")
 
 Expr instance_norm(Expr data, Expr gamma, Expr beta, int channel_axis, Array<Integer> axes,
                    double epsilon, bool center, bool scale) {
-  ObjectPtr<InstanceNormAttrs> attrs = make_object<InstanceNormAttrs>();
+  ObjectPtr<InstanceNormAttrs> attrs = ffi::make_object<InstanceNormAttrs>();
   attrs->channel_axis = std::move(channel_axis);
   attrs->axes = std::move(axes);
   attrs->epsilon = epsilon;
@@ -784,7 +784,7 @@ InferLayoutOutput InferLayoutInstanceNorm(const Call& call,
   ICHECK(attrs) << "Invalid Call";
 
   LayoutDecision layout = GetLayoutDecision(var_layout_map, call->args[0]);
-  ObjectPtr<InstanceNormAttrs> new_attrs = make_object<InstanceNormAttrs>(*attrs);
+  ObjectPtr<InstanceNormAttrs> new_attrs = ffi::make_object<InstanceNormAttrs>(*attrs);
   std::vector<Integer> new_axes;
   for (const auto& axis : attrs->axes) {
     new_axes.push_back(FindAxis(layout->layout, (axis->value)));
@@ -808,7 +808,7 @@ TVM_REGISTER_OP("relax.nn.instance_norm")
 /* relax.nn.rms_norm */
 
 Expr rms_norm(Expr data, Expr weight, Array<Integer> axes, double epsilon) {
-  ObjectPtr<RMSNormAttrs> attrs = make_object<RMSNormAttrs>();
+  ObjectPtr<RMSNormAttrs> attrs = ffi::make_object<RMSNormAttrs>();
   attrs->axes = std::move(axes);
   attrs->epsilon = epsilon;
 
@@ -847,7 +847,7 @@ InferLayoutOutput InferLayoutRMSNorm(const Call& call,
   ICHECK(attrs) << "Invalid Call";
 
   LayoutDecision layout = GetLayoutDecision(var_layout_map, call->args[0]);
-  ObjectPtr<RMSNormAttrs> new_attrs = make_object<RMSNormAttrs>(*attrs);
+  ObjectPtr<RMSNormAttrs> new_attrs = ffi::make_object<RMSNormAttrs>(*attrs);
   std::vector<Integer> new_axes;
   for (const auto& axis : attrs->axes) {
     new_axes.push_back(FindAxis(layout->layout, axis->value));
@@ -869,7 +869,7 @@ TVM_REGISTER_OP("relax.nn.rms_norm")
 /* relax.nn.dropout */
 
 Expr dropout(Expr data, double rate) {
-  ObjectPtr<DropoutAttrs> attrs = make_object<DropoutAttrs>();
+  ObjectPtr<DropoutAttrs> attrs = ffi::make_object<DropoutAttrs>();
   attrs->rate = rate;
 
   static const Op& op = Op::Get("relax.nn.dropout");
@@ -963,7 +963,7 @@ TVM_REGISTER_OP("relax.nn.cross_entropy_with_logits")
 
 Expr nll_loss(Expr predictions, Expr targets, Optional<Expr> weights, String reduction,
               int ignore_index) {
-  ObjectPtr<NLLLossAttrs> attrs = make_object<NLLLossAttrs>();
+  ObjectPtr<NLLLossAttrs> attrs = ffi::make_object<NLLLossAttrs>();
 
   ICHECK(reduction == "none" || reduction == "sum" || reduction == "mean")
       << "The argument reduction of NLLLoss should be one of the following "

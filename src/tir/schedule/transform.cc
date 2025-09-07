@@ -30,15 +30,15 @@ namespace tir {
 Block WithAnnotation(const BlockNode* block, const String& attr_key, const ObjectRef& attr_value) {
   Map<String, Any> annotations = block->annotations;
   annotations.Set(attr_key, attr_value);
-  ObjectPtr<BlockNode> new_block = make_object<BlockNode>(*block);
+  ObjectPtr<BlockNode> new_block = ffi::make_object<BlockNode>(*block);
   new_block->annotations = std::move(annotations);
   return Block(new_block);
 }
 
 /******** Buffer Related ********/
 Buffer WithScope(const Buffer& buffer, const String& scope) {
-  ObjectPtr<BufferNode> new_buffer = make_object<BufferNode>(*buffer.get());
-  ObjectPtr<VarNode> new_var = make_object<VarNode>(*buffer->data.get());
+  ObjectPtr<BufferNode> new_buffer = ffi::make_object<BufferNode>(*buffer.get());
+  ObjectPtr<VarNode> new_var = ffi::make_object<VarNode>(*buffer->data.get());
   const auto* ptr_type = TVM_TYPE_AS(buffer->data->type_annotation, PointerTypeNode);
   new_var->type_annotation = PointerType(ptr_type->element_type, scope);
   new_buffer->data = Var(new_var->name_hint + "_" + scope, new_var->type_annotation);
@@ -47,7 +47,7 @@ Buffer WithScope(const Buffer& buffer, const String& scope) {
 }
 
 Buffer WithDType(const Buffer& buffer, const DataType& dtype) {
-  ObjectPtr<BufferNode> new_buffer = make_object<BufferNode>(*buffer.get());
+  ObjectPtr<BufferNode> new_buffer = ffi::make_object<BufferNode>(*buffer.get());
   new_buffer->dtype = dtype;
   const auto* ptr_type = TVM_TYPE_AS(buffer->data->type_annotation, PointerTypeNode);
   new_buffer->data =
@@ -60,7 +60,7 @@ Array<BufferRegion> ReplaceBuffer(Array<BufferRegion> regions, const Buffer& sou
                                   const Buffer& target) {
   regions.MutateByApply([&source, &target](BufferRegion region) -> BufferRegion {
     if (region->buffer.same_as(source)) {
-      ObjectPtr<BufferRegionNode> n = make_object<BufferRegionNode>(*region.get());
+      ObjectPtr<BufferRegionNode> n = ffi::make_object<BufferRegionNode>(*region.get());
       n->buffer = target;
       return BufferRegion(n);
     }
@@ -73,7 +73,7 @@ Array<BufferRegion> ReplaceBuffer(Array<BufferRegion> regions,
                                   const Map<Buffer, Buffer>& buffer_map) {
   regions.MutateByApply([&buffer_map](BufferRegion region) -> BufferRegion {
     if (buffer_map.count(region->buffer)) {
-      ObjectPtr<BufferRegionNode> n = make_object<BufferRegionNode>(*region.get());
+      ObjectPtr<BufferRegionNode> n = ffi::make_object<BufferRegionNode>(*region.get());
       n->buffer = buffer_map[region->buffer];
       return BufferRegion(n);
     }
@@ -87,7 +87,7 @@ Array<MatchBufferRegion> ReplaceBuffer(Array<MatchBufferRegion> match_buffers, c
   match_buffers.MutateByApply([&source,
                                &target](MatchBufferRegion match_buffer) -> MatchBufferRegion {
     if (match_buffer->source->buffer.same_as(source)) {
-      ObjectPtr<MatchBufferRegionNode> n = make_object<MatchBufferRegionNode>(*match_buffer.get());
+      ObjectPtr<MatchBufferRegionNode> n = ffi::make_object<MatchBufferRegionNode>(*match_buffer.get());
       n->source = BufferRegion(target, n->source->region);
       return MatchBufferRegion(n);
     }
@@ -113,7 +113,7 @@ Array<MatchBufferRegion> ReplaceBufferRegion(Array<MatchBufferRegion> match_buff
   match_buffers.MutateByApply([&source_buffer, &target](
                                   const MatchBufferRegion& match_buffer) -> MatchBufferRegion {
     if (match_buffer->source->buffer.same_as(source_buffer)) {
-      ObjectPtr<MatchBufferRegionNode> n = make_object<MatchBufferRegionNode>(*match_buffer.get());
+      ObjectPtr<MatchBufferRegionNode> n = ffi::make_object<MatchBufferRegionNode>(*match_buffer.get());
       n->source = target;
       return MatchBufferRegion(n);
     }
@@ -295,7 +295,7 @@ void LeafBlockRemovalPlan(const ScheduleState& self, const StmtSRef& leaf_block_
     }
 
     if (const auto* seq = body.as<SeqStmtNode>()) {
-      ObjectPtr<BlockNode> n = make_object<BlockNode>(*block);
+      ObjectPtr<BlockNode> n = ffi::make_object<BlockNode>(*block);
       auto new_seq = RemoveFromSeqStmt(GetRef<SeqStmt>(seq), GetRef<Stmt>(last_stmt));
       // Re-attach AllocateConst nodes
       auto new_body = MergeNest(allocs, new_seq);
@@ -307,7 +307,7 @@ void LeafBlockRemovalPlan(const ScheduleState& self, const StmtSRef& leaf_block_
   }
   if (const auto* loop = sref->StmtAs<ForNode>()) {
     if (const auto* seq = loop->body.as<SeqStmtNode>()) {
-      ObjectPtr<ForNode> n = make_object<ForNode>(*loop);
+      ObjectPtr<ForNode> n = ffi::make_object<ForNode>(*loop);
       n->body = RemoveFromSeqStmt(GetRef<SeqStmt>(seq), GetRef<Stmt>(last_stmt));
       *src_stmt = GetRef<Stmt>(loop);
       *tgt_stmt = Stmt(std::move(n));

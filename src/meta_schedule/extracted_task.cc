@@ -30,7 +30,7 @@ namespace meta_schedule {
 
 ExtractedTask::ExtractedTask(String task_name, IRModule mod, Target target,
                              Array<IRModule> dispatched, int weight) {
-  ObjectPtr<ExtractedTaskNode> n = make_object<ExtractedTaskNode>();
+  ObjectPtr<ExtractedTaskNode> n = ffi::make_object<ExtractedTaskNode>();
   n->task_name = task_name;
   n->mod = mod;
   n->target = target;

@@ -71,7 +71,7 @@ class MutateTileSizeNode : public MutatorNode {
   Optional<Trace> Apply(const Trace& trace, TRandState* rand_state) final;
   // Inherit from `MutatorNode`
   Mutator Clone() const final {
-    ObjectPtr<MutateTileSizeNode> n = make_object<MutateTileSizeNode>(*this);
+    ObjectPtr<MutateTileSizeNode> n = ffi::make_object<MutateTileSizeNode>(*this);
     return Mutator(n);
   }
 };
@@ -271,7 +271,7 @@ Optional<Trace> MutateTileSizeNode::Apply(const Trace& trace, TRandState* rand_s
   }
 }
 
-Mutator Mutator::MutateTileSize() { return Mutator(make_object<MutateTileSizeNode>()); }
+Mutator Mutator::MutateTileSize() { return Mutator(ffi::make_object<MutateTileSizeNode>()); }
 
 TVM_FFI_STATIC_INIT_BLOCK({ MutateTileSizeNode::RegisterReflection(); });
 

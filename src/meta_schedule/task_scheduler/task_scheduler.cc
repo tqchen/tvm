@@ -333,7 +333,7 @@ TaskScheduler TaskScheduler::PyTaskScheduler(
     ffi::Function logger, PyTaskSchedulerNode::FNextTaskId f_next_task_id,
     PyTaskSchedulerNode::FJoinRunningTask f_join_running_task, PyTaskSchedulerNode::FTune f_tune) {
   CHECK(f_next_task_id != nullptr) << "ValueError: next_task_id is not defined";
-  ObjectPtr<PyTaskSchedulerNode> n = make_object<PyTaskSchedulerNode>();
+  ObjectPtr<PyTaskSchedulerNode> n = ffi::make_object<PyTaskSchedulerNode>();
   n->logger = logger;
   n->f_next_task_id = f_next_task_id;
   n->f_join_running_task = f_join_running_task;

@@ -1003,11 +1003,11 @@ class Normalizer : public BlockBuilderImpl, private ExprFunctor<Expr(const Expr&
         BindingBlock merged;
         // NOTE: should check DataflowBlockNode first.
         if (const auto* dataflow_block = ret.back().as<DataflowBlockNode>()) {
-          auto n = make_object<DataflowBlockNode>(*dataflow_block);
+          auto n = ffi::make_object<DataflowBlockNode>(*dataflow_block);
           n->bindings.insert(n->bindings.end(), block->bindings.begin(), block->bindings.end());
           merged = DataflowBlock(n);
         } else if (const auto* binding_block = ret.back().as<BindingBlockNode>()) {
-          auto n = make_object<BindingBlockNode>(*binding_block);
+          auto n = ffi::make_object<BindingBlockNode>(*binding_block);
           n->bindings.insert(n->bindings.end(), block->bindings.begin(), block->bindings.end());
           merged = BindingBlock(n);
         } else {
@@ -1037,13 +1037,13 @@ class Normalizer : public BlockBuilderImpl, private ExprFunctor<Expr(const Expr&
 };
 
 BlockBuilder BlockBuilder::Create(Optional<IRModule> mod) {
-  ObjectPtr<BlockBuilderNode> n = make_object<Normalizer>(mod.value_or(IRModule()));
+  ObjectPtr<BlockBuilderNode> n = ffi::make_object<Normalizer>(mod.value_or(IRModule()));
   return BlockBuilder(n);
 }
 
 BlockBuilder BlockBuilder::Create(Optional<IRModule> mod,
                                   BlockBuilder::DisableOperatorSpecificNormalizationForTVMScript) {
-  ObjectPtr<BlockBuilderNode> n = make_object<Normalizer>(
+  ObjectPtr<BlockBuilderNode> n = ffi::make_object<Normalizer>(
       mod.value_or(IRModule()), BlockBuilder::DisableOperatorSpecificNormalizationForTVMScript());
   return BlockBuilder(n);
 }

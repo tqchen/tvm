@@ -658,7 +658,7 @@ static void LLVMReflectionRegister() {
   refl::GlobalDef()
       .def("target.build.llvm",
            [](IRModule mod, Target target) -> ffi::Module {
-             auto n = make_object<LLVMModuleNode>();
+             auto n = ffi::make_object<LLVMModuleNode>();
              n->Init(mod, target);
              return ffi::Module(n);
            })
@@ -666,7 +666,7 @@ static void LLVMReflectionRegister() {
            [](std::string target_str, std::string module_name) -> ffi::Module {
              auto llvm_instance = std::make_unique<LLVMInstance>();
              With<LLVMTarget> llvm_target(*llvm_instance, target_str);
-             auto n = make_object<LLVMModuleNode>();
+             auto n = ffi::make_object<LLVMModuleNode>();
              // Generate a LLVM module from an input target string
              auto module = std::make_unique<llvm::Module>(module_name, *llvm_target->GetContext());
              llvm_target->SetTargetMetadata(module.get());
@@ -786,7 +786,7 @@ static void LLVMReflectionRegister() {
       .def("target.llvm_version_major", []() -> int { return TVM_LLVM_VERSION / 10; })
       .def("ffi.Module.load_from_file.ll",
            [](std::string filename, std::string fmt) -> ffi::Module {
-             auto n = make_object<LLVMModuleNode>();
+             auto n = ffi::make_object<LLVMModuleNode>();
              n->SetJITEngine("orcjit");
              n->LoadIR(filename);
              return ffi::Module(n);
@@ -801,7 +801,7 @@ static void LLVMReflectionRegister() {
       .def("codegen.codegen_blob",
            [](std::string data, bool system_lib, std::string llvm_target_string,
               std::string c_symbol_prefix) -> ffi::Module {
-             auto n = make_object<LLVMModuleNode>();
+             auto n = ffi::make_object<LLVMModuleNode>();
              auto llvm_instance = std::make_unique<LLVMInstance>();
              With<LLVMTarget> llvm_target(*llvm_instance, llvm_target_string);
              std::unique_ptr<llvm::Module> blob =

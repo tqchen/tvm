@@ -142,7 +142,7 @@ class StorageToken : public ObjectRef {
     }
     size = tir::make_const(DataType::Int(64), const_coeff) * size;
 
-    ObjectPtr<StorageTokenNode> n = make_object<StorageTokenNode>();
+    ObjectPtr<StorageTokenNode> n = ffi::make_object<StorageTokenNode>();
     n->bytes = size;
     n->dtype = dtype;
     n->storage_scope = std::move(storage_scope);

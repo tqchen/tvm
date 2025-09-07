@@ -39,7 +39,7 @@ template <typename T>
 inline Expr MakeConv(Expr data, Expr weight, Array<IntImm> strides, Array<IntImm> padding,
                      Array<IntImm> dilation, int groups, String data_layout, String kernel_layout,
                      String out_layout, DataType out_dtype, std::string op_name) {
-  auto attrs = make_object<T>();
+  auto attrs = ffi::make_object<T>();
   attrs->strides = ConvertIntImmToInt64(strides);
   attrs->padding = ConvertIntImmToInt64(padding);
   attrs->dilation = ConvertIntImmToInt64(dilation);

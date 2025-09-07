@@ -74,13 +74,13 @@ ExprDoc ExprDocNode::Call(Array<ExprDoc, void> args, Array<String, void> kwargs_
 ExprDoc ExprDoc::operator[](Array<Doc> indices) const { return (*get())[indices]; }
 
 StmtBlockDoc::StmtBlockDoc(Array<StmtDoc> stmts) {
-  ObjectPtr<StmtBlockDocNode> n = make_object<StmtBlockDocNode>();
+  ObjectPtr<StmtBlockDocNode> n = ffi::make_object<StmtBlockDocNode>();
   n->stmts = stmts;
   this->data_ = std::move(n);
 }
 
 LiteralDoc::LiteralDoc(ffi::Any value, const Optional<AccessPath>& object_path) {
-  ObjectPtr<LiteralDocNode> n = make_object<LiteralDocNode>();
+  ObjectPtr<LiteralDocNode> n = ffi::make_object<LiteralDocNode>();
   n->value = value;
   if (object_path.defined()) {
     n->source_paths.push_back(object_path.value());
@@ -89,20 +89,20 @@ LiteralDoc::LiteralDoc(ffi::Any value, const Optional<AccessPath>& object_path) 
 }
 
 IdDoc::IdDoc(String name) {
-  ObjectPtr<IdDocNode> n = make_object<IdDocNode>();
+  ObjectPtr<IdDocNode> n = ffi::make_object<IdDocNode>();
   n->name = name;
   this->data_ = std::move(n);
 }
 
 AttrAccessDoc::AttrAccessDoc(ExprDoc value, String name) {
-  ObjectPtr<AttrAccessDocNode> n = make_object<AttrAccessDocNode>();
+  ObjectPtr<AttrAccessDocNode> n = ffi::make_object<AttrAccessDocNode>();
   n->value = value;
   n->name = name;
   this->data_ = std::move(n);
 }
 
 IndexDoc::IndexDoc(ExprDoc value, Array<Doc> indices) {
-  ObjectPtr<IndexDocNode> n = make_object<IndexDocNode>();
+  ObjectPtr<IndexDocNode> n = ffi::make_object<IndexDocNode>();
   n->value = value;
   n->indices = indices;
   this->data_ = std::move(n);
@@ -110,7 +110,7 @@ IndexDoc::IndexDoc(ExprDoc value, Array<Doc> indices) {
 
 CallDoc::CallDoc(ExprDoc callee, Array<ExprDoc> args, Array<String> kwargs_keys,
                  Array<ExprDoc> kwargs_values) {
-  ObjectPtr<CallDocNode> n = make_object<CallDocNode>();
+  ObjectPtr<CallDocNode> n = ffi::make_object<CallDocNode>();
   n->callee = callee;
   n->args = args;
   n->kwargs_keys = kwargs_keys;
@@ -119,40 +119,40 @@ CallDoc::CallDoc(ExprDoc callee, Array<ExprDoc> args, Array<String> kwargs_keys,
 }
 
 OperationDoc::OperationDoc(OperationDocNode::Kind kind, Array<ExprDoc> operands) {
-  ObjectPtr<OperationDocNode> n = make_object<OperationDocNode>();
+  ObjectPtr<OperationDocNode> n = ffi::make_object<OperationDocNode>();
   n->kind = kind;
   n->operands = operands;
   this->data_ = std::move(n);
 }
 
 LambdaDoc::LambdaDoc(Array<IdDoc> args, ExprDoc body) {
-  ObjectPtr<LambdaDocNode> n = make_object<LambdaDocNode>();
+  ObjectPtr<LambdaDocNode> n = ffi::make_object<LambdaDocNode>();
   n->args = args;
   n->body = body;
   this->data_ = std::move(n);
 }
 
 TupleDoc::TupleDoc(Array<ExprDoc> elements) {
-  ObjectPtr<TupleDocNode> n = make_object<TupleDocNode>();
+  ObjectPtr<TupleDocNode> n = ffi::make_object<TupleDocNode>();
   n->elements = elements;
   this->data_ = std::move(n);
 }
 
 ListDoc::ListDoc(Array<ExprDoc> elements) {
-  ObjectPtr<ListDocNode> n = make_object<ListDocNode>();
+  ObjectPtr<ListDocNode> n = ffi::make_object<ListDocNode>();
   n->elements = elements;
   this->data_ = std::move(n);
 }
 
 DictDoc::DictDoc(Array<ExprDoc> keys, Array<ExprDoc> values) {
-  ObjectPtr<DictDocNode> n = make_object<DictDocNode>();
+  ObjectPtr<DictDocNode> n = ffi::make_object<DictDocNode>();
   n->keys = keys;
   n->values = values;
   this->data_ = std::move(n);
 }
 
 SliceDoc::SliceDoc(Optional<ExprDoc> start, Optional<ExprDoc> stop, Optional<ExprDoc> step) {
-  ObjectPtr<SliceDocNode> n = make_object<SliceDocNode>();
+  ObjectPtr<SliceDocNode> n = ffi::make_object<SliceDocNode>();
   n->start = start;
   n->stop = stop;
   n->step = step;
@@ -165,7 +165,7 @@ AssignDoc::AssignDoc(ExprDoc lhs, Optional<ExprDoc> rhs, Optional<ExprDoc> annot
   CHECK(lhs->IsInstance<IdDocNode>() || annotation == nullptr)
       << "ValueError: annotation can only be nonnull if lhs is an identifier.";
 
-  ObjectPtr<AssignDocNode> n = make_object<AssignDocNode>();
+  ObjectPtr<AssignDocNode> n = ffi::make_object<AssignDocNode>();
   n->lhs = lhs;
   n->rhs = rhs;
   n->annotation = annotation;
@@ -176,7 +176,7 @@ IfDoc::IfDoc(ExprDoc predicate, Array<StmtDoc> then_branch, Array<StmtDoc> else_
   CHECK(!then_branch.empty() || !else_branch.empty())
       << "ValueError: At least one of the then branch or else branch needs to be non-empty.";
 
-  ObjectPtr<IfDocNode> n = make_object<IfDocNode>();
+  ObjectPtr<IfDocNode> n = ffi::make_object<IfDocNode>();
   n->predicate = predicate;
   n->then_branch = then_branch;
   n->else_branch = else_branch;
@@ -184,14 +184,14 @@ IfDoc::IfDoc(ExprDoc predicate, Array<StmtDoc> then_branch, Array<StmtDoc> else_
 }
 
 WhileDoc::WhileDoc(ExprDoc predicate, Array<StmtDoc> body) {
-  ObjectPtr<WhileDocNode> n = make_object<WhileDocNode>();
+  ObjectPtr<WhileDocNode> n = ffi::make_object<WhileDocNode>();
   n->predicate = predicate;
   n->body = body;
   this->data_ = std::move(n);
 }
 
 ForDoc::ForDoc(ExprDoc lhs, ExprDoc rhs, Array<StmtDoc> body) {
-  ObjectPtr<ForDocNode> n = make_object<ForDocNode>();
+  ObjectPtr<ForDocNode> n = ffi::make_object<ForDocNode>();
   n->lhs = lhs;
   n->rhs = rhs;
   n->body = body;
@@ -199,7 +199,7 @@ ForDoc::ForDoc(ExprDoc lhs, ExprDoc rhs, Array<StmtDoc> body) {
 }
 
 ScopeDoc::ScopeDoc(Optional<ExprDoc> lhs, ExprDoc rhs, Array<StmtDoc> body) {
-  ObjectPtr<ScopeDocNode> n = make_object<ScopeDocNode>();
+  ObjectPtr<ScopeDocNode> n = ffi::make_object<ScopeDocNode>();
   n->lhs = lhs;
   n->rhs = rhs;
   n->body = body;
@@ -207,7 +207,7 @@ ScopeDoc::ScopeDoc(Optional<ExprDoc> lhs, ExprDoc rhs, Array<StmtDoc> body) {
 }
 
 ScopeDoc::ScopeDoc(ExprDoc rhs, Array<StmtDoc> body) {
-  ObjectPtr<ScopeDocNode> n = make_object<ScopeDocNode>();
+  ObjectPtr<ScopeDocNode> n = ffi::make_object<ScopeDocNode>();
   n->lhs = std::nullopt;
   n->rhs = rhs;
   n->body = body;
@@ -215,27 +215,27 @@ ScopeDoc::ScopeDoc(ExprDoc rhs, Array<StmtDoc> body) {
 }
 
 ExprStmtDoc::ExprStmtDoc(ExprDoc expr) {
-  ObjectPtr<ExprStmtDocNode> n = make_object<ExprStmtDocNode>();
+  ObjectPtr<ExprStmtDocNode> n = ffi::make_object<ExprStmtDocNode>();
   n->expr = expr;
   this->data_ = std::move(n);
 }
 
 AssertDoc::AssertDoc(ExprDoc test, Optional<ExprDoc> msg) {
-  ObjectPtr<AssertDocNode> n = make_object<AssertDocNode>();
+  ObjectPtr<AssertDocNode> n = ffi::make_object<AssertDocNode>();
   n->test = test;
   n->msg = msg;
   this->data_ = std::move(n);
 }
 
 ReturnDoc::ReturnDoc(ExprDoc value) {
-  ObjectPtr<ReturnDocNode> n = make_object<ReturnDocNode>();
+  ObjectPtr<ReturnDocNode> n = ffi::make_object<ReturnDocNode>();
   n->value = value;
   this->data_ = std::move(n);
 }
 
 FunctionDoc::FunctionDoc(IdDoc name, Array<AssignDoc> args, Array<ExprDoc> decorators,
                          Optional<ExprDoc> return_type, Array<StmtDoc> body) {
-  ObjectPtr<FunctionDocNode> n = make_object<FunctionDocNode>();
+  ObjectPtr<FunctionDocNode> n = ffi::make_object<FunctionDocNode>();
   n->name = name;
   n->args = args;
   n->decorators = decorators;
@@ -245,7 +245,7 @@ FunctionDoc::FunctionDoc(IdDoc name, Array<AssignDoc> args, Array<ExprDoc> decor
 }
 
 ClassDoc::ClassDoc(IdDoc name, Array<ExprDoc> decorators, Array<StmtDoc> body) {
-  ObjectPtr<ClassDocNode> n = make_object<ClassDocNode>();
+  ObjectPtr<ClassDocNode> n = ffi::make_object<ClassDocNode>();
   n->name = name;
   n->decorators = decorators;
   n->body = body;
@@ -253,13 +253,13 @@ ClassDoc::ClassDoc(IdDoc name, Array<ExprDoc> decorators, Array<StmtDoc> body) {
 }
 
 CommentDoc::CommentDoc(String comment) {
-  ObjectPtr<CommentDocNode> n = make_object<CommentDocNode>();
+  ObjectPtr<CommentDocNode> n = ffi::make_object<CommentDocNode>();
   n->comment = comment;
   this->data_ = std::move(n);
 }
 
 DocStringDoc::DocStringDoc(String docs) {
-  ObjectPtr<DocStringDocNode> n = make_object<DocStringDocNode>();
+  ObjectPtr<DocStringDocNode> n = ffi::make_object<DocStringDocNode>();
   n->comment = docs;
   this->data_ = std::move(n);
 }

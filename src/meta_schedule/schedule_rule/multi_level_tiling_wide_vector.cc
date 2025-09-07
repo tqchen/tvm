@@ -46,7 +46,7 @@ class MultiLevelTilingWideVectorNode : public MultiLevelTilingNode {
  protected:
   ScheduleRule Clone() const final {
     ObjectPtr<MultiLevelTilingWideVectorNode> n =
-        make_object<MultiLevelTilingWideVectorNode>(*this);
+        ffi::make_object<MultiLevelTilingWideVectorNode>(*this);
     return ScheduleRule(n);
   }
 

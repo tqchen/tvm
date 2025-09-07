@@ -29,9 +29,9 @@ TVM_FFI_STATIC_INIT_BLOCK({
 
 /**************** Constructor ****************/
 
-BlockRV::BlockRV() { this->data_ = make_object<BlockRVNode>(); }
+BlockRV::BlockRV() { this->data_ = ffi::make_object<BlockRVNode>(); }
 
-LoopRV::LoopRV() { this->data_ = make_object<LoopRVNode>(); }
+LoopRV::LoopRV() { this->data_ = ffi::make_object<LoopRVNode>(); }
 
 /**************** GetSRef ****************/
 

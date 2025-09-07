@@ -281,7 +281,7 @@ class IterMapResultNode : public Object {
 class IterMapResult : public ObjectRef {
  public:
   // constructor
-  IterMapResult() { data_ = make_object<IterMapResultNode>(); }
+  IterMapResult() { data_ = ffi::make_object<IterMapResultNode>(); }
 
   /*! \return mutable pointers to the node. */
   IterMapResultNode* operator->() const { return static_cast<IterMapResultNode*>(get_mutable()); }

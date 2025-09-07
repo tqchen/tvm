@@ -106,7 +106,7 @@ class TensorCoreState : public State {
 TensorCoreState::TensorCoreState(TensorCoreIntrinGroup intrin_group,
                                  tir::AutoTensorizeMappingInfo mapping_info, Schedule sch,
                                  BlockRV block_rv, bool use_async, Array<Array<LoopRV>> tiles) {
-  ObjectPtr<TensorCoreStateNode> node = make_object<TensorCoreStateNode>();
+  ObjectPtr<TensorCoreStateNode> node = ffi::make_object<TensorCoreStateNode>();
   node->intrin_group = intrin_group;
   node->mapping_info = mapping_info;
   node->sch = std::move(sch);
@@ -118,7 +118,7 @@ TensorCoreState::TensorCoreState(TensorCoreIntrinGroup intrin_group,
 }
 
 State TensorCoreStateNode::Copy() const {
-  ObjectPtr<TensorCoreStateNode> node = make_object<TensorCoreStateNode>(*this);
+  ObjectPtr<TensorCoreStateNode> node = ffi::make_object<TensorCoreStateNode>(*this);
   node->sch = sch->Copy();
   return State(node);
 }
@@ -164,7 +164,7 @@ class MultiLevelTilingTensorCoreNode : public MultiLevelTilingNode {
   // Inherited from ScheduleRuleNode
   ScheduleRule Clone() const final {
     ObjectPtr<MultiLevelTilingTensorCoreNode> n =
-        make_object<MultiLevelTilingTensorCoreNode>(*this);
+        ffi::make_object<MultiLevelTilingTensorCoreNode>(*this);
     return ScheduleRule(n);
   }
 

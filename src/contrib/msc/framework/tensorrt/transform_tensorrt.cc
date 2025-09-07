@@ -162,7 +162,7 @@ Expr RewriteArgmaxmin(BlockBuilder builder, const Var& var, const Call& src_call
   ICHECK(out_dtype == DataType::Int(32) || out_dtype == DataType::Int(64))
       << "Unexpected out dtype " << out_dtype;
   static const Op& topk_op = Op::Get("relax.topk");
-  auto topk_attrs = make_object<TopKAttrs>();
+  auto topk_attrs = ffi::make_object<TopKAttrs>();
   topk_attrs->k = 1;
   if (src_attrs->axis.has_value()) {
     topk_attrs->axis = src_attrs->axis.value();
@@ -218,7 +218,7 @@ Expr RewriteAttention(BlockBuilder builder, const Var& var, const Call& src_call
   static const Op& exp_op = Op::Get("relax.exp");
 
   // prepare q,k,v
-  auto permute_attrs = make_object<PermuteDimsAttrs>();
+  auto permute_attrs = ffi::make_object<PermuteDimsAttrs>();
   Array<Integer> axes{Integer(0), Integer(2), Integer(1), Integer(3)};
   permute_attrs->axes = axes;
   const auto& q_trans =
@@ -239,7 +239,7 @@ Expr RewriteAttention(BlockBuilder builder, const Var& var, const Call& src_call
   Array<PrimExpr> v_shape({batch_size * num_head, seq_len_kv, head_dim_v});
   const auto& v_reshape = RewriteUtils::MakeCall(builder, ExprUtils::GetSpanName(call, "v_reshape"),
                                                  reshape_op, {v_trans, ShapeExpr(v_shape)});
-  auto reduce_permute_attrs = make_object<PermuteDimsAttrs>();
+  auto reduce_permute_attrs = ffi::make_object<PermuteDimsAttrs>();
   Array<Integer> v_axes{Integer(0), Integer(2), Integer(1)};
   reduce_permute_attrs->axes = v_axes;
   // transpose for batch_matmul
@@ -248,7 +248,7 @@ Expr RewriteAttention(BlockBuilder builder, const Var& var, const Call& src_call
                              permute_dims_op, {k_reshape}, Attrs(reduce_permute_attrs));
 
   // calculate product
-  auto matmul_attrs = make_object<MatmulAttrs>();
+  auto matmul_attrs = ffi::make_object<MatmulAttrs>();
   matmul_attrs->out_dtype = in_dtype;
   const auto& qk_prod =
       RewriteUtils::MakeCall(builder, ExprUtils::GetSpanName(call, "qk_prod"), matmul_op,
@@ -286,7 +286,7 @@ Expr RewriteAttention(BlockBuilder builder, const Var& var, const Call& src_call
   // causal_mask
   Expr s_value;
   if (!src_attrs->causal_mask.has_value()) {
-    auto softmax_attrs = make_object<SoftmaxAttrs>();
+    auto softmax_attrs = ffi::make_object<SoftmaxAttrs>();
     softmax_attrs->axis = 2;
     s_value = RewriteUtils::MakeCall(builder, ExprUtils::GetSpanName(call, "act"), softmax_op,
                                      {prod}, Attrs(softmax_attrs));
@@ -302,7 +302,7 @@ Expr RewriteAttention(BlockBuilder builder, const Var& var, const Call& src_call
     }
     const auto& p_masked = RewriteUtils::MakeCall(builder, ExprUtils::GetSpanName(call, "p_masked"),
                                                   tril_op, {prod, tril_k});
-    auto reduce_attrs = make_object<StatisticalAttrs>();
+    auto reduce_attrs = ffi::make_object<StatisticalAttrs>();
     Array<Integer> axis{Integer(2)};
     reduce_attrs->axis = axis;
     reduce_attrs->keepdims = true;
@@ -395,7 +395,7 @@ Expr RewriteBroadcastTo(BlockBuilder builder, const Var& var, const Call& src_ca
     int64_t out_dim = Downcast<Integer>(output_shape[i])->value;
     if (in_dim != out_dim) {
       Array<Expr> concat_inputs(out_dim / in_dim, concat_input);
-      auto concat_attrs = make_object<ConcatAttrs>();
+      auto concat_attrs = ffi::make_object<ConcatAttrs>();
       concat_attrs->axis = i;
       concat_input = RewriteUtils::MakeCall(
           builder, ExprUtils::GetSpanName(call, "concat_" + std::to_string(i)), concat_op,
@@ -426,7 +426,7 @@ Expr RewriteConv1d(BlockBuilder builder, const Var& var, const Call& src_call,
                                               {call->args[1], ShapeExpr(exp_weight_shape)}));
     // change to conv2d
     static const Op& conv2d_op = Op::Get("relax.nn.conv2d");
-    auto conv_attrs = make_object<Conv2DAttrs>();
+    auto conv_attrs = ffi::make_object<Conv2DAttrs>();
     conv_attrs->strides = Array<IntImm>{src_attrs->strides[0], Integer(1)};
     conv_attrs->padding =
         Array<IntImm>{Integer(0), src_attrs->padding[0], Integer(0), src_attrs->padding[1]};
@@ -551,7 +551,7 @@ Expr RewriteGroupNorm(BlockBuilder builder, const Var& var, const Call& src_call
                              {call->args[0], ShapeExpr(group_shape)});
 
   // mean(input)
-  auto mean_attrs = make_object<StatisticalAttrs>();
+  auto mean_attrs = ffi::make_object<StatisticalAttrs>();
   mean_attrs->axis = src_attrs->axes;
   mean_attrs->keepdims = true;
   const auto& mean = RewriteUtils::MakeCall(builder, ExprUtils::GetSpanName(call, "mean"), mean_op,
@@ -624,7 +624,7 @@ Expr RewriteLayerNorm(BlockBuilder builder, const Var& var, const Call& src_call
   static const Op& subtract_op = Op::Get("relax.subtract");
 
   // mean(input)
-  auto mean_attrs = make_object<StatisticalAttrs>();
+  auto mean_attrs = ffi::make_object<StatisticalAttrs>();
   mean_attrs->axis = src_attrs->axes;
   mean_attrs->keepdims = true;
   const auto& mean = RewriteUtils::MakeCall(builder, ExprUtils::GetSpanName(call, "mean"), mean_op,
@@ -691,7 +691,7 @@ Expr RewriteMatmul(BlockBuilder builder, const Var& var, const Call& src_call,
                                                 reshape_op, {call->args[0], ShapeExpr(exp_shape)});
     // transpose and expand weight to OIHW
     static const Op& permute_dims_op = Op::Get("relax.permute_dims");
-    auto permute_attrs = make_object<PermuteDimsAttrs>();
+    auto permute_attrs = ffi::make_object<PermuteDimsAttrs>();
     Array<Integer> axes{Integer(1), Integer(0)};
     permute_attrs->axes = axes;
     const auto& trans_weight =
@@ -703,7 +703,7 @@ Expr RewriteMatmul(BlockBuilder builder, const Var& var, const Call& src_call,
                                {trans_weight, ShapeExpr(weight_shape)});
     // to conv2d
     static const Op& conv2d_op = Op::Get("relax.nn.conv2d");
-    auto conv_attrs = make_object<Conv2DAttrs>();
+    auto conv_attrs = ffi::make_object<Conv2DAttrs>();
     conv_attrs->strides = Array<IntImm>{Integer(1), Integer(1)};
     conv_attrs->padding = Array<IntImm>{Integer(0), Integer(0), Integer(0), Integer(0)};
     conv_attrs->dilation = Array<IntImm>{Integer(1), Integer(1)};
@@ -818,7 +818,7 @@ Expr RewriteSplit(BlockBuilder builder, const Var& var, const Call& src_call,
     const auto& begin = Tuple(Array<Expr>{PrimValue(IntImm(DataType::Int(64), split_begins[i]))});
     const auto& end = Tuple(Array<Expr>{PrimValue(IntImm(DataType::Int(64), split_ends[i]))});
     const auto& strides = Tuple(Array<Expr>{PrimValue(IntImm(DataType::Int(64), 1))});
-    auto attrs = make_object<StridedSliceAttrs>();
+    auto attrs = ffi::make_object<StridedSliceAttrs>();
     attrs->assume_inbound = true;
     const auto& slice = RewriteUtils::MakeCall(
         builder, ExprUtils::GetSpanName(call, "slice_" + std::to_string(i)), strided_slice_op,

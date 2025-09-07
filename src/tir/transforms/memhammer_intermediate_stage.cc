@@ -25,7 +25,7 @@ Stmt CopyLoopChain(const std::vector<const ForNode*> loops, const Stmt& inner_bo
                    Stmt* ith_loop = nullptr) {
   Stmt ret = inner_body;
   for (int i = static_cast<int>(loops.size() - 1); i >= 0; i--) {
-    ObjectPtr<ForNode> new_loop = make_object<ForNode>(*loops[i]);
+    ObjectPtr<ForNode> new_loop = ffi::make_object<ForNode>(*loops[i]);
     new_loop->body = ret;
     ret = For(new_loop);
     if (ith == i) {
@@ -384,14 +384,14 @@ std::pair<Stmt, SeqStmt> InsertCacheStage(Stmt stmt, bool is_write_cache, String
 
   for (int i = static_cast<int>(loops_under_compute_location.size()) - 1; i >= 0; i--) {
     const ForNode* orig_loop = loops_under_compute_location[i];
-    ObjectPtr<ForNode> new_loop = make_object<ForNode>(*orig_loop);
+    ObjectPtr<ForNode> new_loop = ffi::make_object<ForNode>(*orig_loop);
     new_loop->loop_var = new_loop_vars[i + relaxed_thread_loops.size()];
     new_loop->body = generate_body;
     generate_body = For(new_loop);
   }
   for (int i = static_cast<int>(relaxed_thread_loops.size()) - 1; i >= 0; i--) {
     const ForNode* orig_loop = relaxed_thread_loops[i];
-    ObjectPtr<ForNode> new_loop = make_object<ForNode>(*orig_loop);
+    ObjectPtr<ForNode> new_loop = ffi::make_object<ForNode>(*orig_loop);
     new_loop->loop_var = new_loop_vars[i];
     new_loop->body = generate_body;
     new_loop->kind = ForKind::kSerial;
@@ -412,7 +412,7 @@ std::pair<Stmt, SeqStmt> InsertCacheStage(Stmt stmt, bool is_write_cache, String
   }
   for (int i = static_cast<int>(loops_under_compute_location.size()) - 1; i >= 0; i--) {
     const ForNode* orig_loop = loops_under_compute_location[i];
-    ObjectPtr<ForNode> new_loop = make_object<ForNode>(*orig_loop);
+    ObjectPtr<ForNode> new_loop = ffi::make_object<ForNode>(*orig_loop);
     new_loop->body = rewrite_body;
     rewrite_body = For(new_loop);
   }

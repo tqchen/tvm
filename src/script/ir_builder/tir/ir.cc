@@ -57,7 +57,7 @@ Buffer BufferDecl(Array<PrimExpr> shape, DataType dtype, String buffer_name, Opt
 }
 
 PrimFuncFrame PrimFunc(bool is_private) {
-  ObjectPtr<PrimFuncFrameNode> n = make_object<PrimFuncFrameNode>();
+  ObjectPtr<PrimFuncFrameNode> n = ffi::make_object<PrimFuncFrameNode>();
   n->name = std::nullopt;
   n->is_private = is_private;
   n->args.clear();
@@ -155,7 +155,7 @@ Buffer MatchBuffer(ObjectRef param, Array<PrimExpr> shape, DataType dtype, Optio
 }
 
 BlockFrame Block(String name, bool no_realize) {
-  ObjectPtr<BlockFrameNode> n = make_object<BlockFrameNode>();
+  ObjectPtr<BlockFrameNode> n = ffi::make_object<BlockFrameNode>();
   n->name = name;
   n->iter_vars.clear();
   n->reads = std::nullopt;
@@ -170,7 +170,7 @@ BlockFrame Block(String name, bool no_realize) {
   return BlockFrame(n);
 }
 
-BlockInitFrame Init() { return BlockInitFrame(make_object<BlockInitFrameNode>()); }
+BlockInitFrame Init() { return BlockInitFrame(ffi::make_object<BlockInitFrameNode>()); }
 
 void Where(PrimExpr predicate) {
   BlockFrame frame = FindBlockFrame("T.where");
@@ -363,7 +363,7 @@ Array<Var> Remap(String kinds, Array<PrimExpr> bindings, DataType dtype) {
   ForFrame Method(PrimExpr start, PrimExpr stop, Optional<Map<String, Any>> annotations) {        \
     PrimExpr min = start;                                                                         \
     PrimExpr extent = arith::Analyzer().Simplify(stop - start);                                   \
-    ObjectPtr<ForFrameNode> n = make_object<ForFrameNode>();                                      \
+    ObjectPtr<ForFrameNode> n = ffi::make_object<ForFrameNode>();                                      \
     int bits = std::max(min.dtype().bits(), extent.dtype().bits());                               \
     n->vars = {Var("v", DataType(min.dtype().code(), bits, 1))};                                  \
     n->doms = {Range::FromMinExtent(min, extent)};                                                \
@@ -388,7 +388,7 @@ ForFrame ThreadBinding(PrimExpr start, PrimExpr stop, String thread,
   using namespace tvm::tir;
   PrimExpr min = start;
   PrimExpr extent = arith::Analyzer().Simplify(stop - start);
-  ObjectPtr<ForFrameNode> n = make_object<ForFrameNode>();
+  ObjectPtr<ForFrameNode> n = ffi::make_object<ForFrameNode>();
   int bits = std::max(min.dtype().bits(), extent.dtype().bits());
   DataType dtype = DataType(min.dtype().code(), bits, 1);
   n->vars = {Var("v", dtype)};
@@ -406,7 +406,7 @@ ForFrame ThreadBinding(PrimExpr start, PrimExpr stop, String thread,
 
 ForFrame Grid(Array<PrimExpr> extents) {
   using namespace tvm::tir;
-  ObjectPtr<ForFrameNode> n = make_object<ForFrameNode>();
+  ObjectPtr<ForFrameNode> n = ffi::make_object<ForFrameNode>();
   n->vars.reserve(extents.size());
   n->doms.reserve(extents.size());
   for (const auto& extent : extents) {
@@ -429,14 +429,14 @@ ForFrame Grid(Array<PrimExpr> extents) {
 }
 
 AssertFrame Assert(PrimExpr condition, String message) {
-  ObjectPtr<AssertFrameNode> n = make_object<AssertFrameNode>();
+  ObjectPtr<AssertFrameNode> n = ffi::make_object<AssertFrameNode>();
   n->condition = condition;
   n->message = tvm::tir::StringImm(message);
   return AssertFrame(n);
 }
 
 LetFrame LetStmt(PrimExpr value, Optional<Type> type_annotation, Optional<Var> var) {
-  ObjectPtr<LetFrameNode> n = make_object<LetFrameNode>();
+  ObjectPtr<LetFrameNode> n = ffi::make_object<LetFrameNode>();
   if (var.defined()) {
     n->var = var.value();
   } else if (type_annotation.defined()) {
@@ -449,7 +449,7 @@ LetFrame LetStmt(PrimExpr value, Optional<Type> type_annotation, Optional<Var> v
 }
 
 LetFrame LegacyLetStmt(Var var, PrimExpr value) {
-  ObjectPtr<LetFrameNode> n = make_object<LetFrameNode>();
+  ObjectPtr<LetFrameNode> n = ffi::make_object<LetFrameNode>();
   n->var = var;
   n->value = value;
   return LetFrame(n);
@@ -468,7 +468,7 @@ LaunchThreadFrame LaunchThread(Var var, PrimExpr extent) {
   } else {
     LOG(FATAL) << "LaunchThread can only be used inside a PrimFunc";
   }
-  ObjectPtr<LaunchThreadFrameNode> n = make_object<LaunchThreadFrameNode>();
+  ObjectPtr<LaunchThreadFrameNode> n = ffi::make_object<LaunchThreadFrameNode>();
   if (!iter_var->dom.defined()) {
     const_cast<tvm::tir::IterVarNode*>(iter_var.get())->dom =
         Range(tvm::tir::make_zero(extent.dtype()), extent);
@@ -488,7 +488,7 @@ LaunchThreadFrame LaunchThread(String thread_tag, PrimExpr extent) {
 
 RealizeFrame Realize(tvm::tir::BufferRegion buffer_slice, String storage_scope,
                      PrimExpr condition) {
-  ObjectPtr<RealizeFrameNode> n = make_object<RealizeFrameNode>();
+  ObjectPtr<RealizeFrameNode> n = ffi::make_object<RealizeFrameNode>();
   n->buffer_slice = buffer_slice;
   n->storage_scope = storage_scope;
   n->condition = condition;
@@ -497,7 +497,7 @@ RealizeFrame Realize(tvm::tir::BufferRegion buffer_slice, String storage_scope,
 
 AllocateFrame Allocate(Array<PrimExpr> extents, DataType dtype, String storage_scope,
                        Optional<PrimExpr> condition, Optional<Map<String, Any>> annotations) {
-  ObjectPtr<AllocateFrameNode> n = make_object<AllocateFrameNode>();
+  ObjectPtr<AllocateFrameNode> n = ffi::make_object<AllocateFrameNode>();
   n->extents = extents;
   n->dtype = dtype;
   n->storage_scope = storage_scope;
@@ -509,7 +509,7 @@ AllocateFrame Allocate(Array<PrimExpr> extents, DataType dtype, String storage_s
 
 AllocateConstFrame AllocateConst(tvm::runtime::Tensor data, DataType dtype, Array<PrimExpr> extents,
                                  Optional<Map<String, Any>> annotations) {
-  ObjectPtr<AllocateConstFrameNode> n = make_object<AllocateConstFrameNode>();
+  ObjectPtr<AllocateConstFrameNode> n = ffi::make_object<AllocateConstFrameNode>();
   n->dtype = dtype;
   n->extents = extents;
   n->data = data;
@@ -523,7 +523,7 @@ AttrFrame Attr(ffi::Any node, String attr_key, PrimExpr value) {
   if (node.type_index() < ffi::TypeIndex::kTVMFFISmallStr) {
     node = node.cast<PrimExpr>();
   }
-  ObjectPtr<AttrFrameNode> n = make_object<AttrFrameNode>();
+  ObjectPtr<AttrFrameNode> n = ffi::make_object<AttrFrameNode>();
   n->node = std::move(node);
   n->attr_key = attr_key;
   n->value = value;
@@ -531,13 +531,13 @@ AttrFrame Attr(ffi::Any node, String attr_key, PrimExpr value) {
 }
 
 WhileFrame While(PrimExpr condition) {
-  ObjectPtr<WhileFrameNode> n = make_object<WhileFrameNode>();
+  ObjectPtr<WhileFrameNode> n = ffi::make_object<WhileFrameNode>();
   n->condition = condition;
   return WhileFrame(n);
 }
 
 IfFrame If(PrimExpr condition) {
-  ObjectPtr<IfFrameNode> n = make_object<IfFrameNode>();
+  ObjectPtr<IfFrameNode> n = ffi::make_object<IfFrameNode>();
   n->condition = condition;
   n->then_stmts = std::nullopt;
   n->else_stmts = std::nullopt;
@@ -545,12 +545,12 @@ IfFrame If(PrimExpr condition) {
 }
 
 ThenFrame Then() {
-  ObjectPtr<ThenFrameNode> n = make_object<ThenFrameNode>();
+  ObjectPtr<ThenFrameNode> n = ffi::make_object<ThenFrameNode>();
   return ThenFrame(n);
 }
 
 ElseFrame Else() {
-  ObjectPtr<ElseFrameNode> n = make_object<ElseFrameNode>();
+  ObjectPtr<ElseFrameNode> n = ffi::make_object<ElseFrameNode>();
   return ElseFrame(n);
 }
 
@@ -636,7 +636,7 @@ DeclBufferFrame DeclBuffer(Array<PrimExpr> shape, DataType dtype, String buffer_
                            Optional<PrimExpr> elem_offset, String storage_scope, int align,
                            int offset_factor, String buffer_type,
                            Optional<Array<IntImm>> axis_separators) {
-  ObjectPtr<DeclBufferFrameNode> n = make_object<DeclBufferFrameNode>();
+  ObjectPtr<DeclBufferFrameNode> n = ffi::make_object<DeclBufferFrameNode>();
   n->buffer = BufferDecl(shape, dtype, buffer_name, data, strides, elem_offset, storage_scope,
                          align, offset_factor, buffer_type, axis_separators);
   n->allocated = data.defined();

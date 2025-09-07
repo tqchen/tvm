@@ -242,7 +242,7 @@ class CUDAGraphExtension : public VMExtension {
  public:
   TVM_DEFINE_MUTABLE_OBJECT_REF_METHODS(CUDAGraphExtension, VMExtension, CUDAGraphExtensionNode);
   static CUDAGraphExtension Create() {
-    auto data_ = make_object<CUDAGraphExtensionNode>();
+    auto data_ = ffi::make_object<CUDAGraphExtensionNode>();
     return CUDAGraphExtension(std::move(data_));
   }
 };

@@ -26,7 +26,7 @@ namespace tir {
 Schedule Schedule::Concrete(IRModule mod, support::LinearCongruentialEngine::TRandState seed,
                             int debug_mask, ScheduleErrorRenderLevel error_render_level,
                             bool enable_check) {
-  ObjectPtr<ConcreteScheduleNode> n = make_object<ConcreteScheduleNode>();
+  ObjectPtr<ConcreteScheduleNode> n = ffi::make_object<ConcreteScheduleNode>();
   n->state_ = ScheduleState(mod, debug_mask, enable_check);
   n->error_render_level_ = error_render_level;
   n->symbol_table_ = {};
@@ -56,7 +56,7 @@ class ScheduleCopier {
                    TSymbolTable* new_symbol_table) {
     const ScheduleState& src_state = self->state_;
     ScheduleCopier copier(src_state);
-    ObjectPtr<ScheduleStateNode> n = make_object<ScheduleStateNode>();
+    ObjectPtr<ScheduleStateNode> n = ffi::make_object<ScheduleStateNode>();
     n->mod = src_state->mod;
     n->block_info = copier.Copy(src_state->block_info);
     n->stmt2ref = copier.Copy(src_state->stmt2ref);
@@ -145,7 +145,7 @@ class ScheduleCopier {
       const StmtSRef& old_sref = kv.first;
       const BlockInfo& old_info = kv.second;
       BlockInfo new_info = old_info;
-      ObjectPtr<BlockScopeNode> scope = make_object<BlockScopeNode>();
+      ObjectPtr<BlockScopeNode> scope = ffi::make_object<BlockScopeNode>();
       scope->src2deps = Copy(old_info.scope->src2deps);
       scope->dst2deps = Copy(old_info.scope->dst2deps);
       scope->buffer_writers = Copy(old_info.scope->buffer_writers);
@@ -194,7 +194,7 @@ void ConcreteScheduleNode::Copy(ScheduleState* new_state, TSymbolTable* new_symb
 }
 
 Schedule ConcreteScheduleNode::Copy() {
-  ObjectPtr<ConcreteScheduleNode> n = make_object<ConcreteScheduleNode>();
+  ObjectPtr<ConcreteScheduleNode> n = ffi::make_object<ConcreteScheduleNode>();
   n->func_working_on_ = this->func_working_on_;
   n->error_render_level_ = this->error_render_level_;
   ConcreteScheduleNode::Copy(&n->state_, &n->symbol_table_);

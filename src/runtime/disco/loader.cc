@@ -181,7 +181,7 @@ ObjectRef ShardLoaderObj::Create(const std::string& path_to_metadata, const std:
       shard_info = (*get_shard_info)().cast<String>();
     }
   }
-  ObjectPtr<ShardLoaderObj> n = make_object<ShardLoaderObj>();
+  ObjectPtr<ShardLoaderObj> n = ffi::make_object<ShardLoaderObj>();
   n->metadata_ = TensorCacheMetadata::LoadFromStr(metadata, path_to_metadata);
   n->current_file_ = nullptr;
   n->param_info_.clear();

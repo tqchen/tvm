@@ -186,7 +186,7 @@ Optional<ffi::Function> CoreMLRuntime::GetFunction(const String& name) {
 }
 
 ffi::Module CoreMLRuntimeCreate(const std::string& symbol, const std::string& model_path) {
-  auto exec = make_object<CoreMLRuntime>();
+  auto exec = ffi::make_object<CoreMLRuntime>();
   exec->Init(symbol, model_path);
   return ffi::Module(exec);
 }
@@ -250,7 +250,7 @@ ffi::Module CoreMLRuntimeLoadFromBytes(const ffi::Bytes& bytes) {
   BOOL res = [dirWrapper writeToURL:url options:0 originalContentsURL:nil error:nil];
   ICHECK(res) << "Failed to create model directory " << [model_path UTF8String];
 
-  auto exec = make_object<CoreMLRuntime>();
+  auto exec = ffi::make_object<CoreMLRuntime>();
   exec->Init(symbol, [model_path UTF8String]);
   return ffi::Module(exec);
 }

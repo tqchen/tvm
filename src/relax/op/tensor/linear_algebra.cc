@@ -42,7 +42,7 @@ TVM_FFI_STATIC_INIT_BLOCK({
 /* relax.matmul */
 
 Expr matmul(Expr x1, Expr x2, Optional<DataType> out_dtype) {
-  ObjectPtr<MatmulAttrs> attrs = make_object<MatmulAttrs>();
+  ObjectPtr<MatmulAttrs> attrs = ffi::make_object<MatmulAttrs>();
   attrs->out_dtype = out_dtype.value_or(DataType::Void());
 
   static const Op& op = Op::Get("relax.matmul");
@@ -176,7 +176,7 @@ TVM_REGISTER_OP("relax.matmul")
 /* relax.einsum */
 
 Expr einsum(Expr operands, String subscripts) {
-  ObjectPtr<EinsumAttrs> attrs = make_object<EinsumAttrs>();
+  ObjectPtr<EinsumAttrs> attrs = ffi::make_object<EinsumAttrs>();
   attrs->subscripts = std::move(subscripts);
 
   static const Op& op = Op::Get("relax.einsum");

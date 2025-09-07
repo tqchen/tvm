@@ -348,7 +348,7 @@ Array<Block> MakeIndexCacheStage(IndexInfo* info, const String& storage_scope) {
  */
 Stmt InsertIndexStage(const Stmt& stmt, int pos, const Stmt& stage) {
   if (const auto* seq_stmt = stmt.as<SeqStmtNode>()) {
-    ObjectPtr<SeqStmtNode> result = make_object<SeqStmtNode>(*seq_stmt);
+    ObjectPtr<SeqStmtNode> result = ffi::make_object<SeqStmtNode>(*seq_stmt);
     result->seq.insert(result->seq.begin() + pos, stage);
     return SeqStmt(result);
   }
@@ -395,7 +395,7 @@ class CacheIndexRewriter : public StmtExprMutator {
     // Check if it is the block corresponding to the parent scope
     if (block == scope_sref_->stmt) {
       // If so, put buffer allocation and insert cache stages on the parent scope
-      ObjectPtr<BlockNode> n = make_object<BlockNode>(*stmt.as<BlockNode>());
+      ObjectPtr<BlockNode> n = ffi::make_object<BlockNode>(*stmt.as<BlockNode>());
       n->body = InsertIndexStage(n->body, info_->loc_pos, info_->cache_stage);
       for (const Buffer& it : info_->cache_buffer) {
         n->alloc_buffers.push_back(it);

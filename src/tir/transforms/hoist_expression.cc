@@ -89,7 +89,7 @@ struct HoistExpressionConfigNode : public AttrsNodeReflAdapter<HoistExpressionCo
 class HoistExpressionConfig : public Attrs {
  public:
   HoistExpressionConfig(int hoisted_conditionals, int hoisted_let_bindings) {
-    auto node = make_object<HoistExpressionConfigNode>();
+    auto node = ffi::make_object<HoistExpressionConfigNode>();
     node->hoisted_conditionals = hoisted_conditionals;
     node->hoisted_let_bindings = hoisted_let_bindings;
     data_ = std::move(node);

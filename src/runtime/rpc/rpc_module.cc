@@ -303,7 +303,7 @@ void RPCWrappedFunc::WrapRemoteReturnToValue(ffi::PackedArgs args, ffi::Any* rv)
   } else if (type_index == ffi::TypeIndex::kTVMFFIModule) {
     ICHECK_EQ(args.size(), 2);
     void* handle = args[1].cast<void*>();
-    auto n = make_object<RPCModuleNode>(handle, sess_);
+    auto n = ffi::make_object<RPCModuleNode>(handle, sess_);
     *rv = ffi::Module(n);
   } else if (type_index == ffi::TypeIndex::kTVMFFITensor ||
              type_index == ffi::TypeIndex::kTVMFFIDLTensorPtr) {
@@ -322,7 +322,7 @@ void RPCWrappedFunc::WrapRemoteReturnToValue(ffi::PackedArgs args, ffi::Any* rv)
   } else if (type_index >= ffi::TypeIndex::kTVMFFIStaticObjectBegin) {
     ICHECK_EQ(args.size(), 2);
     void* handle = args[1].cast<void*>();
-    auto n = make_object<RPCObjectRefObj>(handle, sess_);
+    auto n = ffi::make_object<RPCObjectRefObj>(handle, sess_);
     *rv = ObjectRef(n);
   } else {
     ICHECK_EQ(args.size(), 2);
@@ -331,7 +331,7 @@ void RPCWrappedFunc::WrapRemoteReturnToValue(ffi::PackedArgs args, ffi::Any* rv)
 }
 
 ffi::Module CreateRPCSessionModule(std::shared_ptr<RPCSession> sess) {
-  auto n = make_object<RPCModuleNode>(nullptr, sess);
+  auto n = ffi::make_object<RPCModuleNode>(nullptr, sess);
   RPCSession::InsertToSessionTable(sess);
   return ffi::Module(n);
 }

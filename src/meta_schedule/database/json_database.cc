@@ -159,7 +159,7 @@ class JSONDatabaseNode : public DatabaseNode {
 Database Database::JSONDatabase(String path_workload, String path_tuning_record, bool allow_missing,
                                 String mod_eq_name) {
   int num_threads = std::thread::hardware_concurrency();
-  ObjectPtr<JSONDatabaseNode> n = make_object<JSONDatabaseNode>(mod_eq_name);
+  ObjectPtr<JSONDatabaseNode> n = ffi::make_object<JSONDatabaseNode>(mod_eq_name);
   // Load `n->workloads2idx_` from `path_workload`
   std::vector<Workload> workloads;
   {
@@ -173,7 +173,7 @@ Database Database::JSONDatabase(String path_workload, String path_tuning_record,
       // Todo(tvm-team): re-enable the shash check when we get environment
       // independent structural hash values.
       if (recalc_hash != workload->shash) {
-        ObjectPtr<WorkloadNode> wkl = make_object<WorkloadNode>(*workload.get());
+        ObjectPtr<WorkloadNode> wkl = ffi::make_object<WorkloadNode>(*workload.get());
         wkl->shash = recalc_hash;
         workload = Workload(wkl);
       }

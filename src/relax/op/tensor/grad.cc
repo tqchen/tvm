@@ -105,7 +105,7 @@ TVM_REGISTER_OP("relax.grad.end_checkpoint")
 /* relax.grad.nll_loss_backward */
 Expr nll_loss_backward(Expr output_grad, Expr predictions, Expr targets, Optional<Expr> weights,
                        String reduction, int ignore_index) {
-  ObjectPtr<NLLLossAttrs> attrs = make_object<NLLLossAttrs>();
+  ObjectPtr<NLLLossAttrs> attrs = ffi::make_object<NLLLossAttrs>();
 
   attrs->reduction = reduction;
   attrs->ignore_index = ignore_index;
@@ -145,7 +145,7 @@ Expr max_pool2d_backward(Expr output_grad, Expr data, Array<IntImm> pool_size,
                          Array<IntImm> strides, Array<IntImm> padding, Array<IntImm> dilation,
                          bool ceil_mode, bool count_include_pad, String layout,
                          Optional<String> out_layout) {
-  auto attrs = make_object<Pool2DAttrs>();
+  auto attrs = ffi::make_object<Pool2DAttrs>();
   attrs->pool_size = std::move(pool_size);
   attrs->strides = ConvertIntImmToInt64(strides);
   attrs->padding = ConvertIntImmToInt64(padding);
@@ -180,7 +180,7 @@ Expr avg_pool2d_backward(Expr output_grad, Expr data, Array<IntImm> pool_size,
                          Array<IntImm> strides, Array<IntImm> padding, Array<IntImm> dilation,
                          bool ceil_mode, bool count_include_pad, String layout,
                          Optional<String> out_layout) {
-  auto attrs = make_object<Pool2DAttrs>();
+  auto attrs = ffi::make_object<Pool2DAttrs>();
   attrs->pool_size = std::move(pool_size);
   attrs->strides = ConvertIntImmToInt64(strides);
   attrs->padding = ConvertIntImmToInt64(padding);
@@ -213,7 +213,7 @@ TVM_REGISTER_OP("relax.grad.avg_pool2d_backward")
 /* relax.grad.take_backward */
 
 Expr take_backward(Expr output_grad, Expr x, Expr indices, Optional<int64_t> axis) {
-  ObjectPtr<TakeAttrs> attrs = make_object<TakeAttrs>();
+  ObjectPtr<TakeAttrs> attrs = ffi::make_object<TakeAttrs>();
   attrs->axis = std::move(axis);
 
   static const Op& op = Op::Get("relax.grad.take_backward");

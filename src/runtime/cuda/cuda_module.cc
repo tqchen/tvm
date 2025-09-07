@@ -278,7 +278,7 @@ Optional<ffi::Function> CUDAModuleNode::GetFunction(const String& name) {
 ffi::Module CUDAModuleCreate(std::string data, std::string fmt,
                              std::unordered_map<std::string, FunctionInfo> fmap,
                              std::string cuda_source) {
-  auto n = make_object<CUDAModuleNode>(data, fmt, fmap, cuda_source);
+  auto n = ffi::make_object<CUDAModuleNode>(data, fmt, fmap, cuda_source);
   return ffi::Module(n);
 }
 

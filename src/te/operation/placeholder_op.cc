@@ -51,7 +51,7 @@ Array<PrimExpr> PlaceholderOpNode::output_shape(size_t i) const {
 }
 
 PlaceholderOp::PlaceholderOp(std::string name, Array<PrimExpr> shape, DataType dtype) {
-  auto n = make_object<PlaceholderOpNode>();
+  auto n = ffi::make_object<PlaceholderOpNode>();
   n->name = name;
   n->shape = shape;
   n->dtype = dtype;

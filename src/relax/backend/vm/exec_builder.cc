@@ -33,8 +33,8 @@ using namespace vm;
 TVM_FFI_STATIC_INIT_BLOCK({ ExecBuilderNode::RegisterReflection(); });
 
 ExecBuilder ExecBuilderNode::Create() {
-  ExecBuilder ret(make_object<ExecBuilderNode>());
-  ret->exec_ = make_object<VMExecutable>();
+  ExecBuilder ret(ffi::make_object<ExecBuilderNode>());
+  ret->exec_ = ffi::make_object<VMExecutable>();
   return ret;
 }
 

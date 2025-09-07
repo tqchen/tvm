@@ -51,7 +51,7 @@ const Op& Op::Get(const String& name) {
 }
 
 OpRegEntry::OpRegEntry(uint32_t reg_index) {
-  ObjectPtr<OpNode> n = make_object<OpNode>();
+  ObjectPtr<OpNode> n = ffi::make_object<OpNode>();
   n->index_ = reg_index;
   op_ = Op(n);
 }

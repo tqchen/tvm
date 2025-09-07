@@ -410,7 +410,7 @@ inline TAttrs AttrsWithDefaultValues() {
     finit_object.CallPacked(ffi::PackedArgs(packed_args, 1), &rv);
     return rv.cast<TAttrs>();
   } else {
-    auto n = make_object<ContainerType>();
+    auto n = ffi::make_object<ContainerType>();
     n->InitByPackedArgs(ffi::PackedArgs(nullptr, 0), false);
     return TAttrs(n);
   }

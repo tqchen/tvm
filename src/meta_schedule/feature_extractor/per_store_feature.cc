@@ -1430,7 +1430,7 @@ class PerStoreFeatureNode : public FeatureExtractorNode {
 FeatureExtractor FeatureExtractor::PerStoreFeature(int buffers_per_store,
                                                    int arith_intensity_curve_num_samples,
                                                    int cache_line_bytes, bool extract_workload) {
-  ObjectPtr<PerStoreFeatureNode> n = make_object<PerStoreFeatureNode>();
+  ObjectPtr<PerStoreFeatureNode> n = ffi::make_object<PerStoreFeatureNode>();
   n->buffers_per_store = buffers_per_store;
   n->arith_intensity_curve_num_samples = arith_intensity_curve_num_samples;
   n->cache_line_bytes = cache_line_bytes;

@@ -667,7 +667,7 @@ class BufferCompactor : public StmtExprMutator {
     result.reserve(match_buffers->size());
     for (const auto& match_buffer : *match_buffers) {
       const BufferRegion& buffer_region = match_buffer->source;
-      auto p = make_object<BufferRegionNode>(*buffer_region.get());
+      auto p = ffi::make_object<BufferRegionNode>(*buffer_region.get());
       RewriteBufferRegion(&p->buffer, &p->region);
       result.push_back(MatchBufferRegion(match_buffer->buffer, BufferRegion(p)));
     }
@@ -727,7 +727,7 @@ Stmt BufferCompactorCompact(
     // prepare new buffer
     Array<PrimExpr> shape = region.Map([](const Range& range) { return range->extent; });
     Array<PrimExpr> strides = CalcStrides(alloc_info, shape);
-    ObjectPtr<BufferNode> n = make_object<BufferNode>(*buffer.get());
+    ObjectPtr<BufferNode> n = ffi::make_object<BufferNode>(*buffer.get());
     n->shape = std::move(shape);
     n->strides = std::move(strides);
     alloc_info.new_buffer = Buffer(std::move(n));

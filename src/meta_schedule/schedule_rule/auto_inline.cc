@@ -64,7 +64,7 @@ class AutoInlineNode : public ScheduleRuleNode {
 
   // Inherited from ScheduleRuleNode
   ScheduleRule Clone() const final {
-    ObjectPtr<AutoInlineNode> n = make_object<AutoInlineNode>(*this);
+    ObjectPtr<AutoInlineNode> n = ffi::make_object<AutoInlineNode>(*this);
     return ScheduleRule(n);
   }
 
@@ -176,7 +176,7 @@ ScheduleRule ScheduleRule::AutoInline(bool into_producer,          //
                                       bool require_injective,      //
                                       bool require_ordered,        //
                                       Optional<Array<String>> disallow_op) {
-  ObjectPtr<AutoInlineNode> n = make_object<AutoInlineNode>();
+  ObjectPtr<AutoInlineNode> n = ffi::make_object<AutoInlineNode>();
   n->into_producer = into_producer;
   n->into_consumer = into_consumer;
   n->inline_const_tensor = inline_const_tensor;
@@ -225,7 +225,7 @@ class InlineConstantScalarsNode : public ScheduleRuleNode {
   }
 
   ScheduleRule Clone() const final {
-    ObjectPtr<InlineConstantScalarsNode> n = make_object<InlineConstantScalarsNode>(*this);
+    ObjectPtr<InlineConstantScalarsNode> n = ffi::make_object<InlineConstantScalarsNode>(*this);
     return ScheduleRule(n);
   }
 
@@ -239,7 +239,7 @@ class InlineConstantScalarsNode : public ScheduleRuleNode {
 };
 
 ScheduleRule ScheduleRule::InlineConstantScalars() {
-  ObjectPtr<InlineConstantScalarsNode> n = make_object<InlineConstantScalarsNode>();
+  ObjectPtr<InlineConstantScalarsNode> n = ffi::make_object<InlineConstantScalarsNode>();
   return ScheduleRule(n);
 }
 

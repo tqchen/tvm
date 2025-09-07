@@ -127,7 +127,7 @@ BasePassInstrument::BasePassInstrument(
     ffi::TypedFunction<bool(const IRModule&, const transform::PassInfo&)> should_run_callback,
     ffi::TypedFunction<void(const IRModule&, const transform::PassInfo&)> run_before_pass_callback,
     ffi::TypedFunction<void(const IRModule&, const transform::PassInfo&)> run_after_pass_callback) {
-  auto pi = make_object<BasePassInstrumentNode>();
+  auto pi = ffi::make_object<BasePassInstrumentNode>();
   pi->name = std::move(name);
 
   pi->enter_pass_ctx_callback = std::move(enter_pass_ctx_callback);

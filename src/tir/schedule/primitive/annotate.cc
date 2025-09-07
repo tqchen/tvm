@@ -40,11 +40,11 @@ void Annotate(ScheduleState self, const StmtSRef& sref, const String& ann_key, c
   new_ann.Set(ann_key, ann_val);
   // Create the new stmt
   if (const auto* loop = sref->StmtAs<ForNode>()) {
-    ObjectPtr<ForNode> n = make_object<ForNode>(*loop);
+    ObjectPtr<ForNode> n = ffi::make_object<ForNode>(*loop);
     n->annotations = std::move(new_ann);
     self->Replace(sref, For(n), {});
   } else if (const auto* block = sref->StmtAs<BlockNode>()) {
-    ObjectPtr<BlockNode> n = make_object<BlockNode>(*block);
+    ObjectPtr<BlockNode> n = ffi::make_object<BlockNode>(*block);
     n->annotations = std::move(new_ann);
     Block p(n);
     self->Replace(sref, p, {{GetRef<Block>(block), p}});
@@ -71,11 +71,11 @@ void Unannotate(ScheduleState self, const StmtSRef& sref, const String& ann_key)
   new_ann.erase(ann_key);
   // Create the new stmt
   if (const auto* loop = sref->StmtAs<ForNode>()) {
-    ObjectPtr<ForNode> n = make_object<ForNode>(*loop);
+    ObjectPtr<ForNode> n = ffi::make_object<ForNode>(*loop);
     n->annotations = std::move(new_ann);
     self->Replace(sref, For(n), {});
   } else if (const auto* block = sref->StmtAs<BlockNode>()) {
-    ObjectPtr<BlockNode> n = make_object<BlockNode>(*block);
+    ObjectPtr<BlockNode> n = ffi::make_object<BlockNode>(*block);
     n->annotations = std::move(new_ann);
     Block p(n);
     self->Replace(sref, p, {{GetRef<Block>(block), p}});

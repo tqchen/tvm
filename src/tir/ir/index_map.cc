@@ -39,7 +39,7 @@ TVM_FFI_STATIC_INIT_BLOCK({ IndexMapNode::RegisterReflection(); });
 
 IndexMap::IndexMap(Array<Var> initial_indices, Array<PrimExpr> final_indices,
                    Optional<IndexMap> inverse_index_map) {
-  auto n = make_object<IndexMapNode>();
+  auto n = ffi::make_object<IndexMapNode>();
   n->initial_indices = std::move(initial_indices);
   n->final_indices = std::move(final_indices);
   n->inverse_index_map = std::move(inverse_index_map);

@@ -326,7 +326,7 @@ Stmt GenerateOuterInit(const Stmt& block_init, const BlockRealize& inner_realize
     const PrimExpr& iter_value = inner_realize->iter_values[i];
     if (old_iter_var->iter_type == IterVarType::kDataPar &&
         UsesVar(block_init, old_iter_var->var)) {
-      ObjectPtr<IterVarNode> new_iter_var = make_object<IterVarNode>(*old_iter_var.get());
+      ObjectPtr<IterVarNode> new_iter_var = ffi::make_object<IterVarNode>(*old_iter_var.get());
       new_iter_var->var = new_iter_var->var.copy_with_suffix("_init");
       subst_map.Set(old_iter_var->var, new_iter_var->var);
       iter_vars.push_back(IterVar(new_iter_var));
@@ -354,7 +354,7 @@ Stmt GenerateOuterInit(const Stmt& block_init, const BlockRealize& inner_realize
       }
     }
     if (is_init_loop) {
-      ObjectPtr<ForNode> new_loop = make_object<ForNode>(*loop);
+      ObjectPtr<ForNode> new_loop = ffi::make_object<ForNode>(*loop);
       new_loop->loop_var = loop->loop_var.copy_with_suffix("");
       new_loop->body = std::move(stmt);
       subst_map.Set(loop->loop_var, new_loop->loop_var);
@@ -475,7 +475,7 @@ Array<BufferRegion> UnionRegions(const Array<BufferRegion>& regions) {
  */
 Stmt MakeLoopNest(Stmt stmt, const std::vector<const ForNode*>& loops) {
   for (const ForNode* loop : loops) {
-    ObjectPtr<ForNode> new_loop = make_object<ForNode>(*loop);
+    ObjectPtr<ForNode> new_loop = ffi::make_object<ForNode>(*loop);
     new_loop->body = std::move(stmt);
     stmt = For(new_loop);
   }
@@ -637,7 +637,7 @@ BlockRealize BlockizeBlocks(const ScheduleState& self, const Array<StmtSRef>& bl
     block_sref_reuse->Set(block, inner_realize->block);
     Stmt stmt = inner_realize;
     for (const ForNode* loop : loops) {
-      ObjectPtr<ForNode> new_loop = make_object<ForNode>(*loop);
+      ObjectPtr<ForNode> new_loop = ffi::make_object<ForNode>(*loop);
       new_loop->body = std::move(stmt);
       new_loop->extent = Substitute(new_loop->extent, loop_var_subst);
       stmt = For(new_loop);

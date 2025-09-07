@@ -261,7 +261,7 @@ class RewriteLayoutNode : public PostprocNode {
   }
 
   Postproc Clone() const {
-    ObjectPtr<RewriteLayoutNode> n = make_object<RewriteLayoutNode>(*this);
+    ObjectPtr<RewriteLayoutNode> n = ffi::make_object<RewriteLayoutNode>(*this);
     return Postproc(n);
   }
 
@@ -270,7 +270,7 @@ class RewriteLayoutNode : public PostprocNode {
 };
 
 Postproc Postproc::RewriteLayout() {
-  auto n = make_object<RewriteLayoutNode>();
+  auto n = ffi::make_object<RewriteLayoutNode>();
   return Postproc(n);
 }
 

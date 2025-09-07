@@ -132,7 +132,7 @@ cl_kernel OpenCLSPIRVModuleNode::InstallKernel(cl::OpenCLWorkspace* w, cl::OpenC
 ffi::Module OpenCLModuleCreate(const std::unordered_map<std::string, SPIRVShader>& shaders,
                                const std::string& spirv_text,
                                std::unordered_map<std::string, FunctionInfo> fmap) {
-  auto n = make_object<OpenCLSPIRVModuleNode>(shaders, spirv_text, fmap);
+  auto n = ffi::make_object<OpenCLSPIRVModuleNode>(shaders, spirv_text, fmap);
   n->Init();
   return ffi::Module(n);
 }

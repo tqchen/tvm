@@ -532,7 +532,7 @@ class ToMixedPrecisionRewriter : public ExprMutator {
       ExprMutator::VisitBinding_(binding, tuple_node);
       return;
     }
-    ObjectPtr<TupleNode> new_tuple = make_object<TupleNode>(*tuple_node);
+    ObjectPtr<TupleNode> new_tuple = ffi::make_object<TupleNode>(*tuple_node);
     new_tuple->fields = RemapArgs(tuple_node->fields);
     new_tuple->struct_info_ = std::nullopt;
     Expr new_value = builder_->Normalize(Tuple(new_tuple));
@@ -552,7 +552,7 @@ class ToMixedPrecisionRewriter : public ExprMutator {
       return;
     }
     ObjectPtr<TupleGetItemNode> new_tuple_get_item =
-        make_object<TupleGetItemNode>(*tuple_get_item_node);
+        ffi::make_object<TupleGetItemNode>(*tuple_get_item_node);
     new_tuple_get_item->tuple = RemapArgs({tuple_get_item_node->tuple})[0];
     new_tuple_get_item->struct_info_ = std::nullopt;
     Expr new_value = TupleGetItem(new_tuple_get_item);

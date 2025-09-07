@@ -114,7 +114,7 @@ Array<ArgInfo> ArgInfo::FromEntryFunc(const IRModule& mod, bool remove_preproc) 
 /******** TensorInfo ********/
 
 TensorInfo::TensorInfo(runtime::DataType dtype, ffi::Shape shape) {
-  ObjectPtr<TensorInfoNode> n = make_object<TensorInfoNode>();
+  ObjectPtr<TensorInfoNode> n = ffi::make_object<TensorInfoNode>();
   n->dtype = dtype;
   n->shape = shape;
   this->data_ = std::move(n);

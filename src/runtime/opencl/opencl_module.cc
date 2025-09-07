@@ -367,7 +367,7 @@ Optional<ffi::Function> OpenCLModuleNode::GetFunction(const String& name) {
 ffi::Module OpenCLModuleCreate(std::string data, std::string fmt,
                                std::unordered_map<std::string, FunctionInfo> fmap,
                                std::string source) {
-  auto n = make_object<OpenCLModuleNode>(data, fmt, fmap, source);
+  auto n = ffi::make_object<OpenCLModuleNode>(data, fmt, fmap, source);
   n->Init();
   return ffi::Module(n);
 }

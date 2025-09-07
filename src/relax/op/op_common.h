@@ -208,7 +208,7 @@ inline StructInfo InferStructInfoUnary(const Call& call, const BlockBuilder& ctx
         << " requires the input tensor to have float dtype. However, the given input dtype is "
         << input_sinfo->dtype);
   }
-  auto output_sinfo = make_object<TensorStructInfoNode>(*input_sinfo.get());
+  auto output_sinfo = ffi::make_object<TensorStructInfoNode>(*input_sinfo.get());
   output_sinfo->dtype = f_compute_out_dtype(input_sinfo);
   return TensorStructInfo(output_sinfo);
 }

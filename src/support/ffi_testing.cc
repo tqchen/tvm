@@ -157,7 +157,7 @@ ffi::Optional<ffi::Function> FrontendTestModuleNode::GetFunction(const String& n
 }
 
 ffi::Module NewFrontendTestModule() {
-  auto n = make_object<FrontendTestModuleNode>();
+  auto n = ffi::make_object<FrontendTestModuleNode>();
   return ffi::Module(n);
 }
 

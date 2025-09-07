@@ -84,7 +84,7 @@ class ParallelizeVectorizeUnrollNode : public ScheduleRuleNode {
   // Inherited from ScheduleRuleNode
   ScheduleRule Clone() const final {
     ObjectPtr<ParallelizeVectorizeUnrollNode> n =
-        make_object<ParallelizeVectorizeUnrollNode>(*this);
+        ffi::make_object<ParallelizeVectorizeUnrollNode>(*this);
     return ScheduleRule(n);
   }
 
@@ -127,7 +127,7 @@ ScheduleRule ScheduleRule::ParallelizeVectorizeUnroll(int max_jobs_per_core,
                                                       int max_vectorize_extent,
                                                       Array<Integer> unroll_max_steps,
                                                       bool unroll_explicit) {
-  ObjectPtr<ParallelizeVectorizeUnrollNode> n = make_object<ParallelizeVectorizeUnrollNode>();
+  ObjectPtr<ParallelizeVectorizeUnrollNode> n = ffi::make_object<ParallelizeVectorizeUnrollNode>();
   n->max_jobs_per_core = max_jobs_per_core;
   n->max_vectorize_extent = max_vectorize_extent;
   n->unroll_max_steps = unroll_max_steps;

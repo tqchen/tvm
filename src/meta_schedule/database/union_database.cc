@@ -81,7 +81,7 @@ class UnionDatabaseNode : public DatabaseNode {
 };
 
 Database Database::UnionDatabase(Array<Database> databases) {
-  ObjectPtr<UnionDatabaseNode> n = make_object<UnionDatabaseNode>();
+  ObjectPtr<UnionDatabaseNode> n = ffi::make_object<UnionDatabaseNode>();
   n->databases = std::move(databases);
   return Database(n);
 }

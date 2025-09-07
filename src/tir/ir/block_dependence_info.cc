@@ -70,10 +70,10 @@ class BlockDependenceInfoCollector : private StmtVisitor {
   std::vector<Array<StmtSRef>> block_frames_;
 };
 
-BlockDependenceInfo::BlockDependenceInfo() { data_ = make_object<BlockDependenceInfoNode>(); }
+BlockDependenceInfo::BlockDependenceInfo() { data_ = ffi::make_object<BlockDependenceInfoNode>(); }
 
 BlockDependenceInfo::BlockDependenceInfo(IRModule mod) {
-  ObjectPtr<BlockDependenceInfoNode> n = make_object<BlockDependenceInfoNode>();
+  ObjectPtr<BlockDependenceInfoNode> n = ffi::make_object<BlockDependenceInfoNode>();
   BlockDependenceInfoNode* self = n.get();
   n->stmt2ref = SRefTreeCreator::Create(mod, /* include_loops */ false);
 

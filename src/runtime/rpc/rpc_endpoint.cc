@@ -261,7 +261,7 @@ class RPCEndpoint::EventHandler : public dmlc::Stream {
       // Always wrap things back in RPCObjectRef
       // this is because we want to enable multi-hop RPC
       // and next hop would also need to check the object index
-      RPCObjectRef rpc_obj(make_object<RPCObjectRefObj>(reinterpret_cast<void*>(handle), nullptr));
+      RPCObjectRef rpc_obj(ffi::make_object<RPCObjectRefObj>(reinterpret_cast<void*>(handle), nullptr));
       // Legacy ABI translation
       // TODO(tqchen): remove this once we have upgraded to new ABI
       *reinterpret_cast<AnyView*>(out) = rpc_obj;

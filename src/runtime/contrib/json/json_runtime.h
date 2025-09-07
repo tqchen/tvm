@@ -184,7 +184,7 @@ class JSONRuntimeBase : public ffi::ModuleObj {
     for (const auto& it : consts) {
       const_names.push_back(it);
     }
-    auto n = make_object<T>(symbol, graph_json, const_names);
+    auto n = ffi::make_object<T>(symbol, graph_json, const_names);
     return ffi::Module(n);
   }
 

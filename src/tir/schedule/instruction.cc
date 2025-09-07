@@ -35,7 +35,7 @@ bool InstructionKindNode::IsPostproc() const {
 
 Instruction::Instruction(InstructionKind kind, Array<Any> inputs, Array<Any> attrs,
                          Array<Any> outputs) {
-  ObjectPtr<InstructionNode> n = make_object<InstructionNode>();
+  ObjectPtr<InstructionNode> n = ffi::make_object<InstructionNode>();
   n->kind = std::move(kind);
   n->inputs = std::move(inputs);
   n->attrs = std::move(attrs);
@@ -52,7 +52,7 @@ InstructionKind InstructionKind::Get(const String& name) {
 }
 
 InstructionKindRegEntry::InstructionKindRegEntry(uint32_t reg_index) {
-  this->inst_kind_ = InstructionKind(make_object<InstructionKindNode>());
+  this->inst_kind_ = InstructionKind(ffi::make_object<InstructionKindNode>());
 }
 
 InstructionKindRegEntry& InstructionKindRegEntry::RegisterOrGet(const String& name) {
@@ -81,7 +81,7 @@ TVM_STATIC_IR_FUNCTOR(ReprPrinter, vtable)
         } else if (const auto* expr = obj.as<PrimExprNode>()) {
           PrimExpr new_expr =
               Substitute(GetRef<PrimExpr>(expr), [](const Var& var) -> Optional<PrimExpr> {
-                ObjectPtr<VarNode> new_var = make_object<VarNode>(*var.get());
+                ObjectPtr<VarNode> new_var = ffi::make_object<VarNode>(*var.get());
                 new_var->name_hint = "_";
                 return Var(new_var);
               });

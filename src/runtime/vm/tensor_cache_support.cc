@@ -345,13 +345,13 @@ class ParamModuleNode : public ffi::ModuleObj {
   }
 
   static ffi::Module Create(const std::string& prefix, int num_params) {
-    auto n = make_object<ParamModuleNode>();
+    auto n = ffi::make_object<ParamModuleNode>();
     n->params_ = GetParams(prefix, num_params);
     return ffi::Module(n);
   }
 
   static ffi::Module CreateByName(const Array<String>& names) {
-    auto n = make_object<ParamModuleNode>();
+    auto n = ffi::make_object<ParamModuleNode>();
     n->params_ = GetParamByName(names);
     return ffi::Module(n);
   }

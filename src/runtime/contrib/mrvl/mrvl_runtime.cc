@@ -111,7 +111,7 @@ class MarvellSimulatorModuleNode : public ffi::ModuleObj {
     ICHECK(stream->Read(&nodes_json))
         << "Marvell-Compiler-ERROR-Internal::Loading nodes json failed";
     ICHECK(stream->Read(&bin_code)) << "Marvell-Compiler-ERROR-Internal::Loading bin code failed";
-    auto n = make_object<MarvellSimulatorModuleNode>(symbol_name, nodes_json, bin_code);
+    auto n = ffi::make_object<MarvellSimulatorModuleNode>(symbol_name, nodes_json, bin_code);
     return ffi::Module(n);
   }
 
@@ -151,7 +151,7 @@ class MarvellSimulatorModuleNode : public ffi::ModuleObj {
 
 ffi::Module MarvellSimulatorModuleRuntimeCreate(const String& symbol_name, const String& nodes_json,
                                                 const String& bin_code) {
-  auto n = make_object<MarvellSimulatorModuleNode>(symbol_name, nodes_json, bin_code);
+  auto n = ffi::make_object<MarvellSimulatorModuleNode>(symbol_name, nodes_json, bin_code);
   return ffi::Module(n);
 }
 

@@ -169,7 +169,7 @@ class DisallowAsyncStridedMemCopyNode : public PostprocNode {
   // Inherited from PostprocNode
   Postproc Clone() const {
     ObjectPtr<DisallowAsyncStridedMemCopyNode> n =
-        make_object<DisallowAsyncStridedMemCopyNode>(*this);
+        ffi::make_object<DisallowAsyncStridedMemCopyNode>(*this);
     return Postproc(n);
   }
 
@@ -181,7 +181,7 @@ class DisallowAsyncStridedMemCopyNode : public PostprocNode {
 };
 
 Postproc Postproc::DisallowAsyncStridedMemCopy() {
-  ObjectPtr<DisallowAsyncStridedMemCopyNode> n = make_object<DisallowAsyncStridedMemCopyNode>();
+  ObjectPtr<DisallowAsyncStridedMemCopyNode> n = ffi::make_object<DisallowAsyncStridedMemCopyNode>();
   return Postproc(n);
 }
 

@@ -24,7 +24,7 @@ namespace tir {
 Schedule Schedule::Traced(IRModule mod, support::LinearCongruentialEngine::TRandState seed,
                           int debug_mask, ScheduleErrorRenderLevel error_render_level,
                           bool enable_check) {
-  ObjectPtr<TracedScheduleNode> n = make_object<TracedScheduleNode>();
+  ObjectPtr<TracedScheduleNode> n = ffi::make_object<TracedScheduleNode>();
   n->state_ = ScheduleState(mod, debug_mask, enable_check);
   n->error_render_level_ = error_render_level;
   n->symbol_table_ = {};
@@ -41,7 +41,7 @@ Schedule Schedule::Traced(IRModule mod, support::LinearCongruentialEngine::TRand
 }
 
 Schedule TracedScheduleNode::Copy() {
-  ObjectPtr<TracedScheduleNode> n = make_object<TracedScheduleNode>();
+  ObjectPtr<TracedScheduleNode> n = ffi::make_object<TracedScheduleNode>();
   n->error_render_level_ = this->error_render_level_;
   ConcreteScheduleNode::Copy(&n->state_, &n->symbol_table_);
   n->func_working_on_ = this->func_working_on_;

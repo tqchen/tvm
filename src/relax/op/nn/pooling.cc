@@ -52,7 +52,7 @@ Expr MakePool1d(String op_name, Expr data, Array<IntImm> pool_size, Array<IntImm
       << "The input dilation length is expected to be 1. However, the given dilation is "
       << dilation;
 
-  auto attrs = make_object<Pool1DAttrs>();
+  auto attrs = ffi::make_object<Pool1DAttrs>();
   attrs->pool_size = ConvertIntImmToInt64(pool_size);
   attrs->strides = ConvertIntImmToInt64(strides);
   attrs->padding = ConvertIntImmToInt64(padding);
@@ -127,7 +127,7 @@ InferLayoutOutput InferLayoutPool1d(const Call& call,
   ICHECK(attrs) << "Invalid Call";
 
   LayoutDecision layout = GetLayoutDecision(var_layout_map, call->args[0]);
-  ObjectPtr<Pool1DAttrs> new_attrs = make_object<Pool1DAttrs>(*attrs);
+  ObjectPtr<Pool1DAttrs> new_attrs = ffi::make_object<Pool1DAttrs>(*attrs);
   new_attrs->layout = TransposeLike(attrs->layout, InitialLayout(3), layout->layout).name();
   new_attrs->out_layout = TransposeLike(attrs->out_layout, InitialLayout(3), layout->layout).name();
   return InferLayoutOutput({layout}, {layout}, Attrs(new_attrs));
@@ -167,7 +167,7 @@ Expr MakePool2d(String op_name, Expr data, Array<IntImm> pool_size, Array<IntImm
       << "The input dilation length is expected to be 2. However, the given dilation is "
       << dilation;
 
-  auto attrs = make_object<Pool2DAttrs>();
+  auto attrs = ffi::make_object<Pool2DAttrs>();
   attrs->pool_size = ConvertIntImmToInt64(pool_size);
   attrs->strides = ConvertIntImmToInt64(strides);
   attrs->padding = ConvertIntImmToInt64(padding);
@@ -248,7 +248,7 @@ InferLayoutOutput InferLayoutPool2d(const Call& call,
   ICHECK(attrs) << "Invalid Call";
 
   LayoutDecision layout = GetLayoutDecision(var_layout_map, call->args[0]);
-  ObjectPtr<Pool2DAttrs> new_attrs = make_object<Pool2DAttrs>(*attrs);
+  ObjectPtr<Pool2DAttrs> new_attrs = ffi::make_object<Pool2DAttrs>(*attrs);
 
   if (layout->layout.ndim() != layout->layout.ndim_primal()) {
     tir::Layout in_layout(attrs->layout, DataType::Int(64));
@@ -308,7 +308,7 @@ Expr MakePool3d(String op_name, Expr data, Array<IntImm> pool_size, Array<IntImm
       << "The input dilation length is expected to be 3. However, the given dilation is "
       << dilation;
 
-  auto attrs = make_object<Pool3DAttrs>();
+  auto attrs = ffi::make_object<Pool3DAttrs>();
   attrs->pool_size = ConvertIntImmToInt64(pool_size);
   attrs->strides = ConvertIntImmToInt64(strides);
   attrs->padding = ConvertIntImmToInt64(padding);
@@ -395,7 +395,7 @@ InferLayoutOutput InferLayoutPool3d(const Call& call,
   ICHECK(attrs) << "Invalid Call";
 
   LayoutDecision layout = GetLayoutDecision(var_layout_map, call->args[0]);
-  ObjectPtr<Pool3DAttrs> new_attrs = make_object<Pool3DAttrs>(*attrs);
+  ObjectPtr<Pool3DAttrs> new_attrs = ffi::make_object<Pool3DAttrs>(*attrs);
   new_attrs->layout = TransposeLike(attrs->layout, InitialLayout(5), layout->layout).name();
   new_attrs->out_layout = TransposeLike(attrs->out_layout, InitialLayout(5), layout->layout).name();
   return InferLayoutOutput({layout}, {layout}, Attrs(new_attrs));
@@ -480,7 +480,7 @@ TVM_REGISTER_OP("relax.nn.avg_pool3d")
 
 Expr adaptive_avg_pool1d(Expr data, Optional<Array<IntImm>> output_size, String layout,
                          Optional<String> out_layout) {
-  ObjectPtr<AdaptivePool1DAttrs> attrs = make_object<AdaptivePool1DAttrs>();
+  ObjectPtr<AdaptivePool1DAttrs> attrs = ffi::make_object<AdaptivePool1DAttrs>();
   attrs->layout = layout;
   attrs->out_layout = out_layout.value_or(layout);
   if (output_size.defined()) {
@@ -543,7 +543,7 @@ InferLayoutOutput InferLayoutAdaptiveAvgPool1D(const Call& call,
   ICHECK(attrs) << "Invalid Call";
 
   LayoutDecision layout = GetLayoutDecision(var_layout_map, call->args[0]);
-  ObjectPtr<AdaptivePool1DAttrs> new_attrs = make_object<AdaptivePool1DAttrs>(*attrs);
+  ObjectPtr<AdaptivePool1DAttrs> new_attrs = ffi::make_object<AdaptivePool1DAttrs>(*attrs);
   new_attrs->layout = TransposeLike(attrs->layout, InitialLayout(3), layout->layout).name();
   new_attrs->out_layout = TransposeLike(attrs->out_layout, InitialLayout(3), layout->layout).name();
   return InferLayoutOutput({layout}, {layout}, Attrs(new_attrs));
@@ -562,7 +562,7 @@ TVM_REGISTER_OP("relax.nn.adaptive_avg_pool1d")
 
 Expr adaptive_avg_pool2d(Expr data, Optional<Array<IntImm>> output_size, String layout,
                          Optional<String> out_layout) {
-  ObjectPtr<AdaptivePool2DAttrs> attrs = make_object<AdaptivePool2DAttrs>();
+  ObjectPtr<AdaptivePool2DAttrs> attrs = ffi::make_object<AdaptivePool2DAttrs>();
   attrs->layout = layout;
   attrs->out_layout = out_layout.value_or(layout);
   if (output_size.defined()) {
@@ -629,7 +629,7 @@ InferLayoutOutput InferLayoutAdaptiveAvgPool2D(const Call& call,
   ICHECK(attrs) << "Invalid Call";
 
   LayoutDecision layout = GetLayoutDecision(var_layout_map, call->args[0]);
-  ObjectPtr<AdaptivePool2DAttrs> new_attrs = make_object<AdaptivePool2DAttrs>(*attrs);
+  ObjectPtr<AdaptivePool2DAttrs> new_attrs = ffi::make_object<AdaptivePool2DAttrs>(*attrs);
   if (layout->layout.ndim() != layout->layout.ndim_primal()) {
     tir::Layout in_layout(attrs->layout, DataType::Int(64));
     auto desired_layout = TransposeSubLayoutLike(attrs->layout, InitialLayout(4), layout->layout);
@@ -663,7 +663,7 @@ TVM_REGISTER_OP("relax.nn.adaptive_avg_pool2d")
 
 Expr adaptive_avg_pool3d(Expr data, Optional<Array<IntImm>> output_size, String layout,
                          Optional<String> out_layout) {
-  ObjectPtr<AdaptivePool3DAttrs> attrs = make_object<AdaptivePool3DAttrs>();
+  ObjectPtr<AdaptivePool3DAttrs> attrs = ffi::make_object<AdaptivePool3DAttrs>();
   attrs->layout = layout;
   attrs->out_layout = out_layout.value_or(layout);
   if (output_size.defined()) {
@@ -731,7 +731,7 @@ InferLayoutOutput InferLayoutAdaptiveAvgPool3D(const Call& call,
   ICHECK(attrs) << "Invalid Call";
 
   LayoutDecision layout = GetLayoutDecision(var_layout_map, call->args[0]);
-  ObjectPtr<AdaptivePool3DAttrs> new_attrs = make_object<AdaptivePool3DAttrs>(*attrs);
+  ObjectPtr<AdaptivePool3DAttrs> new_attrs = ffi::make_object<AdaptivePool3DAttrs>(*attrs);
   new_attrs->layout = TransposeLike(attrs->layout, InitialLayout(5), layout->layout).name();
   new_attrs->out_layout = TransposeLike(attrs->out_layout, InitialLayout(5), layout->layout).name();
   return InferLayoutOutput({layout}, {layout}, Attrs(new_attrs));

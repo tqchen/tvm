@@ -139,7 +139,7 @@ ComputeOp::ComputeOp(std::string name, std::string tag, Map<String, ffi::Any> at
   if (!attrs.defined()) {
     attrs = Map<String, ffi::Any>();
   }
-  auto n = make_object<ComputeOpNode>();
+  auto n = ffi::make_object<ComputeOpNode>();
   n->name = std::move(name);
   n->tag = std::move(tag);
   n->attrs = std::move(attrs);

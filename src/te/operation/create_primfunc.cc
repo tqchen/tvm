@@ -457,7 +457,7 @@ struct NestedScopeInfo {
   // helper to renew leaf block var defs to ensure SSA.
   void Renew(const Array<IterVar>& origin_axes) {
     block_iters.MutateByApply([](const IterVar& itervar) {
-      auto n = make_object<IterVarNode>(*itervar.get());
+      auto n = ffi::make_object<IterVarNode>(*itervar.get());
       n->var = n->var.copy_with_suffix("");
       return IterVar(n);
     });

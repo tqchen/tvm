@@ -31,7 +31,7 @@ namespace msc {
 
 DeclareDoc::DeclareDoc(Optional<ExprDoc> type, ExprDoc variable, Array<ExprDoc> init_args,
                        bool use_constructor) {
-  ObjectPtr<DeclareDocNode> n = make_object<DeclareDocNode>();
+  ObjectPtr<DeclareDocNode> n = ffi::make_object<DeclareDocNode>();
   n->type = type;
   n->variable = variable;
   n->init_args = init_args;
@@ -40,20 +40,20 @@ DeclareDoc::DeclareDoc(Optional<ExprDoc> type, ExprDoc variable, Array<ExprDoc> 
 }
 
 StrictListDoc::StrictListDoc(ListDoc list, bool allow_empty) {
-  ObjectPtr<StrictListDocNode> n = make_object<StrictListDocNode>();
+  ObjectPtr<StrictListDocNode> n = ffi::make_object<StrictListDocNode>();
   n->list = list;
   n->allow_empty = allow_empty;
   this->data_ = std::move(n);
 }
 
 PointerDoc::PointerDoc(String name) {
-  ObjectPtr<PointerDocNode> n = make_object<PointerDocNode>();
+  ObjectPtr<PointerDocNode> n = ffi::make_object<PointerDocNode>();
   n->name = name;
   this->data_ = std::move(n);
 }
 
 StructDoc::StructDoc(IdDoc name, Array<ExprDoc> decorators, Array<StmtDoc> body) {
-  ObjectPtr<StructDocNode> n = make_object<StructDocNode>();
+  ObjectPtr<StructDocNode> n = ffi::make_object<StructDocNode>();
   n->name = name;
   n->decorators = decorators;
   n->body = body;
@@ -61,7 +61,7 @@ StructDoc::StructDoc(IdDoc name, Array<ExprDoc> decorators, Array<StmtDoc> body)
 }
 
 ConstructorDoc::ConstructorDoc(IdDoc name, Array<AssignDoc> args, Array<StmtDoc> body) {
-  ObjectPtr<ConstructorDocNode> n = make_object<ConstructorDocNode>();
+  ObjectPtr<ConstructorDocNode> n = ffi::make_object<ConstructorDocNode>();
   n->name = name;
   n->args = args;
   n->body = body;
@@ -70,7 +70,7 @@ ConstructorDoc::ConstructorDoc(IdDoc name, Array<AssignDoc> args, Array<StmtDoc>
 
 SwitchDoc::SwitchDoc(Array<ExprDoc> predicates, Array<Array<StmtDoc>> branchs,
                      Array<StmtDoc> default_branch) {
-  ObjectPtr<SwitchDocNode> n = make_object<SwitchDocNode>();
+  ObjectPtr<SwitchDocNode> n = ffi::make_object<SwitchDocNode>();
   n->predicates = predicates;
   n->branchs = branchs;
   n->default_branch = default_branch;
@@ -78,7 +78,7 @@ SwitchDoc::SwitchDoc(Array<ExprDoc> predicates, Array<Array<StmtDoc>> branchs,
 }
 
 LambdaDoc::LambdaDoc(IdDoc name, Array<AssignDoc> args, Array<ExprDoc> refs, Array<StmtDoc> body) {
-  ObjectPtr<LambdaDocNode> n = make_object<LambdaDocNode>();
+  ObjectPtr<LambdaDocNode> n = ffi::make_object<LambdaDocNode>();
   n->name = name;
   n->args = args;
   n->refs = refs;

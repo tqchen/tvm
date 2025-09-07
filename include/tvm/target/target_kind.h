@@ -252,7 +252,7 @@ class TargetKindRegEntry {
   String name;
 
   /*! \brief private constructor */
-  explicit TargetKindRegEntry(uint32_t reg_index) : kind_(make_object<TargetKindNode>()) {
+  explicit TargetKindRegEntry(uint32_t reg_index) : kind_(ffi::make_object<TargetKindNode>()) {
     kind_->index_ = reg_index;
   }
   /*!

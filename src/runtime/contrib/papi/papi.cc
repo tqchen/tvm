@@ -225,7 +225,7 @@ struct PAPIMetricCollectorNode final : public MetricCollectorNode {
       int event_set = it->second;
       std::vector<long_long> values(papi_metric_names[dev].size());
       PAPI_CALL(PAPI_read(event_set, values.data()));
-      return ObjectRef(make_object<PAPIEventSetNode>(values, dev));
+      return ObjectRef(ffi::make_object<PAPIEventSetNode>(values, dev));
     } else {
       return ObjectRef(nullptr);
     }
@@ -246,10 +246,10 @@ struct PAPIMetricCollectorNode final : public MetricCollectorNode {
       if (end_values[i] < event_set_node->start_values[i]) {
         LOG(WARNING) << "Detected overflow when reading performance counter, setting value to -1.";
         reported_metrics[papi_metric_names[event_set_node->dev][i]] =
-            ObjectRef(make_object<CountNode>(-1));
+            ObjectRef(ffi::make_object<CountNode>(-1));
       } else {
         reported_metrics[papi_metric_names[event_set_node->dev][i]] =
-            ObjectRef(make_object<CountNode>(end_values[i] - event_set_node->start_values[i]));
+            ObjectRef(ffi::make_object<CountNode>(end_values[i] - event_set_node->start_values[i]));
       }
     }
     return reported_metrics;
@@ -278,7 +278,7 @@ struct PAPIMetricCollectorNode final : public MetricCollectorNode {
 class PAPIMetricCollector : public MetricCollector {
  public:
   explicit PAPIMetricCollector(Map<DeviceWrapper, Array<String>> metrics) {
-    data_ = make_object<PAPIMetricCollectorNode>(metrics);
+    data_ = ffi::make_object<PAPIMetricCollectorNode>(metrics);
   }
   TVM_DEFINE_MUTABLE_OBJECT_REF_METHODS(PAPIMetricCollector, MetricCollector,
                                         PAPIMetricCollectorNode);

@@ -165,7 +165,7 @@ class AutoPadder {
           reverse_strides.push_back(stride);
         }
         // Step 3. create the new padded buffer
-        ObjectPtr<BufferNode> b = make_object<BufferNode>(*buffer.get());
+        ObjectPtr<BufferNode> b = ffi::make_object<BufferNode>(*buffer.get());
         Array<PrimExpr> strides;
         for (int i = static_cast<int>(reverse_strides.size()) - 1; i >= 0; i--) {
           strides.push_back(reverse_strides[i]);

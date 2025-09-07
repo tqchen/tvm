@@ -114,7 +114,7 @@ static_assert(static_cast<int>(TypeIndex::kCustomStaticIndex) >=
   ObjectName* CopyOnWrite() {                                      \
     ICHECK(data_ != nullptr);                                      \
     if (!data_.unique()) {                                         \
-      auto n = make_object<ObjectName>(*(operator->()));           \
+      auto n = ::tvm::ffi::make_object<ObjectName>(*(operator->()));           \
       ObjectPtr<Object>(std::move(n)).swap(data_);                 \
     }                                                              \
     return static_cast<ObjectName*>(data_.get());                  \

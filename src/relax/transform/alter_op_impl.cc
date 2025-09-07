@@ -188,7 +188,7 @@ class AlterOpImplMutator : public ExprMutator {
     if (IsScalarConstant(expr) || index_map.get() == nullptr) {
       return expr;
     }
-    ObjectPtr<LayoutTransformAttrs> attrs = make_object<LayoutTransformAttrs>();
+    ObjectPtr<LayoutTransformAttrs> attrs = ffi::make_object<LayoutTransformAttrs>();
     // We want to avoid two layout_transform ops to share the same index map even if they are
     // identical. The scope of vars used in index map initial indices is local to the op. Not doing
     // so would confuse the structural equality check.

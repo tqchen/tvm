@@ -239,7 +239,7 @@ ObjectPtr<NodeType> MultiLevelTilingInitCommon(String structure, Optional<Array<
                                                Optional<Array<Integer>> vector_load_lens,
                                                Optional<Map<String, ffi::Any>> reuse_read,
                                                Optional<Map<String, ffi::Any>> reuse_write) {
-  ObjectPtr<NodeType> n = make_object<NodeType>();
+  ObjectPtr<NodeType> n = ffi::make_object<NodeType>();
   n->structure = structure;
   n->tile_binds = tile_binds.value_or({});
   n->max_innermost_factor = max_innermost_factor.value_or(Integer(-1))->value;
