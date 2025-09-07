@@ -70,9 +70,9 @@ void MatchSymbolicVar(const Expr& arg, const Expr& constant,
     const PrimExpr& const_dim = const_shape->values[i];
     ICHECK(tir::is_const_int(const_dim));
     if (const auto* shape_var = arg_shape->values[i].as<tir::VarNode>()) {
-      auto it = symbolic_var_map->find(GetRef<tir::Var>(shape_var));
+      auto it = symbolic_var_map->find(ffi::GetRef<tir::Var>(shape_var));
       if (it == symbolic_var_map->end()) {
-        symbolic_var_map->Set(GetRef<tir::Var>(shape_var), const_dim);
+        symbolic_var_map->Set(ffi::GetRef<tir::Var>(shape_var), const_dim);
       } else {
         CHECK(analyzer_->CanProveEqual((*it).second, const_dim))
             << "The shape of the bound parameter is expected to be " << (*it).second
@@ -181,19 +181,19 @@ IRModule BindParam(IRModule m, String func_name, Map<Any, ObjectRef> bind_params
         // Use global_symbol if it's external linkage
         Optional<String> gsymbol = relax_f->GetAttr<String>(tvm::attr::kGlobalSymbol);
         if (gsymbol.has_value() && gsymbol.value() == func_name) {
-          Function f_after_bind = FunctionBindParams(GetRef<Function>(relax_f), bind_params);
+          Function f_after_bind = FunctionBindParams(ffi::GetRef<Function>(relax_f), bind_params);
           new_module->Update(func_pr.first, f_after_bind);
         }
       } else {
         // Use global var's name_hint if it's internal linkage
         if (func_pr.first->name_hint == func_name) {
-          Function f_after_bind = FunctionBindParams(GetRef<Function>(relax_f), bind_params);
+          Function f_after_bind = FunctionBindParams(ffi::GetRef<Function>(relax_f), bind_params);
           new_module->Update(func_pr.first, f_after_bind);
         }
       }
     }
   }
-  return GetRef<IRModule>(new_module);
+  return ffi::GetRef<IRModule>(new_module);
 }
 
 TVM_FFI_STATIC_INIT_BLOCK({

@@ -113,7 +113,7 @@ Expr DFPatternMatcher::UnwrapBindings(Expr expr, const Map<Var, Expr>& var2val) 
     // Unwrap variables into the value to which they are bound.
     if (var2val.size()) {
       if (const VarNode* var = expr.as<VarNode>()) {
-        if (auto may = var2val.Get(GetRef<Var>(var))) {
+        if (auto may = var2val.Get(ffi::GetRef<Var>(var))) {
           return may.value();
         }
       }
@@ -187,7 +187,7 @@ bool DFPatternMatcher::VisitDFPattern_(const AttrPatternNode* attr_pattern, cons
   VLOG(1) << "considering AttrPatternNode at:\n" << expr;
   auto attributes = attr_pattern->attrs.as<DictAttrsNode>()->dict;
   if (const auto* op_node = expr.as<OpNode>()) {
-    Op op = GetRef<Op>(op_node);
+    Op op = ffi::GetRef<Op>(op_node);
     for (auto kv : attributes) {
       auto attr_name = kv.first;
       auto attr_value = kv.second;

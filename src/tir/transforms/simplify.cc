@@ -249,7 +249,7 @@ class StmtSimplifier : public IRMutatorWithAnalyzer {
     if (can_inline && !used_in_buffer_def) {
       return body;
     } else if (value.same_as(op->value) && body.same_as(op->body)) {
-      return GetRef<Stmt>(op);
+      return ffi::GetRef<Stmt>(op);
     } else {
       auto n = this->CopyOnWrite(op);
       n->value = std::move(value);

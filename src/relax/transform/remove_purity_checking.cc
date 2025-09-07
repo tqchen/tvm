@@ -68,7 +68,7 @@ class PurityRemover : public ExprMutator {
 
   Expr VisitExpr_(const FunctionNode* func) override {
     // handling inner functions: we will remove purity annotations from them too
-    return RemovePurity(GetRef<Function>(func));
+    return RemovePurity(ffi::GetRef<Function>(func));
   }
 
  private:

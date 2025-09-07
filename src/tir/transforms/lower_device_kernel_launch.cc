@@ -336,7 +336,7 @@ Pass LowerDeviceKernelLaunch() {
       IRModule updates;
       for (const auto& [gvar, base_func] : mod->functions) {
         if (auto* ptr = base_func.as<PrimFuncNode>()) {
-          auto prim_func = mutator.RewriteKernelLaunchSite(gvar, GetRef<PrimFunc>(ptr));
+          auto prim_func = mutator.RewriteKernelLaunchSite(gvar, ffi::GetRef<PrimFunc>(ptr));
           if (!prim_func.same_as(base_func)) {
             updates->Add(gvar, prim_func);
           }
@@ -352,7 +352,7 @@ Pass LowerDeviceKernelLaunch() {
       IRModule updates;
       for (const auto& [gvar, base_func] : mod->functions) {
         if (auto* ptr = base_func.as<PrimFuncNode>()) {
-          auto prim_func = mutator.UpdateKernelAttributes(gvar, GetRef<PrimFunc>(ptr));
+          auto prim_func = mutator.UpdateKernelAttributes(gvar, ffi::GetRef<PrimFunc>(ptr));
           if (!prim_func.same_as(base_func)) {
             updates->Add(gvar, prim_func);
           }

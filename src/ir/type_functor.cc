@@ -64,26 +64,26 @@ Type TypeMutator::VisitType_(const FuncTypeNode* op) {
   Type new_ret_type = VisitType(op->ret_type);
   changed = changed || !new_ret_type.same_as(op->ret_type);
 
-  if (!changed) return GetRef<Type>(op);
+  if (!changed) return ffi::GetRef<Type>(op);
   return FuncType(new_args, new_ret_type);
 }
 
 Type TypeMutator::VisitType_(const TupleTypeNode* op) {
   Array<Type> new_fields = MutateArray(op->fields);
   if (new_fields.same_as(op->fields)) {
-    return GetRef<Type>(op);
+    return ffi::GetRef<Type>(op);
   } else {
     return TupleType(new_fields);
   }
 }
 
-Type TypeMutator::VisitType_(const PrimTypeNode* op) { return GetRef<Type>(op); }
+Type TypeMutator::VisitType_(const PrimTypeNode* op) { return ffi::GetRef<Type>(op); }
 
 Type TypeMutator::VisitType_(const PointerTypeNode* op) {
   Type element_type = VisitType(op->element_type);
 
   if (element_type.same_as(op->element_type)) {
-    return GetRef<Type>(op);
+    return ffi::GetRef<Type>(op);
   } else {
     return PointerType(element_type, op->storage_scope);
   }

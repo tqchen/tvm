@@ -267,16 +267,16 @@ Pass SimplifyForFeatureExtraction() {
     PrimExpr VisitExpr_(const SelectNode* node) final {
       if (HasBufferLoad(node->true_value) || HasBufferLoad(node->false_value) ||
           HasBufferLoad(node->condition)) {
-        return GetRef<Select>(node);
+        return ffi::GetRef<Select>(node);
       }
       return make_const(node->dtype, 1.0);
     }
 
     PrimExpr VisitExpr_(const VarNode* var) final {
-      if (unit_vars_.count(GetRef<Var>(var))) {
+      if (unit_vars_.count(ffi::GetRef<Var>(var))) {
         return make_const(var->dtype, 0.0);
       }
-      return GetRef<Var>(var);
+      return ffi::GetRef<Var>(var);
     }
 
     Stmt VisitStmt_(const ForNode* loop) final {
@@ -859,7 +859,7 @@ void Feature::SubFeature::SetStride(const LoopNest& loop_nest, arith::Analyzer* 
   // For each buffer, we find the loop stride on it
   const BufferNode* buffer = this->buffer;
   int ndim = this->buffer->shape.size();
-  IntVec buffer_shape = utils::GetBufferShape(GetRef<Buffer>(buffer), analyzer);
+  IntVec buffer_shape = utils::GetBufferShape(ffi::GetRef<Buffer>(buffer), analyzer);
   // Calculate the buffer's stride from its shape
   IntVec buffer_stride(ndim);
   if (ndim >= 1) {

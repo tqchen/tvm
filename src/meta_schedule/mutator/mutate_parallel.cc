@@ -85,7 +85,7 @@ std::vector<std::vector<int64_t>> AnalyzeParallel(const ScheduleState& self,
       tir::GetBlocks(self, block_name, self->mod->GetGlobalVar(func_name));
   ICHECK_EQ(block_srefs.size(), 1);
   const BlockNode* block = TVM_SREF_TO_BLOCK(block_srefs[0]);
-  ScopeBlockLoopInfo info = GetScopeBlockLoopInfo(GetRef<Block>(block));
+  ScopeBlockLoopInfo info = GetScopeBlockLoopInfo(ffi::GetRef<Block>(block));
   std::vector<std::vector<int64_t>> results;
   results.reserve(info.realizes.size());
   for (const BlockRealize& realize : info.realizes) {
@@ -241,7 +241,7 @@ bool FindParallelDecision(const Trace& trace, TRandState* rand_state,
   const InstructionNode* get_block_inst =
       get_block_insts.at(Downcast<tir::BlockRV>(ann_inst->inputs[0]).get());
   ICHECK_EQ(get_block_inst->attrs.size(), 2);
-  candidate->inst = GetRef<Instruction>(ann_inst);
+  candidate->inst = ffi::GetRef<Instruction>(ann_inst);
   candidate->parallel_extent = Downcast<IntImm>(ann_inst->inputs[1])->value;
   candidate->block_name = Downcast<String>(get_block_inst->attrs[0]);
   candidate->func_name = Downcast<String>(get_block_inst->attrs[1]);

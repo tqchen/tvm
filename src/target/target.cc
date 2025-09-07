@@ -434,7 +434,7 @@ Any TargetInternal::ParseType(const Any& obj, const TargetKindNode::ValueTypeInf
               << "Target object requires key of dict to be str, but get: " << kv.first.GetTypeKey();
         }
       }
-      Map<String, ffi::Any> config = GetRef<Map<String, ffi::Any>>(ptr);
+      Map<String, ffi::Any> config = ffi::GetRef<Map<String, ffi::Any>>(ptr);
       return Target(TargetInternal::FromConfig({config.begin(), config.end()}));
     }
     TVM_FFI_THROW(TypeError) << "Expect type 'dict' or 'str' to construct Target, but get: " +

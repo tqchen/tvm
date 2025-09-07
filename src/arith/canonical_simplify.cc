@@ -816,7 +816,7 @@ PrimExpr CanonicalSimplifier::Impl::VisitExpr_(const MulNode* op) {
   const MulNode* mul = ret.as<MulNode>();
 
   if (mul && mul->a.same_as(op->a) && mul->b.same_as(op->b)) {
-    return GetRef<PrimExpr>(op);
+    return ffi::GetRef<PrimExpr>(op);
   } else {
     return ret;
   }
@@ -1006,7 +1006,7 @@ PrimExpr CanonicalSimplifier::Impl::VisitExpr_(const DivNode* op) {
     return truncdiv(a, b);
   }
   if (op->a.same_as(a) && op->b.same_as(b)) {
-    return GetRef<PrimExpr>(op);
+    return ffi::GetRef<PrimExpr>(op);
   } else {
     return Div(a, b);
   }
@@ -1066,7 +1066,7 @@ PrimExpr CanonicalSimplifier::Impl::VisitExpr_(const FloorDivNode* op) {
     return floordiv(a, b);
   }
   if (op->a.same_as(a) && op->b.same_as(b)) {
-    return GetRef<PrimExpr>(op);
+    return ffi::GetRef<PrimExpr>(op);
   } else {
     return FloorDiv(a, b);
   }
@@ -1194,7 +1194,7 @@ PrimExpr CanonicalSimplifier::Impl::VisitExpr_(const ModNode* op) {
   }
 
   if (op->a.same_as(a) && op->b.same_as(b)) {
-    return GetRef<PrimExpr>(op);
+    return ffi::GetRef<PrimExpr>(op);
   } else {
     return Mod(a, b);
   }
@@ -1259,7 +1259,7 @@ PrimExpr CanonicalSimplifier::Impl::VisitExpr_(const FloorModNode* op) {
   }
 
   if (op->a.same_as(a) && op->b.same_as(b)) {
-    return GetRef<PrimExpr>(op);
+    return ffi::GetRef<PrimExpr>(op);
   } else {
     return FloorMod(a, b);
   }

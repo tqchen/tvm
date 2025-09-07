@@ -250,7 +250,7 @@ void StorageAccessVisitor::VisitExpr_(const CallNode* op) {
     PrimExpr offset = op->args[2];
     PrimExpr extent = op->args[3];
     const IntImmNode* flag = op->args[4].as<IntImmNode>();
-    StorageScope scope = GetScope(GetRef<Var>(buffer));
+    StorageScope scope = GetScope(ffi::GetRef<Var>(buffer));
     // The buffer scope.
     if (Enabled(buffer, scope)) {
       ICHECK(allow_append_);

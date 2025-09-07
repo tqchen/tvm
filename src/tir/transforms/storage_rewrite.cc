@@ -453,7 +453,7 @@ class StoragePlanRewriter : public StmtExprMutator {
       }
       return it->second->alloc_var;
     } else {
-      return GetRef<PrimExpr>(op);
+      return ffi::GetRef<PrimExpr>(op);
     }
   }
   PrimExpr VisitExpr_(const CallNode* op) final {
@@ -840,7 +840,7 @@ class StoragePlanRewriter : public StmtExprMutator {
           ICHECK(alloc_info.count(var));
           const AllocEntry& entry = alloc_info.at(var);
           const AllocateNode* alloc = entry.alloc;
-          auto storage_scope = StorageScope::Create(GetPtrStorageScope(GetRef<Var>(var)));
+          auto storage_scope = StorageScope::Create(GetPtrStorageScope(ffi::GetRef<Var>(var)));
           StorageEntry* dst_entry = nullptr;
           // inplace detection
           if (detect_inplace) {
@@ -1536,7 +1536,7 @@ class VectorTypeRewriter : public StmtExprMutator {
     Stmt body = this->VisitStmt(op->body);
     Var var = (it == rewrite_map_.end()) ? op->var : it->second.new_buffer_var;
     if (var.same_as(op->var) && value.same_as(op->value) && body.same_as(op->body)) {
-      return GetRef<Stmt>(op);
+      return ffi::GetRef<Stmt>(op);
     }
     return LetStmt(var, value, body);
   }

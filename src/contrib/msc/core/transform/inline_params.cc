@@ -164,7 +164,7 @@ class ParamsInliner : public ExprMutator {
           Call(call_node->op, new_args, call_node->attrs, call_node->sinfo_args, call_node->span);
       ReEmitBinding(binding, builder_->Normalize(new_call));
     } else {
-      LOG_FATAL << "Unexpected shape consumer " << GetRef<Call>(call_node);
+      LOG_FATAL << "Unexpected shape consumer " << ffi::GetRef<Call>(call_node);
     }
   }
 

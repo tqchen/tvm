@@ -234,7 +234,7 @@ Stmt StmtMutator::VisitStmt_(const AttrStmtNode* op) {
   PrimExpr value = this->VisitExpr(op->value);
   Stmt body = this->VisitStmt(op->body);
   if (value.same_as(op->value) && body.same_as(op->body)) {
-    return GetRef<Stmt>(op);
+    return ffi::GetRef<Stmt>(op);
   } else {
     auto n = CopyOnWrite(op);
     n->value = std::move(value);
@@ -247,7 +247,7 @@ Stmt StmtMutator::VisitStmt_(const LetStmtNode* op) {
   PrimExpr value = this->VisitExpr(op->value);
   Stmt body = this->VisitStmt(op->body);
   if (value.same_as(op->value) && body.same_as(op->body)) {
-    return GetRef<Stmt>(op);
+    return ffi::GetRef<Stmt>(op);
   } else {
     auto n = CopyOnWrite(op);
     n->value = std::move(value);
@@ -261,7 +261,7 @@ Stmt StmtMutator::VisitStmt_(const ForNode* op) {
   PrimExpr extent = this->VisitExpr(op->extent);
   Stmt body = this->VisitStmt(op->body);
   if (min.same_as(op->min) && extent.same_as(op->extent) && body.same_as(op->body)) {
-    return GetRef<Stmt>(op);
+    return ffi::GetRef<Stmt>(op);
   } else {
     auto n = CopyOnWrite(op);
     n->min = std::move(min);
@@ -275,7 +275,7 @@ Stmt StmtMutator::VisitStmt_(const WhileNode* op) {
   PrimExpr condition = this->VisitExpr(op->condition);
   Stmt body = this->VisitStmt(op->body);
   if (condition.same_as(op->condition) && body.same_as(op->body)) {
-    return GetRef<Stmt>(op);
+    return ffi::GetRef<Stmt>(op);
   } else {
     auto n = CopyOnWrite(op);
     n->condition = std::move(condition);
@@ -290,7 +290,7 @@ Stmt StmtMutator::VisitStmt_(const AllocateNode* op) {
   PrimExpr condition = this->VisitExpr(op->condition);
 
   if (extents.same_as(op->extents) && body.same_as(op->body) && condition.same_as(op->condition)) {
-    return GetRef<Stmt>(op);
+    return ffi::GetRef<Stmt>(op);
   } else {
     auto n = CopyOnWrite(op);
     n->extents = std::move(extents);
@@ -305,7 +305,7 @@ Stmt StmtMutator::VisitStmt_(const AllocateConstNode* op) {
   Stmt body = this->VisitStmt(op->body);
 
   if (extents.same_as(op->extents) && body.same_as(op->body)) {
-    return GetRef<Stmt>(op);
+    return ffi::GetRef<Stmt>(op);
   } else {
     auto n = CopyOnWrite(op);
     n->extents = std::move(extents);
@@ -318,7 +318,7 @@ Stmt StmtMutator::VisitStmt_(const DeclBufferNode* op) {
   Stmt body = this->VisitStmt(op->body);
 
   if (body.same_as(op->body)) {
-    return GetRef<Stmt>(op);
+    return ffi::GetRef<Stmt>(op);
   } else {
     auto n = CopyOnWrite(op);
     n->body = std::move(body);
@@ -335,7 +335,7 @@ Stmt StmtMutator::VisitStmt_(const IfThenElseNode* op) {
   }
   if (condition.same_as(op->condition) && then_case.same_as(op->then_case) &&
       else_case.same_as(op->else_case)) {
-    return GetRef<Stmt>(op);
+    return ffi::GetRef<Stmt>(op);
   } else {
     auto n = CopyOnWrite(op);
     n->condition = std::move(condition);
@@ -350,7 +350,7 @@ Stmt StmtMutator::VisitStmt_(const BufferStoreNode* op) {
   Array<PrimExpr> indices = Internal::Mutate(this, op->indices);
 
   if (value.same_as(op->value) && indices.same_as(op->indices)) {
-    return GetRef<Stmt>(op);
+    return ffi::GetRef<Stmt>(op);
   } else {
     auto n = CopyOnWrite(op);
     n->value = std::move(value);
@@ -365,7 +365,7 @@ Stmt StmtMutator::VisitStmt_(const BufferRealizeNode* op) {
   Stmt body = this->VisitStmt(op->body);
 
   if (bounds.same_as(op->bounds) && condition.same_as(op->condition) && body.same_as(op->body)) {
-    return GetRef<Stmt>(op);
+    return ffi::GetRef<Stmt>(op);
   } else {
     auto n = CopyOnWrite(op);
     n->bounds = std::move(bounds);
@@ -378,7 +378,7 @@ Stmt StmtMutator::VisitStmt_(const BufferRealizeNode* op) {
 Stmt StmtMutator::VisitStmt_(const SeqStmtNode* op) {
   Array<Stmt> seq = Internal::Mutate(this, op->seq);
   if (seq.same_as(op->seq)) {
-    return SeqStmt::Flatten(GetRef<Stmt>(op));
+    return SeqStmt::Flatten(ffi::GetRef<Stmt>(op));
   } else {
     auto node = CopyOnWrite(op);
     node->seq = std::move(seq);
@@ -403,7 +403,7 @@ Stmt StmtMutator::VisitSeqStmt_(const SeqStmtNode* op, bool flatten_before_visit
     Array<Stmt> seq = fmutate != nullptr ? Internal::MutateArray(this, op->seq, fmutate)
                                          : Internal::Mutate(this, op->seq);
     if (seq.same_as(op->seq)) {
-      return GetRef<Stmt>(op);
+      return ffi::GetRef<Stmt>(op);
     } else {
       auto n = CopyOnWrite(op);
       n->seq = std::move(seq);
@@ -435,7 +435,7 @@ Stmt StmtMutator::VisitStmt_(const AssertStmtNode* op) {
   Stmt body = this->VisitStmt(op->body);
 
   if (condition.same_as(op->condition) && message.same_as(op->message) && body.same_as(op->body)) {
-    return GetRef<Stmt>(op);
+    return ffi::GetRef<Stmt>(op);
   } else {
     auto n = CopyOnWrite(op);
     n->condition = std::move(condition);
@@ -448,7 +448,7 @@ Stmt StmtMutator::VisitStmt_(const AssertStmtNode* op) {
 Stmt StmtMutator::VisitStmt_(const EvaluateNode* op) {
   PrimExpr value = this->VisitExpr(op->value);
   if (value.same_as(op->value)) {
-    return GetRef<Stmt>(op);
+    return ffi::GetRef<Stmt>(op);
   } else {
     auto n = CopyOnWrite(op);
     n->value = std::move(value);
@@ -469,7 +469,7 @@ Stmt StmtMutator::VisitStmt_(const BlockNode* op) {
   if (iter_vars.same_as(op->iter_vars) && reads.same_as(op->reads) && writes.same_as(op->writes) &&
       body.same_as(op->body) && init.same_as(op->init) &&
       match_buffers.same_as(op->match_buffers)) {
-    return GetRef<Block>(op);
+    return ffi::GetRef<Block>(op);
   } else {
     auto n = CopyOnWrite(op);
     n->iter_vars = std::move(iter_vars);
@@ -487,7 +487,7 @@ Stmt StmtMutator::VisitStmt_(const BlockRealizeNode* op) {
   PrimExpr pred = this->VisitExpr(op->predicate);
   Stmt block = this->VisitStmt(op->block);
   if (v.same_as(op->iter_values) && pred.same_as(op->predicate) && block.same_as(op->block)) {
-    return GetRef<Stmt>(op);
+    return ffi::GetRef<Stmt>(op);
   } else {
     auto n = CopyOnWrite(op);
     n->iter_values = std::move(v);
@@ -591,7 +591,7 @@ class IRSubstitute : public StmtExprMutator {
   explicit IRSubstitute(std::function<Optional<PrimExpr>(const Var&)> vmap) : vmap_(vmap) {}
 
   PrimExpr VisitExpr_(const VarNode* op) final {
-    Var var = GetRef<Var>(op);
+    Var var = ffi::GetRef<Var>(op);
     auto ret = vmap_(var);
     if (ret.defined()) {
       // Allow substitution of void variables with any expression. The TVM script parser
@@ -750,7 +750,7 @@ class IRSubstituteWithDataTypeLegalization : public DataTypeLegalizer {
   using DataTypeLegalizer::VisitStmt_;
 
   PrimExpr VisitExpr_(const VarNode* op) final {
-    Var var = GetRef<Var>(op);
+    Var var = ffi::GetRef<Var>(op);
     auto ret = vmap_(var);
     if (ret.defined()) {
       return ret.value();

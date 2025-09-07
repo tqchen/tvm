@@ -92,7 +92,7 @@ class ConstantFolder : public ExprMutator {
     // NOTE: as check works for nullptr(returns null)
     Optional<BaseFunc> base_func = builder_->GetContextIRModule()->functions.Get(global_var);
     if (auto* pfunc = base_func.as<tir::PrimFuncNode>()) {
-      return GetRef<tir::PrimFunc>(pfunc);
+      return ffi::GetRef<tir::PrimFunc>(pfunc);
     }
     return std::nullopt;
   }
@@ -216,7 +216,7 @@ class ConstantFolder : public ExprMutator {
     if (op_node == nullptr) {
       return post_call;
     }
-    auto op = GetRef<Op>(op_node);
+    auto op = ffi::GetRef<Op>(op_node);
 
     if (op.same_as(call_tir_op)) {
       return VisitCallTIR(post_call).value_or(post_call);
@@ -254,7 +254,7 @@ class ConstantFolder : public ExprMutator {
         // If the legalized expression is call_tir, try to fold it.
         const CallNode* call = legalized_expr.as<CallNode>();
         if (call && call->op.same_as(call_tir_op)) {
-          return VisitCallTIR(GetRef<Call>(call)).value_or(post_call);
+          return VisitCallTIR(ffi::GetRef<Call>(call)).value_or(post_call);
         }
       } else if (op->name == "relax.tensor_to_shape") {
         // Special handling for composite op "relax.tensor_to_shape"
@@ -291,7 +291,7 @@ class ConstantFolder : public ExprMutator {
         bool is_known = true;
         for (size_t i = 0; i < values.size(); i++) {
           PrimExpr val = values[i];
-          arr.push_back(GetRef<IntImm>(val.as<IntImmNode>()));
+          arr.push_back(ffi::GetRef<IntImm>(val.as<IntImmNode>()));
           is_known &= (val.dtype() == DataType::Int(64));
         }
         if (is_known) {
@@ -306,7 +306,7 @@ class ConstantFolder : public ExprMutator {
   }
 
   Expr VisitExpr_(const VarNode* op) final {
-    Optional<Expr> opt = LookupBinding(GetRef<Var>(op));
+    Optional<Expr> opt = LookupBinding(ffi::GetRef<Var>(op));
     // `as` check checks if opt is not null and is instance of constant
     if (opt.as<relax::ConstantNode>()) {
       return opt.value();

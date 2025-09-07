@@ -172,7 +172,7 @@ class TVMScriptPrinter {
 
 #define TVM_OBJECT_ENABLE_SCRIPT_PRINTER()                                                      \
   std::string Script(const Optional<PrinterConfig>& config = std::nullopt) const {              \
-    return TVMScriptPrinter::Script(GetRef<ObjectRef>(this), config.value_or(PrinterConfig())); \
+    return TVMScriptPrinter::Script(ffi::GetRef<ObjectRef>(this), config.value_or(PrinterConfig())); \
   }
 
 }  // namespace tvm

@@ -40,7 +40,7 @@ inline tir::PrimFunc FindEntryFunc(const IRModule& mod) {
     if (const auto* func = base_func.as<tir::PrimFuncNode>()) {
       last_func = func;
       if (func->HasNonzeroAttr(tir::attr::kIsEntryFunc)) {
-        return GetRef<tir::PrimFunc>(func);
+        return ffi::GetRef<tir::PrimFunc>(func);
       }
       if (gv->name_hint == "main") {
         main_func = func;
@@ -50,7 +50,7 @@ inline tir::PrimFunc FindEntryFunc(const IRModule& mod) {
   }
   // Priority 2: PrimFunc whose name is `main`
   if (main_func != nullptr) {
-    return GetRef<tir::PrimFunc>(main_func);
+    return ffi::GetRef<tir::PrimFunc>(main_func);
   }
   // Priority 3: The only PrimFunc in the IRModule
   if (num_prim_func == 0) {
@@ -61,7 +61,7 @@ inline tir::PrimFunc FindEntryFunc(const IRModule& mod) {
                   "annotated with `kIsEntryFunc`, i.e. `tir.is_entry_func`"
                << mod;
   }
-  return GetRef<tir::PrimFunc>(last_func);
+  return ffi::GetRef<tir::PrimFunc>(last_func);
 }
 /******** ArgInfo ********/
 

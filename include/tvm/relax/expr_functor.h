@@ -379,7 +379,7 @@ class ExprMutatorBase : public ExprFunctor<Expr(const Expr&)> {
    */
   bool VisitAndCheckStructInfoFieldUnchanged(const ObjectRef& struct_info) {
     if (const StructInfoNode* sinfo = struct_info.as<StructInfoNode>()) {
-      return this->VisitExprDepStructInfoField(GetRef<StructInfo>(sinfo)).same_as(struct_info);
+      return this->VisitExprDepStructInfoField(ffi::GetRef<StructInfo>(sinfo)).same_as(struct_info);
     } else {
       return true;
     }

@@ -255,7 +255,7 @@ class LambdaLifter : public ExprMutator {
       return ExprMutator::VisitExpr_(func_node);
     }
 
-    auto func = GetRef<Function>(func_node);
+    auto func = ffi::GetRef<Function>(func_node);
 
     String lift_func_name = [&]() {
       auto it = lifted_names_.find(func_node);
@@ -323,7 +323,7 @@ class LambdaLifter : public ExprMutator {
     Function lifted_func;
     if (lifted_func_params.same_as(func_node->params) && body.same_as(func_node->body) &&
         ret_struct_info.same_as(func_node->ret_struct_info)) {
-      lifted_func = GetRef<Function>(func_node);
+      lifted_func = ffi::GetRef<Function>(func_node);
     } else {
       lifted_func =
           Function(lifted_func_params, body, ret_struct_info, func_node->is_pure, func_node->attrs);
@@ -354,7 +354,7 @@ class LambdaLifter : public ExprMutator {
   }
 
   Expr VisitExpr_(const CallNode* call_node) final {
-    auto call = GetRef<Call>(call_node);
+    auto call = ffi::GetRef<Call>(call_node);
 
     auto orig_sinfo = Downcast<StructInfo>(call->struct_info_);
 
@@ -407,7 +407,7 @@ class LambdaLifter : public ExprMutator {
   }
 
   Expr VisitExpr_(const VarNode* op) override {
-    auto var = GetRef<Var>(op);
+    auto var = ffi::GetRef<Var>(op);
     if (auto it = rebind_map_.find(var); it != rebind_map_.end()) {
       return it->second;
     }
@@ -436,12 +436,12 @@ class LambdaLifter : public ExprMutator {
       }
 
     } else if (const auto* global_var = val.as<GlobalVarNode>()) {
-      if (closures_.count(GetRef<GlobalVar>(global_var))) {
+      if (closures_.count(ffi::GetRef<GlobalVar>(global_var))) {
         return true;
       }
       IRModule ctx_mod = builder_->GetContextIRModule();
       ICHECK(ctx_mod->functions.size() > 0);
-      BaseFunc func = ctx_mod->Lookup(GetRef<GlobalVar>(global_var));
+      BaseFunc func = ctx_mod->Lookup(ffi::GetRef<GlobalVar>(global_var));
       const auto* func_node = func.as<FunctionNode>();
       if (func_node) {
         return IsClosure(func_node->body);

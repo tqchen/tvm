@@ -1169,7 +1169,7 @@ class PipelineInjector : private StmtExprMutator {
 
     // Step 4: Rewrite the pipeline body.
     Stmt pipeline = PipelineRewriter::Rewrite(buffer_data_to_buffer_, double_buffers,
-                                              pipeline_allocs, GetRef<For>(op), pipeline_info,
+                                              pipeline_allocs, ffi::GetRef<For>(op), pipeline_info,
                                               fragment_info_, preserved_annotations);
 
     if (const auto* realize = op->body.as<BlockRealizeNode>()) {

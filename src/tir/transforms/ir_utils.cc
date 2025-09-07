@@ -130,7 +130,7 @@ class IRConvertSSA final : public StmtExprMutator {
           if (defined_params.count(var_ptr)) return;
 
           if (defined_.count(var_ptr)) {
-            auto var = GetRef<Var>(var_ptr);
+            auto var = ffi::GetRef<Var>(var_ptr);
             redefines.emplace_back(this, var);
           } else {
             defined_.insert(var_ptr);
@@ -180,9 +180,9 @@ class IRConvertSSA final : public StmtExprMutator {
       for (const auto& [key, old_value] : func->attrs->dict) {
         auto value = old_value;
         if (auto* expr = value.as<PrimExprNode>()) {
-          value = VisitExpr(GetRef<PrimExpr>(expr));
+          value = VisitExpr(ffi::GetRef<PrimExpr>(expr));
         } else if (auto* stmt = value.as<StmtNode>()) {
-          value = VisitStmt(GetRef<Stmt>(stmt));
+          value = VisitStmt(ffi::GetRef<Stmt>(stmt));
         }
 
         made_change = made_change || !value.same_as(old_value);
@@ -212,7 +212,7 @@ class IRConvertSSA final : public StmtExprMutator {
     return func;
   }
 
-  PrimExpr VisitExpr_(const VarNode* op) final { return GetRemappedVar(GetRef<Var>(op)); }
+  PrimExpr VisitExpr_(const VarNode* op) final { return GetRemappedVar(ffi::GetRef<Var>(op)); }
   PrimExpr VisitExpr_(const LetNode* op) final {
     const Var& v = op->var;
     if (defined_.count(v.get())) {
@@ -248,7 +248,7 @@ class IRConvertSSA final : public StmtExprMutator {
   }
 
   Stmt VisitStmt_(const BlockNode* op) final {
-    Block block = GetRef<Block>(op);
+    Block block = ffi::GetRef<Block>(op);
 
     // The BlockNode is the point of definition for the IterVar
     // instances.  These re-defines must be present before visiting
@@ -432,7 +432,7 @@ class IRConvertSSA final : public StmtExprMutator {
 
       IterVar new_iter_var;
       if (dom.same_as(iter_var->dom) && var.same_as(iter_var->var)) {
-        new_iter_var = GetRef<IterVar>(iter_var);
+        new_iter_var = ffi::GetRef<IterVar>(iter_var);
       } else {
         new_iter_var = IterVar(dom, var, iter_var->iter_type, iter_var->thread_tag, iter_var->span);
       }
@@ -442,7 +442,7 @@ class IRConvertSSA final : public StmtExprMutator {
 
       Stmt output;
       if (new_iter_var.get() == iter_var && body.same_as(op->body) && value.same_as(op->value)) {
-        output = GetRef<Stmt>(op);
+        output = ffi::GetRef<Stmt>(op);
       } else {
         output = AttrStmt(new_iter_var, op->attr_key, value, body, iter_var->span);
       }
@@ -615,7 +615,7 @@ Optional<arith::IntConstraints> ConditionalBoundsContext::TrySolveCondition() {
           return;
         } else if (const VarNode* var = obj.as<VarNode>()) {
           if (var->dtype.is_int() || var->dtype.is_uint()) {
-            cand_vars.push_back(GetRef<Var>(var));
+            cand_vars.push_back(ffi::GetRef<Var>(var));
           }
         } else {
           is_simple &= obj->IsInstance<AddNode>() || obj->IsInstance<SubNode>() ||
@@ -835,7 +835,7 @@ Pass ConvertSSA() {
     bool made_change = false;
     for (auto [gvar, base_func] : mod->functions) {
       if (auto* ptr = base_func.as<tir::PrimFuncNode>()) {
-        auto updated = converter.VisitPrimFunc(GetRef<tir::PrimFunc>(ptr));
+        auto updated = converter.VisitPrimFunc(ffi::GetRef<tir::PrimFunc>(ptr));
         if (!updated.same_as(base_func)) {
           made_change = true;
           base_func = updated;

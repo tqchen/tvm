@@ -88,11 +88,11 @@ tvm::transform::Pass ExtractPrimFuncConstants() {
     if (constant_list.size()) {
       attrs->dict.Set(tvm::attr::kConstants, constant_list);
     }
-    return GetRef<PrimFunc>(func);
+    return ffi::GetRef<PrimFunc>(func);
   };
 
   auto pass_func = [=](IRModule module, tvm::transform::PassContext pc) {
-    auto m = GetRef<IRModule>(module.CopyOnWrite());
+    auto m = ffi::GetRef<IRModule>(module.CopyOnWrite());
     for (const auto& kv : m->functions) {
       if (auto func = kv.second.as<PrimFunc>()) {
         m->Update(kv.first, prim_func_pass(func.value(), m, pc));

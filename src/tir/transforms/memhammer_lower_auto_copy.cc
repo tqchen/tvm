@@ -262,7 +262,7 @@ class AutoPadder {
           block->match_buffers = std::move(match_buffers);
           return Stmt(block);
         } else {
-          return GetRef<Block>(op);
+          return ffi::GetRef<Block>(op);
         }
       }
       const Map<Buffer, Buffer>& buffer_map_;
@@ -287,7 +287,7 @@ class AutoPadder {
       if (!success_) {
         return;
       }
-      int extent = var_range_[GetRef<Var>(op)]->extent.as<IntImmNode>()->value;
+      int extent = var_range_[ffi::GetRef<Var>(op)]->extent.as<IntImmNode>()->value;
       if (extent > 1) {
         stack_.push({{extent, 1}});
       } else {
@@ -708,7 +708,7 @@ class AutoCopyMutator : public StmtExprMutator {
   }
 
   Stmt VisitStmt_(const ForNode* op) final {
-    outer_loops_.push_back(GetRef<For>(op));
+    outer_loops_.push_back(ffi::GetRef<For>(op));
     Stmt stmt = StmtMutator::VisitStmt_(op);
     outer_loops_.pop_back();
     return stmt;
@@ -754,7 +754,7 @@ class ThreadExtentCollector : public StmtVisitor {
   void VisitStmt_(const ForNode* op) final {
     if (op->thread_binding.defined() && op->thread_binding.value()->iter_type == kThreadIndex) {
       if (const auto* extent = op->extent.as<IntImmNode>()) {
-        thread_extent_.Set(op->thread_binding.value()->thread_tag, GetRef<Integer>(extent));
+        thread_extent_.Set(op->thread_binding.value()->thread_tag, ffi::GetRef<Integer>(extent));
       }
     }
     StmtVisitor::VisitStmt_(op);

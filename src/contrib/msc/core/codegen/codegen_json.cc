@@ -50,7 +50,7 @@ std::vector<JSONGraphNodeEntry> MSCJSONSerializer::VisitExpr_(const CallNode* ca
     }
     global_options_set_ = true;
   }
-  return AddNode(node, GetRef<Expr>(call_node));
+  return AddNode(node, ffi::GetRef<Expr>(call_node));
 }
 
 void MSCJSONSerializer::AddNodeAttr(JSONGraphObjectPtr node, const String& key,

@@ -65,7 +65,7 @@ class DistBufferReplacer : public StmtExprMutator {
   }
 
   Stmt VisitStmt_(const BlockNode* _block) final {
-    Block old_block = GetRef<Block>(_block);
+    Block old_block = ffi::GetRef<Block>(_block);
     Block block = Downcast<Block>(StmtExprMutator::VisitStmt_(_block));
     ObjectPtr<BlockNode> new_block = ffi::make_object<BlockNode>(*block.get());
     new_block->reads = ReplaceBuffer(new_block->reads, buffer_map_);
@@ -362,7 +362,7 @@ class LowerTIRToLocalView : public ExprMutator {
     auto mod = builder_->GetContextIRModule();
     for (const auto& [gv, base_func] : mod->functions) {
       const auto* func_ = base_func.as<FunctionNode>();
-      if (func_ == nullptr || !IsDistIRFunc(GetRef<Function>(func_))) {
+      if (func_ == nullptr || !IsDistIRFunc(ffi::GetRef<Function>(func_))) {
         continue;
       }
       Expr new_func_body = this->VisitExpr(func_->body);
@@ -376,7 +376,7 @@ class LowerTIRToLocalView : public ExprMutator {
  private:
   inline Array<DTensorStructInfo> ExtractDTensorStructInfo(Var var) {
     if (const auto* dtensor_sinfo = GetStructInfoAs<DTensorStructInfoNode>(var)) {
-      return {GetRef<DTensorStructInfo>(dtensor_sinfo)};
+      return {ffi::GetRef<DTensorStructInfo>(dtensor_sinfo)};
     } else if (const auto* tuple_sinfo = GetStructInfoAs<TupleStructInfoNode>(var)) {
       Array<DTensorStructInfo> ret;
       for (const auto& field : tuple_sinfo->fields) {

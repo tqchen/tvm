@@ -145,7 +145,7 @@ class AlterOpImplMutator : public ExprMutator {
 
     GlobalVar replacement_gv = GetOrCreateGlobalVarForFunc(replacement_func, op_kind);
 
-    auto call_tir_inputs_tuple = GetRef<Tuple>(call->args[1].as<TupleNode>());
+    auto call_tir_inputs_tuple = ffi::GetRef<Tuple>(call->args[1].as<TupleNode>());
     Tuple updated_inputs = UpdateInputs(call_tir_inputs_tuple, buffer_transforms, axis_separators,
                                         input_axis_separators);
 
@@ -161,7 +161,7 @@ class AlterOpImplMutator : public ExprMutator {
 
   Array<TensorStructInfo> GetTensorStructInfoPerOutput(const StructInfo& output_sinfo) {
     if (const auto* tensor_sinfo = output_sinfo.as<TensorStructInfoNode>())
-      return {GetRef<TensorStructInfo>(tensor_sinfo)};
+      return {ffi::GetRef<TensorStructInfo>(tensor_sinfo)};
     const auto* tuple_sinfo = output_sinfo.as<TupleStructInfoNode>();
     ICHECK(tuple_sinfo);
 
@@ -170,7 +170,7 @@ class AlterOpImplMutator : public ExprMutator {
     for (const auto& sinfo : tuple_sinfo->fields) {
       const auto* tensor_sinfo = sinfo.as<TensorStructInfoNode>();
       ICHECK(tensor_sinfo) << "Nested tuples in output of call_tir is not supported yet";
-      arr_tensor_sinfo.push_back(GetRef<TensorStructInfo>(tensor_sinfo));
+      arr_tensor_sinfo.push_back(ffi::GetRef<TensorStructInfo>(tensor_sinfo));
     }
     return arr_tensor_sinfo;
   }

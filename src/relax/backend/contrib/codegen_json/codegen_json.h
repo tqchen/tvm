@@ -361,12 +361,12 @@ class JSONSerializer : public relax::MemoizedExprTranslator<NodeEntries> {
   }
 
   NodeEntries VisitExpr_(const ConstantNode* cn) {
-    auto name = constant_names_.find(GetRef<Constant>(cn));
+    auto name = constant_names_.find(ffi::GetRef<Constant>(cn));
     ICHECK(name != constant_names_.end())
-        << "Cannot find the name of the constant: " << GetRef<Constant>(cn);
+        << "Cannot find the name of the constant: " << ffi::GetRef<Constant>(cn);
     constants_used_.push_back((*name).second);
     auto node = std::make_shared<JSONGraphNode>((*name).second, "const" /* op_type_ */);
-    return AddNode(node, GetRef<Expr>(cn));
+    return AddNode(node, ffi::GetRef<Expr>(cn));
   }
 
   NodeEntries VisitExpr_(const TupleNode* tn) {
@@ -379,7 +379,7 @@ class JSONSerializer : public relax::MemoizedExprTranslator<NodeEntries> {
   }
 
   NodeEntries VisitExpr_(const CallNode* cn) {
-    Expr expr = GetRef<Expr>(cn);
+    Expr expr = ffi::GetRef<Expr>(cn);
     std::string name;
     if (const auto* op_node = cn->op.as<OpNode>()) {
       name = op_node->name;
@@ -404,7 +404,7 @@ class JSONSerializer : public relax::MemoizedExprTranslator<NodeEntries> {
                                                 "kernel", /* op_type_ */
                                                 inputs, 1 /* num_outputs_ */);
     SetCallNodeAttribute(node, cn);
-    return AddNode(node, GetRef<Expr>(cn));
+    return AddNode(node, ffi::GetRef<Expr>(cn));
   }
 
   NodeEntries VisitExpr_(const TupleGetItemNode* gtn) {

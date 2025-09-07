@@ -549,7 +549,7 @@ inline Optional<ShapeExpr> CheckNdimPerLayoutAndGetShape(const Call& call, const
                      << sinfo->ndim);
   }
   if (const auto* shape_expr = sinfo->shape.as<ShapeExprNode>()) {
-    return GetRef<ShapeExpr>(shape_expr);
+    return ffi::GetRef<ShapeExpr>(shape_expr);
   }
   return std::nullopt;
 }

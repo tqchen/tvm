@@ -209,7 +209,7 @@ class CodegenCutlass : public relax::MemoizedExprTranslator<OutputType>,
   OutputType VisitExpr_(const CallNode* call) final {
     const auto* fn_var = call->op.as<VarNode>();
     ICHECK(fn_var);
-    const auto func = Downcast<Function>(bindings_[GetRef<Var>(fn_var)]);
+    const auto func = Downcast<Function>(bindings_[ffi::GetRef<Var>(fn_var)]);
     const auto pattern_name_opt = func->GetAttr<String>(attr::kComposite);
     ICHECK(pattern_name_opt) << "Only composite function is supported for CUTLASS.";
     auto ret = GenerateBody(call, pattern_name_opt.value(), func->attrs->dict);
@@ -296,7 +296,7 @@ class CodegenCutlass : public relax::MemoizedExprTranslator<OutputType>,
   GenerateBodyOutput GenerateBody(const CallNode* call, const std::string& func_name,
                                   const Map<String, ffi::Any>& attrs) {
     auto func_args = GetArgumentNames(call);
-    auto struct_info = GetStructInfo(GetRef<Call>(call));
+    auto struct_info = GetStructInfo(ffi::GetRef<Call>(call));
 
     std::vector<std::string> out_types;
     if (const auto* tensor_sinfo = struct_info.as<TensorStructInfoNode>()) {

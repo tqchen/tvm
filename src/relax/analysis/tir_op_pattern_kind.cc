@@ -59,12 +59,12 @@ class PatternKindAnalyzer : public StmtExprVisitor {
       kind_ = kOpaque;
       return;
     }
-    store_ = GetRef<BufferStore>(op);
+    store_ = ffi::GetRef<BufferStore>(op);
     StmtVisitor::VisitStmt_(op);
   }
 
   void VisitExpr_(const BufferLoadNode* op) final {
-    loads_.push_back(GetRef<BufferLoad>(op));
+    loads_.push_back(ffi::GetRef<BufferLoad>(op));
     ExprVisitor::VisitExpr_(op);
   }
 
@@ -293,8 +293,8 @@ class PatternKindAnalyzer : public StmtExprVisitor {
           if (!lhs || !rhs) {
             return false;
           }
-          return IsAllowReusePattern(GetRef<BufferStore>(store), GetRef<BufferLoad>(lhs)) &&
-                 IsAllowReusePattern(GetRef<BufferStore>(store), GetRef<BufferLoad>(rhs));
+          return IsAllowReusePattern(ffi::GetRef<BufferStore>(store), ffi::GetRef<BufferLoad>(lhs)) &&
+                 IsAllowReusePattern(ffi::GetRef<BufferStore>(store), ffi::GetRef<BufferLoad>(rhs));
         }
       }
     }

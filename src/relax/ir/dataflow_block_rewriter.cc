@@ -135,7 +135,7 @@ struct MatchState {
 static std::optional<MatchState> TryMatch(const PNode& p, const RNode& r,
                                           const MatchState& current_match, DFPatternMatcher* m,
                                           const MatcherUseDefAnalysis& ud_analysis) {
-  if (!m->Match(GetRef<DFPattern>(p.ptr), GetRef<Var>(r.ptr))) return std::nullopt;
+  if (!m->Match(ffi::GetRef<DFPattern>(p.ptr), ffi::GetRef<Var>(r.ptr))) return std::nullopt;
 
   MatchState new_match;
 
@@ -196,11 +196,11 @@ static std::optional<MatchState> TryValidate(
       [&pattern2node, &current_match](const DFPatternNode* pattern) -> Optional<Var> {
     auto it = pattern2node.find(pattern);
     ICHECK(it != pattern2node.end())
-        << "DFConstraint attempted to access DFPattern " << GetRef<DFPattern>(pattern)
+        << "DFConstraint attempted to access DFPattern " << ffi::GetRef<DFPattern>(pattern)
         << ", which does not appear in the PatternContext";
     const auto& p_node = it->second;
     if (auto ptr = current_match.matched(p_node)) {
-      return GetRef<Var>(ptr);
+      return ffi::GetRef<Var>(ptr);
     } else {
       return std::nullopt;
     }
@@ -354,7 +354,7 @@ Optional<Map<DFPattern, Var>> MatchGraph(const PatternContext& ctx,
   Map<DFPattern, Var> ret;
   for (const auto& [pat, p_node] : pattern2node) {
     ICHECK(match->matched(p_node));
-    ret.Set(GetRef<DFPattern>(pat), GetRef<Var>(match->matched(p_node)));
+    ret.Set(ffi::GetRef<DFPattern>(pat), ffi::GetRef<Var>(match->matched(p_node)));
   }
   return ret;
 }

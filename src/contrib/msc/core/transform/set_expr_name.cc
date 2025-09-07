@@ -109,16 +109,16 @@ class RelaxExprNameSetter : public ExprVisitor {
 
   void VisitExpr_(const ConstantNode* val) {
     ExprVisitor::VisitExpr_(val);
-    const String& unique_name = GetUniqueName(GetRef<Constant>(val), "const");
+    const String& unique_name = GetUniqueName(ffi::GetRef<Constant>(val), "const");
     if (unique_name != SpanUtils::GetAttr(val->span, msc_attr::kName)) {
       val->span = SpanUtils::SetAttr(val->span, msc_attr::kName, unique_name);
     }
-    expr_names_.Set(GetRef<Constant>(val), unique_name);
+    expr_names_.Set(ffi::GetRef<Constant>(val), unique_name);
   }
 
   void VisitBinding_(const VarBindingNode* binding, const ConstantNode* val) {
     ExprVisitor::VisitBinding_(binding, val);
-    const String& unique_name = GetUniqueName(GetRef<Constant>(val), "const");
+    const String& unique_name = GetUniqueName(ffi::GetRef<Constant>(val), "const");
     if (unique_name != SpanUtils::GetAttr(val->span, msc_attr::kName)) {
       val->span = SpanUtils::SetAttr(val->span, msc_attr::kName, unique_name);
     }
@@ -127,7 +127,7 @@ class RelaxExprNameSetter : public ExprVisitor {
 
   void VisitBinding_(const VarBindingNode* binding, const ShapeExprNode* val) {
     ExprVisitor::VisitBinding_(binding, val);
-    const String& unique_name = GetUniqueName(GetRef<ShapeExpr>(val), "shape");
+    const String& unique_name = GetUniqueName(ffi::GetRef<ShapeExpr>(val), "shape");
     if (unique_name != SpanUtils::GetAttr(val->span, msc_attr::kName)) {
       val->span = SpanUtils::SetAttr(val->span, msc_attr::kName, unique_name);
     }
@@ -136,7 +136,7 @@ class RelaxExprNameSetter : public ExprVisitor {
 
   void VisitBinding_(const VarBindingNode* binding, const TupleNode* val) {
     ExprVisitor::VisitBinding_(binding, val);
-    const String& unique_name = GetUniqueName(GetRef<Tuple>(val), "tuple");
+    const String& unique_name = GetUniqueName(ffi::GetRef<Tuple>(val), "tuple");
     if (unique_name != SpanUtils::GetAttr(val->span, msc_attr::kName)) {
       val->span = SpanUtils::SetAttr(val->span, msc_attr::kName, unique_name);
     }
@@ -161,7 +161,7 @@ class RelaxExprNameSetter : public ExprVisitor {
     ExprVisitor::VisitBinding_(binding, val);
     const auto& name_opt = val->GetAttr<String>(attr::kComposite);
     if (name_opt.has_value()) {
-      local_funcs_.Set(binding->var, GetRef<Function>(val));
+      local_funcs_.Set(binding->var, ffi::GetRef<Function>(val));
     }
   }
 
@@ -190,18 +190,18 @@ class RelaxExprNameSetter : public ExprVisitor {
       const auto& func = Downcast<Function>(ref_module_->Lookup(v_node->name_hint));
       ExprVisitor::VisitExpr(func);
       optype = GetFuncType(func);
-      name_hint = GetFuncName(GetRef<Call>(val), func);
+      name_hint = GetFuncName(ffi::GetRef<Call>(val), func);
       use_unique = false;
     } else if (local_funcs_.count(val->op)) {
       ExprVisitor::VisitExpr(local_funcs_[val->op]);
       optype = GetFuncType(local_funcs_[val->op]);
-      name_hint = GetFuncName(GetRef<Call>(val), local_funcs_[val->op]);
+      name_hint = GetFuncName(ffi::GetRef<Call>(val), local_funcs_[val->op]);
       use_unique = false;
     }
     if (name_hint.size() > 0) {
       // set name
       const String& unique_name =
-          use_unique ? GetUniqueName(GetRef<Expr>(val), name_hint) : name_hint;
+          use_unique ? GetUniqueName(ffi::GetRef<Expr>(val), name_hint) : name_hint;
       if (unique_name != SpanUtils::GetAttr(val->span, msc_attr::kName)) {
         val->span = SpanUtils::SetAttr(val->span, msc_attr::kName, unique_name);
       }
@@ -210,7 +210,7 @@ class RelaxExprNameSetter : public ExprVisitor {
       try {
         input_types = ExprUtils::GetInputTypes(optype, val->args.size(), true);
       } catch (runtime::InternalError& err) {
-        LOG(WARNING) << "Failed to GetInputTypes for " << GetRef<Call>(val) << " : " << err.what();
+        LOG(WARNING) << "Failed to GetInputTypes for " << ffi::GetRef<Call>(val) << " : " << err.what();
         throw err;
       }
       for (size_t i = 0; i < input_types.size(); i++) {

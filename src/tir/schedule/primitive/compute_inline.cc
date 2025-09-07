@@ -95,7 +95,7 @@ class NotSingleReadWriteBuffer : public ScheduleError {
       if (buffer == read_buffer) {
         continue;
       }
-      if (buffer_writers.count(GetRef<Buffer>(buffer)) > 0) {
+      if (buffer_writers.count(ffi::GetRef<Buffer>(buffer)) > 0) {
         if (read_buffer != nullptr) {
           throw NotSingleReadWriteBuffer(self->mod, true, block);
         }
@@ -105,7 +105,7 @@ class NotSingleReadWriteBuffer : public ScheduleError {
     if (read_buffer == nullptr) {
       throw NotSingleReadWriteBuffer(self->mod, true, block);
     }
-    return GetRef<Buffer>(read_buffer);
+    return ffi::GetRef<Buffer>(read_buffer);
   }
 
   static Buffer GetSingleWrite(const ScheduleState& self, const Block& block) {
@@ -174,7 +174,7 @@ class NonSingleProducerError : public ScheduleError {
     const BlockNode* scope_block = TVM_SREF_TO_BLOCK(scope_root_sref);
     const BlockNode* consumer_block = TVM_SREF_TO_BLOCK(consumer_block_sref);
     Buffer consumer_buffer = NotSingleReadWriteBuffer::GetSingleRead(
-        self, GetRef<Block>(consumer_block), scope_root_sref);
+        self, ffi::GetRef<Block>(consumer_block), scope_root_sref);
     class ProducerFinder : public StmtVisitor {
      public:
       static std::vector<Block> GetProducer(const ScheduleState& self,
@@ -211,9 +211,9 @@ class NonSingleProducerError : public ScheduleError {
             // Check if the producer block is a complete block
             StmtSRef producer_block_sref = self_->stmt2ref.at(node);
             if (!IsCompleteBlock(self_, producer_block_sref, scope_root_sref_)) {
-              throw NonSingleProducerError(self_->mod, GetRef<Block>(node));
+              throw NonSingleProducerError(self_->mod, ffi::GetRef<Block>(node));
             }
-            producer_across_scope_.back().push_back(GetRef<Block>(node));
+            producer_across_scope_.back().push_back(ffi::GetRef<Block>(node));
             break;
           }
         }
@@ -224,9 +224,9 @@ class NonSingleProducerError : public ScheduleError {
       std::vector<std::vector<Block>> producer_across_scope_;
     };
     std::vector<Block> producer_across_scope = ProducerFinder::GetProducer(
-        self, scope_root_sref, consumer_buffer, GetRef<Block>(scope_block));
+        self, scope_root_sref, consumer_buffer, ffi::GetRef<Block>(scope_block));
     if (producer_across_scope.size() != 1) {
-      throw NonSingleProducerError(self->mod, GetRef<Block>(consumer_block));
+      throw NonSingleProducerError(self->mod, ffi::GetRef<Block>(consumer_block));
     }
     return self->stmt2ref.at(producer_across_scope[0].get());
   }
@@ -237,7 +237,7 @@ class OpaqueAccessError : public ScheduleError {
   explicit OpaqueAccessError(IRModule mod, StmtSRef scope_root_sref)
       : mod_(mod), scope_root_(nullptr) {
     const BlockNode* scope_root = TVM_SREF_TO_BLOCK(scope_root_sref);
-    this->scope_root_ = GetRef<Block>(scope_root);
+    this->scope_root_ = ffi::GetRef<Block>(scope_root);
   }
 
   String FastErrorString() const final {
@@ -315,7 +315,7 @@ class BaseInliner : public StmtExprMutator {
   Stmt VisitStmt_(const BlockNode* block) {
     CheckMatchBufferRegion(block);
     AddBuffersInBlockSignature(block);
-    Block src_block = GetRef<Block>(block);
+    Block src_block = ffi::GetRef<Block>(block);
     if (src_block.same_as(src_stmt)) {
       block = tgt_stmt.as<BlockNode>();
       ICHECK(block != nullptr);
@@ -573,7 +573,7 @@ class ReverseComputeInliner : public BaseInliner {
     PrimExpr VisitExpr_(const VarNode* var) final {
       auto it = self_->idx_sub_.find(var);
       if (it == self_->idx_sub_.end()) {
-        return GetRef<Var>(var);
+        return ffi::GetRef<Var>(var);
       }
       return (*it).second;
     }
@@ -594,7 +594,7 @@ class ReverseComputeInliner : public BaseInliner {
     PrimExpr VisitExpr_(const VarNode* var) final {
       auto it = self_->idx_sub_.find(var);
       if (it == self_->idx_sub_.end()) {
-        return GetRef<Var>(var);
+        return ffi::GetRef<Var>(var);
       }
       return (*it).second;
     }
@@ -748,7 +748,7 @@ class ReverseComputeInliner : public BaseInliner {
     auto n = producer_block_realize.CopyOnWrite();
     n->block = producer_block;
     n->predicate = analyzer_.Simplify(outer_predicate);
-    return GetRef<BlockRealize>(n);
+    return ffi::GetRef<BlockRealize>(n);
   }
 
   Stmt VisitStmt_(const BlockRealizeNode* op) final {
@@ -811,7 +811,7 @@ class ReverseComputeInliner : public BaseInliner {
     // "producer->value" may contain the buffer that is inlined in cases of reduction,
     // so we need to resolve the recursion first
     producer_rhs_ = RecursionResolver(this)(producer->value);
-    return Substituter(this)(GetRef<BufferStore>(inlined_store_));
+    return Substituter(this)(ffi::GetRef<BufferStore>(inlined_store_));
   }
 
   /*!
@@ -879,7 +879,7 @@ class ReverseComputeInliner : public BaseInliner {
 void ComputeInlineImpl(ScheduleState self, const StmtSRef& producer_block_sref,
                        bool check_only = false) {
   const BlockNode* _producer_block = TVM_SREF_TO_BLOCK(producer_block_sref);
-  Block producer_block = GetRef<Block>(_producer_block);
+  Block producer_block = ffi::GetRef<Block>(_producer_block);
   HasInitBlock::Check(self->mod, producer_block);
   Buffer inlined_buffer = NotSingleReadWriteBuffer::GetSingleWrite(self, producer_block);
   // Step 1. Get the scope block
@@ -897,7 +897,7 @@ void ComputeInlineImpl(ScheduleState self, const StmtSRef& producer_block_sref,
   LeafBlockRemovalPlan(self, producer_block_sref, &inliner.src_stmt, &inliner.tgt_stmt);
   // Step 5. Create an AST where the leaf `producer_block_sref` points to is removed,
   // and update other blocks who read from the removed block
-  Stmt tgt_stmt = inliner(GetRef<Stmt>(scope_root_sref->stmt));
+  Stmt tgt_stmt = inliner(ffi::GetRef<Stmt>(scope_root_sref->stmt));
   if (inliner.has_opaque_access) {
     throw OpaqueAccessError(self->mod, scope_root_sref);
   }
@@ -924,7 +924,7 @@ bool CanComputeInline(const ScheduleState& self, const StmtSRef& producer_block_
 void ReverseComputeInlineImpl(ScheduleState self, const StmtSRef& consumer_block_sref,
                               bool check_only = false) {
   const BlockNode* _consumer_block = TVM_SREF_TO_BLOCK(consumer_block_sref);
-  Block consumer_block = GetRef<Block>(_consumer_block);
+  Block consumer_block = ffi::GetRef<Block>(_consumer_block);
   BlockRealize consumer_block_realize = GetBlockRealize(self, consumer_block_sref);
   HasInitBlock::Check(self->mod, consumer_block);
   // Step 1. Get the scope block
@@ -949,7 +949,7 @@ void ReverseComputeInlineImpl(ScheduleState self, const StmtSRef& consumer_block
   LeafBlockRemovalPlan(self, consumer_block_sref, &inliner.src_stmt, &inliner.tgt_stmt);
   // Step 6. Create an AST where the leaf `consumer_block_sref` points to is removed,
   // and update other blocks who read from the removed block
-  Stmt tgt_stmt = inliner(GetRef<Stmt>(scope_root_sref->stmt));
+  Stmt tgt_stmt = inliner(ffi::GetRef<Stmt>(scope_root_sref->stmt));
   if (inliner.has_opaque_access) {
     throw OpaqueAccessError(self->mod, scope_root_sref);
   }
@@ -963,7 +963,7 @@ void ReverseComputeInlineImpl(ScheduleState self, const StmtSRef& consumer_block
   BlockInfo& block_info = self->block_info[producer_block_sref];
   block_info.affine_binding = IsAffineBinding(
       /*realize=*/GetBlockRealize(self, producer_block_sref),
-      /*loop_var_ranges=*/LoopDomainOfSRefTreePath(GetRef<StmtSRef>(producer_block_sref->parent)),
+      /*loop_var_ranges=*/LoopDomainOfSRefTreePath(ffi::GetRef<StmtSRef>(producer_block_sref->parent)),
       /*analyzer=*/&analyzer);
 }
 

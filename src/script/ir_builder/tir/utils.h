@@ -39,7 +39,7 @@ inline void AddToParent(tvm::tir::Stmt stmt) {
     ICHECK(!builder->result.defined()) << "ValueError: Builder.result has already been set";
     builder->result = stmt;
   } else if (const auto* tir_frame = builder->frames.back().as<TIRFrameNode>()) {
-    GetRef<TIRFrame>(tir_frame)->stmts.push_back(stmt);
+    ffi::GetRef<TIRFrame>(tir_frame)->stmts.push_back(stmt);
   } else {
     LOG(FATAL) << "TypeError: Unsupported frame type: " << builder->frames.back();
   }

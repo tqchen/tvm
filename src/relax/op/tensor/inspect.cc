@@ -85,7 +85,7 @@ std::tuple<TensorStructInfo, PrimStructInfo> GetTensorArgInfoWithIndex(const Cal
         << ", but " << arg << ".shape only has " << tensor_sinfo->ndim << " elements";
   }
 
-  return {GetRef<TensorStructInfo>(tensor_sinfo), GetRef<PrimStructInfo>(axis_sinfo)};
+  return {ffi::GetRef<TensorStructInfo>(tensor_sinfo), ffi::GetRef<PrimStructInfo>(axis_sinfo)};
 }
 
 DataType GetTensorDataType(const Call& call) { return GetTensorArgInfo(call)->dtype; }

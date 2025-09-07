@@ -130,19 +130,19 @@ IRModule BindNamedParam(IRModule m, String func_name, Map<ObjectRef, ObjectRef> 
         // Use global_symbol if it's external linkage
         Optional<String> gsymbol = relax_f->GetAttr<String>(tvm::attr::kGlobalSymbol);
         if (gsymbol.has_value() && gsymbol.value() == func_name) {
-          Function f_after_bind = FunctionBindNamedParams(GetRef<Function>(relax_f), bind_params);
+          Function f_after_bind = FunctionBindNamedParams(ffi::GetRef<Function>(relax_f), bind_params);
           new_module->Update(func_pr.first, f_after_bind);
         }
       } else {
         // Use global var's name_hint if it's internal linkage
         if (func_pr.first->name_hint == func_name) {
-          Function f_after_bind = FunctionBindNamedParams(GetRef<Function>(relax_f), bind_params);
+          Function f_after_bind = FunctionBindNamedParams(ffi::GetRef<Function>(relax_f), bind_params);
           new_module->Update(func_pr.first, f_after_bind);
         }
       }
     }
   }
-  return GetRef<IRModule>(new_module);
+  return ffi::GetRef<IRModule>(new_module);
 }
 
 namespace transform {

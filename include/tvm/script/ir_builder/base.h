@@ -276,7 +276,7 @@ inline Optional<TFrame> IRBuilderNode::FindFrame() const {
   using TFrameNode = typename TFrame::ContainerType;
   for (auto it = frames.rbegin(); it != frames.rend(); ++it) {
     if (const TFrameNode* p = (*it).template as<TFrameNode>()) {
-      return GetRef<TFrame>(p);
+      return ffi::GetRef<TFrame>(p);
     }
   }
   return std::nullopt;
@@ -297,7 +297,7 @@ inline TObjectRef IRBuilderNode::Get() const {
   CHECK(result.defined()) << "IndexError: No result exists in IRBuilder yet";
   const auto* n = result.as<TObject>();
   CHECK(n != nullptr) << "TypeError: IRBuilder result is not of type: " << TObject::_type_key;
-  return GetRef<TObjectRef>(n);
+  return ffi::GetRef<TObjectRef>(n);
 }
 
 }  // namespace ir_builder

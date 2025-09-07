@@ -155,8 +155,8 @@ InferLayoutOutput InferLayoutBinaryEwise(const Call& call,
   ICHECK(!x1_sinfo->IsUnknownNdim() && !x2_sinfo->IsUnknownNdim())
       << "Unknown dim tensors should not be handled by this function";
 
-  Optional<ShapeExpr> shape1 = GetRef<ShapeExpr>(x1_sinfo->shape.as<ShapeExprNode>());
-  Optional<ShapeExpr> shape2 = GetRef<ShapeExpr>(x2_sinfo->shape.as<ShapeExprNode>());
+  Optional<ShapeExpr> shape1 = ffi::GetRef<ShapeExpr>(x1_sinfo->shape.as<ShapeExprNode>());
+  Optional<ShapeExpr> shape2 = ffi::GetRef<ShapeExpr>(x2_sinfo->shape.as<ShapeExprNode>());
   // Lets handle sub indexing as long as primal dims are matching
   if (layout1->layout.ndim_primal() == layout2->layout.ndim_primal()) {
     if ((layout1->layout.ndim() >= layout2->layout.ndim()) && shape2.defined()) {

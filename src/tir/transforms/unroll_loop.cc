@@ -83,7 +83,7 @@ class VarLocalAccessMarker : public ExprVisitor {
   explicit VarLocalAccessMarker(std::unordered_set<Var>* var_touched_local)
       : var_touched_local_(var_touched_local) {}
 
-  void VisitExpr_(const VarNode* op) final { var_touched_local_->insert(GetRef<Var>(op)); }
+  void VisitExpr_(const VarNode* op) final { var_touched_local_->insert(ffi::GetRef<Var>(op)); }
 
  private:
   std::unordered_set<Var>* var_touched_local_;
@@ -176,7 +176,7 @@ class LoopUnroller : public StmtExprMutator {
         }
       }
     }
-    return GetRef<PrimExpr>(op);
+    return ffi::GetRef<PrimExpr>(op);
   }
 
   Stmt VisitStmt_(const BufferStoreNode* op) final {

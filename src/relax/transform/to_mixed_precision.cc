@@ -44,7 +44,7 @@ int GetMixedPrecisionInfo(const CallNode* call_node) {
   if (op_node == nullptr) {
     return -1;
   }
-  Op op = GetRef<Op>(op_node);
+  Op op = ffi::GetRef<Op>(op_node);
   auto attr_map = Op::GetAttrMap<TMixedPrecisionPolicy>("TMixedPrecisionPolicy");
   return attr_map.count(op) ? attr_map[op] : MixedPrecisionPolicyKind::kNever;
 }
@@ -151,7 +151,7 @@ class DTypeDecisionCollector : public ExprVisitor {
     for (size_t i = 0; i < args.size(); ++i) {
       auto fvisitleaf = [&](const Expr& expr, NType to) {
         if (const auto* var = expr.as<VarNode>()) {
-          UpdateVarDTypeMap(GetRef<Var>(var), to);
+          UpdateVarDTypeMap(ffi::GetRef<Var>(var), to);
         } else if (expr->IsInstance<ConstantNode>()) {
           // Constant can be casted anyway, so we don't need to do anything here
           return;
@@ -178,7 +178,7 @@ class DTypeDecisionCollector : public ExprVisitor {
   }
 
   void VisitVars_(const VarNode* op) {
-    Var var = GetRef<Var>(op);
+    Var var = ffi::GetRef<Var>(op);
     if (IsNestedTensor(var)) {
       // require the var to be fp32 (its original dtype)
       UpdateVarDTypeMap(var, NTypeFrom(var, fp32_));
@@ -239,7 +239,7 @@ class DTypeDecisionCollector : public ExprVisitor {
     }
 
     if (auto* sinfo = op->struct_info_.as<StructInfoNode>()) {
-      this->VisitExprDepStructInfoField(GetRef<StructInfo>(sinfo));
+      this->VisitExprDepStructInfoField(ffi::GetRef<StructInfo>(sinfo));
     }
   }
 
@@ -258,7 +258,7 @@ class DTypeDecisionCollector : public ExprVisitor {
     this->VisitExpr(op->cond);
 
     if (auto* sinfo = op->struct_info_.as<StructInfoNode>()) {
-      this->VisitExprDepStructInfoField(GetRef<StructInfo>(sinfo));
+      this->VisitExprDepStructInfoField(ffi::GetRef<StructInfo>(sinfo));
     }
   }
 
@@ -439,7 +439,7 @@ class ToMixedPrecisionRewriter : public ExprMutator {
     if (!builder_->CurrentBlockIsDataFlow()) {
       return ExprMutator::VisitExpr_(op);
     }
-    return VisitVar_(GetRef<Var>(op));
+    return VisitVar_(ffi::GetRef<Var>(op));
   }
 
   Var VisitVarDef(const Var& var) { return GetRemapped(var); }
@@ -464,14 +464,14 @@ class ToMixedPrecisionRewriter : public ExprMutator {
     // var = Call(op)
     const auto* op_node = call_node->op.as<OpNode>();
     ICHECK(op_node != nullptr);
-    Op op = GetRef<Op>(op_node);
+    Op op = ffi::GetRef<Op>(op_node);
     if (wrap_param_op.same_as(op)) {
       // wrap_param
       ReEmitBinding(binding, call_node->args[0]);
       return;
     }
 
-    Call new_call = GetRef<Call>(call_node);
+    Call new_call = ffi::GetRef<Call>(call_node);
 
     // We first to remap the args to the current vars according to the var_remap_
     new_call.CopyOnWrite()->args = RemapArgs(new_call->args);

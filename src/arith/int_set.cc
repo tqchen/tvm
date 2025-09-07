@@ -390,11 +390,11 @@ class IntervalSetEvaluator : public ExprFunctor<IntervalSet(const PrimExpr&)> {
   }
 
   IntervalSet VisitExpr_(const IntImmNode* op) final {
-    return IntervalSet::SinglePoint(GetRef<PrimExpr>(op));
+    return IntervalSet::SinglePoint(ffi::GetRef<PrimExpr>(op));
   }
 
   IntervalSet VisitExpr_(const VarNode* op) final {
-    Var var = GetRef<Var>(op);
+    Var var = ffi::GetRef<Var>(op);
 
     Array<IntSet> values;
     if (dom_constraints_) {
@@ -491,7 +491,7 @@ class IntervalSetEvaluator : public ExprFunctor<IntervalSet(const PrimExpr&)> {
         }
       }
     }
-    DLOG(WARNING) << "cannot evaluate set on expression " << GetRef<PrimExpr>(op);
+    DLOG(WARNING) << "cannot evaluate set on expression " << ffi::GetRef<PrimExpr>(op);
     return IntervalSet::Everything();
   }
 
@@ -530,17 +530,17 @@ class IntervalSetEvaluator : public ExprFunctor<IntervalSet(const PrimExpr&)> {
     // Otherwise return `IntervalSet::everything()` since we have no knowledge on the buffer data.
     for (const PrimExpr& index : op->indices) {
       if (UsesVar(index, [dom_map = &this->dom_map_](const VarNode* var) {
-            return dom_map->find(GetRef<Var>(var)) != dom_map->end();
+            return dom_map->find(ffi::GetRef<Var>(var)) != dom_map->end();
           })) {
         return IntervalSet::Everything();
       }
     }
-    return IntervalSet::SinglePoint(GetRef<PrimExpr>(op));
+    return IntervalSet::SinglePoint(ffi::GetRef<PrimExpr>(op));
   }
 
   IntervalSet VisitExpr_(const CallNode* op) final {
     if (op->op.same_as(tir::builtin::vscale()))
-      return IntervalSet(GetRef<PrimExpr>(op), GetRef<PrimExpr>(op));
+      return IntervalSet(ffi::GetRef<PrimExpr>(op), ffi::GetRef<PrimExpr>(op));
     return IntervalSet::Everything();
   }
 
@@ -561,7 +561,7 @@ class IntervalSetEvaluator : public ExprFunctor<IntervalSet(const PrimExpr&)> {
     IntervalSet a = this->Eval(op->a);
     IntervalSet b = this->Eval(op->b);
     if (MatchPoint(a, op->a) && MatchPoint(b, op->b)) {
-      return IntervalSet::SinglePoint(GetRef<PrimExpr>(op));
+      return IntervalSet::SinglePoint(ffi::GetRef<PrimExpr>(op));
     }
     return Combine<TOp>(analyzer_, a, b, op->dtype);
   }
@@ -966,7 +966,7 @@ Map<Var, IntSet> ConvertDomMap(const Map<IterVar, IntSet>& dom_map) {
 Map<Var, IntSet> ConvertDomMap(const std::unordered_map<const VarNode*, IntSet>& dom_map) {
   Map<Var, IntSet> dmap;
   for (auto kv : dom_map) {
-    dmap.Set(GetRef<Var>(kv.first), kv.second);
+    dmap.Set(ffi::GetRef<Var>(kv.first), kv.second);
   }
   return dmap;
 }

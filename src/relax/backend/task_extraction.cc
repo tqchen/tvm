@@ -72,7 +72,7 @@ class TaskExtractor : public ExprVisitor {
     // We go through each Relax function in the module.
     for (const auto& kv : mod->functions) {
       if (const auto* func = kv.second.as<FunctionNode>()) {
-        extractor(GetRef<Function>(func));
+        extractor(ffi::GetRef<Function>(func));
       }
     }
     Array<ExtractedTask> tasks;

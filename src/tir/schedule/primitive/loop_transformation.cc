@@ -52,7 +52,7 @@ class SubstituteVarAndCollectOpaqueBlock : public StmtExprMutator {
 
  private:
   PrimExpr VisitExpr_(const VarNode* op) final {
-    Var var = GetRef<Var>(op);
+    Var var = ffi::GetRef<Var>(op);
     if (Optional<PrimExpr> ret = vmap_(var)) {
       return tvm::cast(var.dtype(), ret.value());
     } else {
@@ -123,7 +123,7 @@ class IterMapSimplifyBlockBinding : public StmtExprMutator {
                                /*analyzer=*/&analzyer_,
                                /*simplify_trivial_iterators=*/!preserve_unit_iters_);
     if (v.same_as(op->iter_values)) {
-      return GetRef<Stmt>(op);
+      return ffi::GetRef<Stmt>(op);
     } else {
       ObjectPtr<BlockRealizeNode> n = CopyOnWrite(op);
       n->iter_values = std::move(v);
@@ -161,11 +161,11 @@ class BlockPropertyError : public ScheduleError {
       void VisitStmt_(const BlockNode* op) final {
         for (const IterVar& iter_var : op->iter_vars) {
           if (iter_var->iter_type != kDataPar && iter_var->iter_type != kCommReduce) {
-            throw BlockPropertyError(state_->mod, GetRef<Block>(op));
+            throw BlockPropertyError(state_->mod, ffi::GetRef<Block>(op));
           }
           Optional<StmtSRef> high_exclusive =
-              top_->parent ? GetRef<StmtSRef>(top_->parent) : Optional<StmtSRef>(std::nullopt);
-          CheckPartialAffineBinding(state_, GetRef<Block>(op), high_exclusive);
+              top_->parent ? ffi::GetRef<StmtSRef>(top_->parent) : Optional<StmtSRef>(std::nullopt);
+          CheckPartialAffineBinding(state_, ffi::GetRef<Block>(op), high_exclusive);
         }
       }
       const ScheduleState& state_;
@@ -173,7 +173,7 @@ class BlockPropertyError : public ScheduleError {
     };
 
     BlockIterTypeAndAffineBindingChecker checker(self, top);
-    checker(GetRef<Stmt>(sref->stmt));
+    checker(ffi::GetRef<Stmt>(sref->stmt));
   }
 
   explicit BlockPropertyError(IRModule mod, Block block) : mod_(mod), block_(std::move(block)) {}
@@ -394,7 +394,7 @@ Array<StmtSRef> Split(ScheduleState self, const StmtSRef& loop_sref, const Array
   // Step 1. Check correctness
   const ForNode* loop = TVM_SREF_TO_FOR(loop_sref);
   if (!loop->annotations.empty() || loop->thread_binding.defined()) {
-    throw HasAnnotationOrThreadBindingError(self->mod, GetRef<For>(loop));
+    throw HasAnnotationOrThreadBindingError(self->mod, ffi::GetRef<For>(loop));
   }
   // Currently, loops not starting with 0 are not supported
   arith::Analyzer analyzer;
@@ -639,7 +639,7 @@ Array<StmtSRef> LoopPartition(ScheduleState self, const StmtSRef& loop_sref,
                               const Array<PrimExpr>& factors, bool preserve_unit_iters) {
   const ForNode* loop = TVM_SREF_TO_FOR(loop_sref);
   if (!loop->annotations.empty() || loop->thread_binding.defined()) {
-    throw HasAnnotationOrThreadBindingError(self->mod, GetRef<For>(loop));
+    throw HasAnnotationOrThreadBindingError(self->mod, ffi::GetRef<For>(loop));
   }
 
   arith::Analyzer analyzer;
@@ -748,15 +748,15 @@ class LoopReconstructor : private StmtMutator {
  private:
   Stmt VisitStmt_(const BlockNode* block) final {
     if (block != scope_root_.get()) {
-      return GetRef<Block>(block);
+      return ffi::GetRef<Block>(block);
     }
     return StmtMutator::VisitStmt_(block);
   }
 
   Stmt VisitStmt_(const ForNode* loop) final {
-    if (GetRef<For>(loop) == need_remove_loop_.back()) {
+    if (ffi::GetRef<For>(loop) == need_remove_loop_.back()) {
       return new_outer_loop_;
-    } else if (std::count(need_remove_loop_.begin(), need_remove_loop_.end(), GetRef<For>(loop))) {
+    } else if (std::count(need_remove_loop_.begin(), need_remove_loop_.end(), ffi::GetRef<For>(loop))) {
       return Evaluate(0);
     }
     return StmtMutator::VisitStmt_(loop);
@@ -813,10 +813,10 @@ StmtSRef Merge(ScheduleState self, const Array<StmtSRef>& loop_srefs) {
     for (auto p = sref.get(); p != lca.get(); p = p->parent) {
       if (auto loop = p->StmtAs<ForNode>()) {
         if (!loop->annotations.empty() || loop->thread_binding.defined()) {
-          throw HasAnnotationOrThreadBindingError(self->mod, GetRef<For>(loop));
+          throw HasAnnotationOrThreadBindingError(self->mod, ffi::GetRef<For>(loop));
         }
-        CheckLoopStartsWithZero(self, GetRef<StmtSRef>(p), &analyzer);
-        nest_loop_i_loops.push_back(GetRef<For>(loop));
+        CheckLoopStartsWithZero(self, ffi::GetRef<StmtSRef>(p), &analyzer);
+        nest_loop_i_loops.push_back(ffi::GetRef<For>(loop));
         nest_loop_i_extents.push_back(loop->extent);
       }
     }
@@ -824,7 +824,7 @@ StmtSRef Merge(ScheduleState self, const Array<StmtSRef>& loop_srefs) {
     const ForNode* outer_loop = nullptr;
     for (auto iter = nest_loop_i_loops.rbegin(); iter != nest_loop_i_loops.rend(); ++iter) {
       if (outer_loop && !outer_loop->body.same_as(*iter)) {
-        throw NotOnlyChildError(self->mod, GetRef<For>(outer_loop), *iter);
+        throw NotOnlyChildError(self->mod, ffi::GetRef<For>(outer_loop), *iter);
       }
       outer_loop = (*iter).get();
     }
@@ -853,7 +853,7 @@ StmtSRef Merge(ScheduleState self, const Array<StmtSRef>& loop_srefs) {
     }
   }
   // Step 2. Create merged loops and replace the original loops
-  Block scope_root = GetRef<Block>(scope_root_sref->StmtAs<BlockNode>());
+  Block scope_root = ffi::GetRef<Block>(scope_root_sref->StmtAs<BlockNode>());
   LoopReconstructor reconstructor(scope_root, lca_nest_loops);
   reconstructor.MakeNewLoop();
   Block new_scope_root = Downcast<Block>(reconstructor(scope_root));
@@ -877,14 +877,14 @@ StmtSRef Fuse(ScheduleState self, const Array<StmtSRef>& loop_srefs, bool preser
   for (const StmtSRef& sref : loop_srefs) {
     const ForNode* loop = TVM_SREF_TO_FOR(sref);
     if (!loop->annotations.empty() || loop->thread_binding.defined()) {
-      throw HasAnnotationOrThreadBindingError(self->mod, GetRef<For>(loop));
+      throw HasAnnotationOrThreadBindingError(self->mod, ffi::GetRef<For>(loop));
     }
     if (outer_loop_sref.defined()) {
       if (sref->parent != outer_loop_sref.get()) {
-        throw OuterNotInnerParent(self->mod, GetRef<For>(outer_loop), GetRef<For>(loop));
+        throw OuterNotInnerParent(self->mod, ffi::GetRef<For>(outer_loop), ffi::GetRef<For>(loop));
       }
-      if (!outer_loop->body.same_as(GetRef<For>(loop))) {
-        throw NotOnlyChildError(self->mod, GetRef<For>(outer_loop), GetRef<For>(loop));
+      if (!outer_loop->body.same_as(ffi::GetRef<For>(loop))) {
+        throw NotOnlyChildError(self->mod, ffi::GetRef<For>(outer_loop), ffi::GetRef<For>(loop));
       }
     }
     outer_loop_sref = sref;
@@ -899,7 +899,7 @@ StmtSRef Fuse(ScheduleState self, const Array<StmtSRef>& loop_srefs, bool preser
       return false;
     };
     if (UsesVar(loop->extent, f_contain)) {
-      throw DependentLoopError(self->mod, GetRef<For>(loop), used_var->name_hint,
+      throw DependentLoopError(self->mod, ffi::GetRef<For>(loop), used_var->name_hint,
                                DependentLoopError::PrimitiveKind::kFuse);
     }
     outer_loop_vars.insert(loop->loop_var.get());
@@ -966,7 +966,7 @@ std::unordered_set<const StmtSRefNode*> CollectLoopsIntoSet(
     auto inserted = loop_srefs.insert(loop_sref.get());
     if (!inserted.second) {
       const ForNode* loop = TVM_SREF_TO_FOR(loop_sref);
-      throw LoopMultiAppearanceError(self->mod, GetRef<For>(loop));
+      throw LoopMultiAppearanceError(self->mod, ffi::GetRef<For>(loop));
     }
   }
   return loop_srefs;
@@ -1004,7 +1004,7 @@ std::pair<const StmtSRefNode*, const StmtSRefNode*> GetBoundaryOfReorderRange(
       // `bottom`.
       if (visited.count(v)) {
         if (v != bottom) {
-          throw LoopsNotAChainError(self->mod, GetRef<Stmt>(v->stmt),
+          throw LoopsNotAChainError(self->mod, ffi::GetRef<Stmt>(v->stmt),
                                     LoopsNotAChainError::ProblemKind::kHaveNonSingleBranchStmt);
         }
         bottom = loop_sref;
@@ -1041,7 +1041,7 @@ std::vector<const StmtSRefNode*> GetLoopsInReorderRange(const ScheduleState& sel
     const ForNode* inner = loop_sref->StmtAs<ForNode>();
     ICHECK(outer != nullptr && inner != nullptr);
     if (outer->body.get() != inner) {
-      throw LoopsNotAChainError(self->mod, GetRef<For>(outer),
+      throw LoopsNotAChainError(self->mod, ffi::GetRef<For>(outer),
                                 LoopsNotAChainError::ProblemKind::kHaveNonSingleBranchStmt);
     }
     chain.push_back(loop_sref);
@@ -1092,7 +1092,7 @@ For ConstructNewLoopChain(const ScheduleState& self, std::vector<const StmtSRefN
       return false;
     };
     if (UsesVar(copy->min, f_contain) || UsesVar(copy->extent, f_contain)) {
-      throw DependentLoopError(self->mod, GetRef<For>(copy), used_var->name_hint,
+      throw DependentLoopError(self->mod, ffi::GetRef<For>(copy), used_var->name_hint,
                                DependentLoopError::PrimitiveKind::kReorder);
     }
     inner_vars.insert(copy->loop_var.get());
@@ -1124,12 +1124,12 @@ void Reorder(ScheduleState self, const Array<StmtSRef>& ordered_loop_srefs) {
   // Step 5. Replace the original loops with the reordered loops and check that outer loop is
   // not dependent on inner loop
   For new_loop = ConstructNewLoopChain(self, std::move(chain), ordered_loop_srefs, loop_srefs);
-  self->Replace(GetRef<StmtSRef>(top), new_loop, {});
+  self->Replace(ffi::GetRef<StmtSRef>(top), new_loop, {});
 }
 
 StmtSRef AddUnitLoop(ScheduleState self, StmtSRef sref) {
   if (sref->stmt->IsInstance<ForNode>()) {
-    For new_loop(Var("u", DataType::Int(32)), 0, 1, ForKind::kSerial, GetRef<Stmt>(sref->stmt));
+    For new_loop(Var("u", DataType::Int(32)), 0, 1, ForKind::kSerial, ffi::GetRef<Stmt>(sref->stmt));
     self->Replace(sref, new_loop, {});
     return self->stmt2ref.at(new_loop.get());
   }
@@ -1140,7 +1140,7 @@ StmtSRef AddUnitLoop(ScheduleState self, StmtSRef sref) {
     Stmt VisitStmt_(const BlockRealizeNode* realize) final {
       if (realize->block.get() == src_block_) {
         new_loop_ =
-            For(Var("u", DataType::Int(32)), 0, 1, ForKind::kSerial, GetRef<BlockRealize>(realize));
+            For(Var("u", DataType::Int(32)), 0, 1, ForKind::kSerial, ffi::GetRef<BlockRealize>(realize));
         return new_loop_;
       }
       return StmtMutator::VisitStmt_(realize);
@@ -1151,13 +1151,13 @@ StmtSRef AddUnitLoop(ScheduleState self, StmtSRef sref) {
   };
 
   CHECK(sref->parent != nullptr) << "ValueError: Cannot add loops on top of the root block";
-  StmtSRef parent_sref = GetRef<StmtSRef>(sref->parent);
+  StmtSRef parent_sref = ffi::GetRef<StmtSRef>(sref->parent);
   NewLoopCreator creator(sref->stmt);
-  Stmt new_stmt = creator(GetRef<Stmt>(parent_sref->stmt));
+  Stmt new_stmt = creator(ffi::GetRef<Stmt>(parent_sref->stmt));
   if (new_stmt->IsInstance<ForNode>()) {
     self->Replace(parent_sref, std::move(new_stmt), {});
   } else {
-    Block old_parent_block = GetRef<Block>(parent_sref->StmtAs<BlockNode>());
+    Block old_parent_block = ffi::GetRef<Block>(parent_sref->StmtAs<BlockNode>());
     Block new_parent_block = Downcast<Block>(new_stmt);
     self->Replace(parent_sref, new_stmt, {{old_parent_block, new_parent_block}});
   }

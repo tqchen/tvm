@@ -123,7 +123,7 @@ class GraphCreator : public ExprVisitor {
           func->GetAttr<String>(attr::kCodegen).has_value()) {
         continue;
       }
-      creator(GetRef<Function>(func));
+      creator(ffi::GetRef<Function>(func));
     }
 
     // The algorithm of the graph creator ensures that each created node will be added to the
@@ -222,7 +222,7 @@ class GraphCreator : public ExprVisitor {
     for (const Expr& arg : args) {
       ICHECK(IsLeafOrTuple(arg))
           << "FuseOps expects all relax::Call nodes to have non-nested arguments, "
-          << "but " << GetRef<Expr>(call) << " has argument " << arg
+          << "but " << ffi::GetRef<Expr>(call) << " has argument " << arg
           << ", which is neither a leaf node nor a relax::Tuple";
       VisitLeaf(arg, binding_var_node, pattern);
     }
@@ -297,7 +297,7 @@ class GraphCreator : public ExprVisitor {
    */
   IndexedForwardGraph::Node* CreateNode(const Object* key) {
     ICHECK(graph_.node_map.find(key) == graph_.node_map.end())
-        << "The object " << GetRef<ObjectRef>(key) << " appears at multiple definition sites.";
+        << "The object " << ffi::GetRef<ObjectRef>(key) << " appears at multiple definition sites.";
     auto* node = arena_->make<IndexedForwardGraph::Node>();
     graph_.node_map[key] = node;
     return node;
@@ -312,12 +312,12 @@ class GraphCreator : public ExprVisitor {
   void AddToPostDFSOrder(IndexedForwardGraph::Node* node, const Object* key) {
     auto it = graph_.node_map.find(key);
     ICHECK(it != graph_.node_map.end() && it->second == node)
-        << "Cannot add node " << GetRef<ObjectRef>(key) << " to the post-DFS order, "
+        << "Cannot add node " << ffi::GetRef<ObjectRef>(key) << " to the post-DFS order, "
         << "because the node for this object has not yet been created.";
 
     // We only set the reference of the node when adding it to the post-dfs order. Thus, if the
     // reference of a node is already set, it must have been appended to the post-dfs order.
-    ICHECK(node->ref == nullptr) << "Cannot add node " << GetRef<ObjectRef>(key)
+    ICHECK(node->ref == nullptr) << "Cannot add node " << ffi::GetRef<ObjectRef>(key)
                                  << " to the post-DFS order, "
                                  << "because it has already been added.";
 
@@ -354,7 +354,7 @@ class GraphCreator : public ExprVisitor {
    */
   void SetNodePattern(IndexedForwardGraph::Node* node, OpPatternKind pattern) {
     ICHECK(initialized_nodes_.find(node) == initialized_nodes_.end())
-        << "The input node " << GetRef<ObjectRef>(node->ref)
+        << "The input node " << ffi::GetRef<ObjectRef>(node->ref)
         << " cannot have have its OpPatternKind set more than once.";
     initialized_nodes_.insert(node);
     node->pattern = pattern;
@@ -502,7 +502,7 @@ class FunctionCreator : public ExprMutator {
       item_params.reserve(item_indices.size());
       for (int item_idx : item_indices) {
         Var item_param(param_name + "_" + std::to_string(item_idx), param_sinfo->fields[item_idx]);
-        item_args.push_back(TupleGetItem(GetRef<Expr>(tuple_arg), item_idx));
+        item_args.push_back(TupleGetItem(ffi::GetRef<Expr>(tuple_arg), item_idx));
         item_params.push_back(item_param);
         tuple_get_item_remap[tuple_arg][item_idx] = item_param;
       }
@@ -1091,7 +1091,7 @@ class PatternBasedPartitioner : ExprVisitor {
         attrs_getter_(attrs_getter) {}
 
   void VisitBindingBlock_(const DataflowBlockNode* block) final {
-    current_block_use_def_ = DataflowBlockUseDef(GetRef<DataflowBlock>(block));
+    current_block_use_def_ = DataflowBlockUseDef(ffi::GetRef<DataflowBlock>(block));
     ExprVisitor::VisitBindingBlock_(block);
     current_block_use_def_ = {};
   }
@@ -1112,14 +1112,14 @@ class PatternBasedPartitioner : ExprVisitor {
 
   void VisitBinding_(const VarBindingNode* binding, const CallNode* call) final {
     VisitVarDef(binding->var);
-    if (auto matches_opt = ExtractMatchedExpr(pat_, GetRef<Call>(call), bindings_)) {
+    if (auto matches_opt = ExtractMatchedExpr(pat_, ffi::GetRef<Call>(call), bindings_)) {
       const auto& context = CreatePatternCheckContext(call, matches_opt.value());
       if (check_ != nullptr && !check_(context)) {
         return;
       }
 
       for (const auto& [pat, match] : matches_opt.value()) {
-        if ((pat->IsInstance<CallPatternNode>() && match != GetRef<Call>(call)) ||
+        if ((pat->IsInstance<CallPatternNode>() && match != ffi::GetRef<Call>(call)) ||
             pat->IsInstance<TupleGetItemPatternNode>()) {
           auto g = GetGroup(match);
           if (g && g->FindRoot()->num_nodes > 1) {
@@ -1164,7 +1164,7 @@ class PatternBasedPartitioner : ExprVisitor {
         // the previous group. For example, when there are two back-to-back conv2d ops, the output
         // of the first conv2d is matched to the input of the second conv2d via a wildcard pattern.
         // But we must avoid merging the first conv2d into the group of the second conv2d.
-        if ((pat->IsInstance<CallPatternNode>() && match != GetRef<Call>(call)) ||
+        if ((pat->IsInstance<CallPatternNode>() && match != ffi::GetRef<Call>(call)) ||
             pat->IsInstance<TupleGetItemPatternNode>()) {
           // Put the bound variable on the LHS into the same parent group.
           AddToGroup(value_to_bound_var_[match], parent_group);
@@ -1211,7 +1211,7 @@ class PatternBasedPartitioner : ExprVisitor {
       }
     }
 
-    return PatternCheckContext(GetRef<Call>(call), annotated_expr, matched_bindings,
+    return PatternCheckContext(ffi::GetRef<Call>(call), annotated_expr, matched_bindings,
                                current_block_use_def_, value_to_bound_var_);
   }
 
@@ -1284,7 +1284,7 @@ class CompositeFunctionAnnotator : public ExprMutator {
       if (auto it = gvar_map_.find(gvar); it != gvar_map_.end()) {
         return Call(it->second, call_node->args);
       }
-      auto func = builder_->GetContextIRModule()->Lookup(GetRef<GlobalVar>(gvar));
+      auto func = builder_->GetContextIRModule()->Lookup(ffi::GetRef<GlobalVar>(gvar));
       if (auto composite_name = func->GetAttr<String>(attr::kComposite)) {
         auto new_func = Downcast<Function>(VisitExpr(func));
         auto codegen_name = GetCodegenName(composite_name.value());
@@ -1292,7 +1292,7 @@ class CompositeFunctionAnnotator : public ExprMutator {
         new_func = WithAttrs(new_func,
                              {{attr::kCodegen, codegen_name}, {tvm::attr::kGlobalSymbol, gsymbol}});
         new_func = WithoutAttr(std::move(new_func), tvm::relax::attr::kPrimitive);
-        builder_->GetContextIRModule()->Remove(GetRef<GlobalVar>(gvar));
+        builder_->GetContextIRModule()->Remove(ffi::GetRef<GlobalVar>(gvar));
         auto new_gvar = builder_->AddFunction(new_func, gsymbol);
         gvar_map_[gvar] = new_gvar;
         return Call(new_gvar, call_node->args);
@@ -1379,7 +1379,7 @@ IRModule FuseOpsByPattern(const tvm::Array<transform::FusionPattern>& patterns, 
         CHECK(!group_map.count(key))
             << "ValueError: "
             << "IRModule is invalid.  "
-            << "The object " << GetRef<ObjectRef>(key) << " appears in multiple partitions, "
+            << "The object " << ffi::GetRef<ObjectRef>(key) << " appears in multiple partitions, "
             << "which can occur when the IRModule was not single-site assignment";
         group_map.insert({key, value});
       }

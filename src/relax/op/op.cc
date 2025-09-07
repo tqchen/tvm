@@ -1132,7 +1132,7 @@ StructInfo InferStructInfoAllocateTensor(const Call& call, const BlockBuilder& c
       << "must be DataTypeImm, but got " << call->args[1]->GetTypeKey();
   DataType out_dtype;
   if (const auto* dtype_node = call->args[1].as<DataTypeImmNode>()) {
-    const DataTypeImm dtype_imm = GetRef<DataTypeImm>(dtype_node);
+    const DataTypeImm dtype_imm = ffi::GetRef<DataTypeImm>(dtype_node);
     out_dtype = dtype_imm->value;
   }
   return TensorStructInfo(call->args[0], out_dtype);
@@ -1198,7 +1198,7 @@ StructInfo InferStructInfoMemAllocTensor(const Call& call, const BlockBuilder& c
       << "must be a Expr of ShapeStructInfo, but got " << call->args[1]->GetTypeKey();
   DataType out_dtype;
   if (const auto* dtype_node = call->args[3].as<DataTypeImmNode>()) {
-    const DataTypeImm dtype_imm = GetRef<DataTypeImm>(dtype_node);
+    const DataTypeImm dtype_imm = ffi::GetRef<DataTypeImm>(dtype_node);
     out_dtype = dtype_imm->value;
   }
   return TensorStructInfo(call->args[2], out_dtype);
@@ -1295,11 +1295,11 @@ TVM_FFI_STATIC_INIT_BLOCK({
 StructInfo InferStructInfoVMAllocTensor(const Call& call, const BlockBuilder& ctx) {
   DataType out_dtype;
   if (const auto* dtype_node = call->args[3].as<DataTypeImmNode>()) {
-    const DataTypeImm dtype_imm = GetRef<DataTypeImm>(dtype_node);
+    const DataTypeImm dtype_imm = ffi::GetRef<DataTypeImm>(dtype_node);
     out_dtype = dtype_imm->value;
   }
   if (const auto* output_shape = call->args[2].as<ShapeExprNode>()) {
-    return TensorStructInfo(GetRef<Expr>(output_shape), out_dtype);
+    return TensorStructInfo(ffi::GetRef<Expr>(output_shape), out_dtype);
   } else if (const auto* shape_sinfo = GetStructInfoAs<ShapeStructInfoNode>(call->args[2])) {
     if (shape_sinfo->values.defined()) {
       return TensorStructInfo(ShapeExpr(shape_sinfo->values.value()), out_dtype);

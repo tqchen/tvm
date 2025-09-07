@@ -49,7 +49,7 @@ NDIntSet NDIntSetEval(Region region, PrimExpr predicate,
                       arith::Analyzer* analyzer) {
   std::unordered_map<Var, Range, ObjectPtrHash, ObjectPtrEqual> var_dom;
   for (const auto& it : dom_map) {
-    var_dom[GetRef<Var>(it.first)] = it.second.CoverRange(Range::FromMinExtent(0, 0));
+    var_dom[ffi::GetRef<Var>(it.first)] = it.second.CoverRange(Range::FromMinExtent(0, 0));
   }
   Optional<Array<arith::IntSet>> eval_res =
       arith::EstimateRegionUpperBound(region, var_dom, predicate, analyzer);
@@ -146,7 +146,7 @@ class BufferAccessRegionCollector : public StmtExprVisitor {
     StmtExprVisitor::VisitExpr_(op);
   }
 
-  void VisitExpr_(const VarNode* op) final { VisitBufferVar(GetRef<Var>(op)); }
+  void VisitExpr_(const VarNode* op) final { VisitBufferVar(ffi::GetRef<Var>(op)); }
 
   void VisitStmt_(const ForNode* op) final {
     Range loop_range = Range::FromMinExtent(op->min, op->extent);

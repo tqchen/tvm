@@ -49,7 +49,7 @@ class GlobalVarReplacer : public ExprMutator {
 
   using ExprMutator::VisitExpr_;
   Expr VisitExpr_(const GlobalVarNode* op) override {
-    auto gvar = GetRef<GlobalVar>(op);
+    auto gvar = ffi::GetRef<GlobalVar>(op);
     if (auto opt = gvar_map_.Get(gvar)) {
       gvar = opt.value();
     }

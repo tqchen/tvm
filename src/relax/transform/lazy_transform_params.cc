@@ -85,7 +85,7 @@ class LazyInputMutator : public ExprMutator {
           }
         });
 
-    auto node = GetRef<Function>(func);
+    auto node = ffi::GetRef<Function>(func);
     node.CopyOnWrite()->params = new_params;
     node.CopyOnWrite()->ret_struct_info = new_ret_struct_info;
     node = WithAttr(node, attr::kNumInput, num_input_params + 1);
@@ -98,7 +98,7 @@ class LazyInputMutator : public ExprMutator {
 
   Expr VisitExpr_(const VarNode* op) override {
     if (plan_) {
-      Var var = GetRef<Var>(op);
+      Var var = ffi::GetRef<Var>(op);
       if (auto it = plan_->param_lookup.find(var); it != plan_->param_lookup.end()) {
         auto untyped =
             builder_->Emit(relax::Call(plan_->fget_param,
@@ -185,7 +185,7 @@ class LazyOutputMutator : public ExprMutator {
     new_blocks.push_back(end_of_func);
     Expr new_body = SeqExpr(new_blocks, Tuple(Array<Expr>{}));
 
-    auto node = GetRef<Function>(func);
+    auto node = ffi::GetRef<Function>(func);
     {
       auto write_ptr = node.CopyOnWrite();
       write_ptr->params = new_params;

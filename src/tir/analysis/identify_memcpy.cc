@@ -295,7 +295,7 @@ TVM_FFI_STATIC_INIT_BLOCK({
      private:
       using IRVisitorWithAnalyzer::VisitStmt_;
       void VisitStmt_(const ForNode* op) override {
-        For loop = GetRef<For>(op);
+        For loop = ffi::GetRef<For>(op);
         auto result = IdentifyMemCpyImpl(loop, &(Visitor::analyzer_));
         if (auto* ptr = std::get_if<MemCpyDetails>(&result)) {
           output->push_back(Array{ptr->source, ptr->dest});

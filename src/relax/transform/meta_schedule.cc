@@ -98,7 +98,7 @@ Pass MetaScheduleApplyDatabase(Optional<String> work_dir, bool enable_warning = 
       GlobalVar gv = iter.first;
       BaseFunc base_func = iter.second;
       if (const auto* prim_func_node = base_func.as<tir::PrimFuncNode>()) {
-        tir::PrimFunc prim_func = GetRef<tir::PrimFunc>(prim_func_node);
+        tir::PrimFunc prim_func = ffi::GetRef<tir::PrimFunc>(prim_func_node);
 
         IRModule tir_mod = (*normalize_mod_func_)(prim_func).cast<IRModule>();
         if (Optional<meta_schedule::TuningRecord> opt_record =

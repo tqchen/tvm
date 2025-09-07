@@ -544,7 +544,7 @@ PrimExpr BufferRegionNode::ToPrimExpr() const {
     } else if (r->extent.as<IntImmNode>()) {
       indices.push_back(tir::Ramp(r->min, tvm::tir::make_const(r->min->dtype, 1), r->extent));
     } else {
-      LOG(FATAL) << "ValueError: Cannot convert to BufferLoad: " << GetRef<BufferRegion>(this);
+      LOG(FATAL) << "ValueError: Cannot convert to BufferLoad: " << ffi::GetRef<BufferRegion>(this);
     }
   }
   return tir::BufferLoad(this->buffer, indices);

@@ -478,7 +478,7 @@ class BlockBuilderImpl : public BlockBuilderNode {
         for (const PrimExpr& s : shape_expr->values) {
           // Only collect single var defined shape. Ignore something like `R.Tensor((m + 1, n + 1))
           if (const auto* var = s.as<tir::VarNode>()) {
-            shape_var_map_.Set(GetRef<tir::Var>(var), s);
+            shape_var_map_.Set(ffi::GetRef<tir::Var>(var), s);
           }
         }
       }
@@ -488,7 +488,7 @@ class BlockBuilderImpl : public BlockBuilderNode {
       for (const PrimExpr& s : op->values.value_or(Array<PrimExpr>())) {
         // Only collect single var defined shape. Ignore something like `R.Shape((m + 1, n + 1))
         if (const auto* var = s.as<tir::VarNode>()) {
-          shape_var_map_.Set(GetRef<tir::Var>(var), s);
+          shape_var_map_.Set(ffi::GetRef<tir::Var>(var), s);
         }
       }
     }
@@ -511,7 +511,7 @@ class BlockBuilderImpl : public BlockBuilderNode {
 // Normalization
 //---------------------------------------
 #define RELAX_EXPR_NORMALIZER_LEAF(OP) \
-  Expr VisitExpr_(const OP* op) final { return GetRef<Expr>(op); }
+  Expr VisitExpr_(const OP* op) final { return ffi::GetRef<Expr>(op); }
 
 // TODO(relax-team): Check normalize logic after struct info.
 
@@ -589,7 +589,7 @@ class Normalizer : public BlockBuilderImpl, private ExprFunctor<Expr(const Expr&
     // Other vars must have already been normalized through binding
     ICHECK(var->struct_info_.defined())
         << "Var " << var->name_hint() << " does not have struct info.";
-    return GetRef<Var>(var);
+    return ffi::GetRef<Var>(var);
   }
 
   Expr VisitExpr_(const VarNode* var_ptr) final {
@@ -625,7 +625,7 @@ class Normalizer : public BlockBuilderImpl, private ExprFunctor<Expr(const Expr&
       unchanged &= new_field.same_as(field);
     }
 
-    Tuple tuple = unchanged ? GetRef<Tuple>(op) : Tuple(new_fields, op->span);
+    Tuple tuple = unchanged ? ffi::GetRef<Tuple>(op) : Tuple(new_fields, op->span);
     // Update tuple fields.
     if (!tuple->struct_info_.defined()) {
       Array<StructInfo> tuple_sinfo;
@@ -641,7 +641,7 @@ class Normalizer : public BlockBuilderImpl, private ExprFunctor<Expr(const Expr&
     Expr new_body = this->VisitWithNewScope(op->body, op->params);
 
     if (new_body.same_as(op->body)) {
-      return GetRef<Function>(op);
+      return ffi::GetRef<Function>(op);
     } else {
       return Function(op->params, new_body, op->ret_struct_info, op->is_pure, op->attrs);
     }
@@ -654,7 +654,7 @@ class Normalizer : public BlockBuilderImpl, private ExprFunctor<Expr(const Expr&
 
     Call call;
     if (new_op.same_as(op->op) && new_args.same_as(op->args)) {
-      call = GetRef<Call>(op);
+      call = ffi::GetRef<Call>(op);
     } else {
       call = Call(new_op, new_args, op->attrs, op->sinfo_args);
     }
@@ -670,7 +670,7 @@ class Normalizer : public BlockBuilderImpl, private ExprFunctor<Expr(const Expr&
     // produced a nested expression.
     if (apply_f_normalize_) {
       if (auto func_normalize = op_map_normalize_.get(op->op, nullptr); func_normalize != nullptr) {
-        Expr normalized = func_normalize(GetRef<BlockBuilder>(this), call);
+        Expr normalized = func_normalize(ffi::GetRef<BlockBuilder>(this), call);
         if (!normalized.same_as(call)) {
           return VisitExpr(normalized);
         }
@@ -716,7 +716,7 @@ class Normalizer : public BlockBuilderImpl, private ExprFunctor<Expr(const Expr&
 
     SeqExpr seq_expr;
     if (unchanged) {
-      seq_expr = GetRef<SeqExpr>(op);
+      seq_expr = ffi::GetRef<SeqExpr>(op);
     } else {
       seq_expr = SeqExpr(normalized_blocks, new_body, op->span);
     }
@@ -736,7 +736,7 @@ class Normalizer : public BlockBuilderImpl, private ExprFunctor<Expr(const Expr&
     If if_node;
     if (new_cond.same_as(op->cond) && new_true.same_as(op->true_branch) &&
         new_false.same_as(op->false_branch)) {
-      if_node = GetRef<If>(op);
+      if_node = ffi::GetRef<If>(op);
     } else {
       if_node = If(new_cond, new_true, new_false, op->span);
     }
@@ -751,7 +751,7 @@ class Normalizer : public BlockBuilderImpl, private ExprFunctor<Expr(const Expr&
   Expr VisitExpr_(const TupleGetItemNode* op) final {
     Expr new_tuple = this->NormalizeArgument(op->tuple);
 
-    TupleGetItem node = new_tuple.same_as(op->tuple) ? GetRef<TupleGetItem>(op)
+    TupleGetItem node = new_tuple.same_as(op->tuple) ? ffi::GetRef<TupleGetItem>(op)
                                                      : TupleGetItem(new_tuple, op->index);
 
     if (!node->struct_info_.defined()) {
@@ -767,11 +767,11 @@ class Normalizer : public BlockBuilderImpl, private ExprFunctor<Expr(const Expr&
 
   Binding VisitBinding(const Binding& binding) {
     if (auto* var_binding = binding.as<VarBindingNode>()) {
-      return this->VisitVarBinding(GetRef<VarBinding>(var_binding));
+      return this->VisitVarBinding(ffi::GetRef<VarBinding>(var_binding));
     } else {
       auto* match_cast = binding.as<MatchCastNode>();
       ICHECK(match_cast) << "Unsupported binding type: " << binding->GetTypeKey();
-      return this->VisitMatchCast(GetRef<MatchCast>(match_cast));
+      return this->VisitMatchCast(ffi::GetRef<MatchCast>(match_cast));
     }
   }
 
@@ -824,7 +824,7 @@ class Normalizer : public BlockBuilderImpl, private ExprFunctor<Expr(const Expr&
   StructInfo InferStructInfo(const Call& call) {
     if (auto* op_ptr = call->op.as<OpNode>()) {
       // Case 1: the op field is a primitive op, look up FInferStructInfo attribute
-      Op op = GetRef<Op>(op_ptr);
+      Op op = ffi::GetRef<Op>(op_ptr);
       bool is_dist_op = false;
       for (const auto& arg : call->args) {
         if (arg->struct_info_.as<distributed::DTensorStructInfoNode>()) {
@@ -839,18 +839,18 @@ class Normalizer : public BlockBuilderImpl, private ExprFunctor<Expr(const Expr&
         }
         ICHECK(op_map_dist_infer_struct_info_.count(op))
             << " Cannot find the dist.FInferStructInfo attribute registered to op: " << op->name;
-        return op_map_dist_infer_struct_info_[op](call, GetRef<BlockBuilder>(this));
+        return op_map_dist_infer_struct_info_[op](call, ffi::GetRef<BlockBuilder>(this));
       }
       ICHECK(op_map_infer_struct_info_.count(op))
           << " Cannot find the FInferStructInfo attribute registered to op: " << op->name;
-      return op_map_infer_struct_info_[op](call, GetRef<BlockBuilder>(this));
+      return op_map_infer_struct_info_[op](call, ffi::GetRef<BlockBuilder>(this));
     } else {
       // derive using function parameters
       ICHECK(call->op->struct_info_.defined());
       auto opt = MatchStructInfo<FuncStructInfo>(call->op);
       ICHECK(opt) << "Call->op must contains a function struct info";
       FuncStructInfo finfo = opt.value();
-      return DeriveCallRetStructInfo(finfo, call, GetRef<BlockBuilder>(this), &analyzer_);
+      return DeriveCallRetStructInfo(finfo, call, ffi::GetRef<BlockBuilder>(this), &analyzer_);
     }
   }
 

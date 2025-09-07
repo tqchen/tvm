@@ -195,7 +195,7 @@ void BlockFrameNode::ExitWithScope() {
 
   // Step 5. Push the block frame into the corresponding field of the last frame.
   if (const auto* seq_frame = last_frame.as<SeqExprFrameNode>()) {
-    auto frame = GetRef<SeqExprFrame>(seq_frame);
+    auto frame = ffi::GetRef<SeqExprFrame>(seq_frame);
     frame->binding_blocks.push_back(block);
   } else {
     LOG(FATAL) << "ValueError: Currently the last frame is supposed to be either a function frame "
@@ -242,7 +242,7 @@ void ThenFrameNode::EnterWithScope() {
 void ThenFrameNode::ExitWithScope() {
   SeqExprFrameNode::ExitWithScope();
   String var_name;
-  output = GetSeqExprForBranch(GetRef<ThenFrame>(this), &var_name);
+  output = GetSeqExprForBranch(ffi::GetRef<ThenFrame>(this), &var_name);
   IfFrame frame = FindIfFrame("R.Then");
   frame->then_expr = output;
   frame->var_name = var_name;
@@ -260,7 +260,7 @@ void ElseFrameNode::EnterWithScope() {
 void ElseFrameNode::ExitWithScope() {
   SeqExprFrameNode::ExitWithScope();
   String var_name;
-  output = GetSeqExprForBranch(GetRef<ElseFrame>(this), &var_name);
+  output = GetSeqExprForBranch(ffi::GetRef<ElseFrame>(this), &var_name);
   IfFrame frame = FindIfFrame("R.Else");
   frame->else_expr = output;
   CHECK(frame->var_name == var_name)

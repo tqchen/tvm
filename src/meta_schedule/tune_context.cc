@@ -57,10 +57,10 @@ TuneContext TuneContextNode::Clone() const {
 
 void TuneContextNode::Initialize() {
   if (this->space_generator.defined()) {
-    this->space_generator.value()->InitializeWithTuneContext(GetRef<TuneContext>(this));
+    this->space_generator.value()->InitializeWithTuneContext(ffi::GetRef<TuneContext>(this));
   }
   if (this->search_strategy.defined()) {
-    this->search_strategy.value()->InitializeWithTuneContext(GetRef<TuneContext>(this));
+    this->search_strategy.value()->InitializeWithTuneContext(ffi::GetRef<TuneContext>(this));
   }
 }
 

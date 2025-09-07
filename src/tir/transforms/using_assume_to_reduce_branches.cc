@@ -209,7 +209,7 @@ class ParseAssumeAndOvercompute : public IRMutatorWithAnalyzer {
         return buf_value;
       }
     }
-    return GetRef<PrimExpr>(op);
+    return ffi::GetRef<PrimExpr>(op);
   }
 
   Stmt VisitStmt_(const BufferStoreNode* op) final {

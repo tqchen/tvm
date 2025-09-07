@@ -39,7 +39,7 @@ FindLoopLCA(const Stmt& root) {
   class LCAFinder : public StmtVisitor {
    public:
     void VisitStmt_(const ForNode* op) final {
-      stack.push_back(GetRef<Stmt>(op));
+      stack.push_back(ffi::GetRef<Stmt>(op));
       StmtVisitor::VisitStmt_(op);
       if (op->kind == ForKind::kThreadBinding) {
         UpdateLCA(op);
@@ -117,7 +117,7 @@ FindLoopLCA(const Stmt& root) {
 class ThreadBindingLifter : public StmtExprMutator {
  public:
   Stmt VisitStmt_(const ForNode* _op) final {
-    For op = GetRef<For>(_op);
+    For op = ffi::GetRef<For>(_op);
     bool is_kernel_root = false;
     if (op->kind == ForKind::kThreadBinding) {
       if (iter_lca.empty()) {
@@ -149,17 +149,17 @@ class ThreadBindingLifter : public StmtExprMutator {
   }
 
   void SetKernelRoot(const ForNode* op) {
-    auto result = FindLoopLCA(GetRef<Stmt>(op));
+    auto result = FindLoopLCA(ffi::GetRef<Stmt>(op));
     this->iter_lca = std::move(result.first);
     this->var_subst = std::move(result.second);
   }
 
   PrimExpr VisitExpr_(const VarNode* op) final {
-    auto it = var_subst.find(GetRef<Var>(op));
+    auto it = var_subst.find(ffi::GetRef<Var>(op));
     if (it != var_subst.end()) {
       return (*it).second;
     } else {
-      return GetRef<PrimExpr>(op);
+      return ffi::GetRef<PrimExpr>(op);
     }
   }
 

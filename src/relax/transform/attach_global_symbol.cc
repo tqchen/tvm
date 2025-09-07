@@ -49,10 +49,10 @@ Pass AttachGlobalSymbol() {
 
       if (auto* prim_func = func.as<tir::PrimFuncNode>()) {
         new_name = c_prefix + gvar->name_hint;
-        new_func = WithAttr(GetRef<tir::PrimFunc>(prim_func), tvm::attr::kGlobalSymbol, new_name);
+        new_func = WithAttr(ffi::GetRef<tir::PrimFunc>(prim_func), tvm::attr::kGlobalSymbol, new_name);
       } else if (auto* relax_func = func.as<FunctionNode>()) {
         new_name = gvar->name_hint;
-        new_func = WithAttr(GetRef<Function>(relax_func), tvm::attr::kGlobalSymbol, new_name);
+        new_func = WithAttr(ffi::GetRef<Function>(relax_func), tvm::attr::kGlobalSymbol, new_name);
       }
 
       if (new_name.has_value() && (!old_name.has_value() || old_name.value() != new_name.value())) {

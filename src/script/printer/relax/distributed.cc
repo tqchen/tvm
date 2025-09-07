@@ -44,7 +44,7 @@ TVM_STATIC_IR_FUNCTOR(IRDocsifier, vtable)
           if (n->tensor_sinfo->shape.defined()) {
             // Need to dig into ShapeExpr to preserve the `R.shape` prefix
             if (const auto* shape = n->tensor_sinfo->shape.value().as<relax::ShapeExprNode>()) {
-              auto shape_expr = GetRef<relax::ShapeExpr>(shape);
+              auto shape_expr = ffi::GetRef<relax::ShapeExpr>(shape);
               AccessPath shape_p = n_p->Attr("shape")->Attr("values");
               Array<ExprDoc> shape_docs;
               for (int i = 0, ndim = shape_expr->values.size(); i < ndim; ++i) {

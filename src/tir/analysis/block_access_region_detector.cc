@@ -150,7 +150,7 @@ Array<BufferRegion> BlockReadWriteDetector::CollectOpaques() {
   return CollectRegions(opaque_buffers_, opaque_regions_);
 }
 
-void BlockReadWriteDetector::VisitExpr_(const VarNode* op) { UpdateOpaque(GetRef<Var>(op)); }
+void BlockReadWriteDetector::VisitExpr_(const VarNode* op) { UpdateOpaque(ffi::GetRef<Var>(op)); }
 
 void BlockReadWriteDetector::VisitExpr_(const BufferLoadNode* op) {
   std::vector<arith::IntSet> relaxed_region;
@@ -198,7 +198,7 @@ void BlockReadWriteDetector::VisitExpr_(const CallNode* op) {
     const VarNode* buffer_var = op->args[1].as<VarNode>();
     const IntImmNode* access_mask = op->args[4].as<IntImmNode>();
     if (buffer_var && access_mask) {
-      auto it = buffer_var_map_.find(GetRef<Var>(buffer_var));
+      auto it = buffer_var_map_.find(ffi::GetRef<Var>(buffer_var));
       if (it != buffer_var_map_.end()) {
         const Buffer& buffer = (*it).second;
         const BufferRegion buffer_region = BufferRegion::FullRegion(buffer);

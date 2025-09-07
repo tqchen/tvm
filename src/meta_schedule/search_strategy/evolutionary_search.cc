@@ -546,7 +546,7 @@ std::vector<Schedule> EvolutionarySearchNode::State::EvolveWithCostModel(
   for (int iter = 0;; ++iter) {
     // Predict normalized score with the cost model,
     std::vector<double> scores =
-        PredictNormalizedScore(population, GetRef<TuneContext>(self->ctx_), this->cost_model_);
+        PredictNormalizedScore(population, ffi::GetRef<TuneContext>(self->ctx_), this->cost_model_);
 
     {
       auto _ = Profiler::TimedScope("EvoSearch/Evolve/Misc");

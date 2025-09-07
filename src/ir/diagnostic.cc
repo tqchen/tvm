@@ -94,13 +94,13 @@ DiagnosticBuilder Diagnostic::Help(ObjectRef loc) {
   return DiagnosticBuilder(DiagnosticLevel::kHelp, loc);
 }
 
-DiagnosticBuilder Diagnostic::Bug(const Object* loc) { return Bug(GetRef<ObjectRef>(loc)); }
+DiagnosticBuilder Diagnostic::Bug(const Object* loc) { return Bug(ffi::GetRef<ObjectRef>(loc)); }
 
-DiagnosticBuilder Diagnostic::Error(const Object* loc) { return Error(GetRef<ObjectRef>(loc)); }
+DiagnosticBuilder Diagnostic::Error(const Object* loc) { return Error(ffi::GetRef<ObjectRef>(loc)); }
 
-DiagnosticBuilder Diagnostic::Note(const Object* loc) { return Note(GetRef<ObjectRef>(loc)); }
+DiagnosticBuilder Diagnostic::Note(const Object* loc) { return Note(ffi::GetRef<ObjectRef>(loc)); }
 
-DiagnosticBuilder Diagnostic::Help(const Object* loc) { return Help(GetRef<ObjectRef>(loc)); }
+DiagnosticBuilder Diagnostic::Help(const Object* loc) { return Help(ffi::GetRef<ObjectRef>(loc)); }
 
 /* Diagnostic Renderer */
 

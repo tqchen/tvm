@@ -140,7 +140,7 @@ void UpdateSRef(ScheduleStateNode* self, StmtSRefNode* sref, const StmtNode* new
   ICHECK(new_stmt->IsInstance<BlockNode>() || new_stmt->IsInstance<ForNode>());
   const StmtNode* old_stmt = sref->stmt;
   ICHECK_NE(new_stmt, old_stmt);
-  self->stmt2ref[new_stmt] = GetRef<StmtSRef>(sref);
+  self->stmt2ref[new_stmt] = ffi::GetRef<StmtSRef>(sref);
   self->stmt2ref.erase(sref->stmt);
   sref->stmt = new_stmt;
 }
@@ -261,7 +261,7 @@ class BlockInfoCollector : private StmtVisitor {
       // Step 2.3. For each LCA, gather the produced regions,
       // then check if it could cover the consumed region
       for (StmtSRef lca = consumer_block_sref; region_cover && lca.get() != limit;
-           lca = GetRef<StmtSRef>(lca->parent)) {
+           lca = ffi::GetRef<StmtSRef>(lca->parent)) {
         const std::vector<const StmtSRefNode*>& producer_block_srefs = lca_loc.at(lca.get());
         // Skip empty LCA positions
         if (producer_block_srefs.empty()) {
@@ -277,7 +277,7 @@ class BlockInfoCollector : private StmtVisitor {
         // Step 2.3.2. Find all the regions written by each producer
         for (const StmtSRefNode* producer_block_sref : producer_block_srefs) {
           const BlockRealize& producer_realize = block2realize_.at(producer_block_sref->stmt);
-          StmtSRef parent_sref = GetRef<StmtSRef>(producer_block_sref->parent);
+          StmtSRef parent_sref = ffi::GetRef<StmtSRef>(producer_block_sref->parent);
           for (const BufferRegion& region : block_writes_unbound.at(producer_block_sref)) {
             const BufferNode* buffer = region->buffer.get();
             auto it = touched_regions.find(buffer);
@@ -299,7 +299,7 @@ class BlockInfoCollector : private StmtVisitor {
         }
         // Step 2.3.3. For each buffer, check the region cover property
         {
-          StmtSRef parent_sref = GetRef<StmtSRef>(consumer_block_sref->parent);
+          StmtSRef parent_sref = ffi::GetRef<StmtSRef>(consumer_block_sref->parent);
           for (const BufferRegion& region : block_reads_unbound.at(consumer_block_sref.get())) {
             const BufferNode* buffer = region->buffer.get();
             const std::vector<Array<arith::IntSet>>& touched_region = touched_regions.at(buffer);
@@ -337,7 +337,7 @@ class BlockInfoCollector : private StmtVisitor {
   void VisitStmt_(const BlockRealizeNode* realize) final {
     block_frames_.emplace_back();
     const BlockNode* block = realize->block.get();
-    block2realize_.emplace(block, GetRef<BlockRealize>(realize));
+    block2realize_.emplace(block, ffi::GetRef<BlockRealize>(realize));
     // Recursive visit
     PushSRef(block);
     VisitStmt(block->body);  // `block->init` is not visited
@@ -544,7 +544,7 @@ class SRefTreePruner : public StmtVisitor {
     auto it = self_->stmt2ref.find(op);
     ICHECK(it != self_->stmt2ref.end())
         << "IndexError: Cannot find corresponding StmtSRef for the loop:\n"
-        << GetRef<For>(op);
+        << ffi::GetRef<For>(op);
     StmtSRef& sref = it->second;
     // Detect reuse
     const VarNode* loop_var = op->loop_var.get();
@@ -567,7 +567,7 @@ class SRefTreePruner : public StmtVisitor {
     auto it = self_->stmt2ref.find(op);
     ICHECK(it != self_->stmt2ref.end())
         << "IndexError: Cannot find corresponding StmtSRef for the block:\n"
-        << GetRef<Block>(op);
+        << ffi::GetRef<Block>(op);
     StmtSRef& sref = it->second;
     // Detect reuse
     const auto& sref_reuse = reuse_info_.block_sref_reuse;
@@ -617,7 +617,7 @@ class SRefUpdater : public StmtVisitor {
  private:
   explicit SRefUpdater(ScheduleStateNode* self, StmtSRefNode* src_stmt_parent,
                        const std::unordered_map<const Object*, StmtSRef>& reused_srefs)
-      : self_(GetRef<ScheduleState>(self)),
+      : self_(ffi::GetRef<ScheduleState>(self)),
         ancestors_{src_stmt_parent},
         reused_srefs_(reused_srefs) {}
 
@@ -745,8 +745,8 @@ class ChildReplacer : private StmtMutator {
   }
 
   // Skipping sibling blocks and loops other than `src_stmt_`
-  Stmt VisitStmt_(const BlockNode* op) final { return GetRef<Stmt>(op); }
-  Stmt VisitStmt_(const ForNode* op) final { return GetRef<Stmt>(op); }
+  Stmt VisitStmt_(const BlockNode* op) final { return ffi::GetRef<Stmt>(op); }
+  Stmt VisitStmt_(const ForNode* op) final { return ffi::GetRef<Stmt>(op); }
 
   Stmt VisitStmt_(const SeqStmtNode* op) final {
     int i = this->seq_index_;
@@ -768,7 +768,7 @@ class ChildReplacer : private StmtMutator {
         if (realize->block.get() == src_stmt) {
           const auto* tgt_block = TVM_TYPE_AS(tgt_stmt_, BlockNode);
           ObjectPtr<BlockRealizeNode> new_realize = ffi::make_object<BlockRealizeNode>(*realize);
-          new_realize->block = GetRef<Block>(tgt_block);
+          new_realize->block = ffi::GetRef<Block>(tgt_block);
           new_stmt = BlockRealize(std::move(new_realize));
         }
       }
@@ -824,7 +824,7 @@ void ScheduleStateNode::Replace(const tir::StmtSRef& _src_sref, const Stmt& tgt_
     if (!input_correct) {
       LOG(FATAL) << "TypeError: src_stmt has type: " << src_stmt->GetTypeKey()
                  << ". tgt_stmt has type: " << tgt_stmt->GetTypeKey() << ".\nsrc_stmt:\n"
-                 << GetRef<Stmt>(src_stmt) << "\ntgt_stmt:\n"
+                 << ffi::GetRef<Stmt>(src_stmt) << "\ntgt_stmt:\n"
                  << tgt_stmt;
     }
   }
@@ -834,7 +834,7 @@ void ScheduleStateNode::Replace(const tir::StmtSRef& _src_sref, const Stmt& tgt_
   }
   // Reset sref as a new sref so that its content won't be affected by subsequent changes
   StmtSRef src_sref(_src_sref->stmt, _src_sref->parent, _src_sref->seq_index);
-  Stmt src_stmt = GetRef<Stmt>(src_sref->stmt);
+  Stmt src_stmt = ffi::GetRef<Stmt>(src_sref->stmt);
   // Step 1. Create all the nodes needed for the new sref tree.
   // After this step
   // 1) all `parent`s are correct
@@ -963,17 +963,17 @@ void ScheduleStateNode::Replace(const tir::StmtSRef& _src_sref, const Stmt& tgt_
     // Make `child_tgt_stmt` the root block
     const auto* child_block = TVM_TYPE_AS(child_tgt_stmt, BlockNode);
     ObjectPtr<BlockRealizeNode> new_realize = ffi::make_object<BlockRealizeNode>(*realize);
-    new_realize->block = GetRef<Block>(child_block);
+    new_realize->block = ffi::GetRef<Block>(child_block);
     new_func->body = BlockRealize(std::move(new_realize));
     // Finally, move the `ref_new_func` back and update `this->mod`
     new_map->at(g_var) = std::move(ref_new_func);
-    this->mod = GetRef<IRModule>(new_mod);
+    this->mod = ffi::GetRef<IRModule>(new_mod);
   }
   uint32_t flag = (debug_mask != -1)                       //
                       ? static_cast<uint32_t>(debug_mask)  //
                       : std::numeric_limits<uint32_t>::max();
   if (flag & ScheduleDebugMask::kVerifySRefTree) {
-    VerifySRefTree(GetRef<ScheduleState>(this));
+    VerifySRefTree(ffi::GetRef<ScheduleState>(this));
   }
 }
 
@@ -983,10 +983,10 @@ void ScheduleStateNode::DebugVerify() const {
                       ? static_cast<uint32_t>(debug_mask)  //
                       : std::numeric_limits<uint32_t>::max();
   if (flag & ScheduleDebugMask::kVerifySRefTree) {
-    VerifySRefTree(GetRef<ScheduleState>(this));
+    VerifySRefTree(ffi::GetRef<ScheduleState>(this));
   }
   if (flag & ScheduleDebugMask::kVerifyCachedFlags) {
-    VerifyCachedFlags(GetRef<ScheduleState>(this));
+    VerifyCachedFlags(ffi::GetRef<ScheduleState>(this));
   }
 }
 
@@ -997,7 +997,7 @@ BlockInfo ScheduleStateNode::GetBlockInfo(const StmtSRef& block_sref) const {
   auto it = this->block_info.find(block_sref);
   CHECK(it != this->block_info.end())
       << "IndexError: Cannot find the corresponding BlockScope to the block sref:\n"
-      << GetRef<Stmt>(block_sref->stmt);
+      << ffi::GetRef<Stmt>(block_sref->stmt);
   return it->second;
 }
 

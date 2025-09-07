@@ -47,7 +47,7 @@ void Annotate(ScheduleState self, const StmtSRef& sref, const String& ann_key, c
     ObjectPtr<BlockNode> n = ffi::make_object<BlockNode>(*block);
     n->annotations = std::move(new_ann);
     Block p(n);
-    self->Replace(sref, p, {{GetRef<Block>(block), p}});
+    self->Replace(sref, p, {{ffi::GetRef<Block>(block), p}});
   } else {
     LOG(FATAL) << "TypeError: Unknown type of sref: " << sref->stmt->GetTypeKey();
     throw;
@@ -78,7 +78,7 @@ void Unannotate(ScheduleState self, const StmtSRef& sref, const String& ann_key)
     ObjectPtr<BlockNode> n = ffi::make_object<BlockNode>(*block);
     n->annotations = std::move(new_ann);
     Block p(n);
-    self->Replace(sref, p, {{GetRef<Block>(block), p}});
+    self->Replace(sref, p, {{ffi::GetRef<Block>(block), p}});
   } else {
     LOG(FATAL) << "TypeError: Unknown type of sref: " << sref->stmt->GetTypeKey();
     throw;

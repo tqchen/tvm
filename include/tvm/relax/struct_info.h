@@ -372,7 +372,7 @@ template <typename T>
 inline Optional<T> MatchStructInfo(const Expr& expr) {
   using TNode = typename T::ContainerType;
   if (const TNode* ptr = expr->struct_info_.as<TNode>()) {
-    return GetRef<T>(ptr);
+    return ffi::GetRef<T>(ptr);
   } else {
     return std::nullopt;
   }
@@ -401,7 +401,7 @@ inline const T* GetStructInfoAs(const Expr& expr) {
 inline StructInfo GetStructInfo(const Expr& expr) {
   auto* ptr = expr->struct_info_.as<StructInfoNode>();
   ICHECK(ptr) << "The struct_info is not populated, check if you have normalized the expr";
-  return GetRef<StructInfo>(ptr);
+  return ffi::GetRef<StructInfo>(ptr);
 }
 
 /*!

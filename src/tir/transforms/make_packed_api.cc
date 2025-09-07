@@ -143,7 +143,7 @@ class SubroutineCallRewriter : public StmtExprMutator {
     auto node = Downcast<Call>(StmtExprMutator::VisitExpr_(op));
 
     if (auto* gvar_ptr = node->op.as<GlobalVarNode>()) {
-      auto gvar = GetRef<GlobalVar>(gvar_ptr);
+      auto gvar = ffi::GetRef<GlobalVar>(gvar_ptr);
       if (auto symbol = packed_func_methods.Get(gvar)) {
         Array<PrimExpr> cpacked_args;
         cpacked_args.push_back(tir::StringImm(symbol.value()));

@@ -87,7 +87,7 @@ class DependencyGatherer : public ExprVisitor {
 
   void VisitExpr_(const GlobalVarNode* gv) override {
     // disregard PrimFuncs
-    if (!m_->Lookup(GetRef<GlobalVar>(gv)).as<relax::FunctionNode>()) {
+    if (!m_->Lookup(ffi::GetRef<GlobalVar>(gv)).as<relax::FunctionNode>()) {
       return;
     }
     deps_.insert(gv->name_hint);
@@ -111,7 +111,7 @@ adjacency_map GatherDependencyGraph(const IRModule& m) {
       continue;
     }
     std::string name = gv_func.first->name_hint;
-    auto deps = DependencyGatherer(m).Track(GetRef<relax::Function>(func));
+    auto deps = DependencyGatherer(m).Track(ffi::GetRef<relax::Function>(func));
     ret.insert({name, deps});
   }
   return ret;

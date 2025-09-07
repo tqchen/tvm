@@ -197,10 +197,10 @@ TVM_FFI_STATIC_INIT_BLOCK({
   namespace refl = tvm::ffi::reflection;
   refl::GlobalDef()
       .def("tir.StmtSRefStmt",
-           [](StmtSRef sref) -> Optional<Stmt> { return GetRef<Optional<Stmt>>(sref->stmt); })
+           [](StmtSRef sref) -> Optional<Stmt> { return ffi::GetRef<Optional<Stmt>>(sref->stmt); })
       .def("tir.StmtSRefParent",
            [](StmtSRef sref) -> Optional<StmtSRef> {
-             return GetRef<Optional<StmtSRef>>(sref->parent);
+             return ffi::GetRef<Optional<StmtSRef>>(sref->parent);
            })
       .def("tir.StmtSRefRootMark", StmtSRef::RootMark)
       .def("tir.StmtSRefInlineMark", StmtSRef::InlineMark)

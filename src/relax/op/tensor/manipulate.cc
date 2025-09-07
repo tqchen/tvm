@@ -858,7 +858,7 @@ Expr ConvertNewShapeToExpr(const Expr& data, const Variant<Expr, Array<PrimExpr>
     array = e->values.as<ffi::ArrayObj>();
     // Other non-shape expressions are used directly.
   } else if (const auto* e = shape.as<ExprNode>()) {
-    return GetRef<Expr>(e);
+    return ffi::GetRef<Expr>(e);
     // Process special values in constants and produce an expression.
   } else {
     array = shape.as<ffi::ArrayObj>();
@@ -874,7 +874,7 @@ Expr ConvertNewShapeToExpr(const Expr& data, const Variant<Expr, Array<PrimExpr>
     CHECK(_len != nullptr) << "Reshape only expects the input new shape to be either an Expr or an "
                               "Array of PrimExprs. However, the given new shape is "
                            << shape;
-    PrimExpr len = GetRef<PrimExpr>(_len);
+    PrimExpr len = ffi::GetRef<PrimExpr>(_len);
     CHECK(len->dtype.is_int()) << "Reshape requires the new shape values to be all "
                                   "integers. However, the give new shape is "
                                << shape;
@@ -895,7 +895,7 @@ Expr ConvertNewShapeToExpr(const Expr& data, const Variant<Expr, Array<PrimExpr>
     }
   }
 
-  Array<PrimExpr> array_ref = GetRef<Array<PrimExpr>>(array);
+  Array<PrimExpr> array_ref = ffi::GetRef<Array<PrimExpr>>(array);
   // When there is no dimension to infer, just return the input array as ShapeExpr.
   if (dim_to_infer == -1 && zero_dims.empty()) {
     return ShapeExpr(array_ref);
@@ -1022,7 +1022,7 @@ Expr split(Expr x, Variant<IntImm, Array<IntImm>> indices_or_sections, int axis)
                                "However, the given indices "
                             << indices_or_sections << " contains some non-integer.";
     }
-    indices_or_sections_obj = ConvertIntImmToInt64(GetRef<Array<IntImm>>(indices));
+    indices_or_sections_obj = ConvertIntImmToInt64(ffi::GetRef<Array<IntImm>>(indices));
   } else if (const auto* n_section = indices_or_sections.as<IntImmNode>()) {
     CHECK_GT(n_section->value, 0) << "Split op expects the input number of sections to be a "
                                      "positive integer. However, the given number of sections is "
@@ -1157,7 +1157,7 @@ InferLayoutOutput InferLayoutSplit(const Call& call,
              "output structinfo, but got "
           << si;
       auto sinfo = Downcast<TensorStructInfo>(si);
-      Optional<ShapeExpr> shape_expr = GetRef<ShapeExpr>(sinfo->shape.as<ShapeExprNode>());
+      Optional<ShapeExpr> shape_expr = ffi::GetRef<ShapeExpr>(sinfo->shape.as<ShapeExprNode>());
       CHECK(shape_expr.defined());
       auto shape_arr = shape_expr.value();
       if (!CanProveLayoutTransform(InitialLayout(tensor_sinfo->ndim), existing_layout->layout,
@@ -2080,11 +2080,11 @@ StructInfo InferStructInfoIndexPut(const Call& call, const BlockBuilder& ctx) {
                          << "However, element " << i << " is "
                          << tuple_sinfo->fields[i]->GetTypeKey());
       }
-      indices_tensors.push_back(GetRef<TensorStructInfo>(tensor_sinfo));
+      indices_tensors.push_back(ffi::GetRef<TensorStructInfo>(tensor_sinfo));
     }
   } else if (const auto* tensor_sinfo = GetStructInfoAs<TensorStructInfoNode>(call->args[1])) {
     // Indices is a single tensor
-    indices_tensors.push_back(GetRef<TensorStructInfo>(tensor_sinfo));
+    indices_tensors.push_back(ffi::GetRef<TensorStructInfo>(tensor_sinfo));
   } else {
     ctx->ReportFatal(Diagnostic::Error(call)
                      << "IndexPut requires indices to be a Tensor or a tuple of Tensors. "

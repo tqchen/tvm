@@ -48,11 +48,11 @@ Var GetShardingVarFromIndex(PrimExpr index, Map<Var, Range> var_range, arith::An
   }
   // the floormod must take no effect
   if (!analyzer->CanProve(
-          floordiv(var_range[GetRef<Var>(source_var)]->extent, highest_iter_split->lower_factor) <=
+          floordiv(var_range[ffi::GetRef<Var>(source_var)]->extent, highest_iter_split->lower_factor) <=
           highest_iter_split->extent)) {
     return Var();
   }
-  return GetRef<Var>(source_var);
+  return ffi::GetRef<Var>(source_var);
 }
 }  // namespace tir
 }  // namespace tvm

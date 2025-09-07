@@ -879,10 +879,10 @@ class TensorRTTransformer : public ExprMutator {
 
   void VisitBinding_(const VarBindingNode* binding, const CallNode* call_node) final {
     if (const auto* op_node = call_node->op.as<OpNode>()) {
-      const auto& op = Downcast<Op>(GetRef<Op>(op_node));
+      const auto& op = Downcast<Op>(ffi::GetRef<Op>(op_node));
       const auto& rewrite_map = Op::GetAttrMap<FRewriteTensorRT>("FRewriteTensorRT");
       if (rewrite_map.count(op)) {
-        const auto& call = GetRef<Call>(call_node);
+        const auto& call = ffi::GetRef<Call>(call_node);
         FRewriteTensorRT f = rewrite_map[op];
         const auto& new_call = f(builder_, binding->var, call, new_calls_, config_);
         if (new_call != call) {

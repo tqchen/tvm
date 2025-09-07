@@ -250,7 +250,7 @@ class HoistInfoCollector : public StmtExprVisitor {
   }
 
   void VisitStmt_(const ForNode* op) final {
-    active_loops.push_back({op->loop_var, GetRef<Stmt>(op)});
+    active_loops.push_back({op->loop_var, ffi::GetRef<Stmt>(op)});
     active_loop_vars.insert(op->loop_var.get());
 
     Parent::VisitStmt_(op);
@@ -272,7 +272,7 @@ class HoistInfoCollector : public StmtExprVisitor {
 
     active_block_vars.insert(var.get());
     active_loop_vars.insert(var.get());
-    active_loops.push_back({var, GetRef<Stmt>(op)});
+    active_loops.push_back({var, ffi::GetRef<Stmt>(op)});
 
     Parent::VisitStmt_(op);
 

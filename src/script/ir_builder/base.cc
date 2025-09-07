@@ -31,7 +31,7 @@ TVM_FFI_STATIC_INIT_BLOCK({
 });
 
 void IRBuilderFrameNode::EnterWithScope() {
-  IRBuilder::Current()->frames.push_back(GetRef<IRBuilderFrame>(this));
+  IRBuilder::Current()->frames.push_back(ffi::GetRef<IRBuilderFrame>(this));
 }
 
 void IRBuilderFrameNode::ExitWithScope() {

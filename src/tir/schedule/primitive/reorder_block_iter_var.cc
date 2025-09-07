@@ -95,7 +95,7 @@ void ReorderBlockIterVar(ScheduleState self, const StmtSRef& block_sref,
     return x >= 0 && x < static_cast<int>(num_block_itervars);
   });
   if (!is_full || !is_unique || !is_within_boundary) {
-    throw InvalidReorderIndex(self->mod, GetRef<Block>(block_n), new_order);
+    throw InvalidReorderIndex(self->mod, ffi::GetRef<Block>(block_n), new_order);
   }
 
   // find parent block
@@ -103,13 +103,13 @@ void ReorderBlockIterVar(ScheduleState self, const StmtSRef& block_sref,
   const StmtSRefNode* p = block_sref.get()->parent;
   while (p != nullptr) {
     if (p->stmt->IsInstance<BlockNode>()) {
-      parent_block_n = TVM_SREF_TO_BLOCK(GetRef<StmtSRef>(p));
+      parent_block_n = TVM_SREF_TO_BLOCK(ffi::GetRef<StmtSRef>(p));
       break;
     }
     p = p->parent;
   }
-  const StmtSRef parent_block_sref = GetRef<StmtSRef>(p);
-  const Block& parent_block = GetRef<Block>(parent_block_n);
+  const StmtSRef parent_block_sref = ffi::GetRef<StmtSRef>(p);
+  const Block& parent_block = ffi::GetRef<Block>(parent_block_n);
 
   // rewrite block and blockrealize
   BlockIterVarRewriter rewriter(block_n, std::move(new_order_vec));

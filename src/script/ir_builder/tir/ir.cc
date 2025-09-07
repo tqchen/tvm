@@ -132,7 +132,7 @@ Buffer MatchBuffer(ObjectRef param, Array<PrimExpr> shape, DataType dtype, Optio
                              offset_factor, buffer_type_str, axis_separators);
   if (const auto* var = param.as<tvm::tir::VarNode>()) {
     PrimFuncFrame frame = FindPrimFuncFrame("T.match_buffer");
-    Var v = GetRef<Var>(var);
+    Var v = ffi::GetRef<Var>(var);
     for (auto const& arg : frame->args) {
       if (arg.same_as(v)) {
         frame->buffer_map.Set(v, buffer);
@@ -143,11 +143,11 @@ Buffer MatchBuffer(ObjectRef param, Array<PrimExpr> shape, DataType dtype, Optio
   } else if (const auto* buffer_load = param.as<tvm::tir::BufferLoadNode>()) {
     BlockFrame frame = FindBlockFrame("T.match_buffer");
     frame->match_buffers.push_back(tvm::tir::MatchBufferRegion(
-        buffer, BufferRegionFromLoad(GetRef<tvm::tir::BufferLoad>(buffer_load))));
+        buffer, BufferRegionFromLoad(ffi::GetRef<tvm::tir::BufferLoad>(buffer_load))));
   } else if (const auto* buffer_region = param.as<tvm::tir::BufferRegionNode>()) {
     BlockFrame frame = FindBlockFrame("T.match_buffer");
     frame->match_buffers.push_back(
-        tvm::tir::MatchBufferRegion(buffer, GetRef<tvm::tir::BufferRegion>(buffer_region)));
+        tvm::tir::MatchBufferRegion(buffer, ffi::GetRef<tvm::tir::BufferRegion>(buffer_region)));
   } else {
     LOG(FATAL) << "ValueError: Unexpected type for TIR MatchBuffer.";
   }
@@ -334,7 +334,7 @@ Array<Var> Remap(String kinds, Array<PrimExpr> bindings, DataType dtype) {
         }
       }
     }
-    ICHECK(dom.defined()) << "TypeError: Variable is not in the loop: " << GetRef<Var>(v);
+    ICHECK(dom.defined()) << "TypeError: Variable is not in the loop: " << ffi::GetRef<Var>(v);
     DataType dtype = v->dtype;
     if (c == 'S') {
       results.push_back(PushBlockVar(IterVar(/*dom=*/dom,

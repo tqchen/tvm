@@ -173,7 +173,7 @@ class CompositeGroupsBuilder : public MemoizedExprTranslator<Group*> {
     }
 
     auto composite_name_opt =
-        mod_->Lookup(GetRef<GlobalVar>(gvar))->GetAttr<String>(attr::kComposite);
+        mod_->Lookup(ffi::GetRef<GlobalVar>(gvar))->GetAttr<String>(attr::kComposite);
     if (!composite_name_opt) {
       return std::nullopt;
     }
@@ -388,7 +388,7 @@ class CompositeFunctionAnnotator : public ExprMutator {
         return Call(new_var, call->args);
       }
     }
-    return GetRef<Call>(call);
+    return ffi::GetRef<Call>(call);
   }
 
  private:

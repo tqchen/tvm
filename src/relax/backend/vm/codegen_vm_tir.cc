@@ -66,7 +66,7 @@ class CodeGenVMTIR : public ExprFunctor<Optional<PrimExpr>(const Expr&)> {
     // Remove relax function and turn into TIR func.
     for (auto& p : mod->functions) {
       if (auto* func = p.second.as<FunctionNode>()) {
-        auto tir_func = codegen.Codegen(GetRef<Function>(func));
+        auto tir_func = codegen.Codegen(ffi::GetRef<Function>(func));
         auto gsymbol = tir_func->GetAttr<String>(tvm::attr::kGlobalSymbol);
         res_mod->Add(GlobalVar(gsymbol.value()), tir_func);
         res_mod->Remove(p.first);
@@ -221,7 +221,7 @@ class CodeGenVMTIR : public ExprFunctor<Optional<PrimExpr>(const Expr&)> {
   }
 
   Optional<PrimExpr> VisitExpr_(const CallNode* call_node) final {
-    Call call = GetRef<Call>(call_node);
+    Call call = ffi::GetRef<Call>(call_node);
 
     if (call_node->op == null_value_op_) {
       return tir::Call(DataType::Handle(), tir::builtin::reinterpret(),
@@ -273,7 +273,7 @@ class CodeGenVMTIR : public ExprFunctor<Optional<PrimExpr>(const Expr&)> {
   }
 
   Optional<PrimExpr> VisitExpr_(const VarNode* op) final {
-    Var var = GetRef<Var>(op);
+    Var var = ffi::GetRef<Var>(op);
     auto it = this->var_map_.find(var);
     ICHECK(it != this->var_map_.end()) << "Var " << var << " is not defined";
     return it->second;
@@ -306,7 +306,7 @@ class CodeGenVMTIR : public ExprFunctor<Optional<PrimExpr>(const Expr&)> {
   }
 
   Optional<PrimExpr> VisitExpr_(const TupleNode* op) final {
-    Tuple tuple = GetRef<Tuple>(op);
+    Tuple tuple = ffi::GetRef<Tuple>(op);
     Array<PrimExpr> args;
     for (auto arg : tuple->fields) {
       args.push_back(this->VisitExpr(arg).value());
@@ -317,7 +317,7 @@ class CodeGenVMTIR : public ExprFunctor<Optional<PrimExpr>(const Expr&)> {
   }
 
   Optional<PrimExpr> VisitExpr_(const TupleGetItemNode* op) final {
-    TupleGetItem expr = GetRef<TupleGetItem>(op);
+    TupleGetItem expr = ffi::GetRef<TupleGetItem>(op);
     Array<PrimExpr> args = {this->VisitExpr(expr->tuple).value()};
 
     args.push_back(ConstInt64(expr->index));
@@ -333,7 +333,7 @@ class CodeGenVMTIR : public ExprFunctor<Optional<PrimExpr>(const Expr&)> {
       *kind = VMFuncInfo::FuncKind::kPackedFunc;
       return ext_func->global_symbol;
     } else if (auto* gvar_ptr = expr.as<GlobalVarNode>()) {
-      GlobalVar gvar = GetRef<GlobalVar>(gvar_ptr);
+      GlobalVar gvar = ffi::GetRef<GlobalVar>(gvar_ptr);
       // Run a look up in the env to see if it maps to an extern func.
       auto it = ctx_mod_->functions.find(gvar);
       if (it != ctx_mod_->functions.end()) {
@@ -370,7 +370,7 @@ class CodeGenVMTIR : public ExprFunctor<Optional<PrimExpr>(const Expr&)> {
     if (it != ctx_mod_->functions.end()) {
       BaseFunc func = (*it).second;
       if (auto* prim_func = func.as<tir::PrimFuncNode>()) {
-        return GetRef<tir::PrimFunc>(prim_func);
+        return ffi::GetRef<tir::PrimFunc>(prim_func);
       }
     }
     return std::nullopt;
@@ -378,7 +378,7 @@ class CodeGenVMTIR : public ExprFunctor<Optional<PrimExpr>(const Expr&)> {
 
   Optional<PrimExpr> VisitExpr_(const GlobalVarNode* op) final {
     VMFuncInfo::FuncKind kind;
-    auto symbol = LookupFunction(GetRef<Expr>(op), &kind);
+    auto symbol = LookupFunction(ffi::GetRef<Expr>(op), &kind);
     ICHECK(symbol.has_value());
     builder_->DeclareFunction(symbol.value(), kind);
     return FuncListGet(builder_->GetFunction(symbol.value()).value());

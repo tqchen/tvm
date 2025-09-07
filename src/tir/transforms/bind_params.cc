@@ -101,7 +101,7 @@ PrimFunc BindParams(PrimFunc f, const Array<runtime::Tensor>& constants) {
 
   // Allocate constants within the primfunc
   for (auto i : constant_list) {
-    auto var = GetRef<Var>(i);
+    auto var = ffi::GetRef<Var>(i);
     int ndim = constant_map[var]->ndim;
     Array<PrimExpr> extents;
 

@@ -235,7 +235,7 @@ TVM_FFI_STATIC_INIT_BLOCK({
                if (!attrs.defined()) {
                  return DictAttrs();
                } else if (auto* as_dict_attrs = attrs.as<tvm::DictAttrsNode>()) {
-                 return GetRef<tvm::DictAttrs>(as_dict_attrs);
+                 return ffi::GetRef<tvm::DictAttrs>(as_dict_attrs);
                } else if (attrs.as<ffi::MapObj>()) {
                  return tvm::DictAttrs(Downcast<Map<String, Any>>(attrs));
                } else {

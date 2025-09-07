@@ -125,7 +125,7 @@ class SharedMemLinearAccessPatternFinder final : public StmtExprVisitor {
     auto it = alloc_info_.find(buf);
     if (it != alloc_info_.end() && it->second.alloc) {
       ICHECK_LT(it->second.level, scope_.size());
-      if (IsAppropriateSharedMemory(GetRef<Var>(buf))) {
+      if (IsAppropriateSharedMemory(ffi::GetRef<Var>(buf))) {
         scope_[it->second.level].touched.push_back(buf);
       }
     }
@@ -156,7 +156,7 @@ class SharedMemLinearAccessPatternFinder final : public StmtExprVisitor {
     auto it = alloc_info_.find(buf);
     if (it != alloc_info_.end() && it->second.alloc) {
       ICHECK_LT(it->second.level, scope_.size()) << "Load memory in places other than store.";
-      if (IsAppropriateSharedMemory(GetRef<Var>(buf))) {
+      if (IsAppropriateSharedMemory(ffi::GetRef<Var>(buf))) {
         scope_[it->second.level].touched.push_back(buf);
       }
     }
@@ -178,7 +178,7 @@ class SharedMemLinearAccessPatternFinder final : public StmtExprVisitor {
     auto it = alloc_info_.find(buf);
     if (it != alloc_info_.end() && it->second.alloc) {
       ICHECK_LT(it->second.level, scope_.size());
-      if (IsAppropriateSharedMemory(GetRef<Var>(buf))) {
+      if (IsAppropriateSharedMemory(ffi::GetRef<Var>(buf))) {
         scope_[it->second.level].touched.push_back(buf);
       }
     }

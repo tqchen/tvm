@@ -66,7 +66,7 @@ class ByocNameSetter : public ExprMutator {
   }
 
   void VisitBinding_(const VarBindingNode* binding, const FunctionNode* val) final {
-    local_funcs_.Set(binding->var, GetRef<Function>(val));
+    local_funcs_.Set(binding->var, ffi::GetRef<Function>(val));
     ExprMutator::VisitBinding_(binding, val);
   }
 

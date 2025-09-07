@@ -237,7 +237,7 @@ Array<RunnerResult> TaskSchedulerNode::JoinRunningTask(int task_id) {
   ICHECK_EQ(results.size(), task->measure_candidates.value().size());
   ICHECK_EQ(results.size(), task->builder_results.value().size());
   for (const MeasureCallback& callback : this->measure_callbacks_) {
-    callback->Apply(GetRef<TaskScheduler>(this), task_id, task->measure_candidates.value(),
+    callback->Apply(ffi::GetRef<TaskScheduler>(this), task_id, task->measure_candidates.value(),
                     task->builder_results.value(), results);
   }
   TaskCleanUp(task, task_id, results);

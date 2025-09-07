@@ -40,13 +40,13 @@ class BufferReadPosCollector : public StmtExprVisitor {
 
  private:
   void VisitStmt_(const ForNode* op) final {
-    loop_stack_.push_back(GetRef<For>(op));
+    loop_stack_.push_back(ffi::GetRef<For>(op));
     StmtVisitor::VisitStmt_(op);
     loop_stack_.pop_back();
   }
 
   void VisitStmt_(const BlockRealizeNode* op) final {
-    BlockRealize outer_block_realize = GetRef<BlockRealize>(op);
+    BlockRealize outer_block_realize = ffi::GetRef<BlockRealize>(op);
     std::swap(outer_block_realize, cur_realize_);
     StmtVisitor::VisitStmt_(op);
     std::swap(cur_realize_, outer_block_realize);

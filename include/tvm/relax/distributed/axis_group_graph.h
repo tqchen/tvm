@@ -439,7 +439,7 @@ class AxisGroupGraph {
         }
       }
       ICHECK(specs.size() == 1) << "multiple possible sharding for axis: ("
-                                << GetRef<Expr>(axis.tensor) << ", " << axis.dim << ")";
+                                << ffi::GetRef<Expr>(axis.tensor) << ", " << axis.dim << ")";
     }
   }
 

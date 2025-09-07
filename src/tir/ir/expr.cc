@@ -617,7 +617,7 @@ TVM_FFI_STATIC_INIT_BLOCK({
                 indices.push_back(tir::Ramp(r->min, make_const(r->min->dtype, 1), r->extent));
               } else {
                 LOG(FATAL) << "ValueError: Cannot convert to BufferLoad: "
-                           << GetRef<BufferRegion>(br);
+                           << ffi::GetRef<BufferRegion>(br);
               }
             }
             prim_expr_args.push_back(BufferLoad(br->buffer, indices));

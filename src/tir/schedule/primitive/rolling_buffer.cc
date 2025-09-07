@@ -79,13 +79,13 @@ class RollingBufferDependencyError : public ScheduleError {
     for (const Dependency& producers : scope->GetDepsByDst(block_sref)) {
       if (!(producers->kind == DepKind::kRAW)) {
         const BlockNode* block = TVM_SREF_TO_BLOCK(block_sref);
-        throw RollingBufferDependencyError(self->mod, GetRef<Block>(block));
+        throw RollingBufferDependencyError(self->mod, ffi::GetRef<Block>(block));
       }
     }
     for (const Dependency& consumers : scope->GetDepsBySrc(block_sref)) {
       if (!(consumers->kind == DepKind::kRAW)) {
         const BlockNode* block = TVM_SREF_TO_BLOCK(block_sref);
-        throw RollingBufferDependencyError(self->mod, GetRef<Block>(block));
+        throw RollingBufferDependencyError(self->mod, ffi::GetRef<Block>(block));
       }
     }
   }
@@ -154,7 +154,7 @@ class RollingBufferInfoCollector {
     RollingBufferInfoCollector collector;
     if (!collector.MatchRollingBuffer(block_sref, buffer_region)) {
       const BlockNode* block = TVM_SREF_TO_BLOCK(block_sref);
-      throw RollingBufferMatchError(mod, GetRef<Block>(block), buffer_region);
+      throw RollingBufferMatchError(mod, ffi::GetRef<Block>(block), buffer_region);
     }
     return collector.info_;
   }
@@ -255,7 +255,7 @@ class RollingBufferRewriter : public StmtExprMutator {
  public:
   static Stmt Rewrite(const StmtSRef& scope_sref, RollingBufferInfo* info) {
     RollingBufferRewriter rewriter(scope_sref, info);
-    return rewriter(GetRef<Stmt>(scope_sref->stmt));
+    return rewriter(ffi::GetRef<Stmt>(scope_sref->stmt));
   }
 
  private:
@@ -292,7 +292,7 @@ class RollingBufferRewriter : public StmtExprMutator {
   }
 
   Stmt VisitStmt_(const BlockNode* block) final {
-    Block old_stmt = GetRef<Block>(block);
+    Block old_stmt = ffi::GetRef<Block>(block);
     Block stmt = Downcast<Block>(StmtExprMutator::VisitStmt_(block));
     BlockNode* n = stmt.CopyOnWrite();
     if (block == scope_sref_->stmt) {
@@ -426,7 +426,7 @@ void RollingBuffer(ScheduleState self, const StmtSRef& block_sref, int write_buf
     if (stmt == lca) {
       break;
     }
-    For cur_loop = GetRef<For>(stmt->StmtAs<ForNode>());
+    For cur_loop = ffi::GetRef<For>(stmt->StmtAs<ForNode>());
     Range range = Range::FromMinExtent(cur_loop->min, cur_loop->extent);
     dom_map.Set(cur_loop->loop_var, arith::IntSet::FromRange(range));
   }

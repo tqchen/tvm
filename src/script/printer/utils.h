@@ -56,9 +56,9 @@ inline std::string Docsify(const ObjectRef& obj, const IRDocsifier& d, const Fra
     if (!cfg->verbose_expr) {
       f->stmts.clear();
     }
-    f->stmts.push_back(ExprStmtDoc(GetRef<ExprDoc>(expr_doc)));
+    f->stmts.push_back(ExprStmtDoc(ffi::GetRef<ExprDoc>(expr_doc)));
   } else if (const auto* stmt_doc = doc.as<StmtDocNode>()) {
-    f->stmts.push_back(GetRef<StmtDoc>(stmt_doc));
+    f->stmts.push_back(ffi::GetRef<StmtDoc>(stmt_doc));
   } else if (const auto* stmt_block = doc.as<StmtBlockDocNode>()) {
     for (const StmtDoc& d : stmt_block->stmts) {
       f->stmts.push_back(d);

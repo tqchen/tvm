@@ -60,7 +60,7 @@ class LowerRuntimeBuiltinMutator : public ExprMutator {
       return InvokeClosure(call);
     } else if (call->op == alloc_tensor_op_) {
       LOG(FATAL) << "VMBuiltinLower encountered " << call->op << " in expression "
-                 << GetRef<Call>(call_node) << ".  "
+                 << ffi::GetRef<Call>(call_node) << ".  "
                  << "This operation should have been lowered earlier "
                  << "using the 'relax.transform.LowerAllocTensor' pass.";
     } else if (call->op == mem_alloc_storage_op_) {
@@ -70,7 +70,7 @@ class LowerRuntimeBuiltinMutator : public ExprMutator {
     } else if (call->op == mem_kill_storage_op_ || call->op == mem_kill_tensor_op_) {
       return MakeMemKillObject(call);
     } else if (const auto* op_node = call->op.as<OpNode>()) {
-      Op op = GetRef<Op>(op_node);
+      Op op = ffi::GetRef<Op>(op_node);
       if (lower_builtin_fmap.count(op)) {
         return lower_builtin_fmap[op](builder_, call);
       }

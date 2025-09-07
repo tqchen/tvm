@@ -106,7 +106,7 @@ class SplitExprCollector {
         failed_ = true;
         return;
       }
-      exprs_.push_back(SplitExpr{GetRef<Var>(var), *lower_factor, *extent});
+      exprs_.push_back(SplitExpr{ffi::GetRef<Var>(var), *lower_factor, *extent});
     } else if (auto iter_sum_expr = expr->source->source.as<arith::IterSumExpr>()) {
       Visit(iter_sum_expr.value());
     } else {

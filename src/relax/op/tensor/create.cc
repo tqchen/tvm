@@ -46,9 +46,9 @@ TVM_FFI_STATIC_INIT_BLOCK({
 Expr full(Variant<Expr, Array<PrimExpr>> shape, Expr fill_value, Optional<DataType> dtype) {
   Expr shape_in_expr{nullptr};
   if (const auto* expr = shape.as<ExprNode>()) {
-    shape_in_expr = GetRef<Expr>(expr);
+    shape_in_expr = ffi::GetRef<Expr>(expr);
   } else if (const auto* _array = shape.as<ffi::ArrayObj>()) {
-    shape_in_expr = ShapeExpr(GetRef<Array<PrimExpr>>(_array));
+    shape_in_expr = ShapeExpr(ffi::GetRef<Array<PrimExpr>>(_array));
   } else {
     LOG(FATAL)
         << "Full only expects the input shape to be either an Expr or an Array of PrimExpr. ";

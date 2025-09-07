@@ -94,7 +94,7 @@ class IRMutatorWithAnalyzer : public tir::StmtExprMutator {
   template <typename FLambda>
   void WithRecordIterPredicate(PrimExpr condition, FLambda callback) {
     auto f_use_itervar = [this](const tir::VarNode* v) {
-      return iter_vars_.count(GetRef<tir::Var>(v));
+      return iter_vars_.count(ffi::GetRef<tir::Var>(v));
     };
     // simple heuristics for detecting predicate
     if (tir::UsesVar(condition, f_use_itervar)) {

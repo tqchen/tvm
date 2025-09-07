@@ -93,7 +93,7 @@ class VarVisitor : protected ExprVisitor {
     vars_.Insert(v);
   }
 
-  void VisitExpr_(const VarNode* var) final { vars_.Insert(GetRef<Var>(var)); }
+  void VisitExpr_(const VarNode* var) final { vars_.Insert(ffi::GetRef<Var>(var)); }
 
   void VisitExpr_(const FunctionNode* op) final {
     for (const auto& param : op->params) {
@@ -102,7 +102,7 @@ class VarVisitor : protected ExprVisitor {
     VisitExpr(op->body);
   }
 
-  void VisitExpr_(const GlobalVarNode* op) final { global_vars_.Insert(GetRef<GlobalVar>(op)); }
+  void VisitExpr_(const GlobalVarNode* op) final { global_vars_.Insert(ffi::GetRef<GlobalVar>(op)); }
 
   void VisitExpr_(const CallNode* call_node) final {
     VisitSpan(call_node->span);
@@ -169,7 +169,7 @@ Optional<Expr> FindImpureCall(const Expr& expr, const Optional<Expr>& own_name) 
     void VisitExpr_(const CallNode* call) override {
       // ignore recursive calls if we find one
       bool is_recursive = (own_name_ && own_name_.value().same_as(call->op));
-      auto expr = GetRef<Call>(call);
+      auto expr = ffi::GetRef<Call>(call);
       if (!is_recursive && IsImpureCall(expr)) {
         impure_expr_ = expr;
       } else {

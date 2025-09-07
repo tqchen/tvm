@@ -375,7 +375,7 @@ PrimExpr CommonSubexpressionEliminator::VisitExpr_(const LetNode* op) {
   // If the `value` and the `body` of the let-in have been rewritten to the same thing
   if (value_new.same_as(op->value) && body_new.same_as(op->body)) {
     // then return a reference to the same node
-    return GetRef<PrimExpr>(op);
+    return ffi::GetRef<PrimExpr>(op);
   } else {
     // Otherwise return a let-in built with the new `value_new` and the new `body_new` that
     // have just been obtained
@@ -556,7 +556,7 @@ Stmt CommonSubexpressionEliminator::VisitStmt_(const LetStmtNode* op) {
   // If the `value` and the `body` of the let-in have been rewritten to the same thing
   if (value_new.same_as(op->value) && body_new.same_as(op->body)) {
     // Return a reference to the same node
-    return GetRef<Stmt>(op);
+    return ffi::GetRef<Stmt>(op);
   } else {
     // Otherwise return a let-in built with the new `value_new` and the new `body_new` that
     // have just been obtained
@@ -597,7 +597,7 @@ Stmt CommonSubexpressionEliminator::VisitStmt_(const ForNode* op) {
   // If the `min`, `extent` and `body` of the for loop have been rewritten to the same thing
   if (min_new.same_as(op->min) && extent_new.same_as(op->extent) && body_new.same_as(op->body)) {
     // Return a reference to the same node
-    return GetRef<Stmt>(op);
+    return ffi::GetRef<Stmt>(op);
   } else {
     // Otherwise return a for node built with the new `min_new`, `extent_new` and `body_new`
     // that have just been obtained

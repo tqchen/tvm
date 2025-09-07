@@ -237,13 +237,13 @@ class ConcreteScheduleNode : public ScheduleNode {
 inline Block ConcreteScheduleNode::Get(const BlockRV& block_rv) const {
   StmtSRef sref = this->GetSRef(block_rv);
   const BlockNode* block = TVM_SREF_TO_BLOCK(sref);
-  return GetRef<Block>(block);
+  return ffi::GetRef<Block>(block);
 }
 
 inline For ConcreteScheduleNode::Get(const LoopRV& loop_rv) const {
   StmtSRef sref = this->GetSRef(loop_rv);
   const ForNode* loop = TVM_SREF_TO_FOR(sref);
-  return GetRef<For>(loop);
+  return ffi::GetRef<For>(loop);
 }
 
 inline PrimExpr ConcreteScheduleNode::Get(const ExprRV& expr_rv) const {
@@ -286,7 +286,7 @@ inline StmtSRef ConcreteScheduleNode::GetSRef(const BlockRV& block_rv) const {
   if (sref->stmt == nullptr) {
     LOG(FATAL) << "ValueError: The block no longer exists in the IRModule";
   }
-  return GetRef<StmtSRef>(sref);
+  return ffi::GetRef<StmtSRef>(sref);
 }
 
 inline StmtSRef ConcreteScheduleNode::GetSRef(const LoopRV& loop_rv) const {
@@ -311,7 +311,7 @@ inline StmtSRef ConcreteScheduleNode::GetSRef(const LoopRV& loop_rv) const {
   if (sref->stmt == nullptr) {
     LOG(FATAL) << "ValueError: The loop no longer exists in the IRModule";
   }
-  return GetRef<StmtSRef>(sref);
+  return ffi::GetRef<StmtSRef>(sref);
 }
 
 template <class T>

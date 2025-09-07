@@ -106,7 +106,7 @@ class ComputeLegalizePlanner : public StmtExprVisitor {
 
   void VisitExpr_(const VarNode* op) final {
     StmtExprVisitor::VisitExpr_(op);
-    Var buffer_var = GetRef<Var>(op);
+    Var buffer_var = ffi::GetRef<Var>(op);
     if (buffer_var.dtype().is_handle()) {
       opaque_var_access_.insert(buffer_var);
     }
@@ -153,7 +153,7 @@ class FP8ComputeLegalizePlanner : public ComputeLegalizePlanner {
     PrimExpr origin_b = PromoteToTarget(this->VisitExpr(op->b)); \
                                                                  \
     if (origin_a.same_as(op->a) && origin_b.same_as(op->b)) {    \
-      return GetRef<PrimExpr>(op);                               \
+      return ffi::GetRef<PrimExpr>(op);                               \
     } else {                                                     \
       return FUNC(origin_a, origin_b);                           \
     }                                                            \
@@ -189,7 +189,7 @@ class ComputeLegalizer : public StmtExprMutator {
     }
 
     if (op_val.same_as(op->value)) {
-      return GetRef<PrimExpr>(op);
+      return ffi::GetRef<PrimExpr>(op);
     } else {
       return cast(op->dtype, op_val);
     }
@@ -201,7 +201,7 @@ class ComputeLegalizer : public StmtExprMutator {
     PrimExpr false_value = PromoteToTarget(this->VisitExpr(op->false_value));
     if (condition.same_as(op->condition) && true_value.same_as(op->true_value) &&
         false_value.same_as(op->false_value)) {
-      return GetRef<PrimExpr>(op);
+      return ffi::GetRef<PrimExpr>(op);
     } else {
       return Select(condition, true_value, false_value);
     }
@@ -210,7 +210,7 @@ class ComputeLegalizer : public StmtExprMutator {
   PrimExpr VisitExpr_(const BroadcastNode* op) final {
     PrimExpr value = PromoteToTarget(this->VisitExpr(op->value));
     if (value.same_as(op->value)) {
-      return GetRef<PrimExpr>(op);
+      return ffi::GetRef<PrimExpr>(op);
     } else {
       return Broadcast(value, op->lanes);
     }
@@ -220,7 +220,7 @@ class ComputeLegalizer : public StmtExprMutator {
     auto fexpr = [this](const PrimExpr& e) { return PromoteToTarget(this->VisitExpr(e)); };
     auto vectors = op->vectors.Map(fexpr);
     if (vectors.same_as(op->vectors)) {
-      return GetRef<PrimExpr>(op);
+      return ffi::GetRef<PrimExpr>(op);
     } else {
       return Shuffle(vectors, op->indices);
     }
@@ -238,7 +238,7 @@ class ComputeLegalizer : public StmtExprMutator {
       return Call(promote_dtype_.with_lanes(op->dtype.lanes()), op->op, args);
     }
     if (args.same_as(op->args)) {
-      return GetRef<PrimExpr>(op);
+      return ffi::GetRef<PrimExpr>(op);
     } else {
       return Call(op->dtype, op->op, args);
     }
@@ -248,11 +248,11 @@ class ComputeLegalizer : public StmtExprMutator {
     if (MatchDType(op->dtype)) {
       return FloatImm(promote_dtype_, op->value);
     }
-    return GetRef<PrimExpr>(op);
+    return ffi::GetRef<PrimExpr>(op);
   }
 
   PrimExpr VisitExpr_(const VarNode* op) final {
-    Var var = GetRef<Var>(op);
+    Var var = ffi::GetRef<Var>(op);
 
     auto itr = var_remap_.find(var);
     if (itr != var_remap_.end()) {
@@ -273,7 +273,7 @@ class ComputeLegalizer : public StmtExprMutator {
     PrimExpr body = VisitExpr(op->body);
 
     if (value.same_as(op->value) && var.same_as(op->var) && body.same_as(op->body)) {
-      return GetRef<PrimExpr>(op);
+      return ffi::GetRef<PrimExpr>(op);
     } else {
       return Let(var, value, body);
     }
@@ -302,7 +302,7 @@ class ComputeLegalizer : public StmtExprMutator {
     Stmt body = VisitStmt(op->body);
 
     if (value.same_as(op->value) && var.same_as(op->var) && body.same_as(op->body)) {
-      return GetRef<Stmt>(op);
+      return ffi::GetRef<Stmt>(op);
     } else {
       return LetStmt(var, value, body);
     }
@@ -317,7 +317,7 @@ class ComputeLegalizer : public StmtExprMutator {
     Buffer new_buf = GetRemappedBuffer(op->buffer);
 
     if (value.same_as(op->value) && indices.same_as(op->indices) && new_buf.same_as(op->buffer)) {
-      return GetRef<Stmt>(op);
+      return ffi::GetRef<Stmt>(op);
     } else {
       if (MatchDType(new_buf->dtype)) {
         int index_lanes = indices.size() ? indices.back().dtype().lanes() : 1;
@@ -526,7 +526,7 @@ class StorageLegalizer : public StmtExprMutator {
 
  private:
   PrimExpr VisitExpr_(const VarNode* op) final {
-    Var var = GetRef<Var>(op);
+    Var var = ffi::GetRef<Var>(op);
     auto itr = var_remap_.find(var);
     if (itr != var_remap_.end()) {
       return itr->second;
@@ -563,7 +563,7 @@ class StorageLegalizer : public StmtExprMutator {
     }
     Stmt body = VisitStmt(op->body);
     if (buf.same_as(op->buffer) && body.same_as(op->body)) {
-      return GetRef<Stmt>(op);
+      return ffi::GetRef<Stmt>(op);
     } else {
       return DeclBuffer(buf, body, op->span);
     }
@@ -575,7 +575,7 @@ class StorageLegalizer : public StmtExprMutator {
     PrimExpr body = VisitExpr(op->body);
 
     if (value.same_as(op->value) && var.same_as(op->var) && body.same_as(op->body)) {
-      return GetRef<PrimExpr>(op);
+      return ffi::GetRef<PrimExpr>(op);
     } else {
       return Let(var, value, body);
     }
@@ -587,7 +587,7 @@ class StorageLegalizer : public StmtExprMutator {
     Stmt body = VisitStmt(op->body);
 
     if (value.same_as(op->value) && var.same_as(op->var) && body.same_as(op->body)) {
-      return GetRef<Stmt>(op);
+      return ffi::GetRef<Stmt>(op);
     } else {
       return LetStmt(var, value, body);
     }
@@ -598,7 +598,7 @@ class StorageLegalizer : public StmtExprMutator {
     Buffer new_buf = GetRemappedBuffer(op->buffer);
     auto indices = op->indices.Map([this](PrimExpr expr) { return this->VisitExpr(expr); });
     if (new_buf.same_as(op->buffer) && indices.same_as(op->indices) && value.same_as(op->value)) {
-      return GetRef<Stmt>(op);
+      return ffi::GetRef<Stmt>(op);
     } else {
       if (MatchDType(op->value.dtype())) {
         ICHECK(new_buf->dtype.is_uint());
@@ -654,7 +654,7 @@ class StorageLegalizer : public StmtExprMutator {
         return reinterpret(GetStorageUIntDType(op->dtype), value);
       }
       if (op->args[0].same_as(value)) {
-        return GetRef<PrimExpr>(op);
+        return ffi::GetRef<PrimExpr>(op);
       } else {
         return reinterpret(op->dtype, value);
       }

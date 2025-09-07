@@ -119,8 +119,8 @@ class IndexPatternFinder : public ExprVisitor {
     if (!success_) {
       return;
     }
-    if (Optional<Range> range = var_range_.Get(GetRef<Var>(op))) {
-      PrimExpr index = GetRef<Var>(op);
+    if (Optional<Range> range = var_range_.Get(ffi::GetRef<Var>(op))) {
+      PrimExpr index = ffi::GetRef<Var>(op);
       int64_t max = range.value()->extent.as<IntImmNode>()->value;
       int64_t extent = max;
       for (int i = static_cast<int>(operator_stack.size()) - 1; i >= 0; i--) {
@@ -367,7 +367,7 @@ std::pair<Stmt, SeqStmt> InsertCacheStage(Stmt stmt, bool is_write_cache, String
     // copy from wmma to new cache buffer
     BufferLoad new_buffer_load{new_buffer, cache_indices};
     generate_body =
-        BufferLoadReplacer(target_buffer_load->buffer, new_buffer_load)(GetRef<Stmt>(buf_store));
+        BufferLoadReplacer(target_buffer_load->buffer, new_buffer_load)(ffi::GetRef<Stmt>(buf_store));
     generate_body = Substitute(generate_body, subst_map);
   } else {
     generate_body =
@@ -402,7 +402,7 @@ std::pair<Stmt, SeqStmt> InsertCacheStage(Stmt stmt, bool is_write_cache, String
   Stmt rewrite_body;
   if (is_write_cache) {
     BufferLoad new_buffer_load{new_buffer, cache_indices};
-    rewrite_body = BufferStore(new_buffer, GetRef<BufferLoad>(target_buffer_load), cache_indices);
+    rewrite_body = BufferStore(new_buffer, ffi::GetRef<BufferLoad>(target_buffer_load), cache_indices);
   } else {
     rewrite_body =
         BufferStore(buf_store->buffer, BufferLoad(new_buffer, cache_indices), buf_store->indices);

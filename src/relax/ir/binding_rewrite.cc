@@ -73,7 +73,7 @@ void DataflowBlockRewriteNode::ReplaceAllUses(Var old_var, Var new_var) {
     using ExprMutator::VisitExpr_;
 
     Expr VisitExpr_(const VarNode* op) override {
-      return (op == old_var.get()) ? new_var : GetRef<Expr>(op);
+      return (op == old_var.get()) ? new_var : ffi::GetRef<Expr>(op);
     }
 
     BindingBlock VisitBindingBlock_(const DataflowBlockNode* op) override {
@@ -177,7 +177,7 @@ void DataflowBlockRewriteNode::Add(Binding binding) {
   }
 
   for (const VarNode* v : used_vars) {
-    auto var = GetRef<Var>(v);
+    auto var = ffi::GetRef<Var>(v);
     if (auto users = to_users_.Get(var)) {
       users.value().push_back(var);
     }

@@ -376,7 +376,7 @@ template <typename ValueType>
 inline ValueType OpAttrMap<ValueType>::get(const RelaxExpr& expr, ValueType def_value) const {
   ICHECK(expr.defined());
   if (const OpNode* op = expr.as<OpNode>()) {
-    return this->map_.get(GetRef<Op>(op), def_value);
+    return this->map_.get(ffi::GetRef<Op>(op), def_value);
   } else {
     return def_value;
   }

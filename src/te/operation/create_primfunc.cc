@@ -265,8 +265,8 @@ Array<Buffer> GenerateOutputBuffers(const te::ComputeOp& compute_op, CreateFuncI
       ICHECK(reduce_);
       ICHECK(f_reducer_equal(reduce_, reduce))
           << "The Reduce inputs of ComputeOp should have the same attribute except value_index, "
-          << "but the first argument has body " << GetRef<PrimExpr>(reduce_) << ", while the " << k
-          << "-th argument has body " << GetRef<PrimExpr>(reduce);
+          << "but the first argument has body " << ffi::GetRef<PrimExpr>(reduce_) << ", while the " << k
+          << "-th argument has body " << ffi::GetRef<PrimExpr>(reduce);
       tensors.push_back(compute_op.output(k));
     }
   } else {
@@ -832,7 +832,7 @@ PrimFunc CreatePrimFuncWithConstants(const Array<ObjectRef>& arg_list,
   Array<te::Tensor> tensor_arg_list;
   for (const ObjectRef& x : arg_list) {
     if (auto tensor_node = x.as<te::TensorNode>()) {
-      te::Tensor tensor = GetRef<te::Tensor>(tensor_node);
+      te::Tensor tensor = ffi::GetRef<te::Tensor>(tensor_node);
       tensor_arg_list.push_back(tensor);
     }
   }

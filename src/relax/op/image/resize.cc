@@ -94,7 +94,7 @@ StructInfo InferStructInfoResize2D(const Call& call, const BlockBuilder& ctx) {
   DataType out_dtype = attrs->out_dtype.is_void() ? data_sinfo->dtype : attrs->out_dtype;
 
   Optional<ShapeExpr> data_shape =
-      CheckNdimPerLayoutAndGetShape(call, ctx, GetRef<TensorStructInfo>(data_sinfo), data_layout);
+      CheckNdimPerLayoutAndGetShape(call, ctx, ffi::GetRef<TensorStructInfo>(data_sinfo), data_layout);
   if (!data_shape.defined() || size_value == nullptr) {
     return TensorStructInfo(out_dtype, data_layout.ndim(), data_sinfo->vdevice);
   }

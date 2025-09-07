@@ -471,7 +471,7 @@ class StorageAllocatorInit : public StorageAllocatorBaseVisitor {
       if (func == nullptr) {
         continue;
       }
-      initializer(GetRef<Function>(func));
+      initializer(ffi::GetRef<Function>(func));
     }
     return initializer.token_map_;
   }
@@ -484,7 +484,7 @@ class StorageAllocatorInit : public StorageAllocatorBaseVisitor {
 
   void VisitExpr_(const FunctionNode* func) final {
     // Set the upper bound of TIR variables in the analyzer.
-    SetTIRVarUpperBound(GetRef<Function>(func), analyzer_, &dom_map_);
+    SetTIRVarUpperBound(ffi::GetRef<Function>(func), analyzer_, &dom_map_);
     // Recurse into the function to get its tokens.
     Tokens body_tokens = GetTokens(func->body);
     // Discard the tokens used by the function return value, as they are external referenced.
@@ -559,7 +559,7 @@ class StorageAllocatorInit : public StorageAllocatorBaseVisitor {
     if (global_var == nullptr) {
       return false;
     }
-    auto func_it = ctx_mod_->functions.find(GetRef<GlobalVar>(global_var));
+    auto func_it = ctx_mod_->functions.find(ffi::GetRef<GlobalVar>(global_var));
     if (func_it == ctx_mod_->functions.end()) {
       return false;
     }
@@ -840,7 +840,7 @@ class StorageAllocationRewriter : public ExprMutator {
       plan_dynamic_output_ = static_cast<bool>(
           func_->GetAttr<IntImm>(plan_dyn_attr_).value_or(IntImm(DataType::Int(32), 0))->value);
       if (plan_dynamic_output_) {
-        SetTIRVarUpperBound(GetRef<Function>(func_), &ana_, &dom_map_);
+        SetTIRVarUpperBound(ffi::GetRef<Function>(func_), &ana_, &dom_map_);
       }
       token2storage_var_.clear();
       Function func = Downcast<Function>(this->VisitExpr_(func_));
@@ -920,7 +920,7 @@ class StorageAllocationRewriter : public ExprMutator {
         Var storage = builder_->Emit(alloc_storage, "storage");
         return Call(mem_alloc_tensor, {storage,  //
                                        /*offset=*/PrimValue::Int64(0),
-                                       /*shape=*/GetRef<ShapeExpr>(shape),  //
+                                       /*shape=*/ffi::GetRef<ShapeExpr>(shape),  //
                                        /*dtype=*/DataTypeImm(sinfo->dtype)});
       }
     }

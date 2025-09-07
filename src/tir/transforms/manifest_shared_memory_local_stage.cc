@@ -73,7 +73,7 @@ class IntermediateStageRewriter {
     BufferLoad new_buffer_load = BufferLoad(new_buffer, buffer_indices);
     BufferStore new_buffer_store = Downcast<BufferStore>(block->body);
     new_buffer_store.CopyOnWrite()->value = new_buffer_load;
-    Block new_block = GetRef<Block>(block);
+    Block new_block = ffi::GetRef<Block>(block);
     new_block.CopyOnWrite()->body = std::move(new_buffer_store);
 
     return {target_buffer, new_buffer, new_block, local_stage};
@@ -172,14 +172,14 @@ class IntermediateStageRewriter {
 class SharedMemoryLocalStageInserter : public StmtMutator {
  public:
   Stmt VisitStmt_(const ForNode* op) final {
-    ancestor_loop_or_blocks_.push_back(GetRef<Stmt>(op));
+    ancestor_loop_or_blocks_.push_back(ffi::GetRef<Stmt>(op));
     Stmt new_stmt = StmtMutator::VisitStmt_(op);
     ancestor_loop_or_blocks_.pop_back();
     return new_stmt;
   }
 
   Stmt VisitStmt_(const BlockRealizeNode* op) final {
-    ancestor_loop_or_blocks_.push_back(GetRef<Stmt>(op));
+    ancestor_loop_or_blocks_.push_back(ffi::GetRef<Stmt>(op));
     Stmt new_stmt = StmtMutator::VisitStmt_(op);
     ancestor_loop_or_blocks_.pop_back();
     return new_stmt;
@@ -236,7 +236,7 @@ class SharedMemoryLocalStageInserter : public StmtMutator {
         }
       }
       if (!changed) {
-        return GetRef<Stmt>(op);
+        return ffi::GetRef<Stmt>(op);
       }
     } else {
       int subtree_start = target_buffers_.size();
@@ -244,12 +244,12 @@ class SharedMemoryLocalStageInserter : public StmtMutator {
       int subtree_end = target_buffers_.size();
       f_check_subtree(subtree_start, subtree_end);
       if (body.same_as(op->body)) {
-        return GetRef<Stmt>(op);
+        return ffi::GetRef<Stmt>(op);
       }
       new_seq.push_back(body);
     }
 
-    Block new_block = GetRef<Block>(op);
+    Block new_block = ffi::GetRef<Block>(op);
     BlockNode* new_block_node = new_block.CopyOnWrite();
     // Add new buffer allocations if any.
     if (new_alloc_buffers.size() > 0) {

@@ -389,14 +389,14 @@ Stmt Substitute(const Stmt& stmt, const Map<Var, PrimExpr>& sub,
     }
 
     PrimExpr VisitExpr_(const VarNode* op) final {
-      if (Optional<PrimExpr> e = sub_.Get(GetRef<Var>(op))) {
+      if (Optional<PrimExpr> e = sub_.Get(ffi::GetRef<Var>(op))) {
         return e.value();
       }
       return StmtExprMutator::VisitExpr_(op);
     }
 
     Stmt VisitStmt_(const BlockNode* op) final {
-      Block src = GetRef<Block>(op);
+      Block src = ffi::GetRef<Block>(op);
       Block tgt = Downcast<Block>(StmtExprMutator::VisitStmt_(op));
       if (!src.same_as(tgt)) {
         block_sref_reuse_->Set(src, tgt);
@@ -495,7 +495,7 @@ BlockRealize BlockizeImpl(const ScheduleState& self, const StmtSRef& loop_sref,
   Array<Array<arith::IterMark>> division =
       SubspaceDivide(block_realize, block_sref, loop_sref, &loops, analyzer, preserve_unit_iters);
   if (division.empty()) {
-    throw SubspaceNotDivisibleError(self->mod, GetRef<For>(loops.back()), block);
+    throw SubspaceNotDivisibleError(self->mod, ffi::GetRef<For>(loops.back()), block);
   }
   PrimExpr outer_predicate = division.back()[0]->extent;
   PrimExpr inner_predicate = division.back()[1]->extent;
@@ -586,7 +586,7 @@ BlockRealize BlockizeBlocks(const ScheduleState& self, const Array<StmtSRef>& bl
     Array<Array<arith::IterMark>> division = SubspaceDivide(block_realize, block_sref, lca, &loops,
                                                             &analyzer, preserve_unit_iters, true);
     if (division.empty()) {
-      throw SubspaceNotDivisibleError(self->mod, GetRef<For>(loops.back()), block);
+      throw SubspaceNotDivisibleError(self->mod, ffi::GetRef<For>(loops.back()), block);
     }
     outer_predicate = division.back()[0]->extent;
     PrimExpr inner_predicate = division.back()[1]->extent;
@@ -662,7 +662,7 @@ class BlockizeRewriter : public StmtMutator {
   static Stmt Rewrite(const StmtSRef& lca, const Array<StmtSRef>& blocks,
                       const BlockRealize& blockized) {
     BlockizeRewriter rewriter(lca, blocks, blockized);
-    return rewriter(GetRef<Stmt>(lca->stmt));
+    return rewriter(ffi::GetRef<Stmt>(lca->stmt));
   }
 
  private:
@@ -717,7 +717,7 @@ class BlockizeRewriter : public StmtMutator {
         break;
       }
     }
-    return GetRef<Stmt>(block);
+    return ffi::GetRef<Stmt>(block);
   }
 
   StmtSRef lca_;
@@ -753,7 +753,7 @@ void Tensorize(ScheduleState self, const StmtSRef& sref, const TensorIntrin& int
     block_realize = BlockizeImpl(self, sref, &block_sref_reuse, &analyzer, preserve_unit_iters);
   } else {
     LOG(FATAL) << "TypeError: Tensorize only support For or Block, but gets: "
-               << GetRef<Stmt>(sref->stmt);
+               << ffi::GetRef<Stmt>(sref->stmt);
     throw;
   }
 

@@ -390,7 +390,7 @@ void ExtractReductionUpdates(const Optional<ScheduleState>& self, Block block,
   if (p_seq == nullptr && p_buf_store == nullptr) {
     ErrorRFactorCrossThreadReductionNotApplicable(self, std::move(block), /*violated_cond=*/5);
   }
-  Array<Stmt> seq = p_seq != nullptr ? p_seq->seq : Array<Stmt>{GetRef<BufferStore>(p_buf_store)};
+  Array<Stmt> seq = p_seq != nullptr ? p_seq->seq : Array<Stmt>{ffi::GetRef<BufferStore>(p_buf_store)};
   if (static_cast<int>(seq.size()) != n_buffers) {
     ErrorRFactorCrossThreadReductionNotApplicable(self, std::move(block), /*violated_cond=*/6);
   }
@@ -455,7 +455,7 @@ std::pair<Array<PrimExpr>, Array<BufferStore>> GetInitValuesAndUpdatesFromReduct
   int n_buffers = inits.size();
   std::unordered_map<const BufferNode*, int> buf2index;
   if (const auto* update = block->body.as<BufferStoreNode>()) {
-    updates.push_back(GetRef<BufferStore>(update));
+    updates.push_back(ffi::GetRef<BufferStore>(update));
     buf2index[update->buffer.get()] = 0;
   } else {
     const auto* let = block->body.as<LetStmtNode>();

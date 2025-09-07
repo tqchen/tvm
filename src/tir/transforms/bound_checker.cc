@@ -95,13 +95,13 @@ class BoundChecker : public StmtExprMutator {
       PrimExpr condition = MakeCondition();
       if (!condition.as<StringImmNode>()) {
         Stmt nop = Evaluate(1);
-        Stmt then_case = GetRef<Stmt>(op);
+        Stmt then_case = ffi::GetRef<Stmt>(op);
         Stmt else_case = AssertStmt(condition, StringImm(error_message_), nop);
         Stmt body = IfThenElse(condition, then_case, else_case);
         return body;
       }
     }
-    return GetRef<Stmt>(op);
+    return ffi::GetRef<Stmt>(op);
   }
 
   PrimExpr VisitExpr_(const BufferLoadNode* op) final {
@@ -200,7 +200,7 @@ class BoundChecker : public StmtExprMutator {
         PrimExpr upper_bound = shape[i];
 
         if (const RampNode* ramp_index = index.as<RampNode>()) {
-          index = arith::UnwrapVectorExpr(GetRef<Ramp>(ramp_index), ramp_index->lanes);
+          index = arith::UnwrapVectorExpr(ffi::GetRef<Ramp>(ramp_index), ramp_index->lanes);
         }
 
         // Try to simplify index and bound.

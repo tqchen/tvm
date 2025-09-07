@@ -259,7 +259,7 @@ class IRDocsifier : public ObjectRef {
 
 inline void FrameNode::EnterWithScope() {
   if (d != nullptr) {
-    d->frames.push_back(GetRef<Frame>(this));
+    d->frames.push_back(ffi::GetRef<Frame>(this));
   }
 }
 
@@ -340,7 +340,7 @@ inline TDoc IRDocsifierNode::AsDoc(const Any& value, const AccessPath& path) con
     default: {
       if (auto opt_obj = value.as<ObjectRef>()) {
         ObjectRef obj = opt_obj.value();
-        Doc d = IRDocsifier::vtable()(dispatch_tokens.back(), obj, path, GetRef<IRDocsifier>(this));
+        Doc d = IRDocsifier::vtable()(dispatch_tokens.back(), obj, path, ffi::GetRef<IRDocsifier>(this));
         d->source_paths.push_back(path);
         AddDocDecoration<TDoc>(d, obj, path, cfg);
         return Downcast<TDoc>(d);

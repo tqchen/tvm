@@ -86,7 +86,7 @@ class IndexAnalyzer : public ExprVisitor {
 
   void VisitIterMark(const arith::IterMark& op) {
     if (const auto* var = op->source.as<tir::VarNode>())
-      iterators_.push_back(GetRef<tir::Var>(var));
+      iterators_.push_back(ffi::GetRef<tir::Var>(var));
     else
       VisitExpr(op->source);
     VisitExpr(op->extent);
@@ -578,7 +578,7 @@ class PrimFuncAnalyzer : public StmtExprVisitor {
       return;
     }
 
-    Block block = GetRef<Block>(op);
+    Block block = ffi::GetRef<Block>(op);
     // Get block write buffer transformation.
     if (block->writes.size() != 1) return;
     auto write_buffer = block->writes[0]->buffer;

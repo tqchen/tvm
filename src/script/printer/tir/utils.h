@@ -159,11 +159,11 @@ inline Optional<Frame> FindLowestVarDef(const ObjectRef& var, const IRDocsifier&
   const std::vector<const Object*>& path = d->common_prefix.at(var.get());
   for (auto it = path.rbegin(); it != path.rend(); ++it) {
     if (tir_to_frame.count(*it)) {
-      return GetRef<Frame>(tir_to_frame.at(*it));
+      return ffi::GetRef<Frame>(tir_to_frame.at(*it));
     }
   }
   if (fallback_frame != nullptr) {
-    return GetRef<Frame>(fallback_frame);
+    return ffi::GetRef<Frame>(fallback_frame);
   }
   return std::nullopt;
 }

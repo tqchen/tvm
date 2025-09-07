@@ -238,7 +238,7 @@ IRModule BindTarget(IRModule mod, const Target& target) {
   auto target_without_host = target.WithoutHost();
 
   auto mod_copy_on_write = mod.CopyOnWrite();
-  auto new_mod = GetRef<IRModule>(mod_copy_on_write);
+  auto new_mod = ffi::GetRef<IRModule>(mod_copy_on_write);
 
   // Step 1: Analyze function call patterns
   auto [host_called_global_vars, device_called_global_vars] =
@@ -266,7 +266,7 @@ IRModule BindTarget(IRModule mod, const Target& target) {
       // Skip non-PrimFunc entries
       continue;
     }
-    auto prim_func = GetRef<PrimFunc>(prim_func_node);
+    auto prim_func = ffi::GetRef<PrimFunc>(prim_func_node);
 
     bool is_externally_exposed = prim_func->GetAttr<String>(tvm::attr::kGlobalSymbol).has_value();
 

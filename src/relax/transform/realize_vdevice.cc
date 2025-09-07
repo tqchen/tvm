@@ -249,7 +249,7 @@ class VDeviceSetCollector : ExprVisitor {
 
   void VisitExpr_(const VarNode* op) override {
     if (current_binding_) {
-      auto var = GetRef<Var>(op);
+      auto var = ffi::GetRef<Var>(op);
       var_to_co_located_vars_[current_binding_.value()].push_back(var);
       var_to_co_located_vars_[var].push_back(current_binding_.value());
     }

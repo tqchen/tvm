@@ -98,21 +98,21 @@ class PartialTupleUsageCollector : ExprVisitor {
 
       CHECK_GE(op->index, 0) << "IndexError: "
                              << "Indices for TupleGetItem must be non-negative, "
-                             << "but expression " << GetRef<Expr>(op) << " uses a tuple index of "
+                             << "but expression " << ffi::GetRef<Expr>(op) << " uses a tuple index of "
                              << op->index;
       size_t index = op->index;
 
       CHECK_LT(index, used_indices.size())
           << "IndexError: "
           << "Indices for TupleGetItem must be less than the size of the tuple, "
-          << "but expression " << GetRef<Expr>(op) << " uses a tuple index of " << op->index
+          << "but expression " << ffi::GetRef<Expr>(op) << " uses a tuple index of " << op->index
           << " for a tuple of size " << used_indices.size();
       used_indices[index] = true;
     }
   }
 
   void VisitExpr_(const VarNode* op) override {
-    if (auto* usage_mask_ptr = GetCalleeUsageMask(GetRef<Var>(op))) {
+    if (auto* usage_mask_ptr = GetCalleeUsageMask(ffi::GetRef<Var>(op))) {
       auto& usage_mask = *usage_mask_ptr;
       for (size_t i = 0; i < usage_mask.size(); i++) {
         usage_mask[i] = true;

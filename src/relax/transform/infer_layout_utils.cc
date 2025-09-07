@@ -120,7 +120,7 @@ LayoutDecision GetLayoutDecision(const VarLayoutMap& var_layout_map, const Expr&
 NLayout GetNLayout(const VarLayoutMap& var_layout_map, const Expr& arg) {
   auto fmapleaf = [&](const Expr& expr) -> NLayout {
     if (const auto* var = expr.as<VarNode>()) {
-      auto it = var_layout_map.find(GetRef<Var>(var));
+      auto it = var_layout_map.find(ffi::GetRef<Var>(var));
       if (it != var_layout_map.end()) {
         return (*it).second;
       } else {

@@ -536,15 +536,15 @@ class ParamRemapper : private ExprFunctor<void(const Expr&, const Expr&)> {
  private:
   void VisitExpr_(const VarNode* lhs_var, const Expr& rhs_expr) final {
     auto rhs_var = Downcast<Var>(rhs_expr);
-    if (auto it = var_remap_.find(GetRef<Var>(lhs_var)); it != var_remap_.end()) {
+    if (auto it = var_remap_.find(ffi::GetRef<Var>(lhs_var)); it != var_remap_.end()) {
       CHECK((*it).second.same_as(rhs_var));
     } else {
-      var_remap_.Set(GetRef<Var>(lhs_var), rhs_var);
+      var_remap_.Set(ffi::GetRef<Var>(lhs_var), rhs_var);
     }
     CHECK(tvm::ffi::StructuralEqual::Equal(lhs_var->struct_info_, rhs_var->struct_info_,
                                            /*map_free_vars=*/true))
         << "The struct info of the parameters should be the same for all target functions";
-    auto lhs_tir_vars = DefinableTIRVarsInStructInfo(GetStructInfo(GetRef<Var>(lhs_var)));
+    auto lhs_tir_vars = DefinableTIRVarsInStructInfo(GetStructInfo(ffi::GetRef<Var>(lhs_var)));
     auto rhs_tir_vars = DefinableTIRVarsInStructInfo(GetStructInfo(rhs_expr));
     ICHECK_EQ(lhs_tir_vars.size(), rhs_tir_vars.size());
     for (size_t i = 0; i < lhs_tir_vars.size(); i++) {

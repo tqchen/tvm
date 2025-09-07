@@ -125,7 +125,7 @@ class TransformLayoutPlanner : private StmtExprVisitor {
   explicit TransformLayoutPlanner(Buffer old_buffer) : old_buffer_(old_buffer) {}
 
   void VisitStmt_(const ForNode* op) override {
-    BindLoopVar context(this, GetRef<For>(op));
+    BindLoopVar context(this, ffi::GetRef<For>(op));
     StmtExprVisitor::VisitStmt_(op);
   }
 
@@ -135,7 +135,7 @@ class TransformLayoutPlanner : private StmtExprVisitor {
   }
 
   void VisitStmt_(const BlockRealizeNode* op) override {
-    BindBlockRealize context(this, GetRef<BlockRealize>(op));
+    BindBlockRealize context(this, ffi::GetRef<BlockRealize>(op));
     StmtExprVisitor::VisitStmt_(op);
   }
 
@@ -158,7 +158,7 @@ class TransformLayoutPlanner : private StmtExprVisitor {
     }
 
     WriteInfo write_info;
-    write_info.store = GetRef<BufferStore>(op);
+    write_info.store = ffi::GetRef<BufferStore>(op);
     if (loop_dependency_range) {
       size_t i = loop_dependency_range.value().first;
       size_t j = loop_dependency_range.value().second;
@@ -351,7 +351,7 @@ class TransformLayoutPlanner : private StmtExprVisitor {
         return true;
       }();
 
-      BufferStore store = GetRef<BufferStore>(op);
+      BufferStore store = ffi::GetRef<BufferStore>(op);
       if (can_replace) {
         Array<PrimExpr> new_index_exprs =
             new_indices.Map([](const auto& var) -> PrimExpr { return var; });
@@ -387,7 +387,7 @@ class TransformLayoutPlanner : private StmtExprVisitor {
     }
 
     Stmt VisitStmt_(const BlockNode* op) final {
-      Block orig = GetRef<Block>(op);
+      Block orig = ffi::GetRef<Block>(op);
       Block mutated = Downcast<Block>(StmtExprMutator::VisitStmt_(op));
 
       RecordReplacement(orig, mutated);
@@ -395,7 +395,7 @@ class TransformLayoutPlanner : private StmtExprVisitor {
     }
 
     PrimExpr VisitExpr_(const VarNode* op) final {
-      Var var = GetRef<Var>(op);
+      Var var = ffi::GetRef<Var>(op);
       if (auto opt = var_remap.Get(var)) {
         return opt.value();
       } else {
@@ -735,7 +735,7 @@ class ReuseBlocksCollector : public tir::StmtVisitor {
 
   /*! \brief Override the Stmt visiting behaviour */
   void VisitStmt_(const tir::BlockNode* block) override {
-    Block block_ref = GetRef<Block>(block);
+    Block block_ref = ffi::GetRef<Block>(block);
     auto it = new_block_to_old_.find(block_ref);
     if (it != new_block_to_old_.end()) {
       block_sref_reuse_.Set((*it).second, (*it).first);
@@ -825,7 +825,7 @@ class TransformLayoutRewriter : private arith::IRMutatorWithAnalyzer {
     // replacing `loop` with `{loop, post_proc}`.  In this case, avoid
     // infinite recursion.
 
-    For node = GetRef<For>(op);
+    For node = ffi::GetRef<For>(op);
     if (auto plan_ptr = std::get_if<TransformLayoutPlanner::ReplacementPlan>(&plan_)) {
       auto it = plan_ptr->replacements.find(node);
       if (it != plan_ptr->replacements.end()) {
@@ -867,7 +867,7 @@ class TransformLayoutRewriter : private arith::IRMutatorWithAnalyzer {
 
   Stmt VisitStmt_(const BlockNode* op) final {
     Block orig = [&]() {
-      Block block = GetRef<Block>(op);
+      Block block = ffi::GetRef<Block>(op);
       while (true) {
         if (auto it = new_block_to_old_.find(block); it != new_block_to_old_.end()) {
           block = (*it).second;
@@ -1025,7 +1025,7 @@ class TransformationPaddingExpressionError : public ScheduleError {
 
     void VisitExpr_(const BufferLoadNode* op) final {
       if (!op->buffer.same_as(buffer_)) {
-        illegal_load = GetRef<BufferLoad>(op);
+        illegal_load = ffi::GetRef<BufferLoad>(op);
       }
       ExprVisitor::VisitExpr_(op);
     }
@@ -1152,7 +1152,7 @@ void TransformLayout(ScheduleState self, const StmtSRef& block_sref, int buffer_
   // Step 1: Input handling and error checking
   const BlockNode* block_ptr = TVM_SREF_TO_BLOCK(block_sref);
   Buffer old_buffer =
-      GetNthAccessBuffer(self, GetRef<Block>(block_ptr), buffer_index, buffer_index_type);
+      GetNthAccessBuffer(self, ffi::GetRef<Block>(block_ptr), buffer_index, buffer_index_type);
 
   auto index_map = LegalizeIndexMapDType(index_map_orig, old_buffer->shape);
 
@@ -1200,7 +1200,7 @@ void TransformLayout(ScheduleState self, const StmtSRef& block_sref, int buffer_
   // Step 3: Rewrite BufferLoad/BufferStore access indices, block read/write regions, and block
   // alloc_buffers.
   auto [new_stmt, block_sref_reuse] =
-      TransformLayoutRewriter::Rewrite(GetRef<Block>(scope_block), old_buffer, new_buffer,
+      TransformLayoutRewriter::Rewrite(ffi::GetRef<Block>(scope_block), old_buffer, new_buffer,
                                        index_map, opt_inverse, padding_predicate, pad_value);
   Block new_scope_block = Downcast<Block>(new_stmt);
 
@@ -1348,7 +1348,7 @@ class OpaqueNewIterTypeError : public ScheduleError {
 void TransformBlockLayout(ScheduleState self, const StmtSRef& block_sref,
                           const IndexMap& index_map) {
   const BlockNode* block_ptr = TVM_SREF_TO_BLOCK(block_sref);
-  const Block& block = GetRef<Block>(block_ptr);
+  const Block& block = ffi::GetRef<Block>(block_ptr);
   arith::Analyzer analyzer;
   AddShapeVarBounds(self, block_sref.get(), &analyzer);
 
@@ -1409,7 +1409,7 @@ void TransformBlockLayout(ScheduleState self, const StmtSRef& block_sref,
       iter_type = DetectNewBlockIterType(transformed_block_iters[i], block_iter_type);
     }
     if (iter_type == kOpaque) {
-      throw OpaqueNewIterTypeError(self->mod, GetRef<Block>(block_ptr), transformed_block_iters[i]);
+      throw OpaqueNewIterTypeError(self->mod, ffi::GetRef<Block>(block_ptr), transformed_block_iters[i]);
     }
     auto dtype = new_block_var.dtype();
     new_block_iters.push_back(IterVar(
@@ -1439,7 +1439,7 @@ void TransformBlockLayout(ScheduleState self, const StmtSRef& block_sref,
       inverse_subst_map.Set(Downcast<Var>(block_vars[i]), inversed_new_block_vars[i]);
     }
   }
-  Block new_block = Downcast<Block>(Substitute(GetRef<Block>(block_ptr), inverse_subst_map));
+  Block new_block = Downcast<Block>(Substitute(ffi::GetRef<Block>(block_ptr), inverse_subst_map));
   new_block.CopyOnWrite()->iter_vars = new_block_iters;
   new_block = Downcast<Block>(BlockBufferAccessSimplifier::Simplify(new_block, &analyzer));
 
@@ -1457,7 +1457,7 @@ void TransformBlockLayout(ScheduleState self, const StmtSRef& block_sref,
   new_block_realize->block = new_block;
 
   // Generate outer loops
-  Stmt body = GetRef<Stmt>(new_block_realize);
+  Stmt body = ffi::GetRef<Stmt>(new_block_realize);
   for (int i = static_cast<int>(new_loop_vars.size()) - 1; i >= 0; --i) {
     body = For(Downcast<Var>(new_loop_vars[i]), 0, new_block_iter_range[i], ForKind::kSerial,
                std::move(body));
@@ -1512,7 +1512,7 @@ void SetAxisSeparator(ScheduleState self, const StmtSRef& block_sref, int buffer
                       BufferIndexType buffer_index_type, const Array<IntImm>& axis_separators) {
   const BlockNode* block_ptr = TVM_SREF_TO_BLOCK(block_sref);
   Buffer old_buffer =
-      GetNthAccessBuffer(self, GetRef<Block>(block_ptr), buffer_index, buffer_index_type);
+      GetNthAccessBuffer(self, ffi::GetRef<Block>(block_ptr), buffer_index, buffer_index_type);
   auto [defining_site_sref, is_alloc] = GetBufferDefiningSite(block_sref, old_buffer);
   if (defining_site_sref.defined() && !is_alloc) {
     throw BufferIsSubregionError(self->mod, old_buffer);
@@ -1530,7 +1530,7 @@ void SetAxisSeparator(ScheduleState self, const StmtSRef& block_sref, int buffer
   Map<Block, Block> block_sref_reuse;
 
   // Step 2: Rewrite alloc_buffer of the block or buffer_map of the PrimFunc.
-  Block new_scope_block = BufferAxisSeparatorMutator::Mutate(GetRef<Block>(scope_block), old_buffer,
+  Block new_scope_block = BufferAxisSeparatorMutator::Mutate(ffi::GetRef<Block>(scope_block), old_buffer,
                                                              new_buffer, &block_sref_reuse);
   if (!defining_site_sref.defined()) {
     // mutate buffer_map of the PrimFunc

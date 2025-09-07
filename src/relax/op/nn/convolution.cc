@@ -343,8 +343,8 @@ InferLayoutOutput InferLayoutConv2d(const Call& call,
       auto kernel_si = GetStructInfo(call->args[1]);
       TensorStructInfo data_sinfo = data_si.as<TensorStructInfo>().value();
       TensorStructInfo kernel_sinfo = kernel_si.as<TensorStructInfo>().value();
-      Optional<ShapeExpr> data_shape = GetRef<ShapeExpr>(data_sinfo->shape.as<ShapeExprNode>());
-      Optional<ShapeExpr> kernel_shape = GetRef<ShapeExpr>(kernel_sinfo->shape.as<ShapeExprNode>());
+      Optional<ShapeExpr> data_shape = ffi::GetRef<ShapeExpr>(data_sinfo->shape.as<ShapeExprNode>());
+      Optional<ShapeExpr> kernel_shape = ffi::GetRef<ShapeExpr>(kernel_sinfo->shape.as<ShapeExprNode>());
 
       bool can_data_proved =
           CanProveLayoutTransform(input_layout, desired_data_layout, data_shape.value()->values);

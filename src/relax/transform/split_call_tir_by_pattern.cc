@@ -61,7 +61,7 @@ class ForMatcher : public TensorizeComparator {
   bool Match(const For& top) {
     const ForNode* pattern_top = pattern_->body.as<BlockRealizeNode>()->block->body.as<ForNode>();
     ICHECK(pattern_top) << "Invalid pattern function";
-    if (!VisitStmt(top, GetRef<Stmt>(pattern_top))) {
+    if (!VisitStmt(top, ffi::GetRef<Stmt>(pattern_top))) {
       return false;
     }
     // Get evaluated symbols, buffers from the pattern.
@@ -94,16 +94,16 @@ class ForMatcher : public TensorizeComparator {
 
   bool VisitExpr(const PrimExpr& lhs, const PrimExpr& rhs) final {
     if (const auto* op = rhs.as<VarNode>()) {
-      if (pattern_vars_.count(GetRef<Var>(op))) {
+      if (pattern_vars_.count(ffi::GetRef<Var>(op))) {
         // special case for pattern vars
         const auto* lhs_ptr = lhs.as<VarNode>();
         if (lhs_ptr == nullptr) {
           if (lhs->IsInstance<tir::IntImmNode>() || lhs->IsInstance<tir::FloatImmNode>()) {
-            Optional<PrimExpr> value = QueryEvaluatedSymbols(GetRef<Var>(op));
+            Optional<PrimExpr> value = QueryEvaluatedSymbols(ffi::GetRef<Var>(op));
             if (value.defined()) {
               if (!analyzer_.CanProveEqual(lhs, value.value())) return false;
             } else {
-              evaluated_symbols.back()[GetRef<Var>(op)] = lhs;
+              evaluated_symbols.back()[ffi::GetRef<Var>(op)] = lhs;
             }
             return true;
           } else {
@@ -116,7 +116,7 @@ class ForMatcher : public TensorizeComparator {
     if (const auto* rhs_ptr = rhs.as<MulNode>()) {
       const auto* operand_a = rhs_ptr->a.as<VarNode>();
       const auto* operand_b = rhs_ptr->b.as<VarNode>();
-      if (operand_a != nullptr && pattern_vars_.count(GetRef<Var>(operand_a))) {
+      if (operand_a != nullptr && pattern_vars_.count(ffi::GetRef<Var>(operand_a))) {
         // pattern var is on the left
         evaluated_symbols.push_back(SymbolMap());
         bool match = VisitExpr(lhs, rhs_ptr->b);
@@ -124,11 +124,11 @@ class ForMatcher : public TensorizeComparator {
         evaluated_symbols.pop_back();
         if (match) {
           evaluated_symbols.back().insert(symbol_map.begin(), symbol_map.end());
-          evaluated_symbols.back()[GetRef<Var>(operand_a)] = MakeConstScalar(rhs_ptr->b.dtype(), 1);
+          evaluated_symbols.back()[ffi::GetRef<Var>(operand_a)] = MakeConstScalar(rhs_ptr->b.dtype(), 1);
           return true;
         }
       }
-      if (operand_b != nullptr && pattern_vars_.count(GetRef<Var>(operand_b))) {
+      if (operand_b != nullptr && pattern_vars_.count(ffi::GetRef<Var>(operand_b))) {
         // pattern var is on the right
         evaluated_symbols.push_back(SymbolMap());
         bool match = VisitExpr(lhs, rhs_ptr->a);
@@ -136,7 +136,7 @@ class ForMatcher : public TensorizeComparator {
         evaluated_symbols.pop_back();
         if (match) {
           evaluated_symbols.back().insert(symbol_map.begin(), symbol_map.end());
-          evaluated_symbols.back()[GetRef<Var>(operand_b)] = MakeConstScalar(rhs_ptr->a.dtype(), 1);
+          evaluated_symbols.back()[ffi::GetRef<Var>(operand_b)] = MakeConstScalar(rhs_ptr->a.dtype(), 1);
           return true;
         }
       }
@@ -145,7 +145,7 @@ class ForMatcher : public TensorizeComparator {
     if (const auto* rhs_ptr = rhs.as<AddNode>()) {
       const auto* operand_a = rhs_ptr->a.as<VarNode>();
       const auto* operand_b = rhs_ptr->b.as<VarNode>();
-      if (operand_a != nullptr && pattern_vars_.count(GetRef<Var>(operand_a))) {
+      if (operand_a != nullptr && pattern_vars_.count(ffi::GetRef<Var>(operand_a))) {
         // pattern var is on the left
         evaluated_symbols.push_back(SymbolMap());
         bool match = VisitExpr(lhs, rhs_ptr->b);
@@ -153,11 +153,11 @@ class ForMatcher : public TensorizeComparator {
         evaluated_symbols.pop_back();
         if (match) {
           evaluated_symbols.back().insert(symbol_map.begin(), symbol_map.end());
-          evaluated_symbols.back()[GetRef<Var>(operand_a)] = MakeConstScalar(rhs_ptr->b.dtype(), 0);
+          evaluated_symbols.back()[ffi::GetRef<Var>(operand_a)] = MakeConstScalar(rhs_ptr->b.dtype(), 0);
           return true;
         }
       }
-      if (operand_b != nullptr && pattern_vars_.count(GetRef<Var>(operand_b))) {
+      if (operand_b != nullptr && pattern_vars_.count(ffi::GetRef<Var>(operand_b))) {
         // pattern var is on the right
         evaluated_symbols.push_back(SymbolMap());
         bool match = VisitExpr(lhs, rhs_ptr->a);
@@ -165,7 +165,7 @@ class ForMatcher : public TensorizeComparator {
         evaluated_symbols.pop_back();
         if (match) {
           evaluated_symbols.back().insert(symbol_map.begin(), symbol_map.end());
-          evaluated_symbols.back()[GetRef<Var>(operand_b)] = MakeConstScalar(rhs_ptr->a.dtype(), 0);
+          evaluated_symbols.back()[ffi::GetRef<Var>(operand_b)] = MakeConstScalar(rhs_ptr->a.dtype(), 0);
           return true;
         }
       }
@@ -241,8 +241,8 @@ class ForMatcher : public TensorizeComparator {
 
   bool VisitStmt_(const tir::ForNode* op, const Stmt& other) final {
     const auto* rhs = other.as<ForNode>();
-    loop_stack_lhs_.push_back(GetRef<For>(op));
-    loop_stack_rhs_.push_back(GetRef<For>(rhs));
+    loop_stack_lhs_.push_back(ffi::GetRef<For>(op));
+    loop_stack_rhs_.push_back(ffi::GetRef<For>(rhs));
     // The body of loop must be loop or BlockRealize
     if (!op->body->IsInstance<BlockRealizeNode>() && !op->body->IsInstance<ForNode>()) {
       return false;
@@ -418,7 +418,7 @@ class TIRPatternMatcher {
     }
     for (const Stmt& stmt : blocks) {
       const ForNode* loop = stmt.as<ForNode>();
-      if (loop == nullptr || !BlockPatternMatch(GetRef<For>(loop))) {
+      if (loop == nullptr || !BlockPatternMatch(ffi::GetRef<For>(loop))) {
         break;
       }
     }
@@ -485,7 +485,7 @@ class FunctionPartitioner : public StmtExprVisitor {
         input2.insert(write->buffer);
       }
     }
-    block_partition.Set(GetRef<Block>(op), Bool(is_matching_));
+    block_partition.Set(ffi::GetRef<Block>(op), Bool(is_matching_));
   }
   // The number of matched ops in the function
   size_t num_matched_ops_;
@@ -513,8 +513,8 @@ class BlockRemover : public StmtExprMutator {
     Block block = Downcast<Block>(StmtExprMutator::VisitStmt_(op));
     ObjectPtr<BlockNode> n = ffi::make_object<BlockNode>(*block.operator->());
     if (op->name_hint != "root") {
-      ICHECK(block_partition.count(GetRef<Block>(op)));
-      bool block_is_library = block_partition[GetRef<Block>(op)]->value;
+      ICHECK(block_partition.count(ffi::GetRef<Block>(op)));
+      bool block_is_library = block_partition[ffi::GetRef<Block>(op)]->value;
       if (!(is_library_part_ ^ block_is_library)) {
         n->body = block->body;
       } else {
@@ -663,7 +663,7 @@ tvm::BaseFunc CodegenWithLibrary(const tir::PrimFuncNode* pf, String global_symb
   using namespace tvm::tir;
   Optional<String> library_code = pf->attrs.GetAttr<String>(kLibraryKernel);
   if (!library_code.has_value()) {
-    return GetRef<tir::PrimFunc>(pf);
+    return ffi::GetRef<tir::PrimFunc>(pf);
   }
   std::string source = library_code.value();
   StringReplace(&source, "{global_symbol}", global_symbol);
@@ -684,7 +684,7 @@ class SplitMutator : public ExprMutator {
     SplitMutator mutator(mod, patterns, fcodegen);
     for (auto& kv : mod->functions) {
       if (auto* func = kv.second.as<FunctionNode>()) {
-        Function new_func = Downcast<Function>(mutator(GetRef<Function>(func)));
+        Function new_func = Downcast<Function>(mutator(ffi::GetRef<Function>(func)));
         mutator.builder_->UpdateFunction(kv.first, new_func);
       }
     }
@@ -710,7 +710,7 @@ class SplitMutator : public ExprMutator {
     // the first argument is the function to be called
     const auto* gv_ptr = call->args[0].as<GlobalVarNode>();
     if (gv_ptr == nullptr) return call;
-    GlobalVar gv = GetRef<GlobalVar>(gv_ptr);
+    GlobalVar gv = ffi::GetRef<GlobalVar>(gv_ptr);
     // retrieve the function from the module and split it
     tir::PrimFunc func = Downcast<tir::PrimFunc>(mod_->Lookup(gv));
     std::vector<std::vector<int>> arg_partition;
@@ -720,7 +720,7 @@ class SplitMutator : public ExprMutator {
     if (!split_funcs.second.defined()) {
       // no need to split, the function itself a library kernel
       tvm::BaseFunc lib_func = CodegenWithLibrary(split_funcs.first.get(), gv->name_hint);
-      if (lib_func->IsInstance<tir::PrimFuncNode>()) return GetRef<Call>(op);
+      if (lib_func->IsInstance<tir::PrimFuncNode>()) return ffi::GetRef<Call>(op);
       // Update the function in the module with the library kernel
       ICHECK(lib_func->IsInstance<ExternFuncNode>());
       builder_->UpdateFunction(gv, lib_func);
@@ -740,7 +740,7 @@ class SplitMutator : public ExprMutator {
     }
     // replace the function in the module with the library kernel
     tvm::BaseFunc lib_func = CodegenWithLibrary(func1.get(), gv->name_hint);
-    if (lib_func->IsInstance<tir::PrimFuncNode>()) return GetRef<Call>(op);
+    if (lib_func->IsInstance<tir::PrimFuncNode>()) return ffi::GetRef<Call>(op);
     ICHECK(lib_func->IsInstance<ExternFuncNode>());
     builder_->UpdateFunction(gv, lib_func);
     tir::Buffer intermediate_buffer = func1->buffer_map.at(func1->params.back());

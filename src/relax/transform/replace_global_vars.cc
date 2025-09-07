@@ -42,7 +42,7 @@ struct Mutator : ExprMutator {
 
   using ExprMutator::VisitExpr_;
   Expr VisitExpr_(const GlobalVarNode* node) override {
-    auto gvar = GetRef<GlobalVar>(node);
+    auto gvar = ffi::GetRef<GlobalVar>(node);
     return replacements.Get(gvar).value_or(gvar);
   }
 };

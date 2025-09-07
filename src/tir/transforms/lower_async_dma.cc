@@ -52,7 +52,7 @@ class AsyncDMALowerer : public arith::IRMutatorWithAnalyzer {
     }
 
     // if for loop is not a memcpy of a contiguous region, it might be a cuda cp.async behavior
-    std::optional<tvm::tir::MemCpyDetails> mem_copy = IdentifyMemCpy(GetRef<For>(loop), analyzer_);
+    std::optional<tvm::tir::MemCpyDetails> mem_copy = IdentifyMemCpy(ffi::GetRef<For>(loop), analyzer_);
     if (!mem_copy.has_value() || mem_copy->dest->region.size() != 1 ||
         mem_copy->source->region.size() != 1) {
       return arith::IRMutatorWithAnalyzer::VisitStmt_(loop);

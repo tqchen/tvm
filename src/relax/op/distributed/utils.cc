@@ -33,7 +33,7 @@ Array<distributed::DTensorStructInfo> GetInputDTensorStructInfo(const Call& call
   for (const Expr& arg : args) {
     const auto* sinfo = GetStructInfoAs<distributed::DTensorStructInfoNode>(arg);
     if (sinfo != nullptr) {
-      input_tensor_sinfo.push_back(GetRef<distributed::DTensorStructInfo>(sinfo));
+      input_tensor_sinfo.push_back(ffi::GetRef<distributed::DTensorStructInfo>(sinfo));
     }
   }
   return input_tensor_sinfo;
@@ -68,7 +68,7 @@ StructInfo InferShardingSpec(const Call& call, const BlockBuilder& ctx,
   axis_group_graph.PropagateShardingSpec();
   Array<TensorStructInfo> orig_output_tensor_sinfos;
   if (const auto* tensor_sinfo = orig_output_sinfo.as<TensorStructInfoNode>()) {
-    orig_output_tensor_sinfos.push_back(GetRef<TensorStructInfo>(tensor_sinfo));
+    orig_output_tensor_sinfos.push_back(ffi::GetRef<TensorStructInfo>(tensor_sinfo));
   } else {
     const auto* tuple_sinfo = orig_output_sinfo.as<TupleStructInfoNode>();
     ICHECK(tuple_sinfo);

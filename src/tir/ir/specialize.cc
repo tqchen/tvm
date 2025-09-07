@@ -54,7 +54,7 @@ inline bool IsParam(const PrimFunc& func, const Var& param) {
     PrimExpr a = VisitExpr(op->a);                                  \
     PrimExpr b = VisitExpr(op->b);                                  \
     if (a.same_as(op->a) && b.same_as(op->b)) {                     \
-      return GetRef<PrimExpr>(op);                                  \
+      return ffi::GetRef<PrimExpr>(op);                                  \
     } else {                                                        \
       return BinaryFunc(a, b);                                      \
     }                                                               \
@@ -63,7 +63,7 @@ inline bool IsParam(const PrimFunc& func, const Var& param) {
   PrimExpr VisitExpr_(const UnaryNode* op) final {               \
     PrimExpr a = VisitExpr(op->a);                               \
     if (a.same_as(op->a)) {                                      \
-      return GetRef<PrimExpr>(op);                               \
+      return ffi::GetRef<PrimExpr>(op);                               \
     } else {                                                     \
       return UnaryFunc(a);                                       \
     }                                                            \
@@ -130,7 +130,7 @@ class PrimFuncSpecializer : public StmtExprMutator {
 
     if (alloc_buffers.same_as(op->alloc_buffers) && reads.same_as(op->reads) &&
         writes.same_as(op->writes)) {
-      return GetRef<Block>(op);
+      return ffi::GetRef<Block>(op);
     } else {
       ObjectPtr<BlockNode> n = CopyOnWrite(op);
       n->alloc_buffers = std::move(alloc_buffers);
@@ -184,7 +184,7 @@ class PrimFuncSpecializer : public StmtExprMutator {
 
     auto new_buf = GetNewBuffer(op->buffer);
     if (new_buf.same_as(op->buffer)) {
-      return GetRef<BufferStore>(op);
+      return ffi::GetRef<BufferStore>(op);
     } else {
       auto n = CopyOnWrite(op);
       n->buffer = new_buf;
@@ -199,7 +199,7 @@ class PrimFuncSpecializer : public StmtExprMutator {
 
     auto new_buf = GetNewBuffer(op->buffer);
     if (new_buf.same_as(op->buffer)) {
-      return GetRef<BufferLoad>(op);
+      return ffi::GetRef<BufferLoad>(op);
     } else {
       auto n = ffi::make_object<BufferLoadNode>(*op);
       n->buffer = new_buf;
@@ -208,9 +208,9 @@ class PrimFuncSpecializer : public StmtExprMutator {
   }
 
   PrimExpr VisitExpr_(const VarNode* op) final {
-    auto it = var_map_.find(GetRef<Var>(op));
+    auto it = var_map_.find(ffi::GetRef<Var>(op));
     if (it == var_map_.end()) {
-      return GetRef<PrimExpr>(op);
+      return ffi::GetRef<PrimExpr>(op);
     } else {
       return it->second;
     }

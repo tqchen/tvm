@@ -101,7 +101,7 @@ Array<TensorStructInfo> GetTensorStructInfoFromTuple(const Call& call, const Blo
           << call->op << " expects the input to be a Tuple of Tensors. However, the given input is "
           << tup->struct_info_);
     }
-    tensor_sinfo.push_back(GetRef<TensorStructInfo>(field_tensor_sinfo));
+    tensor_sinfo.push_back(ffi::GetRef<TensorStructInfo>(field_tensor_sinfo));
   }
   return tensor_sinfo;
 }

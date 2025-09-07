@@ -51,7 +51,7 @@ Array<StmtSRef> GetLoops(const StmtSRef& block_sref) {
   std::vector<StmtSRef> result;
   for (StmtSRefNode* parent = block_sref->parent; parent && parent->stmt->IsInstance<ForNode>();
        parent = parent->parent) {
-    result.push_back(GetRef<StmtSRef>(parent));
+    result.push_back(ffi::GetRef<StmtSRef>(parent));
   }
   return {result.rbegin(), result.rend()};
 }

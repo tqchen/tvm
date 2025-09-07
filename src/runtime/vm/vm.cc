@@ -952,7 +952,7 @@ std::string VirtualMachineImpl::_GetFunctionParamName(std::string func_name, int
 
 ffi::Function VirtualMachineImpl::_LookupFunction(const String& name) {
   if (Optional<VMClosure> opt = this->GetClosureInternal(name, true)) {
-    return ffi::Function([clo = opt.value(), _self = GetRef<ffi::Module>(this)](
+    return ffi::Function([clo = opt.value(), _self = ffi::GetRef<ffi::Module>(this)](
                              ffi::PackedArgs args, ffi::Any* rv) -> void {
       auto* self = const_cast<VirtualMachineImpl*>(_self.as<VirtualMachineImpl>());
       ICHECK(self);

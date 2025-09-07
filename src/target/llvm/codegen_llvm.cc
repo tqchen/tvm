@@ -718,7 +718,7 @@ void CodeGenLLVM::GetAlignment(DataType t, const VarNode* buf_var, const PrimExp
   if (it != alloc_storage_info_.end()) {
     const StorageInfo& info = it->second;
     *p_native_bits =
-        NativeVectorBits(runtime::StorageScope::Create(GetPtrStorageScope(GetRef<Var>(buf_var))));
+        NativeVectorBits(runtime::StorageScope::Create(GetPtrStorageScope(ffi::GetRef<Var>(buf_var))));
     max_align_bits = info.alignment * 8;
   } else {
     *p_native_bits = native_vector_bits_;
@@ -1367,7 +1367,7 @@ llvm::Value* CodeGenLLVM::CreateIntrinsic(const CallNode* op) {
       arg_value.push_back(MakeValue(op->args[i]));
       arg_type.push_back(arg_value.back()->getType());
     }
-    llvm::Type* return_type = GetLLVMType(GetRef<PrimExpr>(op));
+    llvm::Type* return_type = GetLLVMType(ffi::GetRef<PrimExpr>(op));
     llvm::Function* f = GetIntrinsicDecl(id, return_type, arg_type);
     ICHECK(f) << "Cannot find intrinsic declaration, possible type mismatch: "
               << llvmGetIntrinName(id);
@@ -1855,20 +1855,20 @@ llvm::Value* CodeGenLLVM::VisitExpr_(const CallNode* op) {
       // call extern intrinsic
       ICHECK_GE(op->args.size(), 1U);
       auto global_symbol = Downcast<StringImm>(op->args[0]);
-      return this->CreateCallExtern(GetType(GetRef<PrimExpr>(op)), global_symbol->value, op->args,
+      return this->CreateCallExtern(GetType(ffi::GetRef<PrimExpr>(op)), global_symbol->value, op->args,
                                     true);
     } else if (op_attr_global_symbol_.count(call_op)) {
       // call extern if the op itself have a global symbol.
-      return this->CreateCallExtern(GetType(GetRef<PrimExpr>(op)), op_attr_global_symbol_[call_op],
+      return this->CreateCallExtern(GetType(ffi::GetRef<PrimExpr>(op)), op_attr_global_symbol_[call_op],
                                     op->args, false);
     } else {
-      VLOG(2) << "CreateIntrinsic: " << GetRef<Call>(op);
+      VLOG(2) << "CreateIntrinsic: " << ffi::GetRef<Call>(op);
       auto x = CreateIntrinsic(op);
       VLOG(2) << "CreateIntrinsic done";
       return x;
     }
   } else if (auto* ptr_gvar = op->op.as<GlobalVarNode>()) {
-    auto gvar = GetRef<GlobalVar>(ptr_gvar);
+    auto gvar = ffi::GetRef<GlobalVar>(ptr_gvar);
     auto it = functions_.find(ptr_gvar);
     ICHECK(it != functions_.end()) << "Call to undefined GlobalVar \"" << gvar << "\"";
     llvm::Function* callee = it->second;

@@ -118,7 +118,7 @@ class OpaqueBlockLower : public StmtExprMutator {
   }
 
   PrimExpr VisitExpr_(const VarNode* op) final {
-    Var var = GetRef<Var>(op);
+    Var var = ffi::GetRef<Var>(op);
     auto it = unit_loop_vars_.find(var);
     if (it == unit_loop_vars_.end()) {
       return var;

@@ -62,9 +62,9 @@ class LCADetector : public StmtExprVisitor {
     // Prepare the return
     Map<Buffer, Optional<Stmt>> buffer_lca;
     for (const auto& kv : detector.buffer_lca_) {
-      const Buffer& buffer = GetRef<Buffer>(kv.first);
+      const Buffer& buffer = ffi::GetRef<Buffer>(kv.first);
       const Optional<Stmt> stmt =
-          kv.second ? GetRef<Optional<Stmt>>(kv.second->stmt) : std::nullopt;
+          kv.second ? ffi::GetRef<Optional<Stmt>>(kv.second->stmt) : std::nullopt;
       buffer_lca.Set(buffer, stmt);
     }
     return buffer_lca;
@@ -289,7 +289,7 @@ class LCADetector : public StmtExprVisitor {
   void UpdateWithBlockidx() {
     for (const auto& it : buffer_lca_) {
       const runtime::StorageScope& scope =
-          runtime::StorageScope::Create(GetRef<Buffer>(it.first).scope());
+          runtime::StorageScope::Create(ffi::GetRef<Buffer>(it.first).scope());
       if (scope.rank == runtime::StorageRank::kGlobal) {
         const ScopeInfo*& lca = buffer_lca_[it.first];
         for (const ScopeInfo* blockidx_scope : blockidx_scopes_) {

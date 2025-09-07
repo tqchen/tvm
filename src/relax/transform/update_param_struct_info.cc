@@ -47,7 +47,7 @@ class ParamStructInfoMutator : public ExprMutator {
   using ExprMutator::VisitVarDef_;
 
   Expr VisitExpr_(const FunctionNode* op) override {
-    auto func = GetRef<Function>(op);
+    auto func = ffi::GetRef<Function>(op);
 
     auto params = op->params.Map([this](Var param) {
       if (auto new_sinfo = sinfo_func_(param)) {

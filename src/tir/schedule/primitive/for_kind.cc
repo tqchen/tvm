@@ -127,7 +127,7 @@ void CheckParallelizability(const ScheduleState& self, const For& loop, ForKind 
       if (!self->stmt2ref.count(realize->block.get())) {
         return false;
       }
-      CheckLoopParallelizableInBlock(self, for_kind, loop->loop_var, GetRef<BlockRealize>(realize),
+      CheckLoopParallelizableInBlock(self, for_kind, loop->loop_var, ffi::GetRef<BlockRealize>(realize),
                                      thread_scope);
     }
     return true;
@@ -163,7 +163,7 @@ void ParallelizeComputation(const ScheduleState& self, const StmtSRef& loop_sref
 
   // Step 2. Check whether the loop can be parallelized/vectorized/bound with regard to each
   // underlying block.
-  CheckParallelizability(self, GetRef<For>(loop), for_kind,
+  CheckParallelizability(self, ffi::GetRef<For>(loop), for_kind,
                          thread_axis.has_value() ? runtime::ThreadScope::Create(thread_axis.value())
                                                  : runtime::ThreadScope{-1, -1});
 

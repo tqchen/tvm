@@ -61,7 +61,7 @@ TVM_STATIC_IR_FUNCTOR(IRDocsifier, vtable)
           if (const auto if_ = n->value.as<relax::IfNode>()) {
             Optional<ExprDoc> ann = StructInfoAsAnn(n->var, n_p->Attr("var"), d, n->value);
             ExprDoc lhs = DefineVar(n->var, d->frames.back(), d);
-            return PrintIfExpr(GetRef<relax::If>(if_), n_p->Attr("value"), d, lhs, ann);
+            return PrintIfExpr(ffi::GetRef<relax::If>(if_), n_p->Attr("value"), d, lhs, ann);
           } else if (n->value->IsInstance<tvm::BaseFuncNode>() &&
                      !n->value->IsInstance<relax::ExternFuncNode>()) {
             IdDoc lhs = DefineVar(n->var, d->frames.back(), d);

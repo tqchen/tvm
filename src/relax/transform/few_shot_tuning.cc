@@ -157,7 +157,7 @@ Pass FewShotTuning(int valid_count, bool benchmark) {
         for (const auto& [gv, func] : m->functions) {
           if (func->IsInstance<tir::PrimFuncNode>() &&
               !func->HasNonzeroAttr(tir::attr::kIsScheduled)) {
-            result.Set(gv, FewShotTunePrimFunc(GetRef<tir::PrimFunc>(func.as<tir::PrimFuncNode>()),
+            result.Set(gv, FewShotTunePrimFunc(ffi::GetRef<tir::PrimFunc>(func.as<tir::PrimFuncNode>()),
                                                target, valid_count, benchmark));
           } else {
             result.Set(gv, func);

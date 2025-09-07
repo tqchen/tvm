@@ -309,7 +309,7 @@ bool TensorizeComparator::VisitExpr_(const CastNode* op, const PrimExpr& other) 
 
 bool TensorizeComparator::VisitExpr_(const VarNode* op, const PrimExpr& other) {
   const auto* rhs = other.as<VarNode>();
-  auto lhs = GetRef<Var>(op);
+  auto lhs = ffi::GetRef<Var>(op);
   if (lhs.same_as(other)) return true;
   if (op->dtype.code() != rhs->dtype.code()) {
     if (assert_mode_) {

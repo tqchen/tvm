@@ -48,7 +48,7 @@ void CollectAxisGraphBinary(const VarBindingNode* binding, const CallNode* call,
   for (const auto& op_name : binary_op_names) {
     const Op& binary_op = Op::Get("relax." + op_name);
     if (call->op.same_as(binary_op)) {
-      BuildAxisGraphBinary(binding->var, GetRef<Call>(call), axis_group_graph);
+      BuildAxisGraphBinary(binding->var, ffi::GetRef<Call>(call), axis_group_graph);
       break;
     }
   }
@@ -71,7 +71,7 @@ void CollectAxisGraphUnary(const VarBindingNode* binding, const CallNode* call,
   for (const auto& op_name : unary_op_names) {
     const Op& unary_op = Op::Get("relax." + op_name);
     if (call->op.same_as(unary_op)) {
-      BuildAxisGraphUnary(binding->var, GetRef<Call>(call), axis_group_graph);
+      BuildAxisGraphUnary(binding->var, ffi::GetRef<Call>(call), axis_group_graph);
     }
   }
 }
@@ -83,7 +83,7 @@ void CollectAxisGraphReduce(const VarBindingNode* binding, const CallNode* call,
   for (const auto& op_name : reduction_op_names) {
     const Op& reduction_op = Op::Get("relax." + op_name);
     if (call->op.same_as(reduction_op)) {
-      BuildAxisGraphReduce(binding->var, GetRef<Call>(call), axis_group_graph);
+      BuildAxisGraphReduce(binding->var, ffi::GetRef<Call>(call), axis_group_graph);
       break;
     }
   }
@@ -93,7 +93,7 @@ void CollectAxisGraphMatmul(const VarBindingNode* binding, const CallNode* call,
                             AxisGroupGraph* axis_group_graph) {
   static const Op& matmul_op = Op::Get("relax.matmul");
   if (call->op.same_as(matmul_op)) {
-    BuildAxisGraphMatmul(binding->var, GetRef<Call>(call), axis_group_graph);
+    BuildAxisGraphMatmul(binding->var, ffi::GetRef<Call>(call), axis_group_graph);
   }
 }
 
@@ -101,7 +101,7 @@ void CollectAxisGraphPermuteDims(const VarBindingNode* binding, const CallNode* 
                                  AxisGroupGraph* axis_group_graph) {
   static const Op& permute_dims_op = Op::Get("relax.permute_dims");
   if (call->op.same_as(permute_dims_op)) {
-    BuildAxisGraphPermuteDims(binding->var, GetRef<Call>(call), axis_group_graph);
+    BuildAxisGraphPermuteDims(binding->var, ffi::GetRef<Call>(call), axis_group_graph);
   }
 }
 
@@ -109,7 +109,7 @@ void CollectAxisGraphReshape(const VarBindingNode* binding, const CallNode* call
                              AxisGroupGraph* axis_group_graph) {
   static const Op& reshape_op = Op::Get("relax.reshape");
   if (call->op.same_as(reshape_op)) {
-    BuildAxisGraphReshape(binding->var, GetRef<Call>(call), axis_group_graph);
+    BuildAxisGraphReshape(binding->var, ffi::GetRef<Call>(call), axis_group_graph);
   }
 }
 
@@ -159,7 +159,7 @@ class AxisGroupGraphBuilder : public ExprVisitor {
     static const Op& call_tir_op = Op::Get("relax.call_tir");
     if (val->op.same_as(call_tir_op)) {
       if (Optional<tir::PrimFunc> func = MatchPrimFunc(mod_, val->args[0])) {
-        BuildAxisGraphCallTIR(binding->var, GetRef<Call>(val), func.value(), axis_group_graph_);
+        BuildAxisGraphCallTIR(binding->var, ffi::GetRef<Call>(val), func.value(), axis_group_graph_);
       }
     }
     CollectAxisGraphForDeviceMesh(binding, val, axis_group_graph_);
@@ -185,7 +185,7 @@ class AxisGroupGraphBuilder : public ExprVisitor {
   void VisitBinding_(const VarBindingNode* binding, const VarNode* val) {
     Array<TensorStructInfo> tensor_sinfos;
     if (const auto* tensor_sinfo = binding->var->struct_info_.as<TensorStructInfoNode>()) {
-      tensor_sinfos.push_back(GetRef<TensorStructInfo>(tensor_sinfo));
+      tensor_sinfos.push_back(ffi::GetRef<TensorStructInfo>(tensor_sinfo));
     } else if (const auto* tuple_sinfo = binding->var->struct_info_.as<TupleStructInfoNode>()) {
       ICHECK(tuple_sinfo);
       for (const auto& sinfo : tuple_sinfo->fields) {
@@ -318,7 +318,7 @@ class ShardingConflictHandler : public ExprVisitor {
   }
 
   void VisitExpr_(const CallNode* op) final {
-    Array<Expr> args = GetCallArgs(GetRef<Call>(op));
+    Array<Expr> args = GetCallArgs(ffi::GetRef<Call>(op));
     for (const auto& arg : args) {
       if (arg.as<ConstantNode>()) {
         CheckConstantNoSharding(Downcast<Constant>(arg));
@@ -348,10 +348,10 @@ class DistributedIRBuilder : public ExprMutator {
     auto mod = builder_->GetContextIRModule();
     for (const auto& [gv, base_func] : mod->functions) {
       const auto* func_ = base_func.as<FunctionNode>();
-      if (func_ == nullptr || !IsShardingAnnotatedFunc(GetRef<Function>(func_))) {
+      if (func_ == nullptr || !IsShardingAnnotatedFunc(ffi::GetRef<Function>(func_))) {
         continue;
       }
-      Function func = RewriteFunction(GetRef<Function>(func_), mod);
+      Function func = RewriteFunction(ffi::GetRef<Function>(func_), mod);
       builder_->UpdateFunction(gv, func);
     }
     return builder_->GetContextIRModule();
@@ -524,7 +524,7 @@ class DistributedIRBuilder : public ExprMutator {
   void VisitBinding_(const VarBindingNode* binding, const CallNode* val) {
     Array<TensorStructInfo> orig_output_tensor_sinfos;
     if (const auto* tensor_sinfo = GetStructInfoAs<TensorStructInfoNode>(binding->var)) {
-      orig_output_tensor_sinfos.push_back(GetRef<TensorStructInfo>(tensor_sinfo));
+      orig_output_tensor_sinfos.push_back(ffi::GetRef<TensorStructInfo>(tensor_sinfo));
     } else if (const auto* tuple_sinfo = GetStructInfoAs<TupleStructInfoNode>(binding->var)) {
       for (const auto& sinfo : tuple_sinfo->fields) {
         orig_output_tensor_sinfos.push_back(Downcast<TensorStructInfo>(sinfo));
@@ -565,7 +565,7 @@ class DistributedIRBuilder : public ExprMutator {
         new_value = InsertRedistribute(new_value, device_mesh, placements[0]);
       }
       if (const auto* var = new_value.as<VarNode>()) {
-        var_remap_[binding->var->vid] = GetRef<Var>(var);
+        var_remap_[binding->var->vid] = ffi::GetRef<Var>(var);
       } else {
         ReEmitBinding(binding, builder_->Normalize(new_value));
       }
@@ -589,15 +589,15 @@ class DistributedIRBuilder : public ExprMutator {
   }
 
   void VisitBinding_(const VarBindingNode* binding, const TupleGetItemNode* val) {
-    if (tuple_getitem_remap_.count(GetRef<TupleGetItem>(val))) {
-      var_remap_[binding->var->vid] = tuple_getitem_remap_[GetRef<TupleGetItem>(val)];
+    if (tuple_getitem_remap_.count(ffi::GetRef<TupleGetItem>(val))) {
+      var_remap_[binding->var->vid] = tuple_getitem_remap_[ffi::GetRef<TupleGetItem>(val)];
     } else {
       ExprMutator::VisitBinding_(binding, val);
     }
   }
 
   Expr VisitExpr_(const VarNode* var) final {
-    auto it = input_tensor_remap_.find(GetRef<Var>(var));
+    auto it = input_tensor_remap_.find(ffi::GetRef<Var>(var));
     if (it != input_tensor_remap_.end()) {
       var_remap_[var->vid] = (*it).second;
     }

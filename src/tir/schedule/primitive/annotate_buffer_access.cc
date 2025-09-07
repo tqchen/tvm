@@ -82,7 +82,7 @@ class AnnotateRegionRewriter : public StmtExprMutator {
 void AnnotateBufferAccess(ScheduleState self, const StmtSRef& block_sref, int buffer_index,
                           BufferIndexType buffer_index_type, const IndexMap& index_map) {
   const BlockNode* block = TVM_SREF_TO_BLOCK(block_sref);
-  Buffer buffer = GetNthAccessBuffer(self, GetRef<Block>(block), buffer_index, buffer_index_type);
+  Buffer buffer = GetNthAccessBuffer(self, ffi::GetRef<Block>(block), buffer_index, buffer_index_type);
 
   arith::Analyzer analyzer;
   Array<PrimExpr> block_iter_vars;
@@ -101,9 +101,9 @@ void AnnotateBufferAccess(ScheduleState self, const StmtSRef& block_sref, int bu
   BufferRegion new_region(buffer, new_ranges);
 
   AnnotateRegionRewriter mutator(buffer, buffer_index, new_region, buffer_index_type);
-  Stmt new_stmt = mutator(GetRef<Stmt>(block_sref->stmt));
+  Stmt new_stmt = mutator(ffi::GetRef<Stmt>(block_sref->stmt));
 
-  self->Replace(block_sref, new_stmt, {{GetRef<Block>(block), Downcast<Block>(new_stmt)}});
+  self->Replace(block_sref, new_stmt, {{ffi::GetRef<Block>(block), Downcast<Block>(new_stmt)}});
 }
 
 struct AnnotateBufferAccessTraits : public UnpackedInstTraits<AnnotateBufferAccessTraits> {

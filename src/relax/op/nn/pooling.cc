@@ -255,7 +255,7 @@ InferLayoutOutput InferLayoutPool2d(const Call& call,
     auto desired_layout = TransposeSubLayoutLike(attrs->layout, InitialLayout(4), layout->layout);
     auto data_si = GetStructInfo(call->args[0]);
     TensorStructInfo data_sinfo = data_si.as<TensorStructInfo>().value();
-    Optional<ShapeExpr> data_shape = GetRef<ShapeExpr>(data_sinfo->shape.as<ShapeExprNode>());
+    Optional<ShapeExpr> data_shape = ffi::GetRef<ShapeExpr>(data_sinfo->shape.as<ShapeExprNode>());
     if (CanProveLayoutTransform(in_layout, desired_layout, data_shape.value()->values)) {
       // Not handling out_layout being different from in_layout now. Any use case ?
       new_attrs->layout = desired_layout.name();
@@ -635,7 +635,7 @@ InferLayoutOutput InferLayoutAdaptiveAvgPool2D(const Call& call,
     auto desired_layout = TransposeSubLayoutLike(attrs->layout, InitialLayout(4), layout->layout);
     auto data_si = GetStructInfo(call->args[0]);
     TensorStructInfo data_sinfo = data_si.as<TensorStructInfo>().value();
-    Optional<ShapeExpr> data_shape = GetRef<ShapeExpr>(data_sinfo->shape.as<ShapeExprNode>());
+    Optional<ShapeExpr> data_shape = ffi::GetRef<ShapeExpr>(data_sinfo->shape.as<ShapeExprNode>());
     if (CanProveLayoutTransform(in_layout, desired_layout, data_shape.value()->values)) {
       // Not handling out_layout being different from in_layout now. Any use case ?
       new_attrs->layout = desired_layout.name();

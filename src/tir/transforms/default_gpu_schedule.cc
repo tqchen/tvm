@@ -87,7 +87,7 @@ IRModule MarkScheduled(const IRModule& mod) {
 
   for (const auto& [gv, base_func] : mod->functions) {
     if (const auto* prim_func_node = base_func.as<tir::PrimFuncNode>()) {
-      tir::PrimFunc prim_func = GetRef<tir::PrimFunc>(prim_func_node);
+      tir::PrimFunc prim_func = ffi::GetRef<tir::PrimFunc>(prim_func_node);
       tir::PrimFunc new_prim_func = WithAttr(std::move(prim_func), tir::attr::kIsScheduled, true);
       result.Set(gv, new_prim_func);
     } else {

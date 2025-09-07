@@ -193,7 +193,7 @@ class AllocateConstRewrite : public StmtExprMutator {
   PrimExpr VisitExpr_(const BufferLoadNode* op) final {
     if (auto it = buffer_var_map_.find(op->buffer->data.get()); it != buffer_var_map_.end()) {
       auto new_buffer =
-          Buffer(GetRef<Var>(it->second), op->buffer->dtype, op->buffer->shape, op->buffer->strides,
+          Buffer(ffi::GetRef<Var>(it->second), op->buffer->dtype, op->buffer->shape, op->buffer->strides,
                  op->buffer->elem_offset, it->second->name_hint, op->buffer->data_alignment,
                  op->buffer->offset_factor, op->buffer->buffer_type);
       new_load_buf_[op->buffer->data.get()] = new_buffer;

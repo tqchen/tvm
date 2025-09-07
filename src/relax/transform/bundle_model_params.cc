@@ -40,7 +40,7 @@ class ModelParamBundler : public ExprMutator {
       : param_tuple_name_(param_tuple_name) {}
 
   Expr VisitExpr_(const FunctionNode* op) override {
-    Function func = GetRef<Function>(op);
+    Function func = ffi::GetRef<Function>(op);
     auto opt_num_input = func->attrs.GetAttr<Integer>(attr::kNumInput);
     if (!opt_num_input) return func;
     auto signed_num_input = opt_num_input.value()->value;
@@ -74,7 +74,7 @@ class ModelParamBundler : public ExprMutator {
   }
 
   Expr VisitExpr_(const VarNode* op) override {
-    auto var = GetRef<Var>(op);
+    auto var = ffi::GetRef<Var>(op);
     if (auto it = var_to_expr_.find(var); it != var_to_expr_.end()) {
       return builder_->Emit((*it).second, op->name_hint());
     } else {

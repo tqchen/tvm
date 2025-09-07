@@ -80,7 +80,7 @@ TVM_STATIC_IR_FUNCTOR(ReprPrinter, vtable)
           inputs.push_back(obj);
         } else if (const auto* expr = obj.as<PrimExprNode>()) {
           PrimExpr new_expr =
-              Substitute(GetRef<PrimExpr>(expr), [](const Var& var) -> Optional<PrimExpr> {
+              Substitute(ffi::GetRef<PrimExpr>(expr), [](const Var& var) -> Optional<PrimExpr> {
                 ObjectPtr<VarNode> new_var = ffi::make_object<VarNode>(*var.get());
                 new_var->name_hint = "_";
                 return Var(new_var);

@@ -92,7 +92,7 @@ class ShapeBinder : public ExprMutator {
     } else if (const auto* op_node = call_node->op.as<OpNode>()) {
       ICHECK(op_node->name == "relax.reshape" || op_node->name == "relax.image.resize2d")
           << "Expect ShapeExpr consumer as reshape or image.resize2d, get "
-          << GetRef<Call>(call_node);
+          << ffi::GetRef<Call>(call_node);
       const auto& opt_shape = Downcast<ShapeStructInfo>(GetStructInfo(call_node->args[1]))->values;
       ICHECK(opt_shape.defined()) << "Expected shape defined, get " << call_node->args[1];
       new_args.push_back(ShapeExpr(opt_shape.value()));
@@ -113,7 +113,7 @@ class ShapeBinder : public ExprMutator {
           Call(call_node->op, new_args, call_node->attrs, call_node->sinfo_args, call_node->span);
       ReEmitBinding(binding, builder_->Normalize(new_call));
     } else {
-      LOG_FATAL << "Unexpected shape consumer " << GetRef<Call>(call_node);
+      LOG_FATAL << "Unexpected shape consumer " << ffi::GetRef<Call>(call_node);
     }
   }
 

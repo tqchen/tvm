@@ -236,7 +236,7 @@ class LegalizeMutator : public ExprMutator {
     if (op_node == nullptr) {
       return visited_call;
     }
-    auto op = GetRef<Op>(op_node);
+    auto op = ffi::GetRef<Op>(op_node);
 
     bool shapes_are_known_if_required = [&]() -> bool {
       bool requires_arg_shapes = requires_arg_shapes_map.get(op, Bool(true))->value;

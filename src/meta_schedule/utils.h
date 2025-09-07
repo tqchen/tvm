@@ -596,7 +596,7 @@ class BlockCollector : public tir::StmtVisitor {
         // `gv->name_hint` is the name of the function
         // `base_func` can be PrimFunc or relax::Function
         if (const auto* func = base_func.as<tir::PrimFuncNode>()) {
-          f_collect(GetRef<tir::PrimFunc>(func), gv->name_hint);
+          f_collect(ffi::GetRef<tir::PrimFunc>(func), gv->name_hint);
         }
       }
     }
@@ -617,7 +617,7 @@ class BlockCollector : public tir::StmtVisitor {
     // Otherwise collect all blocks.
     Bool collect_block = Bool(true);
     if (f_block_filter_ != nullptr) {
-      collect_block = f_block_filter_(GetRef<tir::Block>(block)).cast<Bool>();
+      collect_block = f_block_filter_(ffi::GetRef<tir::Block>(block)).cast<Bool>();
     }
     if (collect_block) {
       blocks_to_collect_.push_back(block->name_hint);

@@ -134,7 +134,7 @@ class WellDefinedEraser : public StructInfoMutator,
     // erase symbolic shape if we have undefined.
     if (!has_undefined) {
       if (value.same_as(op->value)) {
-        return GetRef<StructInfo>(op);
+        return ffi::GetRef<StructInfo>(op);
       } else {
         return PrimStructInfo(value.value(), op->span);
       }
@@ -155,7 +155,7 @@ class WellDefinedEraser : public StructInfoMutator,
     // erase symbolic shape if we have undefined.
     if (!has_undefined) {
       if (values.same_as(op->values)) {
-        return GetRef<StructInfo>(op);
+        return ffi::GetRef<StructInfo>(op);
       } else {
         return ShapeStructInfo(values.value(), op->span);
       }
@@ -179,7 +179,7 @@ class WellDefinedEraser : public StructInfoMutator,
     // erase symbolic shape if we have undefined.
     if (!has_undefined) {
       if (shape.same_as(op->shape)) {
-        return GetRef<StructInfo>(op);
+        return ffi::GetRef<StructInfo>(op);
       } else {
         if (shape.defined()) {
           return TensorStructInfo(shape.value(), op->dtype, vdev, op->span);
@@ -197,7 +197,7 @@ class WellDefinedEraser : public StructInfoMutator,
     //
     // All the occuring symbolic variables are defined in parameters'
     // struct info annotations. So there is no needed to erase.
-    return GetRef<StructInfo>(op);
+    return ffi::GetRef<StructInfo>(op);
   }
 
   using relax::ExprMutatorBase::VisitExpr_;
@@ -217,20 +217,20 @@ class WellDefinedEraser : public StructInfoMutator,
   Expr VisitExpr_(const VarNode* var) final {
     Optional<Expr> ret;
     if (f_var_map_ != nullptr) {
-      ret = f_var_map_(GetRef<Var>(var));
+      ret = f_var_map_(ffi::GetRef<Var>(var));
     }
     has_undefined_ = has_undefined_ || !ret.defined();
     if (ret.defined()) {
       ICHECK(ret.as<VarNode>() || ret.as<ShapeExprNode>())
           << "Only allow Expr in StructInfo to be ShapeExpr or Var";
     }
-    return ret.value_or(GetRef<Expr>(var));
+    return ret.value_or(ffi::GetRef<Expr>(var));
   }
 
   PrimExpr VisitExpr_(const tir::VarNode* var) final {
     Optional<PrimExpr> ret;
     if (f_shape_var_map_ != nullptr) {
-      ret = f_shape_var_map_(GetRef<tir::Var>(var));
+      ret = f_shape_var_map_(ffi::GetRef<tir::Var>(var));
     }
     has_undefined_ = has_undefined_ || !ret.defined();
 
@@ -242,7 +242,7 @@ class WellDefinedEraser : public StructInfoMutator,
       ICHECK(value.dtype() == DataType::Int(64)) << "Can only provide i64 expressions in shape";
       return value;
     } else {
-      return GetRef<PrimExpr>(var);
+      return ffi::GetRef<PrimExpr>(var);
     }
   }
 
@@ -472,7 +472,7 @@ class StructInfoBaseChecker
     //
     // Given we only do best effort checking in these cases, and such cases
     // are likely not a primary concern atm, we take this approach here.
-    if (struct_equal_(GetRef<StructInfo>(lhs), other)) return BaseCheckResult::kPass;
+    if (struct_equal_(ffi::GetRef<StructInfo>(lhs), other)) return BaseCheckResult::kPass;
 
     auto param_check = FuncParamsCheck(lhs->params.value(), rhs->params.value());
     auto ret_check = this->VisitStructInfo(lhs->ret, rhs->ret);
@@ -889,7 +889,7 @@ class CallRetStructInfoDeriver : public StructInfoBaseChecker {
     }
 
     if (auto* ptr = param.as<tir::VarNode>()) {
-      auto var = GetRef<tir::Var>(ptr);
+      auto var = ffi::GetRef<tir::Var>(ptr);
       auto it = shape_var_map_.find(var);
       // not populated
       if (it == shape_var_map_.end()) {
@@ -916,7 +916,7 @@ class CallRetStructInfoDeriver : public StructInfoBaseChecker {
     }
 
     if (auto* ptr = lhs.as<VarNode>()) {
-      auto var = GetRef<Var>(ptr);
+      auto var = ffi::GetRef<Var>(ptr);
       auto it = var_map_.find(var);
       // not populated
       if (it == var_map_.end()) {
@@ -990,7 +990,7 @@ class StructInfoLCAFinder
 
   // Object is based of everything, unify to object.
   StructInfo VisitStructInfo_(const ObjectStructInfoNode* lhs, const StructInfo& other) final {
-    return GetRef<StructInfo>(lhs);
+    return ffi::GetRef<StructInfo>(lhs);
   }
 
   StructInfo VisitStructInfo_(const PrimStructInfoNode* lhs, const StructInfo& other) final {
@@ -1008,13 +1008,13 @@ class StructInfoLCAFinder
       if (!lhs->value.defined()) {
         // If the mismatch was due to extra information in the RHS,
         // prefer to avoid constructing a new object.
-        return GetRef<StructInfo>(lhs);
+        return ffi::GetRef<StructInfo>(lhs);
       } else {
         return PrimStructInfo(lhs->dtype, lhs->span);
       }
     }
 
-    return GetRef<StructInfo>(lhs);
+    return ffi::GetRef<StructInfo>(lhs);
   }
 
   StructInfo VisitStructInfo_(const ShapeStructInfoNode* lhs, const StructInfo& other) final {
@@ -1026,13 +1026,13 @@ class StructInfoLCAFinder
         !CanProveShapeEqual(lhs->values.value(), rhs->values.value(), analyzer_)) {
       // prefers return same when possible
       if (!lhs->values.defined() && lhs->ndim == ndim) {
-        return GetRef<StructInfo>(lhs);
+        return ffi::GetRef<StructInfo>(lhs);
       } else {
         return ShapeStructInfo(ndim, lhs->span);
       }
     }
     // equals to each other
-    return GetRef<StructInfo>(lhs);
+    return ffi::GetRef<StructInfo>(lhs);
   }
 
   StructInfo VisitStructInfo_(const TensorStructInfoNode* lhs, const StructInfo& other) final {
@@ -1054,7 +1054,7 @@ class StructInfoLCAFinder
       // reuse lhs when possible
       if (!lhs->shape.defined() && lhs->dtype == dtype && lhs->ndim == ndim &&
           (!lhs->vdevice.defined() || vdev.defined())) {
-        return GetRef<StructInfo>(lhs);
+        return ffi::GetRef<StructInfo>(lhs);
       } else {
         return TensorStructInfo(dtype, ndim, vdev, lhs->span);
       }
@@ -1063,7 +1063,7 @@ class StructInfoLCAFinder
     if (lhs->dtype != dtype || (lhs->vdevice.defined() && !vdev.defined())) {
       return TensorStructInfo(lhs->shape.value(), dtype, vdev, lhs->span);
     } else {
-      return GetRef<StructInfo>(lhs);
+      return ffi::GetRef<StructInfo>(lhs);
     }
   }
 
@@ -1078,7 +1078,7 @@ class StructInfoLCAFinder
     if (!fields.same_as(lhs->fields)) {
       return TupleStructInfo(fields.value(), lhs->span);
     } else {
-      return GetRef<StructInfo>(lhs);
+      return ffi::GetRef<StructInfo>(lhs);
     }
   }
 
@@ -1093,7 +1093,7 @@ class StructInfoLCAFinder
     if (lhs->IsOpaque()) {
       if (lhs->derive_func.defined()) {
         if (lhs->derive_func.same_as(rhs->derive_func)) {
-          return GetRef<StructInfo>(lhs);
+          return ffi::GetRef<StructInfo>(lhs);
         } else {
           // Create a new opaque with object return
           return FuncStructInfo::OpaqueFunc(ObjectStructInfo(), purity, lhs->span);
@@ -1101,7 +1101,7 @@ class StructInfoLCAFinder
       } else {
         // no derivation function, only depends on ret
         StructInfo ret = this->VisitStructInfo(lhs->ret, rhs->ret);
-        if (ret.same_as(lhs->ret)) return GetRef<StructInfo>(lhs);
+        if (ret.same_as(lhs->ret)) return ffi::GetRef<StructInfo>(lhs);
         return FuncStructInfo::OpaqueFunc(ret, purity, lhs->span);
       }
     }
@@ -1128,15 +1128,15 @@ class StructInfoLCAFinder
     //
     // Given we only do best effort checking in these cases, and such cases
     // are likely not a primary concern atm, we take this approach here.
-    if (struct_equal_(GetRef<StructInfo>(lhs), GetRef<StructInfo>(rhs))) {
-      return GetRef<StructInfo>(lhs);
+    if (struct_equal_(ffi::GetRef<StructInfo>(lhs), ffi::GetRef<StructInfo>(rhs))) {
+      return ffi::GetRef<StructInfo>(lhs);
     }
 
     auto params = UnifyArray(lhs->params.value(), rhs->params.value());
     auto ret = this->VisitStructInfo(lhs->ret, rhs->ret);
 
     if (params.same_as(lhs->params) && ret.same_as(lhs->ret)) {
-      return GetRef<StructInfo>(lhs);
+      return ffi::GetRef<StructInfo>(lhs);
     } else {
       // fail to unify the params
       if (!params.defined()) {
@@ -1429,7 +1429,7 @@ class SymbolicVarCollector : public relax::ExprVisitor,
   }
 
   void VisitExpr_(const tir::VarNode* op) final {
-    tir::Var var = GetRef<tir::Var>(op);
+    tir::Var var = ffi::GetRef<tir::Var>(op);
     // default mode, check defined.
     if (defined_symbolic_var_.count(var) == 0) {
       free_symbolic_var_.insert(var);

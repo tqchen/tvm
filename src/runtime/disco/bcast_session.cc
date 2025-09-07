@@ -48,7 +48,7 @@ struct BcastSessionObj::Internal {
 DRef BcastSessionObj::GetGlobalFunc(const std::string& name) {
   int reg_id = AllocateReg();
   BcastSessionObj::Internal::BroadcastUnpacked(this, DiscoAction::kGetGlobalFunc, reg_id, name);
-  return BcastSessionObj::Internal::MakeDRef(reg_id, GetRef<Session>(this));
+  return BcastSessionObj::Internal::MakeDRef(reg_id, ffi::GetRef<Session>(this));
 }
 
 void BcastSessionObj::CopyFromWorker0(const Tensor& host_array, const DRef& remote_array) {
@@ -71,7 +71,7 @@ void BcastSessionObj::InitCCL(String ccl, ffi::Shape device_ids) {
   const auto pf = tvm::ffi::Function::GetGlobal("runtime.disco." + ccl + ".init_ccl");
   CHECK(pf.has_value()) << "ValueError: Cannot initialize CCL `" << ccl
                         << "`, because cannot find function: runtime.disco." << ccl << ".init_ccl";
-  (*pf)(GetRef<Session>(this), device_ids);
+  (*pf)(ffi::GetRef<Session>(this), device_ids);
 }
 
 void BcastSessionObj::SyncWorker(int worker_id) {
@@ -97,7 +97,7 @@ DRef BcastSessionObj::CallWithPacked(const ffi::PackedArgs& args) {
     args_vec[2] = func->reg_id;
   }
   this->BroadcastPacked(ffi::PackedArgs(args_vec, args.size()));
-  return BcastSessionObj::Internal::MakeDRef(reg_id, GetRef<Session>(this));
+  return BcastSessionObj::Internal::MakeDRef(reg_id, ffi::GetRef<Session>(this));
 }
 
 void BcastSessionObj::DeallocReg(int reg_id) {

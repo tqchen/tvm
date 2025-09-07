@@ -111,22 +111,22 @@ class ExpressionNarrower : public tir::ExprMutator {
 
   PrimExpr VisitExpr_(const GTNode* op) override {
     auto current = CurrentContext();
-    return VisitInequality(GetRef<GT>(op), OppositeContext(current), current);
+    return VisitInequality(ffi::GetRef<GT>(op), OppositeContext(current), current);
   }
 
   PrimExpr VisitExpr_(const GENode* op) override {
     auto current = CurrentContext();
-    return VisitInequality(GetRef<GE>(op), OppositeContext(current), current);
+    return VisitInequality(ffi::GetRef<GE>(op), OppositeContext(current), current);
   }
 
   PrimExpr VisitExpr_(const LTNode* op) override {
     auto current = CurrentContext();
-    return VisitInequality(GetRef<LT>(op), current, OppositeContext(current));
+    return VisitInequality(ffi::GetRef<LT>(op), current, OppositeContext(current));
   }
 
   PrimExpr VisitExpr_(const LENode* op) override {
     auto current = CurrentContext();
-    return VisitInequality(GetRef<LE>(op), current, OppositeContext(current));
+    return VisitInequality(ffi::GetRef<LE>(op), current, OppositeContext(current));
   }
 
   PrimExpr VisitExpr_(const EQNode* op) override {
@@ -143,7 +143,7 @@ class ExpressionNarrower : public tir::ExprMutator {
 
   PrimExpr VisitExpr_(const SubNode* op) override {
     auto current = CurrentContext();
-    return VisitInequality(GetRef<Sub>(op), current, OppositeContext(current));
+    return VisitInequality(ffi::GetRef<Sub>(op), current, OppositeContext(current));
   }
 
   PrimExpr VisitExpr_(const NotNode* op) override {
@@ -154,11 +154,11 @@ class ExpressionNarrower : public tir::ExprMutator {
 
   PrimExpr VisitExpr_(const BufferLoadNode* op) override {
     contains_unknown_expr_ = true;
-    return GetRef<PrimExpr>(op);
+    return ffi::GetRef<PrimExpr>(op);
   }
 
   PrimExpr VisitExpr_(const VarNode* op) override {
-    auto it = free_parameters_.find(GetRef<Var>(op));
+    auto it = free_parameters_.find(ffi::GetRef<Var>(op));
     if (it == free_parameters_.end()) {
       return Parent::VisitExpr_(op);
     }

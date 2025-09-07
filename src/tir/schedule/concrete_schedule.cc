@@ -283,7 +283,7 @@ BlockRV ConcreteScheduleNode::GetBlock(const String& name, const Optional<String
       blocks_.reserve(blocks.size());
       for (const StmtSRef& block_sref : blocks) {
         const BlockNode* block = TVM_SREF_TO_BLOCK(block_sref);
-        blocks_.push_back(GetRef<Block>(block));
+        blocks_.push_back(ffi::GetRef<Block>(block));
       }
     }
 
@@ -502,7 +502,7 @@ Array<LoopRV> ConcreteScheduleNode::Split(const LoopRV& loop_rv,
     factors.Set(infer_index,
                 this->analyzer_->Simplify(floordiv(loop->extent + tot_length - 1, tot_length)));
   } else if (!this->analyzer_->CanProve(tot_length >= loop->extent)) {
-    throw WrongFactorError(state_->mod, GetRef<For>(loop), true);
+    throw WrongFactorError(state_->mod, ffi::GetRef<For>(loop), true);
   }
   results = tir::Split(state_, loop_sref, factors, preserve_unit_iters, disable_predication);
   TVM_TIR_SCHEDULE_END("split", this->error_render_level_);
@@ -543,7 +543,7 @@ Array<LoopRV> ConcreteScheduleNode::LoopPartition(const LoopRV& loop_rv,
   Array<StmtSRef> results;
   TVM_TIR_SCHEDULE_BEGIN();
   if (!is_const_number(loop->min) || !is_const_number(loop->extent)) {
-    throw SymbolicShapeError(state_->mod, GetRef<For>(loop));
+    throw SymbolicShapeError(state_->mod, ffi::GetRef<For>(loop));
   }
   // infer factor if needed and check validity of factors
   for (size_t i = 0; i < factor_rvs.size(); i++) {
@@ -566,7 +566,7 @@ Array<LoopRV> ConcreteScheduleNode::LoopPartition(const LoopRV& loop_rv,
     }
   }
   if (this->analyzer_->CanProve(tot_length >= loop->extent)) {
-    throw WrongFactorError(state_->mod, GetRef<For>(loop), false);
+    throw WrongFactorError(state_->mod, ffi::GetRef<For>(loop), false);
   }
   if (infer_index != -1) {
     // if there is a 'None' in the factor list, 'None' becomes the difference between the extent and
@@ -930,7 +930,7 @@ Any ConcreteScheduleNode::CheckAndGetAnnotationValue(const ffi::Any& ann_val) {
   if (const auto* expr = ann_val.as<PrimExprNode>()) {
     ICHECK(!expr->IsInstance<StringImmNode>())
         << "TypeError: String is expected, but gets StringImm";
-    auto res_expr = this->Get(GetRef<PrimExpr>(expr));
+    auto res_expr = this->Get(ffi::GetRef<PrimExpr>(expr));
     // prefer to return int/float literals for annotations
     if (auto opt_intimm = res_expr.as<IntImm>()) {
       return (*std::move(opt_intimm))->value;

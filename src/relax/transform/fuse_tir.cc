@@ -73,7 +73,7 @@ class SymbolicMatcher : ExprFunctor<void(const PrimExpr& n, const PrimExpr& othe
       VisitExpr(op->a, rhs->a);                                     \
       VisitExpr(op->b, rhs->b);                                     \
     } else {                                                        \
-      must_prove_ = must_prove_ && (GetRef<PrimExpr>(op) == other); \
+      must_prove_ = must_prove_ && (ffi::GetRef<PrimExpr>(op) == other); \
     }                                                               \
   }
 
@@ -98,7 +98,7 @@ class SymbolicMatcher : ExprFunctor<void(const PrimExpr& n, const PrimExpr& othe
   void VisitExpr_(const IntImmNode* op, const PrimExpr& other) {
     const auto* rhs = other.as<IntImmNode>();
     if (!rhs || (op->value != rhs->value)) {
-      LOG(FATAL) << "Parameter expression " << GetRef<PrimExpr>(op)
+      LOG(FATAL) << "Parameter expression " << ffi::GetRef<PrimExpr>(op)
                  << " expected an integer argument with value " << op->value << ", "
                  << "but was provided with the argument " << other;
     }
@@ -107,7 +107,7 @@ class SymbolicMatcher : ExprFunctor<void(const PrimExpr& n, const PrimExpr& othe
   void VisitExpr_(const FloatImmNode* op, const PrimExpr& other) {
     const auto* rhs = other.as<FloatImmNode>();
     if (!rhs || (op->value != rhs->value)) {
-      LOG(FATAL) << "Parameter expression " << GetRef<PrimExpr>(op)
+      LOG(FATAL) << "Parameter expression " << ffi::GetRef<PrimExpr>(op)
                  << " expected an float argument with value " << op->value << ", "
                  << "but was provided with the argument " << other;
     }
@@ -116,7 +116,7 @@ class SymbolicMatcher : ExprFunctor<void(const PrimExpr& n, const PrimExpr& othe
   void VisitExpr_(const CastNode* op, const PrimExpr& other) {
     const auto* rhs = other.as<CastNode>();
     if (!rhs) {
-      LOG(FATAL) << "Parameter expression " << GetRef<PrimExpr>(op) << " expected an cast to "
+      LOG(FATAL) << "Parameter expression " << ffi::GetRef<PrimExpr>(op) << " expected an cast to "
                  << op->dtype << " as the argument, "
                  << "but was provided with the argument " << other;
     }
@@ -124,12 +124,12 @@ class SymbolicMatcher : ExprFunctor<void(const PrimExpr& n, const PrimExpr& othe
   }
 
   void VisitExpr_(const VarNode* op, const PrimExpr& rhs) {
-    auto lhs = GetRef<Var>(op);
+    auto lhs = ffi::GetRef<Var>(op);
 
     if (lhs.same_as(rhs)) {
       // Reference identity, no further checks needed.
     } else if (op->dtype.code() != rhs->dtype.code()) {
-      LOG(FATAL) << "Parameter expression " << GetRef<PrimExpr>(op) << " with dtype " << op->dtype
+      LOG(FATAL) << "Parameter expression " << ffi::GetRef<PrimExpr>(op) << " with dtype " << op->dtype
                  << " cannot match to argument " << rhs << " with dtype " << rhs.dtype();
     } else if (auto it = var_remap_->find(lhs); it != var_remap_->end()) {
       VisitExpr((*it).second, rhs);
@@ -144,7 +144,7 @@ class SymbolicMatcher : ExprFunctor<void(const PrimExpr& n, const PrimExpr& othe
       VisitExpr(op->true_value, rhs->true_value);
       VisitExpr(op->false_value, rhs->false_value);
     } else {
-      must_prove_ = must_prove_ && (GetRef<PrimExpr>(op) == other);
+      must_prove_ = must_prove_ && (ffi::GetRef<PrimExpr>(op) == other);
     }
   }
 
@@ -192,10 +192,10 @@ class FuseTIRBufferSubstitutor : private StmtExprMutator {
 
  private:
   PrimExpr VisitExpr_(const VarNode* _op) final {
-    if (auto it = var_remap_.find(GetRef<Var>(_op)); it != var_remap_.end()) {
+    if (auto it = var_remap_.find(ffi::GetRef<Var>(_op)); it != var_remap_.end()) {
       return (*it).second;
     } else {
-      return GetRef<PrimExpr>(_op);
+      return ffi::GetRef<PrimExpr>(_op);
     }
   }
 
@@ -414,7 +414,7 @@ class RelaxToTIRVarMapCollector : public ExprVisitor {
 
     ICHECK(call->op == call_tir_op_ || call->op == call_tir_inplace_op_)
         << "Only call_tir and call_tir_inplace are supported in primitive function, but got: "
-        << GetRef<Expr>(call);
+        << ffi::GetRef<Expr>(call);
     CollectVarMapping(call, current_var_, call->op == call_tir_inplace_op_);
   }
 
@@ -512,7 +512,7 @@ class FusedTIRConstructor : public ExprVisitor {
       : mod_(mod), func_name_(func_name) {}
 
   void VisitExpr_(const FunctionNode* func) final {
-    auto relax_to_tir_var_map = RelaxToTIRVarMapCollector::Collect(mod_, GetRef<Function>(func));
+    auto relax_to_tir_var_map = RelaxToTIRVarMapCollector::Collect(mod_, ffi::GetRef<Function>(func));
     std::vector<Variant<tir::Var, tir::Buffer>> prim_func_params;
     for (const Var& relax_param : func->params) {
       size_t size_before = prim_func_params.size();
@@ -635,7 +635,7 @@ class FusedTIRConstructor : public ExprVisitor {
 
     ICHECK(call->op == call_tir_op_ || call->op == call_tir_inplace_op_)
         << "Only call_tir and call_tir_inplace are supported in primitive function, but got: "
-        << GetRef<Expr>(call);
+        << ffi::GetRef<Expr>(call);
 
     // Step 1. Get Global var and PrimFunc
     GlobalVar gv = Downcast<GlobalVar>(call->args[0]);
@@ -696,7 +696,7 @@ class FusedTIRConstructor : public ExprVisitor {
       }
       end_buf_idx = begin_buf_idx + GetTotalTensorSize(tuple_sinfo->fields[tuple_get_item->index]);
       func_info_.expr2buffers.Set(
-          GetRef<Expr>(tuple_get_item),
+          ffi::GetRef<Expr>(tuple_get_item),
           {(*it).second.begin() + begin_buf_idx, (*it).second.begin() + end_buf_idx});
     }
   }
@@ -711,7 +711,7 @@ class FusedTIRConstructor : public ExprVisitor {
       }
     }
     if (!buffers.empty()) {
-      func_info_.expr2buffers.Set(GetRef<Expr>(tuple), buffers);
+      func_info_.expr2buffers.Set(ffi::GetRef<Expr>(tuple), buffers);
     }
   }
 
@@ -758,7 +758,7 @@ class FusedTIRConstructor : public ExprVisitor {
     size_t buffer_idx = 0;
     for (const Expr& arg : args) {
       if (const auto* v = arg.as<VarNode>()) {
-        auto it = func_info_.expr2buffers.find(GetRef<Var>(v));
+        auto it = func_info_.expr2buffers.find(ffi::GetRef<Var>(v));
         // Substitute the buffer with the already allocated one if it is an intermediate var
         if (it != func_info_.expr2buffers.end()) {
           for (const tir::Buffer& target_buffer : (*it).second) {
@@ -895,7 +895,7 @@ class FusedTIRConstructor : public ExprVisitor {
       func_info_.buffer_subst_map.Set(buffer, new_buffer);
     }
     // Update expr2buffers
-    func_info_.expr2buffers.Set(GetRef<Expr>(call), output_buffers);
+    func_info_.expr2buffers.Set(ffi::GetRef<Expr>(call), output_buffers);
   }
 
   /*!
@@ -1152,7 +1152,7 @@ class TIRFuseMutator : public ExprMutator {
       ICHECK(tensor) << "FuseTIR can only take tensor or tuple type";
       auto* shape_expr = tensor->shape.as<ShapeExprNode>();
       ICHECK(shape_expr) << "FuseTIR requires all intermediate values have shape";
-      return GetRef<ShapeExpr>(shape_expr);
+      return ffi::GetRef<ShapeExpr>(shape_expr);
     }
   }
 

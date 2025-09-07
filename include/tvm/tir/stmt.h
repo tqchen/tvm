@@ -605,7 +605,7 @@ class SeqStmt : public Stmt {
       }
       if constexpr (std::is_base_of_v<Stmt, T>) {
         if (const SeqStmtNode* ptr = t.template as<SeqStmtNode>()) {
-          return GetRef<SeqStmt>(ptr);
+          return ffi::GetRef<SeqStmt>(ptr);
         } else {
           return std::nullopt;
         }

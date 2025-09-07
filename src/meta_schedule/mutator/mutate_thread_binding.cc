@@ -143,12 +143,12 @@ std::vector<MutateThreadBindingNode::Candidate> MutateThreadBindingNode::FindCan
     ICHECK(sample_it != sample_insts.end());
     const InstructionNode* sample_inst = sample_it->second;
 
-    int decision = Downcast<IntImm>(trace->decisions[GetRef<Instruction>(sample_inst)])->value;
+    int decision = Downcast<IntImm>(trace->decisions[ffi::GetRef<Instruction>(sample_inst)])->value;
 
     std::vector<double> probs =
         support::AsVector<FloatImm, double>(Downcast<Array<FloatImm>>(sample_inst->attrs[1]));
 
-    candidates.emplace_back(GetRef<Instruction>(sample_inst), probs, decision);
+    candidates.emplace_back(ffi::GetRef<Instruction>(sample_inst), probs, decision);
   }
   return candidates;
 }

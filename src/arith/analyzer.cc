@@ -103,7 +103,7 @@ void Analyzer::MarkGlobalNonNegValue(const PrimExpr& value) {
   // We may consider enhance the sub analyzer to directly take
   // MarkPositiveVar so their bounds do not overlap
   if (const auto* var_ptr = symbol.as<VarNode>()) {
-    Var var = GetRef<Var>(var_ptr);
+    Var var = ffi::GetRef<Var>(var_ptr);
     // skip non-index type, keep it to be compatible
     // with any_dim that do not represent any value
     if (!IsIndexType(var.dtype())) return;

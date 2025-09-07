@@ -128,8 +128,8 @@ class FuncBuilder : public ExprMutator {
     if (shape_expr_inputs_.size()) {
       Array<PrimExpr> tir_vars;
       for (const auto* var : shape_expr_inputs_) {
-        auto new_var = GetRef<tir::Var>(var).copy_with_suffix("");
-        tir_var_remap_.Set(GetRef<tir::Var>(var), new_var);
+        auto new_var = ffi::GetRef<tir::Var>(var).copy_with_suffix("");
+        tir_var_remap_.Set(ffi::GetRef<tir::Var>(var), new_var);
         tir_vars.push_back(new_var);
       }
       shape_expr = Var("shape_expr", ShapeStructInfo(tir_vars));
@@ -280,7 +280,7 @@ class CUDAGraphRewritePlanner : public ExprVisitor {
       if (region->shape_expr_inputs_.size()) {
         Array<PrimExpr> tir_vars;
         for (const auto* var : region->shape_expr_inputs_) {
-          tir_vars.push_back(GetRef<PrimExpr>(var));
+          tir_vars.push_back(ffi::GetRef<PrimExpr>(var));
         }
         plan->propogated_tir_vars = ShapeExpr(tir_vars);
       }
@@ -365,7 +365,7 @@ class CUDAGraphRewritePlanner : public ExprVisitor {
 
     const auto* call_gv = call->op.as<GlobalVarNode>();
     bool call_prim_func =
-        call_gv ? mod_->Lookup(GetRef<GlobalVar>(call_gv))->IsInstance<tir::PrimFuncNode>() : false;
+        call_gv ? mod_->Lookup(ffi::GetRef<GlobalVar>(call_gv))->IsInstance<tir::PrimFuncNode>() : false;
 
     // Check whether the call can be lifted to the capture function. It requires all the arguments
     // to be static and the call to be a kernel launch or a pure operation (e.g. memory view).
@@ -399,8 +399,8 @@ class CUDAGraphRewritePlanner : public ExprVisitor {
         if (const auto* op = call->op.as<OpNode>()) {
           return !support::StartsWith(op->name, "relax.memory") &&
                  !support::StartsWith(op->name, "relax.builtin") && op->name != "relax.reshape" &&
-                 !GetRef<Op>(op).same_as(null_value_op) &&
-                 !GetRef<Op>(op).same_as(call_builtin_with_ctx_op);
+                 !ffi::GetRef<Op>(op).same_as(null_value_op) &&
+                 !ffi::GetRef<Op>(op).same_as(call_builtin_with_ctx_op);
         }
         return false;
       }();
@@ -442,7 +442,7 @@ class CUDAGraphRewritePlanner : public ExprVisitor {
   }
 
   void VisitBinding_(const VarBindingNode* binding, const VarNode* var) final {
-    if (IsStatic(GetRef<Var>(var))) {
+    if (IsStatic(ffi::GetRef<Var>(var))) {
       AddStaticBinding(binding, false);
       MarkAsFuncInput({var});
     } else {
@@ -857,7 +857,7 @@ class CUDAGraphRewriter : public ExprMutator {
       // the original var definition is not visited yet.
       return EmitRedef(op, it->second);
     }
-    return GetRef<Expr>(op);
+    return ffi::GetRef<Expr>(op);
   }
 
   Var EmitRedef(const VarNode* var, const Expr& redef) {

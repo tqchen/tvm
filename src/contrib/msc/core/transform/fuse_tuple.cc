@@ -114,7 +114,7 @@ class TupleFuser : public ExprMutator {
       }
     }
     if (on_target) {
-      ReEmitFunc(binding, GetRef<Tuple>(val));
+      ReEmitFunc(binding, ffi::GetRef<Tuple>(val));
     } else {
       ExprMutator::VisitBinding_(binding, val);
     }
@@ -122,7 +122,7 @@ class TupleFuser : public ExprMutator {
 
   void VisitBinding_(const VarBindingNode* binding, const TupleGetItemNode* val) final {
     if (target_funcs_.count(val->tuple)) {
-      ReEmitFunc(binding, GetRef<TupleGetItem>(val));
+      ReEmitFunc(binding, ffi::GetRef<TupleGetItem>(val));
     } else {
       ExprMutator::VisitBinding_(binding, val);
     }

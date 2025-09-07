@@ -54,7 +54,7 @@ UpdatePointerStorageScope::UpdatePointerStorageScope(
 PrimExpr UpdatePointerStorageScope::VisitExpr_(const VarNode* op) {
   auto it = new_var_remap_.find(op);
   if (it == new_var_remap_.end()) {
-    return GetRef<Var>(op);
+    return ffi::GetRef<Var>(op);
   }
   return it->second;
 }

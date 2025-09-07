@@ -139,7 +139,7 @@ ReplaceBufferMutator::ReplaceBufferMutator(const Map<Buffer, Buffer>& buffer_map
 
 PrimExpr ReplaceBufferMutator::VisitExpr_(const VarNode* var) {
   auto it = buffer_var_map_.find(var);
-  return it != buffer_var_map_.end() ? it->second->data : GetRef<Var>(var);
+  return it != buffer_var_map_.end() ? it->second->data : ffi::GetRef<Var>(var);
 }
 
 Stmt ReplaceBufferMutator::VisitStmt_(const BufferStoreNode* op) {
@@ -216,7 +216,7 @@ Stmt ReplaceBufferMutator::VisitStmt_(const BlockNode* block) {
       writes.same_as(mutated_block->writes) &&
       alloc_buffers.same_as(mutated_block->alloc_buffers) &&
       match_buffers.same_as(mutated_block->match_buffers)) {
-    return GetRef<Block>(block);
+    return ffi::GetRef<Block>(block);
   } else {
     ObjectPtr<BlockNode> n = CopyOnWrite(mutated_block.get());
     n->reads = std::move(reads);
@@ -226,7 +226,7 @@ Stmt ReplaceBufferMutator::VisitStmt_(const BlockNode* block) {
 
     Block new_block(n);
     if (block_sref_reuse_ != nullptr) {
-      block_sref_reuse_->Set(GetRef<Block>(block), new_block);
+      block_sref_reuse_->Set(ffi::GetRef<Block>(block), new_block);
     }
     return new_block;
   }
@@ -296,11 +296,11 @@ void LeafBlockRemovalPlan(const ScheduleState& self, const StmtSRef& leaf_block_
 
     if (const auto* seq = body.as<SeqStmtNode>()) {
       ObjectPtr<BlockNode> n = ffi::make_object<BlockNode>(*block);
-      auto new_seq = RemoveFromSeqStmt(GetRef<SeqStmt>(seq), GetRef<Stmt>(last_stmt));
+      auto new_seq = RemoveFromSeqStmt(ffi::GetRef<SeqStmt>(seq), ffi::GetRef<Stmt>(last_stmt));
       // Re-attach AllocateConst nodes
       auto new_body = MergeNest(allocs, new_seq);
       n->body = new_body;
-      *src_stmt = GetRef<Stmt>(block);
+      *src_stmt = ffi::GetRef<Stmt>(block);
       *tgt_stmt = Stmt(std::move(n));
       return;
     }
@@ -308,8 +308,8 @@ void LeafBlockRemovalPlan(const ScheduleState& self, const StmtSRef& leaf_block_
   if (const auto* loop = sref->StmtAs<ForNode>()) {
     if (const auto* seq = loop->body.as<SeqStmtNode>()) {
       ObjectPtr<ForNode> n = ffi::make_object<ForNode>(*loop);
-      n->body = RemoveFromSeqStmt(GetRef<SeqStmt>(seq), GetRef<Stmt>(last_stmt));
-      *src_stmt = GetRef<Stmt>(loop);
+      n->body = RemoveFromSeqStmt(ffi::GetRef<SeqStmt>(seq), ffi::GetRef<Stmt>(last_stmt));
+      *src_stmt = ffi::GetRef<Stmt>(loop);
       *tgt_stmt = Stmt(std::move(n));
       return;
     }
@@ -317,7 +317,7 @@ void LeafBlockRemovalPlan(const ScheduleState& self, const StmtSRef& leaf_block_
   ICHECK(sref != nullptr && sref->stmt != nullptr);
   const auto* leaf_block = TVM_SREF_TO_BLOCK(leaf_block_sref);
   const auto* scope_block = TVM_SREF_TO_BLOCK(sref);
-  throw OnlyLeafError(self->mod, GetRef<Block>(leaf_block), GetRef<Block>(scope_block));
+  throw OnlyLeafError(self->mod, ffi::GetRef<Block>(leaf_block), ffi::GetRef<Block>(scope_block));
 }
 
 Optional<LoopRV> TileWithTensorIntrin(const tir::Schedule& sch, const tir::BlockRV& block_rv,
@@ -421,7 +421,7 @@ Optional<LoopRV> TileWithTensorIntrin(const tir::Schedule& sch, const tir::Block
     ICHECK_EQ(split.size(), 2);
     inner_loops.insert(sch->GetSRef(split[1]).operator->());
     // The inner split will be reordered to the loop domain that is tensorized
-    int desc_loop_index = info->desc_loop_indexer.at(GetRef<tir::For>(desc_loop)).IntValue();
+    int desc_loop_index = info->desc_loop_indexer.at(ffi::GetRef<tir::For>(desc_loop)).IntValue();
     reorder_suffix[desc_loop_index] = split[1];
   }
   // Reorder the loops

@@ -393,7 +393,7 @@ std::string IndexMap2PythonLambdaExpr(const Array<Var>& initial_indices,
 
 String IndexMapNode::ToPythonString(
     const std::function<Optional<String>(const Var& var)>& f_name_map) const {
-  auto index_map = GetRef<IndexMap>(this).RenameVariables(f_name_map);
+  auto index_map = ffi::GetRef<IndexMap>(this).RenameVariables(f_name_map);
   std::string lambda_expr =
       IndexMap2PythonLambdaExpr(index_map->initial_indices, index_map->final_indices);
   if (!index_map->inverse_index_map.defined()) {

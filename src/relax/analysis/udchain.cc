@@ -89,7 +89,7 @@ class UDChain : relax::ExprVisitor {
     }
   }
   void VisitExpr_(const VarNode* op) override {
-    auto var = GetRef<Var>(op);
+    auto var = ffi::GetRef<Var>(op);
 
     if (cur_user_) {
       usage_map[var].insert(cur_user_.value());

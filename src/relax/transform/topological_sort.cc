@@ -149,7 +149,7 @@ class BindingOrderCollector : ExprVisitor {
   }
 
   void VisitExpr_(const VarNode* op) override {
-    Var upstream_requirement = GetRef<Var>(op);
+    Var upstream_requirement = ffi::GetRef<Var>(op);
     auto downstream_user = current_binding_;
 
     dependencies_.downstream_users[upstream_requirement].push_back(downstream_user);
@@ -167,7 +167,7 @@ class TopologicalSorter : public ExprMutator {
 
   Expr VisitExpr_(const FunctionNode* op) override {
     auto cached = dependencies_;
-    dependencies_ = BindingOrderCollector::Collect(GetRef<Expr>(op));
+    dependencies_ = BindingOrderCollector::Collect(ffi::GetRef<Expr>(op));
 
     if (starting_location_ == StartingLocation::FromOutputs) {
       std::reverse(dependencies_.binding_order.begin(), dependencies_.binding_order.end());
@@ -184,7 +184,7 @@ class TopologicalSorter : public ExprMutator {
   }
 
   BindingBlock VisitBindingBlock_(const DataflowBlockNode* op) override {
-    auto block = GetRef<DataflowBlock>(op);
+    auto block = ffi::GetRef<DataflowBlock>(op);
 
     // A map from not-yet-defined variables to the binding that will
     // define the variable.  Items are removed from this map as they

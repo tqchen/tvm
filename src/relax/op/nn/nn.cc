@@ -1022,10 +1022,10 @@ StructInfo InferStructInfoNLLLoss(const Call& call, const BlockBuilder& ctx) {
   DataType output_dtype;
   Optional<VDevice> vdevice;
   if (wgt_sinfo != nullptr) {
-    output_dtype = InferBinaryArithOpOutDtype(call, ctx, GetRef<TensorStructInfo>(pred_sinfo),
-                                              GetRef<TensorStructInfo>(wgt_sinfo));
-    vdevice = InferBinaryArithOpOutVDevice(call, ctx, GetRef<TensorStructInfo>(pred_sinfo),
-                                           GetRef<TensorStructInfo>(wgt_sinfo));
+    output_dtype = InferBinaryArithOpOutDtype(call, ctx, ffi::GetRef<TensorStructInfo>(pred_sinfo),
+                                              ffi::GetRef<TensorStructInfo>(wgt_sinfo));
+    vdevice = InferBinaryArithOpOutVDevice(call, ctx, ffi::GetRef<TensorStructInfo>(pred_sinfo),
+                                           ffi::GetRef<TensorStructInfo>(wgt_sinfo));
   } else {
     output_dtype = pred_sinfo->dtype;
     vdevice = pred_sinfo->vdevice;

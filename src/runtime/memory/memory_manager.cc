@@ -87,7 +87,7 @@ Tensor StorageObj::AllocTensorScoped(int64_t offset, ffi::Shape shape, DLDataTyp
       << "storage allocation failure, attempted to allocate " << needed_size << " at offset "
       << offset << " in region that is " << this->buffer.size << "bytes";
 
-  return Tensor::FromNDAlloc(StorageScopedAlloc(GetRef<Storage>(this)), shape, dtype,
+  return Tensor::FromNDAlloc(StorageScopedAlloc(ffi::GetRef<Storage>(this)), shape, dtype,
                              this->buffer.device, shape, scope, offset);
 }
 
@@ -120,7 +120,7 @@ Tensor StorageObj::AllocTensor(int64_t offset, ffi::Shape shape, DLDataType dtyp
     Storage storage_;
   };
 
-  return Tensor::FromNDAlloc(StorageAlloc(GetRef<Storage>(this)), shape, dtype, this->buffer.device,
+  return Tensor::FromNDAlloc(StorageAlloc(ffi::GetRef<Storage>(this)), shape, dtype, this->buffer.device,
                              offset);
 }
 

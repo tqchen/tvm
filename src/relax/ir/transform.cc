@@ -138,7 +138,7 @@ IRModule FunctionPassNode::operator()(IRModule mod, const PassContext& pass_ctx)
   for (const auto& it : updated_mod->functions) {
     // only picks up relax::Function
     if (auto* n = it.second.as<FunctionNode>()) {
-      Function func = GetRef<Function>(n);
+      Function func = ffi::GetRef<Function>(n);
       auto updated_func = pass_func(func, updated_mod, pass_ctx);
       updates.push_back({it.first, updated_func});
     }
@@ -245,7 +245,7 @@ class DataflowBlockMutator : public ExprMutator {
       if (const auto* match_cast = binding.as<MatchCastNode>()) {
         auto collected_vars = SymbolicVarCollector::Collect(match_cast->struct_info);
         for (const tir::VarNode* var : collected_vars) {
-          symbolic_vars.Set(var->name_hint, GetRef<tir::Var>(var));
+          symbolic_vars.Set(var->name_hint, ffi::GetRef<tir::Var>(var));
         }
       }
       if (!var.as<DataflowVarNode>()) {
@@ -254,7 +254,7 @@ class DataflowBlockMutator : public ExprMutator {
     }
 
     // apply pass_func_ to the DataflowBlock
-    DataflowBlock block = GetRef<DataflowBlock>(n);
+    DataflowBlock block = ffi::GetRef<DataflowBlock>(n);
     DataflowBlock updated_block = pass_func_(block, mod_, pass_ctx_);
 
     // raise error if there are updates of recorded Global Scope Vars and Symbolic Vars
@@ -361,7 +361,7 @@ IRModule DataflowBlockPassNode::operator()(IRModule mod, const PassContext& pass
   for (const auto& it : updated_mod->functions) {
     // only picks up relax::Function
     if (auto* n = it.second.as<FunctionNode>()) {
-      Function func = GetRef<Function>(n);
+      Function func = ffi::GetRef<Function>(n);
       Function updated_func = Downcast<Function>(dataflow_block_mutator.VisitExpr(func));
       updates.push_back({it.first, updated_func});
     }

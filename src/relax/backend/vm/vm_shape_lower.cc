@@ -208,7 +208,7 @@ class VMShapeLowerMutator
 
     for (auto& kv : mod->functions) {
       if (auto* func = kv.second.as<FunctionNode>()) {
-        Function updated_func = mutator.Rewrite(kv.first, GetRef<Function>(func));
+        Function updated_func = mutator.Rewrite(kv.first, ffi::GetRef<Function>(func));
         mutator.builder_->UpdateFunction(kv.first, updated_func);
       }
     }
@@ -350,7 +350,7 @@ class VMShapeLowerMutator
   Expr VisitExpr_(const FunctionNode* op) final {
     LOG(FATAL) << "VMShapeLower do not work for local functions, make sure "
                << " to run it after LambdaLift";
-    return GetRef<Expr>(op);
+    return ffi::GetRef<Expr>(op);
   }
 
   std::pair<Expr, Expr> MakeSymbolicShapeArg(const PrimExpr& expr) {
@@ -376,7 +376,7 @@ class VMShapeLowerMutator
     bool is_const_value =
         op->value->IsInstance<IntImmNode>() || op->value->IsInstance<FloatImmNode>();
     if (is_const_value) {
-      return GetRef<Expr>(op);
+      return ffi::GetRef<Expr>(op);
     }
 
     Array<Expr> args = {shape_heap_};
@@ -396,7 +396,7 @@ class VMShapeLowerMutator
       return e->IsInstance<IntImmNode>();
     });
     if (is_const_shape) {
-      return GetRef<Expr>(op);
+      return ffi::GetRef<Expr>(op);
     }
 
     Array<Expr> args = {shape_heap_, PrimValue::Int64(static_cast<int64_t>(op->values.size()))};

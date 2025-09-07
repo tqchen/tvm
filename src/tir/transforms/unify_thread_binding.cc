@@ -67,7 +67,7 @@ class ThreadBindingUnifier : public StmtExprMutator {
       return stmt;
     }
     if (const auto* loop = stmt.as<ForNode>()) {
-      For new_loop = GetRef<For>(loop);
+      For new_loop = ffi::GetRef<For>(loop);
       new_loop.CopyOnWrite()->annotations = std::move(annotations);
       return new_loop;
 
@@ -164,8 +164,8 @@ class ThreadBindingUnifier : public StmtExprMutator {
   PrimExpr VisitExpr_(const VarNode* var) final {
     // If this variable appears as a key in `var_substitution_map_`, we substitute it with its
     // corresponding value in the mapping.
-    Map<Var, PrimExpr>::iterator it = var_substitution_map_.find(GetRef<Var>(var));
-    return it != var_substitution_map_.end() ? (*it).second : GetRef<Var>(var);
+    Map<Var, PrimExpr>::iterator it = var_substitution_map_.find(ffi::GetRef<Var>(var));
+    return it != var_substitution_map_.end() ? (*it).second : ffi::GetRef<Var>(var);
   }
 
   /*!

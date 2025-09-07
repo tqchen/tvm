@@ -59,7 +59,7 @@ class SymbolicVarCanonicalizer : public ExprMutator {
             << ", while the later definition of Relax variable " << binding->var
             << " instead implies that TIR variable " << tir_var << " is " << prim_expr;
       } else {
-        known_values_[tir_var] = KnownValue{prim_expr, GetRef<MatchCast>(binding)};
+        known_values_[tir_var] = KnownValue{prim_expr, ffi::GetRef<MatchCast>(binding)};
       }
     }
     ExprMutator::VisitBinding_(binding);
@@ -76,7 +76,7 @@ class SymbolicVarCanonicalizer : public ExprMutator {
 
     if (op->cond.same_as(guard) && op->true_branch.same_as(true_b) &&
         op->false_branch.same_as(false_b)) {
-      return GetRef<Expr>(op);
+      return ffi::GetRef<Expr>(op);
     }
 
     // The two branches may have had different TIR variables inlined.
@@ -233,7 +233,7 @@ class CanonicalizePlanner : public ExprVisitor {
     // for functions, treat any free vars as used outside their home DF block
     auto cache = current_block_;
     current_block_ = Optional<BindingBlock>();
-    auto free_vars = FreeVars(GetRef<Function>(func));
+    auto free_vars = FreeVars(ffi::GetRef<Function>(func));
     for (auto var : free_vars) {
       used_outside_home_dataflow_.insert(var);
     }
@@ -251,14 +251,14 @@ class CanonicalizePlanner : public ExprVisitor {
 
   void VisitBindingBlock_(const BindingBlockNode* block) override {
     CHECK(!current_block_.defined()) << "Forgetting to unset current block";
-    current_block_ = GetRef<BindingBlock>(block);
+    current_block_ = ffi::GetRef<BindingBlock>(block);
     ExprVisitor::VisitBindingBlock_(block);
     current_block_ = Optional<BindingBlock>();
   }
 
   void VisitBindingBlock_(const DataflowBlockNode* block) override {
     CHECK(!current_block_.defined()) << "Forgetting to unset current block";
-    current_block_ = GetRef<DataflowBlock>(block);
+    current_block_ = ffi::GetRef<DataflowBlock>(block);
     ExprVisitor::VisitBindingBlock_(block);
     current_block_ = Optional<BindingBlock>();
   }
@@ -385,14 +385,14 @@ class CanonicalizePlanner : public ExprVisitor {
   }
 
   void VisitExpr_(const VarNode* var) override {
-    auto var_ref = GetRef<Var>(var);
+    auto var_ref = ffi::GetRef<Var>(var);
     // if a var is used in a dataflow block but *not* the one
     // where it was defined, it also needs to be exposed, so also we treat that as
     // used outside of a dataflow block
     if (!inside_dataflow() ||
         (def_blocks_.count(var_ref) &&
          (current_block_.defined() && !current_block_.value().same_as(def_blocks_.at(var_ref))))) {
-      used_outside_home_dataflow_.insert(GetRef<Var>(var));
+      used_outside_home_dataflow_.insert(ffi::GetRef<Var>(var));
     }
   }
 
@@ -440,7 +440,7 @@ class BindingCanonicalizer : public ExprMutator {
   }
 
   Expr VisitExpr_(const VarNode* var) override {
-    Var new_var = GetRef<Var>(var);
+    Var new_var = ffi::GetRef<Var>(var);
     while (auto opt = plan_.replace_usage.Get(new_var->vid)) {
       new_var = opt.value();
     }
@@ -494,10 +494,10 @@ class BindingCanonicalizer : public ExprMutator {
         // disqualify if the RHS is not a single dataflow var
         // or if the var has been output before
         if (const auto* rhs_var = value.as<DataflowVarNode>()) {
-          if (output_vars.count(GetRef<DataflowVar>(rhs_var))) {
-            disqualified_set.insert(GetRef<DataflowVar>(rhs_var));
+          if (output_vars.count(ffi::GetRef<DataflowVar>(rhs_var))) {
+            disqualified_set.insert(ffi::GetRef<DataflowVar>(rhs_var));
           }
-          output_vars.insert(GetRef<DataflowVar>(rhs_var));
+          output_vars.insert(ffi::GetRef<DataflowVar>(rhs_var));
         } else {
           Array<Var> disqualified;
           // for function literal, consider only free vars

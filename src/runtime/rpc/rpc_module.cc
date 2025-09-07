@@ -199,7 +199,7 @@ class RPCModuleNode final : public ffi::ModuleObj {
       return WrapRemoteFunc(sess_->GetFunction(name));
     } else {
       InitRemoteFunc(&remote_mod_get_function_, "tvm.rpc.server.ModuleGetFunction");
-      return remote_mod_get_function_(GetRef<ffi::Module>(this), name, true);
+      return remote_mod_get_function_(ffi::GetRef<ffi::Module>(this), name, true);
     }
   }
 
@@ -215,7 +215,7 @@ class RPCModuleNode final : public ffi::ModuleObj {
 
     if (module_handle_ != nullptr) {
       return remote_get_time_evaluator_(
-          GetRef<ffi::Module>(this), name, static_cast<int>(dev.device_type), dev.device_id, number,
+          ffi::GetRef<ffi::Module>(this), name, static_cast<int>(dev.device_type), dev.device_id, number,
           repeat, min_repeat_ms, limit_zero_time_iterations, cooldown_interval_ms,
           repeats_to_cooldown, cache_flush_bytes, f_preproc_name);
     } else {
@@ -233,7 +233,7 @@ class RPCModuleNode final : public ffi::ModuleObj {
 
   void ImportModule(const ffi::Module& other) final {
     InitRemoteFunc(&remote_import_module_, "tvm.rpc.server.ImportModule");
-    remote_import_module_(GetRef<ffi::Module>(this), other);
+    remote_import_module_(ffi::GetRef<ffi::Module>(this), other);
   }
 
   const std::shared_ptr<RPCSession>& sess() { return sess_; }

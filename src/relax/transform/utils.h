@@ -84,8 +84,8 @@ class MemoizedExprTranslator : public ::tvm::relax::ExprFunctor<OutputType(const
   }
 
   virtual OutputType VisitExpr_(const VarNode* vn) {
-    ICHECK(memo_.count(GetRef<Expr>(vn)));
-    return memo_[GetRef<Expr>(vn)];
+    ICHECK(memo_.count(ffi::GetRef<Expr>(vn)));
+    return memo_[ffi::GetRef<Expr>(vn)];
   }
 
   virtual OutputType VisitBinding_(const VarBindingNode* binding) {
@@ -172,7 +172,7 @@ bool IsScalarTensor(const Expr& expr);
 template <typename FType>
 bool IsNestedTensorConditioned(const StructInfo& sinfo, FType f_condition) {
   if (const auto* tensor_sinfo = sinfo.as<TensorStructInfoNode>()) {
-    return f_condition(GetRef<TensorStructInfo>(tensor_sinfo));
+    return f_condition(ffi::GetRef<TensorStructInfo>(tensor_sinfo));
   } else if (const auto* tuple_sinfo = sinfo.as<TupleStructInfoNode>()) {
     return !std::any_of(
         tuple_sinfo->fields.begin(), tuple_sinfo->fields.end(),
@@ -209,7 +209,7 @@ class VarReplacer : public ExprMutator {
 
  private:
   Expr VisitExpr_(const VarNode* op) final {
-    Var var = GetRef<Var>(op);
+    Var var = ffi::GetRef<Var>(op);
     auto it = var_remap_.find(var->vid);
     return it == var_remap_.end() ? var : it->second;
   }
@@ -241,13 +241,13 @@ class SymbolicVarRenewMutator : public ExprMutator, tir::ExprMutator {
   // 1. Visit and replace all tir::Vars at the definition point
   // 2. Revisit the function again and update the use side.
   PrimExpr VisitExpr_(const tir::VarNode* op) final {
-    auto it = var_map_.find(GetRef<tir::Var>(op));
+    auto it = var_map_.find(ffi::GetRef<tir::Var>(op));
     if (it != var_map_.end()) {
       return (*it).second;
     } else {
       auto n = ffi::make_object<tir::VarNode>(*op);
       tir::Var v(n);
-      var_map_.Set(GetRef<tir::Var>(op), v);
+      var_map_.Set(ffi::GetRef<tir::Var>(op), v);
       return v;
     }
   }
@@ -267,7 +267,7 @@ class SymbolicVarRenewMutator : public ExprMutator, tir::ExprMutator {
     Expr body = this->VisitWithNewScope(op->body, params);
 
     if (all_params_unchanged && body.same_as(op->body)) {
-      return GetRef<Expr>(op);
+      return ffi::GetRef<Expr>(op);
     } else {
       auto new_ret_sinfo = this->VisitExprDepStructInfoField(op->ret_struct_info);
       return Function(params, body, new_ret_sinfo, op->is_pure, op->attrs);
@@ -295,7 +295,7 @@ class FunctionCopier : public SymbolicVarRenewMutator {
     Var new_var = SymbolicVarRenewMutator::VisitVarDef_(var);
     Var copied_var = DataflowVar(new_var->name_hint(), GetStructInfo(new_var), new_var->span);
     var_remap_[var->vid] = copied_var;
-    relax_var_map_.Set(GetRef<Var>(var), copied_var);
+    relax_var_map_.Set(ffi::GetRef<Var>(var), copied_var);
     return copied_var;
   }
 
@@ -303,7 +303,7 @@ class FunctionCopier : public SymbolicVarRenewMutator {
     Var new_var = SymbolicVarRenewMutator::VisitVarDef_(var);
     Var copied_var = Var(new_var->name_hint(), GetStructInfo(new_var), new_var->span);
     var_remap_[var->vid] = copied_var;
-    relax_var_map_.Set(GetRef<Var>(var), copied_var);
+    relax_var_map_.Set(ffi::GetRef<Var>(var), copied_var);
     return copied_var;
   }
 

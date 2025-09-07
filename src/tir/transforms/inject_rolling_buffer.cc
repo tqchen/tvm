@@ -70,7 +70,7 @@ class RollingBufferInjector : public StmtExprMutator {
 
   Stmt VisitStmt_(const ForNode* op) final {
     // Manage the stack of iter_vars
-    for_loops.push_back(GetRef<For>(op));
+    for_loops.push_back(ffi::GetRef<For>(op));
 
     auto stmt{StmtExprMutator::VisitStmt_(op)};
     op = stmt.as<ForNode>();
@@ -82,7 +82,7 @@ class RollingBufferInjector : public StmtExprMutator {
     if (it != hoist_buffer_to_for.end()) {
       // If the loop corresponds to an iter_var that needs a BufferRealize
       // hoisting to its scope, perform the hoisting
-      Stmt body{GetRef<For>(op)};
+      Stmt body{ffi::GetRef<For>(op)};
       for (auto realise : it->second) {
         auto attrs{buffer_to_attrs[realise->buffer]};
         Stmt new_realize{BufferRealize(realise->buffer, realise->bounds, realise->condition, body,
@@ -108,7 +108,7 @@ class RollingBufferInjector : public StmtExprMutator {
       // Keep a dictionary associating attribute statements with the buffers
       // they reference. We'll need this if the buffer gets hoisted and we
       // need to hoist all of its attributes at the same time.
-      buffer_to_attrs[buffer].push_back(GetRef<AttrStmt>(op));
+      buffer_to_attrs[buffer].push_back(ffi::GetRef<AttrStmt>(op));
 
       if (op->attr_key == attr::rolling_buffer_scope && Downcast<IntImm>(op->value)->value) {
         // If the attribute is indicating that a buffer should be a rolling
@@ -143,7 +143,7 @@ class RollingBufferInjector : public StmtExprMutator {
             iter_var = nullptr;
           } else if (auto var = bound->min.as<VarNode>()) {
             // If the bound is just a Var, that implies the stride is 1
-            iter_var = GetRef<Var>(var);
+            iter_var = ffi::GetRef<Var>(var);
             stride = 1;
           } else {
             // Otherwise, it's the iter var multiplied by the stride
@@ -154,7 +154,7 @@ class RollingBufferInjector : public StmtExprMutator {
             ICHECK(a) << "Rolling buffer injection failed: the buffer striding is unsupported";
             auto b = mul->b.as<IntImmNode>();
             ICHECK(b) << "Rolling buffer injection failed: the buffer striding is unsupported";
-            iter_var = GetRef<Var>(a);
+            iter_var = ffi::GetRef<Var>(a);
             stride = b->value;
           }
           stride = std::ceil(static_cast<float>(stride) / divisor);
@@ -225,7 +225,7 @@ class RollingBufferInjector : public StmtExprMutator {
   }
 
   Stmt VisitStmt_(const BufferRealizeNode* op) final {
-    buffer_to_buffer_realize.insert({op->buffer, GetRef<BufferRealize>(op)});
+    buffer_to_buffer_realize.insert({op->buffer, ffi::GetRef<BufferRealize>(op)});
 
     auto stmt{StmtExprMutator::VisitStmt_(op)};
     op = stmt.as<BufferRealizeNode>();

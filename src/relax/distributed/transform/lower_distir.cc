@@ -52,10 +52,10 @@ class DistIRSharder : public ExprMutator {
     auto mod = builder_->GetContextIRModule();
     for (const auto& [gv, base_func] : mod->functions) {
       const auto* func_ = base_func.as<FunctionNode>();
-      if (func_ == nullptr || !IsDistIRFunc(GetRef<Function>(func_))) {
+      if (func_ == nullptr || !IsDistIRFunc(ffi::GetRef<Function>(func_))) {
         continue;
       }
-      Function func = RewriteFunction(GetRef<Function>(func_));
+      Function func = RewriteFunction(ffi::GetRef<Function>(func_));
       builder_->UpdateFunction(gv, func);
     }
     return builder_->GetContextIRModule();
@@ -80,14 +80,14 @@ class DistIRSharder : public ExprMutator {
     const auto* orig_shape = tensor_sinfo->shape.as<ShapeExprNode>();
     auto new_tensor_sinfo = ffi::make_object<TensorStructInfoNode>(*tensor_sinfo.get());
     new_tensor_sinfo->shape =
-        ShardShape(GetRef<ShapeExpr>(orig_shape), orig_sinfo->device_mesh, orig_sinfo->placement);
+        ShardShape(ffi::GetRef<ShapeExpr>(orig_shape), orig_sinfo->device_mesh, orig_sinfo->placement);
     return TensorStructInfo(new_tensor_sinfo);
   }
 
   StructInfo ConvertSinfo(StructInfo orig_sinfo, bool shard_shape) {
     if (const auto* dtensor_sinfo = orig_sinfo.as<DTensorStructInfoNode>()) {
       if (shard_shape) {
-        return ShardDTensorSinfo(GetRef<DTensorStructInfo>(dtensor_sinfo));
+        return ShardDTensorSinfo(ffi::GetRef<DTensorStructInfo>(dtensor_sinfo));
       } else {
         return dtensor_sinfo->tensor_sinfo;
       }
@@ -96,7 +96,7 @@ class DistIRSharder : public ExprMutator {
       for (const auto& field_sinfo : tuple_sinfo->fields) {
         if (const auto* dtensor_sinfo = field_sinfo.as<DTensorStructInfoNode>()) {
           if (shard_shape) {
-            new_fields.push_back(ShardDTensorSinfo(GetRef<DTensorStructInfo>(dtensor_sinfo)));
+            new_fields.push_back(ShardDTensorSinfo(ffi::GetRef<DTensorStructInfo>(dtensor_sinfo)));
           } else {
             new_fields.push_back(dtensor_sinfo->tensor_sinfo);
           }
@@ -157,12 +157,12 @@ class DistIRSharder : public ExprMutator {
     for (int i = 0; i < static_cast<int>(func_->params.size()); i++) {
       Var param = func_->params[i];
       if (const auto* dtensor_sinfo = GetStructInfoAs<DTensorStructInfoNode>(param)) {
-        EmitBroadcastOrScatter(param, new_params_[i], GetRef<DTensorStructInfo>(dtensor_sinfo));
+        EmitBroadcastOrScatter(param, new_params_[i], ffi::GetRef<DTensorStructInfo>(dtensor_sinfo));
       } else if (const auto* tuple_sinfo = GetStructInfoAs<TupleStructInfoNode>(param)) {
         for (int j = 0; j < static_cast<int>(tuple_sinfo->fields.size()); j++) {
           if (const auto* dtensor_sinfo = tuple_sinfo->fields[j].as<DTensorStructInfoNode>()) {
             EmitBroadcastOrScatter(TupleGetItem(param, j), TupleGetItem(new_params_[i], j),
-                                   GetRef<DTensorStructInfo>(dtensor_sinfo));
+                                   ffi::GetRef<DTensorStructInfo>(dtensor_sinfo));
           }
         }
       }
@@ -184,8 +184,8 @@ class DistIRSharder : public ExprMutator {
   }
 
   void VisitBinding_(const VarBindingNode* binding, const TupleGetItemNode* val) {
-    if (tuple_getitem_remap_.count(GetRef<TupleGetItem>(val))) {
-      var_remap_[binding->var->vid] = tuple_getitem_remap_[GetRef<TupleGetItem>(val)];
+    if (tuple_getitem_remap_.count(ffi::GetRef<TupleGetItem>(val))) {
+      var_remap_[binding->var->vid] = tuple_getitem_remap_[ffi::GetRef<TupleGetItem>(val)];
     } else {
       ExprMutator::VisitBinding_(binding, val);
     }
@@ -243,7 +243,7 @@ class DistIRSharder : public ExprMutator {
       }
       return Call(new_call_node);
     }
-    return GetRef<Call>(call);
+    return ffi::GetRef<Call>(call);
   }
 
   void VisitBinding_(const VarBindingNode* binding, const CallNode* val) {

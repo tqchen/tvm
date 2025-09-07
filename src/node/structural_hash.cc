@@ -50,7 +50,7 @@ TVM_FFI_STATIC_INIT_BLOCK({
   refl::TypeAttrDef<ffi::ModuleObj>()
       .def("__data_to_json__",
            [](const ffi::ModuleObj* node) {
-             std::string bytes = codegen::SerializeModuleToBytes(GetRef<ffi::Module>(node),
+             std::string bytes = codegen::SerializeModuleToBytes(ffi::GetRef<ffi::Module>(node),
                                                                  /*export_dso*/ false);
              return ffi::Base64Encode(ffi::Bytes(bytes));
            })

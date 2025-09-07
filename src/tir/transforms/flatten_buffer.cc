@@ -65,7 +65,7 @@ class BufferFlattener : public arith::IRMutatorWithAnalyzer {
         << "Unexpected MatchBufferRegion found during tir.transform.FlattenBuffer.  "
         << "All MatchBufferRegion should be removed in tir.transform.LowerMatchBuffer.";
 
-    Block block = GetRef<Block>(op);
+    Block block = ffi::GetRef<Block>(op);
 
     Array<Buffer> alloc_buffers = op->alloc_buffers;
     alloc_buffers.MutateByApply([this](Buffer buf) { return GetFlattenedBuffer(buf); });

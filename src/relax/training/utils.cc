@@ -45,7 +45,7 @@ class AppendLossMutator : private ExprMutator {
     CHECK(old_func) << func_name << "is not a Relax Function";
 
     // functions should be copied to satisfy the well-formed check
-    Function new_func = CopyWithNewVars(GetRef<Function>(old_func));
+    Function new_func = CopyWithNewVars(ffi::GetRef<Function>(old_func));
     Function new_loss_func = CopyWithNewVars(loss_function);
 
     AppendLossMutator mutator(mod, new_loss_func, num_backbone_outputs);
@@ -53,7 +53,7 @@ class AppendLossMutator : private ExprMutator {
         WithAttr(Downcast<Function>(mutator.VisitExpr(new_func)), tvm::attr::kGlobalSymbol,
                  new_func_name.value_or(func_name + "_loss"));
 
-    auto new_module = GetRef<IRModule>(mod.CopyOnWrite());
+    auto new_module = ffi::GetRef<IRModule>(mod.CopyOnWrite());
     auto new_var = GlobalVar(new_func_name.value_or(func_name + "_loss"));
     new_module->Add(new_var, new_func_transformed);
     return new_module;
@@ -118,7 +118,7 @@ class AppendLossMutator : private ExprMutator {
     CHECK(loss_body_->blocks.size() == 1 && loss_body_->blocks[0]->IsInstance<DataflowBlockNode>())
         << "The loss function should have only one DataflowBlock";
     auto var_node = loss_body_->body.as<VarNode>();
-    CHECK(var_node && IsScalarTensor(GetRef<Var>(var_node)))
+    CHECK(var_node && IsScalarTensor(ffi::GetRef<Var>(var_node)))
         << "The loss function must return a scalar(0-dim Tensor) Var";
   }
 
@@ -128,12 +128,12 @@ class AppendLossMutator : private ExprMutator {
    */
   void BackboneReturnToArr(const Expr& backbone_return) {
     if (auto* var = backbone_return.as<VarNode>()) {
-      backbone_return_arr_.push_back(GetRef<Var>(var));
+      backbone_return_arr_.push_back(ffi::GetRef<Var>(var));
     } else if (auto* tuple = backbone_return.as<TupleNode>()) {
       for (auto i : tuple->fields) {
         auto var = i.as<VarNode>();
         CHECK(var) << "The return value of the backbone should be either a Var or a Tuple of Vars";
-        backbone_return_arr_.push_back(GetRef<Var>(var));
+        backbone_return_arr_.push_back(ffi::GetRef<Var>(var));
       }
     } else {
       LOG(FATAL) << "The return value of the backbone should be either a Var or a Tuple of Vars";

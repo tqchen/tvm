@@ -126,7 +126,7 @@ class LoopHeightError : public ScheduleError {
         const Var& loop_var = higher_loop->StmtAs<ForNode>()->loop_var;
         if (UsesVar(binding, [v = loop_var.get()](const VarNode* var) { return var == v; })) {
           const ForNode* loop = TVM_SREF_TO_FOR(loop_sref);
-          throw LoopHeightError(mod, GetRef<For>(loop), GetRef<Block>(block));
+          throw LoopHeightError(mod, ffi::GetRef<For>(loop), ffi::GetRef<Block>(block));
         }
       }
     }
@@ -195,7 +195,7 @@ StmtSRef DecomposeReduction(ScheduleState self, const StmtSRef& block_sref,
   if (self->enable_check) {
     // Cond 0. Check loop_sref is an ancestor of block_sref
     if (std::find(loops.begin(), loops.end(), loop_sref) == loops.end()) {
-      throw LoopPositionError(self->mod, GetRef<For>(loop), GetRef<Block>(block),
+      throw LoopPositionError(self->mod, ffi::GetRef<For>(loop), ffi::GetRef<Block>(block),
                               "decompose_reduction");
     }
     // Cond 1. Check block is reduction
@@ -291,10 +291,10 @@ StmtSRef DecomposeReduction(ScheduleState self, const StmtSRef& block_sref,
   // Step 6. Mutate IR
   const BlockNode* old_scope_root = TVM_SREF_TO_BLOCK(scope_root_sref);
   auto [new_scope_root, new_reduction_block] = DecomposeReductionBlockReplacer::Replace(
-      GetRef<Block>(old_scope_root), GetRef<For>(loop), body, GetRef<Block>(block));
+      ffi::GetRef<Block>(old_scope_root), ffi::GetRef<For>(loop), body, ffi::GetRef<Block>(block));
   self->Replace(scope_root_sref, new_scope_root,
-                {{GetRef<Block>(old_scope_root), new_scope_root},
-                 {GetRef<Block>(block), new_reduction_block}});
+                {{ffi::GetRef<Block>(old_scope_root), new_scope_root},
+                 {ffi::GetRef<Block>(block), new_reduction_block}});
   self->UpdateScopeBlockInfo(new_scope_root);
   return self->stmt2ref.at(init_block.get());
 }
@@ -1133,7 +1133,7 @@ class BlockReplacer : public StmtMutator {
     // that the scope root block has stage-pipeline property, if this loop is not outside the
     // reduction block, there's no need to recursively mutate.
     if (!loop_vars2loop_.count(loop->loop_var.get())) {
-      return GetRef<For>(loop);
+      return ffi::GetRef<For>(loop);
     }
 
     // Step 2. Recursively mutate.
@@ -1195,7 +1195,7 @@ StmtSRef RFactor(ScheduleState self, const StmtSRef& rf_loop_sref, int factor_ax
   }
   const ForNode* rf_loop = TVM_SREF_TO_FOR(rf_loop_sref);
   if (rf_loop->kind != ForKind::kSerial) {
-    throw NotSerialLoopKindError(self->mod, GetRef<For>(rf_loop));
+    throw NotSerialLoopKindError(self->mod, ffi::GetRef<For>(rf_loop));
   }
 
   // Step 2. Collect loop vars that are touched by data parallel block iters and reduction block
@@ -1249,13 +1249,13 @@ StmtSRef RFactor(ScheduleState self, const StmtSRef& rf_loop_sref, int factor_ax
   Array<Buffer> rf_buffers = CreateRFactorBuffers(updates, factor_axis, rf_loop);
 
   // Step 2. Create the rfactor block.
-  RFactorBlockCreator rf_block_creator(block_realize, GetRef<For>(rf_loop), updates, reducer,
+  RFactorBlockCreator rf_block_creator(block_realize, ffi::GetRef<For>(rf_loop), updates, reducer,
                                        rf_buffers, loop_vars2loop, factor_axis,
                                        std::move(combiner_rhs));
   rf_block_creator.CreateBlock();
 
   // Step 3. Create the write-back block.
-  WriteBackBlockCreator wb_block_creator(block_realize, GetRef<For>(rf_loop), updates, reducer,
+  WriteBackBlockCreator wb_block_creator(block_realize, ffi::GetRef<For>(rf_loop), updates, reducer,
                                          rf_buffers, std::move(rf_block_creator.additional_iter_),
                                          std::move(combiner_lhs),
                                          std::move(rf_block_creator.rf_buf_access_indices_));
@@ -1269,10 +1269,10 @@ StmtSRef RFactor(ScheduleState self, const StmtSRef& rf_loop_sref, int factor_ax
   // *****************************************************
 
   // Step 1. Substitute the old scope root block with the new scope root block.
-  Block old_scope_root_block = GetRef<Block>(scope_root->StmtAs<BlockNode>());
+  Block old_scope_root_block = ffi::GetRef<Block>(scope_root->StmtAs<BlockNode>());
   Block new_scope_root_block = BlockReplacer::Replace(
       old_scope_root_block, rf_body, loops[0], wb_block_creator.new_block_realize_, block_realize,
-      GetRef<For>(rf_loop), reduce_loop_vars, loop_vars2loop, rf_buffers);
+      ffi::GetRef<For>(rf_loop), reduce_loop_vars, loop_vars2loop, rf_buffers);
   self->Replace(
       scope_root, new_scope_root_block,
       {{old_scope_root_block, new_scope_root_block}, {block, wb_block_creator.new_block_}});

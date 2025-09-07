@@ -175,7 +175,7 @@ class LayoutConvertMutator : public ExprMutator {
     return RewriteExpr(var, InitialNLayout(var));
   }
 
-  Expr VisitExpr_(const VarNode* op) final { return VisitVars_(GetRef<Var>(op)); }
+  Expr VisitExpr_(const VarNode* op) final { return VisitVars_(ffi::GetRef<Var>(op)); }
 
   bool HasUnknownDimTensor(const NLayout& nlayout) {
     bool find = false;
@@ -202,12 +202,12 @@ class LayoutConvertMutator : public ExprMutator {
                                                  const VarLayoutMap& var_layout_map) {
     const OpNode* op_node = call_node->op.as<OpNode>();
     if (op_node == nullptr) return std::nullopt;
-    Op op = Downcast<Op>(GetRef<Op>(op_node));
+    Op op = Downcast<Op>(ffi::GetRef<Op>(op_node));
     const auto attr_map = Op::GetAttrMap<FRelaxInferLayout>("FRelaxInferLayout");
     if (attr_map.count(op) && !HasUnknownDimTensor(call_node->args)) {
       // If the op has FRelaxInferLayout, and all the input tensors have known ndim
       FRelaxInferLayout f = attr_map[op];
-      return f(GetRef<Call>(call_node), desired_layouts, var_layout_map);
+      return f(ffi::GetRef<Call>(call_node), desired_layouts, var_layout_map);
     } else {
       // Otherwise, we use the default policy.
       return std::nullopt;
@@ -322,7 +322,7 @@ class LayoutConvertMutator : public ExprMutator {
         binding->struct_info, std::array<NLayout, 2>({from_layout, input_layout}), fvisitleaf);
     // re-emit old binding if nothing changes
     if (new_struct_info.same_as(binding->struct_info)) {
-      builder_->EmitNormalized(GetRef<MatchCast>(binding));
+      builder_->EmitNormalized(ffi::GetRef<MatchCast>(binding));
     } else {
       Var new_var =
           builder_->EmitMatchCast(RewriteExpr(binding->value, input_layout), new_struct_info);

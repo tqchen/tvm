@@ -227,7 +227,7 @@ class AliasAnalyzer {
       // TODO(@slyubomirsky): We will probably want special handling for closures
       ret.insert(get_fresh_idx());
     } else if (auto* target_var_node = value.as<VarNode>()) {
-      auto target_var = GetRef<Var>(target_var_node);
+      auto target_var = ffi::GetRef<Var>(target_var_node);
       if (alias_map_.count(target_var)) {
         ret.insert(alias_map_[target_var].begin(), alias_map_[target_var].end());
       } else {
@@ -324,7 +324,7 @@ std::unordered_set<StructInfo, ObjectPtrHash, ObjectPtrEqual> GatherCandidateSin
     // don't consider cases where we don't know the shape at compile time
     // (we will use the analyzer to do best-effort analysis where there are vars)
     if (tensor_info->shape.as<ShapeExprNode>()) {
-      return {GetRef<TensorStructInfo>(tensor_info)};
+      return {ffi::GetRef<TensorStructInfo>(tensor_info)};
     } else {
       return {};
     }
@@ -337,7 +337,7 @@ std::unordered_set<StructInfo, ObjectPtrHash, ObjectPtrEqual> GatherCandidateSin
     }
     // at least one field should be eligible to be done in-place
     if (!ret.empty()) {
-      ret.insert(GetRef<StructInfo>(tuple_info));
+      ret.insert(ffi::GetRef<StructInfo>(tuple_info));
     }
     return ret;
   } else {
@@ -447,7 +447,7 @@ bool InplaceConditionsMet(
     const std::unordered_map<int, std::vector<std::unordered_set<int>>>& tuple_map,
     const std::unordered_set<Var>& currently_live, const Expr& target, int binding_idx) {
   if (auto* var_node = target.as<VarNode>()) {
-    auto current_var = GetRef<Var>(var_node);
+    auto current_var = ffi::GetRef<Var>(var_node);
     // if the var is live past this point, we can't use it for in-place computations anyway
     if (live_ranges.count(current_var)) {
       auto live_range = live_ranges.at(current_var);
@@ -619,7 +619,7 @@ FindInplaceOpportunities(const DataflowBlock& block, const Array<Var>& inputs,
 
     if (auto* call_node = value.as<CallNode>()) {
       if (auto* op_node = call_node->op.as<OpNode>()) {
-        if (!OpSupportsInplace(GetRef<Op>(op_node))) {
+        if (!OpSupportsInplace(ffi::GetRef<Op>(op_node))) {
           continue;
         }
 
@@ -786,7 +786,7 @@ class ModuleInplaceTransformer : public ExprMutator {
       if (auto* func_node = kv.second.as<FunctionNode>()) {
         auto gv = kv.first;
         auto func_params = func_node->params;
-        auto function = Downcast<Function>(VisitExpr(GetRef<Function>(func_node)));
+        auto function = Downcast<Function>(VisitExpr(ffi::GetRef<Function>(func_node)));
         builder_->UpdateFunction(gv, function);
       }
     }
@@ -810,7 +810,7 @@ class ModuleInplaceTransformer : public ExprMutator {
   // the only case we will override: we will visit all binding blocks
   // and replace any valid calls in them
   BindingBlock VisitBindingBlock_(const DataflowBlockNode* op) override {
-    auto block = GetRef<DataflowBlock>(op);
+    auto block = ffi::GetRef<DataflowBlock>(op);
     auto old_idxs = inplace_idxs;
 
     // For now, only handle exact match cases.
@@ -838,7 +838,7 @@ class ModuleInplaceTransformer : public ExprMutator {
   }
 
   void VisitBinding_(const VarBindingNode* binding) override {
-    auto binding_ref = GetRef<VarBinding>(binding);
+    auto binding_ref = ffi::GetRef<VarBinding>(binding);
     if (!inplace_idxs.count(binding_ref)) {
       ExprMutator::VisitBinding_(binding);
       return;
@@ -848,7 +848,7 @@ class ModuleInplaceTransformer : public ExprMutator {
   }
 
   void VisitBinding_(const MatchCastNode* binding) override {
-    auto binding_ref = GetRef<MatchCast>(binding);
+    auto binding_ref = ffi::GetRef<MatchCast>(binding);
     if (!inplace_idxs.count(binding_ref)) {
       ExprMutator::VisitBinding_(binding);
       return;

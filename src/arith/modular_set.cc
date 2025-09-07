@@ -273,7 +273,7 @@ class ModularSetAnalyzer::Impl : public ExprFunctor<ModularSetAnalyzer::Entry(co
   }
 
   Entry VisitExpr_(const VarNode* op) final {
-    Var v = GetRef<Var>(op);
+    Var v = ffi::GetRef<Var>(op);
     auto it = var_map_.find(v);
     if (it != var_map_.end()) {
       return it->second;

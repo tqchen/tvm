@@ -1091,7 +1091,7 @@ class LayoutInfer : public ExprVisitor {
         continue;
       }
       // Infer by op_node
-      Op op = Downcast<Op>(GetRef<Op>(op_node));
+      Op op = Downcast<Op>(ffi::GetRef<Op>(op_node));
       InferLayoutOutput infered_layout;
       const auto& msc_infer_map = Op::GetAttrMap<FRelaxInferLayout>("FMSCBackwardInferLayout");
       try {
@@ -1118,7 +1118,7 @@ class LayoutInfer : public ExprVisitor {
 
   void VisitBinding_(const VarBindingNode* binding, const CallNode* call_node) final {
     ExprVisitor::VisitBinding_(binding, call_node);
-    const auto& call = GetRef<Call>(call_node);
+    const auto& call = ffi::GetRef<Call>(call_node);
     if (const auto* v_node = call->op.as<GlobalVarNode>()) {
       const auto& func = Downcast<Function>(ref_module_->Lookup(v_node->name_hint));
       RecordExpr(binding->var, call);
@@ -1143,7 +1143,7 @@ class LayoutInfer : public ExprVisitor {
       }
       if (infer_outputs) {
         // infer layouts
-        Op op = Downcast<Op>(GetRef<Op>(op_node));
+        Op op = Downcast<Op>(ffi::GetRef<Op>(op_node));
         InferLayoutOutput infered_layout;
         const auto& msc_infer_map = Op::GetAttrMap<FRelaxInferLayout>("FMSCForwardInferLayout");
         const auto& relax_infer_map = Op::GetAttrMap<FRelaxInferLayout>("FRelaxInferLayout");
@@ -1187,12 +1187,12 @@ class LayoutInfer : public ExprVisitor {
   }
 
   void VisitBinding_(const VarBindingNode* binding, const FunctionNode* val) final {
-    local_funcs_.Set(binding->var, GetRef<Function>(val));
+    local_funcs_.Set(binding->var, ffi::GetRef<Function>(val));
   }
 
   void VisitBinding_(const VarBindingNode* binding, const TupleNode* val) final {
     ExprVisitor::VisitBinding_(binding, val);
-    RecordExpr(binding->var, GetRef<Tuple>(val));
+    RecordExpr(binding->var, ffi::GetRef<Tuple>(val));
     if (IsNestedTensor(binding->var)) {
       Array<NLayout> input_layouts;
       for (const auto& field : val->fields) {
@@ -1204,15 +1204,15 @@ class LayoutInfer : public ExprVisitor {
 
   void VisitBinding_(const VarBindingNode* binding, const TupleGetItemNode* val) final {
     ExprVisitor::VisitBinding_(binding, val);
-    RecordExpr(binding->var, GetRef<TupleGetItem>(val));
-    const auto& out_layout = LayoutUtils::InferLayoutDecisionAt(GetRef<TupleGetItem>(val)->tuple,
+    RecordExpr(binding->var, ffi::GetRef<TupleGetItem>(val));
+    const auto& out_layout = LayoutUtils::InferLayoutDecisionAt(ffi::GetRef<TupleGetItem>(val)->tuple,
                                                                 var_layout_map_, val->index);
     SetExprLayout(binding->var, out_layout);
   }
 
   void VisitBinding_(const VarBindingNode* binding, const ShapeExprNode* val) final {
     ExprVisitor::VisitBinding_(binding, val);
-    RecordExpr(binding->var, GetRef<ShapeExpr>(val));
+    RecordExpr(binding->var, ffi::GetRef<ShapeExpr>(val));
     SetExprLayout(binding->var, LayoutDecision("O"));
   }
 
@@ -1326,14 +1326,14 @@ class LayoutChecker : public ExprVisitor {
 
   void VisitExpr_(const CallNode* call) final {
     ExprVisitor::VisitExpr_(call);
-    if (!LayoutUtils::LayoutInfered(GetRef<Call>(call))) {
+    if (!LayoutUtils::LayoutInfered(ffi::GetRef<Call>(call))) {
       missing_num_++;
     }
   }
 
   void VisitExpr_(const ConstantNode* cn) final {
     ExprVisitor::VisitExpr_(cn);
-    if (!LayoutUtils::LayoutInfered(GetRef<Constant>(cn))) {
+    if (!LayoutUtils::LayoutInfered(ffi::GetRef<Constant>(cn))) {
       missing_num_++;
     }
   }

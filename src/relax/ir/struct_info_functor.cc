@@ -68,17 +68,17 @@ void StructInfoVisitor::VisitStructInfo_(const FuncStructInfoNode* op) {
 }
 
 StructInfo StructInfoMutator::VisitStructInfo_(const ObjectStructInfoNode* op) {
-  return GetRef<StructInfo>(op);
+  return ffi::GetRef<StructInfo>(op);
 }
 
 StructInfo StructInfoMutator::VisitStructInfo_(const PrimStructInfoNode* op) {
   if (!op->value.defined()) {
-    return GetRef<StructInfo>(op);
+    return ffi::GetRef<StructInfo>(op);
   }
 
   auto new_expr = VisitStructInfoExprField(op->value.value());
   if (new_expr.same_as(op->value)) {
-    return GetRef<StructInfo>(op);
+    return ffi::GetRef<StructInfo>(op);
   } else {
     return PrimStructInfo(new_expr);
   }
@@ -94,7 +94,7 @@ StructInfo StructInfoMutator::VisitStructInfo_(const ShapeStructInfoNode* op) {
   }
 
   if (values.same_as(op->values)) {
-    return GetRef<StructInfo>(op);
+    return ffi::GetRef<StructInfo>(op);
   } else {
     return ShapeStructInfo(values.value(), op->span);
   }
@@ -110,7 +110,7 @@ StructInfo StructInfoMutator::VisitStructInfo_(const TensorStructInfoNode* op) {
   VDevice vdev = op->vdevice.value_or(VDevice());
 
   if (shape.same_as(op->shape)) {
-    return GetRef<StructInfo>(op);
+    return ffi::GetRef<StructInfo>(op);
   } else {
     return TensorStructInfo(shape.value(), op->dtype, vdev, op->span);
   }
@@ -127,7 +127,7 @@ StructInfo StructInfoMutator::VisitStructInfo_(const TupleStructInfoNode* op) {
       op->fields.Map([this](const StructInfo& sinfo) { return this->VisitStructInfo(sinfo); });
 
   if (fields.same_as(op->fields)) {
-    return GetRef<StructInfo>(op);
+    return ffi::GetRef<StructInfo>(op);
   } else {
     return TupleStructInfo(fields, op->span);
   }
@@ -144,7 +144,7 @@ StructInfo StructInfoMutator::VisitStructInfo_(const FuncStructInfoNode* op) {
   StructInfo ret = this->VisitStructInfo(op->ret);
 
   if (params.same_as(op->params) && ret.same_as(op->ret)) {
-    return GetRef<StructInfo>(op);
+    return ffi::GetRef<StructInfo>(op);
   } else {
     ICHECK(ret.defined()) << "FuncStructInfo that contains params must contain ret";
     return FuncStructInfo(params.value(), ret, op->purity, op->span);

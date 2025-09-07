@@ -994,7 +994,7 @@ TupleGetItemPattern IsTupleGetItem(const DFPattern tuple, int index = -1);
 /*! \brief Implementation of the templated CallPattern syntax sugar */
 template <typename... Args>
 CallPattern DFPattern::operator()(Args&&... args) const {
-  return CallPattern(GetRef<DFPattern>(this->get()),
+  return CallPattern(ffi::GetRef<DFPattern>(this->get()),
                      Array<DFPattern>({std::forward<Args>(args)...}));
 }
 

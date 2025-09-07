@@ -138,7 +138,7 @@ class FrontendTestModuleNode : public ffi::ModuleObj {
 constexpr const char* FrontendTestModuleNode::kAddFunctionName;
 
 ffi::Optional<ffi::Function> FrontendTestModuleNode::GetFunction(const String& name) {
-  ffi::Module self_strong_ref = GetRef<ffi::Module>(this);
+  ffi::Module self_strong_ref = ffi::GetRef<ffi::Module>(this);
   if (name == kAddFunctionName) {
     return ffi::Function::FromTyped(
         [this, self_strong_ref](std::string func_name, ffi::Function pf) {

@@ -39,7 +39,7 @@ Optional<Array<Var>> CheckTrivialBufferIndices(const Array<PrimExpr>& buffer_acc
     if (var == nullptr) {
       return std::nullopt;
     }
-    indices.push_back(GetRef<Var>(var));
+    indices.push_back(ffi::GetRef<Var>(var));
   }
   return indices;
 }
@@ -55,7 +55,7 @@ Optional<Array<Var>> CheckTrivialBufferAccess(const BufferRegion& buffer_region)
       continue;
     }
     if (const auto* var = range->min.as<VarNode>()) {
-      indices.push_back(GetRef<Var>(var));
+      indices.push_back(ffi::GetRef<Var>(var));
     } else {
       return std::nullopt;
     }
@@ -296,7 +296,7 @@ class InvalidProducerError : public ScheduleError {
 class PadEinsumBufferReplacer : public StmtExprMutator {
  public:
   Stmt VisitStmt_(const BlockNode* old_block_ptr) final {
-    Block old_block = GetRef<Block>(old_block_ptr);
+    Block old_block = ffi::GetRef<Block>(old_block_ptr);
     Block block = Downcast<Block>(StmtMutator::VisitStmt_(old_block_ptr));
     Array<IterVar> iter_vars;
     iter_vars.reserve(block->iter_vars.size());
@@ -335,7 +335,7 @@ class PadEinsumBufferReplacer : public StmtExprMutator {
   }
 
   Stmt VisitStmt_(const ForNode* old_for_ptr) final {
-    For old_for = GetRef<For>(old_for_ptr);
+    For old_for = ffi::GetRef<For>(old_for_ptr);
     For new_for = Downcast<For>(StmtMutator::VisitStmt_(old_for_ptr));
     if (Optional<PrimExpr> new_extent = loop_var2padded_extent.Get(new_for->loop_var)) {
       ObjectPtr<ForNode> new_for_ptr = ffi::make_object<ForNode>(*new_for.get());
@@ -376,9 +376,9 @@ void PadEinsum(ScheduleState self, const StmtSRef& block_sref, const Array<Integ
   BlockRealize realize = GetBlockRealize(self, block_sref);
   StmtSRef scope_sref = GetScopeRoot(self, block_sref, /*require_stage_pipeline=*/true);
   const BlockNode* scope_block = TVM_SREF_TO_BLOCK(scope_sref);
-  InvalidPaddingError::Check(self, GetRef<Block>(block), padding);
+  InvalidPaddingError::Check(self, ffi::GetRef<Block>(block), padding);
   // Step 2. Extract the Einsum pattern
-  ExtractEinsum(self, GetRef<Block>(block));
+  ExtractEinsum(self, ffi::GetRef<Block>(block));
   // Step 3. Figure out the padding needed
   PadEinsumBufferReplacer replacer;
   for (int i = 0, n = padding.size(); i < n; ++i) {
@@ -388,15 +388,15 @@ void PadEinsum(ScheduleState self, const StmtSRef& block_sref, const Array<Integ
     if (!analyzer.CanProveEqual(new_dom, dom)) {
       replacer.iter2padded_extents.Set(iter->var, new_dom);
       if (const auto* loop_var = realize->iter_values[i].as<VarNode>()) {
-        replacer.iter2padded_extents.Set(GetRef<Var>(loop_var), new_dom);
-        replacer.loop_var2padded_extent.Set(GetRef<Var>(loop_var), new_dom);
+        replacer.iter2padded_extents.Set(ffi::GetRef<Var>(loop_var), new_dom);
+        replacer.loop_var2padded_extent.Set(ffi::GetRef<Var>(loop_var), new_dom);
       }
     }
   }
   auto f_needs_padding = [&replacer](const Array<Range>& region) {
     for (const Range& range : region) {
       if (const auto* var = range->min.as<VarNode>()) {
-        if (replacer.iter2padded_extents.count(GetRef<Var>(var))) {
+        if (replacer.iter2padded_extents.count(ffi::GetRef<Var>(var))) {
           return true;
         }
       }
@@ -467,7 +467,7 @@ void PadEinsum(ScheduleState self, const StmtSRef& block_sref, const Array<Integ
     n->alloc_buffers.insert(n->alloc_buffers.end(), alloc_buffers.begin(), alloc_buffers.end());
     new_scope_block = Block(n);
   }
-  replacer.block_sref_reuse_.Set(GetRef<Block>(scope_block), new_scope_block);
+  replacer.block_sref_reuse_.Set(ffi::GetRef<Block>(scope_block), new_scope_block);
   // Step 8. Do replacement and update flags
   self->Replace(scope_sref, new_scope_block, replacer.block_sref_reuse_);
   for (const Block& block : new_copy_blocks) {

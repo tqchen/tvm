@@ -614,7 +614,7 @@ void CodeGenC::VisitExpr_(const CallNode* op, std::ostream& os) {  // NOLINT(*)
     } else if (op->op.same_as(builtin_call_extern_) || op->op.same_as(builtin_call_pure_extern_)) {
       ICHECK_GE(op->args.size(), 1U);
       auto func = Downcast<StringImm>(op->args[0]);
-      this->PrintCallExtern(GetType(GetRef<PrimExpr>(op)), func->value, op->args, true, os);
+      this->PrintCallExtern(GetType(ffi::GetRef<PrimExpr>(op)), func->value, op->args, true, os);
 
       // If the call_extern refers to an function within the IRModule, then
       // the forward declaration is already provided from DeclareFunction.
@@ -628,7 +628,7 @@ void CodeGenC::VisitExpr_(const CallNode* op, std::ostream& os) {  // NOLINT(*)
       }
     } else if (op_attr_global_symbol_.count(call_op)) {
       // call extern if the op itself have a global symbol.
-      this->PrintCallExtern(GetType(GetRef<PrimExpr>(op)), op_attr_global_symbol_[call_op],
+      this->PrintCallExtern(GetType(ffi::GetRef<PrimExpr>(op)), op_attr_global_symbol_[call_op],
                             op->args, false, os);
     } else if (op->op.same_as(builtin::bitwise_and())) {
       PrintBinaryIntrinsic(op, " & ", os, this);
@@ -732,7 +732,7 @@ void CodeGenC::VisitExpr_(const CallNode* op, std::ostream& os) {  // NOLINT(*)
   } else if (auto opt = op->op.as<GlobalVar>()) {
     auto gvar = opt.value();
     auto callee_name = GetFunctionName(gvar);
-    PrintCallExtern(GetType(GetRef<PrimExpr>(op)), callee_name, op->args, false, os);
+    PrintCallExtern(GetType(ffi::GetRef<PrimExpr>(op)), callee_name, op->args, false, os);
   } else {
     LOG(FATAL) << "CodeGenC: Unknown operation " << op->op << " is neither a recognized built-in, "
                << "nor a GlobalVar reference to another function in the IRModule";

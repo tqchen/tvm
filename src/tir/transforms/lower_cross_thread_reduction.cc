@@ -123,11 +123,11 @@ bool IsReductionBlock(const BlockRealize& realize, const Map<Var, Range>& loop_r
   }
   // Cond 4. Dominant: the block is the only writer of its output, dominating the reader of its
   // output buffers.
-  if (!IsDominantBlock(scope_block, GetRef<Block>(block))) {
+  if (!IsDominantBlock(scope_block, ffi::GetRef<Block>(block))) {
     return false;
   }
   // Cond 5. The reduction block vars are not used to index the output buffers.
-  return ReductionIterNotIndexOutputBuffer(GetRef<Block>(block));
+  return ReductionIterNotIndexOutputBuffer(ffi::GetRef<Block>(block));
 }
 
 /*!
@@ -177,7 +177,7 @@ class BufferReplacer : private StmtExprMutator {
 
   PrimExpr VisitExpr_(const BufferLoadNode* load) final {
     auto it = buffer_map_.find(load->buffer);
-    return it != buffer_map_.end() ? BufferLoad((*it).second, {0}) : GetRef<BufferLoad>(load);
+    return it != buffer_map_.end() ? BufferLoad((*it).second, {0}) : ffi::GetRef<BufferLoad>(load);
   }
 
   Stmt VisitStmt_(const BufferStoreNode* store) final {
@@ -245,7 +245,7 @@ class InThreadReducerMaker : private StmtMutator {
                  ? tgt_realize_.value()
                  : Stmt{nullptr};
     }
-    return GetRef<BlockRealize>(realize);
+    return ffi::GetRef<BlockRealize>(realize);
   }
 
   Stmt VisitStmt_(const ForNode* loop) final {
@@ -360,7 +360,7 @@ Stmt TransformReductionBlock(const BlockRealizeNode* realize,            //
       n->block = Block(new_block);
       new_realize = BlockRealize(n);
     }
-    For loop = GetRef<For>(reduction_loops[0]);
+    For loop = ffi::GetRef<For>(reduction_loops[0]);
     if (Optional<Stmt> stmt = InThreadReducerMaker::Make(realize, new_realize, std::move(loop))) {
       stmts.push_back(stmt.value());
     }
@@ -541,14 +541,14 @@ class CrossThreadReductionTransformer : public StmtMutator {
     }
 
     // Step 1. If the block is not a reduction block, cross-thread reduction is not needed.
-    if (!IsReductionBlock(GetRef<BlockRealize>(realize), loop_range_map_,
-                          GetRef<Block>(block_stack_.back()), &analyzer_)) {
+    if (!IsReductionBlock(ffi::GetRef<BlockRealize>(realize), loop_range_map_,
+                          ffi::GetRef<Block>(block_stack_.back()), &analyzer_)) {
       return {};
     }
 
     // Step 2. Collect all the vars that appear in the bindings of reduction block iters.
     std::unordered_set<const VarNode*> reduction_vars;
-    GetVarsTouchedByBlockIters(GetRef<BlockRealize>(realize), nullptr, &reduction_vars);
+    GetVarsTouchedByBlockIters(ffi::GetRef<BlockRealize>(realize), nullptr, &reduction_vars);
 
     // Step 3. Collect the loops whose loop vars appear in the bindings of reduction block iters.
     // We call these loops "reduction-related".
@@ -675,7 +675,7 @@ class CrossThreadReductionTransformer : public StmtMutator {
     Array<PrimExpr> combiner_lhs{nullptr};
     Array<PrimExpr> combiner_rhs{nullptr};
     std::tie(init_values, updates) =
-        GetInitValuesAndUpdatesFromReductionBlock(std::nullopt, GetRef<Block>(block));
+        GetInitValuesAndUpdatesFromReductionBlock(std::nullopt, ffi::GetRef<Block>(block));
     std::tie(reducer, combiner_lhs, combiner_rhs) =
         GetReducerAndCombinerLhsRhs(std::nullopt, init_values, updates);
 
@@ -702,7 +702,7 @@ class CrossThreadReductionTransformer : public StmtMutator {
 
     // Condition 5. The block should be the last block under the first reduction-related loop.
     bool visit = false;
-    PreOrderVisit(GetRef<For>(reduction_loops[0]), [block, &visit](const ObjectRef& obj) {
+    PreOrderVisit(ffi::GetRef<For>(reduction_loops[0]), [block, &visit](const ObjectRef& obj) {
       if (const auto* realize = obj.as<BlockRealizeNode>()) {
         CHECK(!visit) << "ValueError: Cross-thread reduction cannot be applied when the reduction "
                          "block isn't the last block under its first reduction-related loop";

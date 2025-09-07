@@ -63,7 +63,7 @@ class WebGPUWorkgroupInfoCollector : public StmtExprVisitor {
  private:
   void VisitExpr_(const VarNode* op) final {
     StmtExprVisitor::VisitExpr_(op);
-    Var buffer_var = GetRef<Var>(op);
+    Var buffer_var = ffi::GetRef<Var>(op);
     if (buffer_var.dtype().is_handle()) {
       info_.write_access_set.insert(buffer_var);
     }

@@ -58,7 +58,7 @@ class ExprBinder : public ExprMutator {
 
     // FuncStructInfo does not depend on Expr
     if (all_params_unchanged && body.same_as(op->body)) {
-      return GetRef<Expr>(op);
+      return ffi::GetRef<Expr>(op);
     } else {
       // purity won't be affected, no need to update annotation
       return Function(params, body, VisitExprDepStructInfoField(op->ret_struct_info), op->is_pure,
@@ -67,7 +67,7 @@ class ExprBinder : public ExprMutator {
   }
 
   Expr VisitExpr_(const VarNode* op) final {
-    auto id = GetRef<Var>(op);
+    auto id = ffi::GetRef<Var>(op);
     auto it = args_map_.find(id);
     if (it != args_map_.end()) {
       return (*it).second;
@@ -218,7 +218,7 @@ bool IsLeafOrTuple(const Expr& expr) {
 
 bool IsImpureCall(const Call& call) {
   if (auto op_ptr = call->op.as<OpNode>()) {
-    auto op = GetRef<Op>(op_ptr);
+    auto op = ffi::GetRef<Op>(op_ptr);
     static auto purity_map = Op::GetAttrMap<Bool>("FPurity");
     ICHECK(purity_map.count(op)) << "Cannot find the registered purity of this op: " << op->name;
     return !(purity_map[op]->value);

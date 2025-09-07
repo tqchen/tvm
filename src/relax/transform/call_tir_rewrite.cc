@@ -167,7 +167,7 @@ class CallTIRMutator : public ExprMutator {
       return std::move(Tuple(outs));
     }
 
-    return GetRef<Expr>(call);
+    return ffi::GetRef<Expr>(call);
   }
 
   /*! \brief The context IRModule. */

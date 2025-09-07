@@ -127,7 +127,7 @@ class WorkspaceProvider : ExprMutator {
                                WithAttr(f, tvm::attr::kGlobalSymbol, new_gvar->name_hint));
       gvar_map_[gvar] = new_gvar;
       new_gvars_.insert(new_gvar);
-      builder_->GetContextIRModule()->Remove(GetRef<GlobalVar>(gvar));
+      builder_->GetContextIRModule()->Remove(ffi::GetRef<GlobalVar>(gvar));
     }
 
     for (const auto& [gvar, f] : mod_->functions) {

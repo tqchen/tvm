@@ -427,10 +427,10 @@ StmtSRef DecomposePaddingImpl(ScheduleState self, const StmtSRef& block_sref,
   Array<For> loops;
   bool found_const_filling_pos = false;
   bool found_in_bound_filling_pos = false;
-  For const_filling_pos = GetRef<For>(loop_sref->StmtAs<ForNode>());
+  For const_filling_pos = ffi::GetRef<For>(loop_sref->StmtAs<ForNode>());
   For in_bound_filling_pos{nullptr};
   for (auto it = loop_srefs.rbegin(); it != loop_srefs.rend(); ++it) {
-    For cur_loop = GetRef<For>((*it)->StmtAs<ForNode>());
+    For cur_loop = ffi::GetRef<For>((*it)->StmtAs<ForNode>());
     Range range = Range::FromMinExtent(cur_loop->min, cur_loop->extent);
     dom_map.Set(cur_loop->loop_var, range);
     analyzer.Bind(cur_loop->loop_var, range);
@@ -454,7 +454,7 @@ StmtSRef DecomposePaddingImpl(ScheduleState self, const StmtSRef& block_sref,
   }
   ICHECK(in_bound_filling_pos.defined());
   if (!found_const_filling_pos) {
-    throw LoopPositionError(self->mod, const_filling_pos, GetRef<Block>(block),
+    throw LoopPositionError(self->mod, const_filling_pos, ffi::GetRef<Block>(block),
                             "decompose_padding");
   }
 
@@ -473,7 +473,7 @@ StmtSRef DecomposePaddingImpl(ScheduleState self, const StmtSRef& block_sref,
       CreateInBoundBlock(realize, info, loops, in_bound_filling_pos, &analyzer);
 
   // Step 2. Execute IR replacement.
-  Block old_scope_root_block = GetRef<Block>(scope_root_sref->StmtAs<BlockNode>());
+  Block old_scope_root_block = ffi::GetRef<Block>(scope_root_sref->StmtAs<BlockNode>());
   Block new_scope_root = DecomposePaddingBlockReplacer::Replace(old_scope_root_block, replace_desc);
   if (check_only) {
     return block_sref;
@@ -482,7 +482,7 @@ StmtSRef DecomposePaddingImpl(ScheduleState self, const StmtSRef& block_sref,
   // Step 3. Update schedule states.
   self->Replace(scope_root_sref, new_scope_root,
                 {{old_scope_root_block, new_scope_root},
-                 {GetRef<Block>(block), replace_desc.in_bound_filling_block->block}});
+                 {ffi::GetRef<Block>(block), replace_desc.in_bound_filling_block->block}});
   auto new_block_sref = self->stmt2ref.at(replace_desc.const_filling_block->block.get());
 
   // Set block info of created const pad value filling block

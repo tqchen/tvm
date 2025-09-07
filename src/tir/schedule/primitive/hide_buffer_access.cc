@@ -134,7 +134,7 @@ void UnsafeHideBufferAccess(ScheduleState self, const StmtSRef& block_sref, cons
   n->writes = writes;
   Block new_block = Block(n);
   Map<Block, Block> blk_map;
-  blk_map.Set(GetRef<Block>(block), new_block);
+  blk_map.Set(ffi::GetRef<Block>(block), new_block);
   self->Replace(block_sref, new_block, blk_map);
 }
 

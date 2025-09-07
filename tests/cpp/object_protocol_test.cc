@@ -59,6 +59,7 @@ class ObjAA : public ObjA {
 }  // namespace tvm
 
 TEST(ObjectHierachy, Basic) {
+  using namespace tvm;
   using namespace tvm::runtime;
   using namespace tvm::test;
   using namespace tvm::ffi;

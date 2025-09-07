@@ -56,19 +56,19 @@ TVM_FFI_STATIC_INIT_BLOCK({
   DocStringDocNode::RegisterReflection();
 });
 
-ExprDoc ExprDocNode::Attr(String attr) const { return AttrAccessDoc(GetRef<ExprDoc>(this), attr); }
+ExprDoc ExprDocNode::Attr(String attr) const { return AttrAccessDoc(ffi::GetRef<ExprDoc>(this), attr); }
 
 ExprDoc ExprDocNode::operator[](Array<Doc> indices) const {
-  return IndexDoc(GetRef<ExprDoc>(this), indices);
+  return IndexDoc(ffi::GetRef<ExprDoc>(this), indices);
 }
 
 ExprDoc ExprDocNode::Call(Array<ExprDoc, void> args) const {
-  return CallDoc(GetRef<ExprDoc>(this), args, Array<String>(), Array<ExprDoc>());
+  return CallDoc(ffi::GetRef<ExprDoc>(this), args, Array<String>(), Array<ExprDoc>());
 }
 
 ExprDoc ExprDocNode::Call(Array<ExprDoc, void> args, Array<String, void> kwargs_keys,
                           Array<ExprDoc, void> kwargs_values) const {
-  return CallDoc(GetRef<ExprDoc>(this), args, kwargs_keys, kwargs_values);
+  return CallDoc(ffi::GetRef<ExprDoc>(this), args, kwargs_keys, kwargs_values);
 }
 
 ExprDoc ExprDoc::operator[](Array<Doc> indices) const { return (*get())[indices]; }

@@ -54,7 +54,7 @@ class OpaqueBlockConverter : public StmtExprMutator {
     if (it != var_substitutes_.end()) {
       return it->second;
     }
-    return GetRef<Var>(var);
+    return ffi::GetRef<Var>(var);
   }
 
   Stmt VisitStmt_(const BlockNode* block) final {
@@ -96,7 +96,7 @@ class OpaqueBlockConverter : public StmtExprMutator {
     // Step 5. Return
     if (predicate.same_as(realize->predicate) && iter_values.same_as(realize->iter_values) &&
         new_block.same_as(realize->block) && realize->iter_values.size() == 0) {
-      return GetRef<BlockRealize>(realize);
+      return ffi::GetRef<BlockRealize>(realize);
     } else {
       return BlockRealize({}, predicate, new_block);
     }

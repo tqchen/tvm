@@ -140,7 +140,7 @@ class GradientSimplifier : private ExprMutator {
   }
 
   void VisitBinding_(const VarBindingNode* binding, const CallNode* call_node) {
-    auto result = ExprMutator::VisitExpr(GetRef<Expr>(call_node));
+    auto result = ExprMutator::VisitExpr(ffi::GetRef<Expr>(call_node));
     auto new_call_node = result.as<CallNode>();
     auto reemit_and_return = [&]() {
       ReEmitBinding(binding, result);

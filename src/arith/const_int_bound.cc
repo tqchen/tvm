@@ -387,7 +387,7 @@ class ConstIntBoundAnalyzer::Impl
   }
 
   Entry VisitExpr_(const VarNode* op) final {
-    Var v = GetRef<Var>(op);
+    Var v = ffi::GetRef<Var>(op);
     auto it = var_map_.find(v);
     if (it != var_map_.end()) {
       return it->second;
@@ -397,7 +397,7 @@ class ConstIntBoundAnalyzer::Impl
   }
 
   Entry VisitExpr_(const SizeVarNode* op) final {
-    SizeVar v = GetRef<SizeVar>(op);
+    SizeVar v = ffi::GetRef<SizeVar>(op);
     auto it = var_map_.find(v);
     if (it != var_map_.end()) {
       return it->second;

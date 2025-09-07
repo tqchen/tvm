@@ -33,7 +33,7 @@ Array<StmtDoc> PrintSeqExpr(const relax::SeqExpr& n, const AccessPath& n_p, cons
     if (const auto* stmt_block = block.as<StmtBlockDocNode>()) {
       stmts->insert(stmts->end(), stmt_block->stmts.begin(), stmt_block->stmts.end());
     } else if (const auto* stmt = block.as<StmtDocNode>()) {
-      stmts->push_back(GetRef<StmtDoc>(stmt));
+      stmts->push_back(ffi::GetRef<StmtDoc>(stmt));
     } else {
       LOG(FATAL) << "TypeError: Unknown type: " << block->GetTypeKey();
     }
@@ -63,7 +63,7 @@ Array<StmtDoc> PrintBindingBlock(const relax::BindingBlock& n, const AccessPath&
     ICHECK(binding->var.defined());
     Doc binding_doc = d->AsDoc(binding, binding_p);
     if (const auto* stmt = binding_doc.as<StmtDocNode>()) {
-      stmts.push_back(GetRef<StmtDoc>(stmt));
+      stmts.push_back(ffi::GetRef<StmtDoc>(stmt));
     } else if (const auto* stmt_block = binding_doc.as<StmtBlockDocNode>()) {
       stmts.insert(stmts.end(), stmt_block->stmts.begin(), stmt_block->stmts.end());
     } else {

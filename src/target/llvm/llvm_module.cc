@@ -192,7 +192,7 @@ Optional<ffi::Function> LLVMModuleNode::GetFunction(const String& name) {
   String name_with_prefix = ffi::symbol::tvm_ffi_symbol_prefix + name;
   faddr = reinterpret_cast<TVMFFISafeCallType>(GetFunctionAddr(name_with_prefix, *llvm_target));
   if (faddr == nullptr) return std::nullopt;
-  ffi::Module self_strong_ref = GetRef<ffi::Module>(this);
+  ffi::Module self_strong_ref = ffi::GetRef<ffi::Module>(this);
   return ffi::Function::FromPacked([faddr, self_strong_ref](ffi::PackedArgs args, ffi::Any* rv) {
     TVM_FFI_ICHECK_LT(rv->type_index(), ffi::TypeIndex::kTVMFFIStaticObjectBegin);
     TVM_FFI_CHECK_SAFE_CALL((*faddr)(nullptr, reinterpret_cast<const TVMFFIAny*>(args.data()),

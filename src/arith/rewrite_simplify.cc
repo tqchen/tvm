@@ -2051,7 +2051,7 @@ PrimExpr RewriteSimplifier::Impl::VisitExpr_(const AndNode* op) {
     // Otherwise, follow ExprMutator's convention of returning the
     // original object.
     if (a.same_as(op->a) && b.same_as(op->b)) {
-      return GetRef<PrimExpr>(op);
+      return ffi::GetRef<PrimExpr>(op);
     } else {
       return And(a, b);
     }
@@ -2160,7 +2160,7 @@ PrimExpr RewriteSimplifier::Impl::VisitExpr_(const AndNode* op) {
 }
 
 PrimExpr RewriteSimplifier::Impl::VisitExpr_(const OrNode* op) {
-  PrimExpr orig = GetRef<PrimExpr>(op);
+  PrimExpr orig = ffi::GetRef<PrimExpr>(op);
 
   PrimExpr ret = [&]() -> PrimExpr {
     // If this extension isn't enabled, just delegate out.
@@ -2200,7 +2200,7 @@ PrimExpr RewriteSimplifier::Impl::VisitExpr_(const OrNode* op) {
     // Otherwise, follow ExprMutator's convention of returning the
     // original object.
     if (a.same_as(op->a) && b.same_as(op->b)) {
-      return GetRef<PrimExpr>(op);
+      return ffi::GetRef<PrimExpr>(op);
     } else {
       return Or(a, b);
     }
@@ -2350,7 +2350,7 @@ PrimExpr RewriteSimplifier::Impl::VisitExpr_(const CallNode* op) {
 }
 
 PrimExpr RewriteSimplifier::Impl::VisitExpr_(const VarNode* op) {
-  Var var = GetRef<Var>(op);
+  Var var = ffi::GetRef<Var>(op);
   if (op->dtype == DataType::Bool()) {
     if (auto match = TryMatchLiteralConstraint(var)) {
       return match.value();
@@ -2361,7 +2361,7 @@ PrimExpr RewriteSimplifier::Impl::VisitExpr_(const VarNode* op) {
   if (it != var_map_.end()) {
     return it->second;
   }
-  return GetRef<PrimExpr>(op);
+  return ffi::GetRef<PrimExpr>(op);
 }
 
 PrimExpr RewriteSimplifier::Impl::VisitExpr_(const CastNode* op) {
@@ -2388,7 +2388,7 @@ PrimExpr RewriteSimplifier::Impl::VisitExpr_(const LetNode* op) {
   }
   PrimExpr body = this->VisitExpr(op->body);
   if (value.same_as(op->value) && body.same_as(op->body)) {
-    return GetRef<PrimExpr>(op);
+    return ffi::GetRef<PrimExpr>(op);
   } else {
     return Let(op->var, value, body);
   }

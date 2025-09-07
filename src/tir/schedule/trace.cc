@@ -67,7 +67,7 @@ Array<Any> TranslateInputRVs(const Array<Any>& inputs,
     const Object* dst = it->second;
     ICHECK(dst->IsInstance<VarNode>())
         << "TypeError: Expect 'tir.Var', but gets: " << dst->GetTypeKey();
-    return GetRef<Var>(static_cast<const VarNode*>(dst));
+    return ffi::GetRef<Var>(static_cast<const VarNode*>(dst));
   };
 
   for (const Any& input : inputs) {
@@ -81,7 +81,7 @@ Array<Any> TranslateInputRVs(const Array<Any>& inputs,
                input.as<VarNode>()) {      // RV: var
       auto it = rv_map.find(input.as<Object>());
       ICHECK(it != rv_map.end()) << "IndexError: Random variable doesn't exist: " << input;
-      result.push_back(GetRef<ObjectRef>(it->second));
+      result.push_back(ffi::GetRef<ObjectRef>(it->second));
     } else if (auto expr = input.try_cast<PrimExpr>()) {  // RV: Expr
       result.push_back(Substitute(expr.value(), f_subst_with_rv_map));
     } else if (auto index_map = input.as<IndexMap>()) {
@@ -388,8 +388,8 @@ void Trace::ApplyJSONToSchedule(ObjectRef json, Schedule sch) {
     const auto* arr0 = arr->at(0).as<ffi::ArrayObj>();
     const auto* arr1 = arr->at(1).as<ffi::ArrayObj>();
     ICHECK(arr0 && arr1);
-    json_insts = GetRef<Array<Any>>(arr0);
-    json_decisions = GetRef<Array<Any>>(arr1);
+    json_insts = ffi::GetRef<Array<Any>>(arr0);
+    json_decisions = ffi::GetRef<Array<Any>>(arr1);
   } catch (const tvm::Error& e) {
     LOG(FATAL) << "ValueError: The json entry of a trace should contain two arrays, an array of "
                   "instructions and an array of decisions, but gets: "

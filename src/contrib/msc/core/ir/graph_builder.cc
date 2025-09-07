@@ -87,7 +87,7 @@ void FuncValueGetter::VisitExpr_(const CallNode* op) {
 }
 
 void FuncParamsFinder::VisitBinding_(const VarBindingNode* binding, const FunctionNode* val) {
-  local_funcs_.Set(binding->var, GetRef<Function>(val));
+  local_funcs_.Set(binding->var, ffi::GetRef<Function>(val));
 }
 
 void FuncParamsFinder::VisitExpr_(const CallNode* call_node) {
@@ -112,7 +112,7 @@ void FuncParamsFinder::VisitExpr_(const CallNode* call_node) {
 }
 
 void LayoutsFinder::VisitBinding_(const VarBindingNode* binding, const FunctionNode* val) {
-  local_funcs_.Set(binding->var, GetRef<Function>(val));
+  local_funcs_.Set(binding->var, ffi::GetRef<Function>(val));
 }
 
 void LayoutsFinder::VisitExpr_(const CallNode* call_node) {
@@ -705,26 +705,26 @@ const MSCPrim GraphBuilder::MatchOrCreatePrim(const PrimExpr& prim, const String
 }
 
 void GraphBuilder::VisitExpr_(const ConstantNode* op) {
-  if (!expr_tensor_map_.count(GetRef<Constant>(op))) {
-    AddNode(GetRef<Constant>(op));
+  if (!expr_tensor_map_.count(ffi::GetRef<Constant>(op))) {
+    AddNode(ffi::GetRef<Constant>(op));
   }
 }
 
 void GraphBuilder::VisitBinding_(const VarBindingNode* binding, const ConstantNode* val) {
   const String& name = config_.use_var_name ? binding->var->name_hint() : "";
-  AddNode(GetRef<Constant>(val), binding->var, name);
+  AddNode(ffi::GetRef<Constant>(val), binding->var, name);
 }
 
 void GraphBuilder::VisitBinding_(const VarBindingNode* binding, const ShapeExprNode* val) {
   const String& name = config_.use_var_name ? binding->var->name_hint() : "";
-  AddNode(GetRef<ShapeExpr>(val), binding->var, name);
+  AddNode(ffi::GetRef<ShapeExpr>(val), binding->var, name);
 }
 
 void GraphBuilder::VisitBinding_(const VarBindingNode* binding, const CallNode* call_node) {
   ExprVisitor::VisitBinding_(binding, call_node);
   const String& name = config_.use_var_name ? binding->var->name_hint() : "";
   try {
-    AddNode(GetRef<Call>(call_node), binding->var, name);
+    AddNode(ffi::GetRef<Call>(call_node), binding->var, name);
   } catch (runtime::InternalError& err) {
     LOG(WARNING) << "Failed to add node from " << binding->var << " : " << binding->value
                  << ", reason: " << err.what();
@@ -735,25 +735,25 @@ void GraphBuilder::VisitBinding_(const VarBindingNode* binding, const CallNode* 
 void GraphBuilder::VisitBinding_(const VarBindingNode* binding, const TupleNode* val) {
   ExprVisitor::VisitBinding_(binding, val);
   const String& name = config_.use_var_name ? binding->var->name_hint() : "";
-  AddNode(GetRef<relax::Tuple>(val), binding->var, name);
+  AddNode(ffi::GetRef<relax::Tuple>(val), binding->var, name);
 }
 
 void GraphBuilder::VisitBinding_(const VarBindingNode* binding, const TupleGetItemNode* val) {
   ExprVisitor::VisitBinding_(binding, val);
   const String& name = config_.use_var_name ? binding->var->name_hint() : "";
-  AddNode(GetRef<TupleGetItem>(val), binding->var, name);
+  AddNode(ffi::GetRef<TupleGetItem>(val), binding->var, name);
 }
 
 void GraphBuilder::VisitBinding_(const VarBindingNode* binding, const VarNode* val) {
   ExprVisitor::VisitBinding_(binding, val);
-  const auto& output = GetRef<Var>(val);
+  const auto& output = ffi::GetRef<Var>(val);
   ICHECK(expr_tensor_map_.count(output)) << "Can not find var " << output;
   expr_tensor_map_.Set(binding->var, expr_tensor_map_[output]);
 }
 
 void GraphBuilder::VisitBinding_(const VarBindingNode* binding, const DataflowVarNode* val) {
   ExprVisitor::VisitBinding_(binding, val);
-  const auto& output = GetRef<DataflowVar>(val);
+  const auto& output = ffi::GetRef<DataflowVar>(val);
   ICHECK(expr_tensor_map_.count(output)) << "Can not find dataflow var " << output;
   expr_tensor_map_.Set(binding->var, expr_tensor_map_[output]);
 }
@@ -763,7 +763,7 @@ void GraphBuilder::VisitBinding_(const VarBindingNode* binding, const FunctionNo
   ICHECK(name_opt.has_value()) << "Unexpected target func without composite";
   ICHECK(config_.target.size() > 0 && StringUtils::StartsWith(name_opt.value(), config_.target))
       << "Target should be given for target function";
-  target_funcs_.Set(binding->var, GetRef<Function>(val));
+  target_funcs_.Set(binding->var, ffi::GetRef<Function>(val));
 }
 
 const std::tuple<String, String, String> GraphBuilder::ParseFunc(const Function& func) {
@@ -817,7 +817,7 @@ Map<MSCTensor, Tensor> WeightsExtractor::GetWeights(const Function& func) {
 void WeightsExtractor::VisitExpr_(const ConstantNode* op) {
   const auto& name = SpanUtils::GetAttr(op->span, msc_attr::kName);
   const auto& layout = SpanUtils::GetAttr(op->span, msc_attr::kLayout);
-  const auto& sinfo = GetStructInfo(GetRef<Constant>(op));
+  const auto& sinfo = GetStructInfo(ffi::GetRef<Constant>(op));
   ICHECK(sinfo->IsInstance<TensorStructInfoNode>())
       << "Constant StrcutInfo should be TensorStructInfo";
   const auto& t_info = Downcast<TensorStructInfo>(sinfo);

@@ -317,7 +317,7 @@ class BuiltinLower : public StmtExprMutator {
     }
 
     if (min.same_as(op->min) && extent.same_as(op->extent) && body.same_as(op->body)) {
-      return GetRef<Stmt>(op);
+      return ffi::GetRef<Stmt>(op);
     } else {
       auto n = CopyOnWrite(op);
       n->min = std::move(min);

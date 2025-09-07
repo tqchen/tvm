@@ -192,7 +192,7 @@ class BufferConstraintApply : public IRMutatorWithAnalyzer {
       }
     }
 
-    return GetRef<PrimExpr>(op);
+    return ffi::GetRef<PrimExpr>(op);
   }
 
  private:
@@ -339,13 +339,13 @@ class ControlFlowGraphBuilder final : public IRVisitorWithAnalyzer {
 
   void VisitExpr_(const BufferLoadNode* op) override {
     Parent::VisitExpr_(op);
-    BufferLoad load = GetRef<BufferLoad>(op);
+    BufferLoad load = ffi::GetRef<BufferLoad>(op);
     VisitAccess(load, BufferTouch::AccessType::Read, load);
   }
 
   void VisitStmt_(const BufferStoreNode* op) override {
     Parent::VisitStmt_(op);
-    VisitAccess(GetRef<BufferStore>(op), BufferTouch::AccessType::Write, op->value);
+    VisitAccess(ffi::GetRef<BufferStore>(op), BufferTouch::AccessType::Write, op->value);
     // Appending a control block ensures that all control blocks have
     // at most one statement that changes the buffer contents.
     auto prev_block = CurrentControlBlock();
@@ -712,13 +712,13 @@ std::pair<BufferTouch, Map<Var, Range>> ControlFlowGraph::ControlFlowBlock::Make
             return;
           }
 
-          Var var = GetRef<Var>(var_ptr);
+          Var var = ffi::GetRef<Var>(var_ptr);
           if (free_params.count(var) == 0) {
             return;
           }
 
           bool uses_free_param =
-              UsesVar(b, [&](const VarNode* v) { return free_params.count(GetRef<Var>(v)) > 0; });
+              UsesVar(b, [&](const VarNode* v) { return free_params.count(ffi::GetRef<Var>(v)) > 0; });
           if (uses_free_param) {
             return;
           }
@@ -1145,7 +1145,7 @@ class BufferRegionValueReplacer : public IRMutatorWithAnalyzer {
     if (it != known_values_.end() && it->second) {
       return it->second.value();
     } else {
-      return GetRef<PrimExpr>(op);
+      return ffi::GetRef<PrimExpr>(op);
     }
   }
 

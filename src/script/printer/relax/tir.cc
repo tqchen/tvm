@@ -58,7 +58,7 @@ Doc PrintTIRVar(tir::Var n, AccessPath n_p, IRDocsifier d) {
       ICHECK(f->is_func);
       f->func_vars->insert(n.get());
     }
-    IdDoc var = d->Define(n, GetRef<Frame>(f), n->name_hint.empty() ? "v" : n->name_hint);
+    IdDoc var = d->Define(n, ffi::GetRef<Frame>(f), n->name_hint.empty() ? "v" : n->name_hint);
     var->source_paths.push_back(n_p);
     f->stmts.push_back(AssignDoc(var, PrintVarCreation(n, n_p, d), std::nullopt));
   }

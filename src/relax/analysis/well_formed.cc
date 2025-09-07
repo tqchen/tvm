@@ -94,13 +94,13 @@ class WellFormedChecker : public relax::ExprVisitor,
       for (const auto& it : mod->functions) {
         // visit relax.Function
         if (auto* n = it.second.as<FunctionNode>()) {
-          Function func = GetRef<Function>(n);
+          Function func = ffi::GetRef<Function>(n);
           well_formed_checker.CheckGlobalVarAndGsymbolConsistency(it.first, func);
           well_formed_checker.VisitExpr(func);
         }
       }
     } else if (const auto* func = obj.as<FunctionNode>()) {
-      well_formed_checker.VisitExpr(GetRef<Expr>(func));
+      well_formed_checker.VisitExpr(ffi::GetRef<Expr>(func));
     } else {
       LOG(FATAL) << "Unreachable, "
                  << "variant did not contain any of the allowed types";
@@ -155,17 +155,17 @@ class WellFormedChecker : public relax::ExprVisitor,
   }
 
   void VisitExpr_(const GlobalVarNode* op) final {
-    GlobalVar var = GetRef<GlobalVar>(op);
+    GlobalVar var = ffi::GetRef<GlobalVar>(op);
     if (mod_.defined()) {
       if (!(mod_.value()->ContainGlobalVar(var->name_hint) &&
             mod_.value()->GetGlobalVar(var->name_hint).same_as(var))) {
-        Malformed(Diagnostic::Error(var) << "GlobalVar " << GetRef<Expr>(op) << " is not defined.");
+        Malformed(Diagnostic::Error(var) << "GlobalVar " << ffi::GetRef<Expr>(op) << " is not defined.");
       }
     }
 
     if (op->struct_info_.defined()) {
       if (!op->struct_info_->IsInstance<FuncStructInfoNode>()) {
-        Malformed(Diagnostic::Error(var) << "The struct_info_ of GlobalVar " << GetRef<Expr>(op)
+        Malformed(Diagnostic::Error(var) << "The struct_info_ of GlobalVar " << ffi::GetRef<Expr>(op)
                                          << " must be either FuncStructInfo.");
       }
     }
@@ -198,21 +198,21 @@ class WellFormedChecker : public relax::ExprVisitor,
   }
 
   void VisitExpr_(const VarNode* op) final {
-    Var var = GetRef<Var>(op);
+    Var var = ffi::GetRef<Var>(op);
     if (var_set_.count(var) == 0 && recur_vars_.count(var) == 0) {
-      Malformed(Diagnostic::Error(var) << "Var " << GetRef<Expr>(op) << " is not defined.");
+      Malformed(Diagnostic::Error(var) << "Var " << ffi::GetRef<Expr>(op) << " is not defined.");
     }
     CheckStructInfo(op);
   }
 
   void VisitExpr_(const DataflowVarNode* op) final {
-    DataflowVar var = GetRef<DataflowVar>(op);
+    DataflowVar var = ffi::GetRef<DataflowVar>(op);
     if (!is_dataflow_) {
       Malformed(Diagnostic::Error(var)
-                << "DataflowVar " << GetRef<Expr>(op) << " is used outside DataflowBlock.");
+                << "DataflowVar " << ffi::GetRef<Expr>(op) << " is used outside DataflowBlock.");
     }
     if (dataflow_var_set_.count(var) == 0) {
-      Malformed(Diagnostic::Error(var) << "DataflowVar " << GetRef<Expr>(op) << " is not defined.");
+      Malformed(Diagnostic::Error(var) << "DataflowVar " << ffi::GetRef<Expr>(op) << " is not defined.");
     }
     CheckStructInfo(op);
   }
@@ -244,7 +244,7 @@ class WellFormedChecker : public relax::ExprVisitor,
     // ensure the purity attributes are valid
     if (op->GetAttr<bool>(relax::attr::kForcePure).value_or(false) && !op->is_pure) {
       Malformed(Diagnostic::Error(op->span)
-                << "Function " << GetRef<Expr>(op) << " has true for " << relax::attr::kForcePure
+                << "Function " << ffi::GetRef<Expr>(op) << " has true for " << relax::attr::kForcePure
                 << " but false for is_pure; " << relax::attr::kForcePure
                 << " should be true only if is_pure is also true.");
     }
@@ -318,7 +318,7 @@ class WellFormedChecker : public relax::ExprVisitor,
 
     CheckStructInfo(call);
     if (is_dataflow_ && check_struct_info_) {
-      if (auto impure = FindImpureCall(GetRef<Call>(call))) {
+      if (auto impure = FindImpureCall(ffi::GetRef<Call>(call))) {
         Malformed(Diagnostic::Error(call)
                   << "Impure function call " << impure << " occurs within a dataflow block.");
       }
@@ -331,7 +331,7 @@ class WellFormedChecker : public relax::ExprVisitor,
 
     if (auto func_normalize = op_map_normalize_.get(call->op, nullptr); func_normalize != nullptr) {
       auto dummy_builder = tvm::relax::BlockBuilder::Create(mod_);
-      Call before_normalize = GetRef<Call>(call);
+      Call before_normalize = ffi::GetRef<Call>(call);
       Optional<Expr> after_normalize = std::nullopt;
       try {
         after_normalize = func_normalize(dummy_builder, before_normalize);
@@ -355,7 +355,7 @@ class WellFormedChecker : public relax::ExprVisitor,
 
     if (auto func_validate = op_map_validate_.get(call->op, nullptr); func_validate != nullptr) {
       try {
-        func_validate(GetRef<Call>(call));
+        func_validate(ffi::GetRef<Call>(call));
       } catch (std::exception& err) {
         Malformed(Diagnostic::Error(call) << "Operator-specific validation (FValidate) for "
                                           << call->op << " identified error: \n"
@@ -375,7 +375,7 @@ class WellFormedChecker : public relax::ExprVisitor,
       } catch (std::exception& err) {
         Malformed(Diagnostic::Error(call)
                   << "Each Relax expression must be able to have its StructInfo inferred.  "
-                  << "However, inferring the struct info of expression " << GetRef<Call>(call)
+                  << "However, inferring the struct info of expression " << ffi::GetRef<Call>(call)
                   << " resulted in the error: \n"
                   << err.what());
       }
@@ -400,7 +400,7 @@ class WellFormedChecker : public relax::ExprVisitor,
             BaseCheckResult::kFailL1) {
           Malformed(Diagnostic::Error(call)
                     << "All information in StructInfo annotations must be correct.  "
-                    << "However, while the expression " << GetRef<Call>(call) << " is annotated as "
+                    << "However, while the expression " << ffi::GetRef<Call>(call) << " is annotated as "
                     << current_struct_info << ", the expression outputs " << inferred_struct_info);
         }
       }
@@ -513,7 +513,7 @@ class WellFormedChecker : public relax::ExprVisitor,
       Malformed(Diagnostic::Error(var)
                 << "DataflowVar " << var << " is defined outside DataflowBlock.");
     }
-    DataflowVar lv = GetRef<DataflowVar>(var);
+    DataflowVar lv = ffi::GetRef<DataflowVar>(var);
     if (dataflow_var_set_.count(lv) == 1) {
       Malformed(Diagnostic::Error(var) << "DataflowVar " << lv << " is defined more than once.");
     }
@@ -523,7 +523,7 @@ class WellFormedChecker : public relax::ExprVisitor,
   }
 
   void VisitVarDef_(const VarNode* var) final {
-    Var gv = GetRef<Var>(var);
+    Var gv = ffi::GetRef<Var>(var);
     if (var_set_.count(gv) == 1) {
       Malformed(Diagnostic::Error(var) << "Var " << gv << " is defined more than once.");
     }
@@ -533,7 +533,7 @@ class WellFormedChecker : public relax::ExprVisitor,
   }
 
   void VisitExpr_(const tir::VarNode* op) final {
-    tir::Var var = GetRef<tir::Var>(op);
+    tir::Var var = ffi::GetRef<tir::Var>(op);
     // default mode, check defined.
     if (symbolic_var_set_.count(var) == 0) {
       this->Malformed(Diagnostic::Error(var) << "Symbolic Var " << var << " is not defined.");
@@ -571,7 +571,7 @@ class WellFormedChecker : public relax::ExprVisitor,
     if (mode_ == VisitMode::kMatchVarDef) {
       // populate symbolic var in first occurrence
       if (auto* op = expr.as<relax::VarNode>()) {
-        auto var = GetRef<relax::Var>(op);
+        auto var = ffi::GetRef<relax::Var>(op);
         if (var_set_.count(var) == 0) {
           var_set_.insert(var);
         }
@@ -590,7 +590,7 @@ class WellFormedChecker : public relax::ExprVisitor,
     if (mode_ == VisitMode::kMatchVarDef) {
       // populate symbolic var in first occurrence
       if (auto* op = expr.as<tir::VarNode>()) {
-        auto var = GetRef<tir::Var>(op);
+        auto var = ffi::GetRef<tir::Var>(op);
         if (symbolic_var_set_.count(var) == 0) {
           symbolic_var_set_.insert(var);
         }
@@ -607,7 +607,7 @@ class WellFormedChecker : public relax::ExprVisitor,
 
     auto* sinfo = op->struct_info_.as<StructInfoNode>();
     if (sinfo != nullptr) {
-      this->VisitStructInfo(GetRef<StructInfo>(sinfo));
+      this->VisitStructInfo(ffi::GetRef<StructInfo>(sinfo));
     } else {
       Malformed(Diagnostic::Error(op) << "Expr must have struct_info populated. "
                                       << " Expr.type_key=" << op->GetTypeKey());

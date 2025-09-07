@@ -214,7 +214,7 @@ class PVar : public Pattern<PVar<T>> {
             typename = typename std::enable_if<std::is_base_of<NodeRefType, T>::value>::type>
   bool Match_(const NodeRefType& value) const {
     if (const auto* ptr = value.template as<typename T::ContainerType>()) {
-      return Match_(GetRef<T>(ptr));
+      return Match_(ffi::GetRef<T>(ptr));
     } else {
       return false;
     }
@@ -257,7 +257,7 @@ class PVarWithCheck : public arith::Pattern<PVarWithCheck<Derived, T>> {
             typename = typename std::enable_if<std::is_base_of<NodeRefType, T>::value>::type>
   bool Match_(const NodeRefType& value) const {
     if (const auto* ptr = value.template as<typename T::ContainerType>()) {
-      return Match_(GetRef<T>(ptr));
+      return Match_(ffi::GetRef<T>(ptr));
     } else {
       return false;
     }

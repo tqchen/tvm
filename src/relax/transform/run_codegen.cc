@@ -106,7 +106,7 @@ class CodeGenRunner : ExprMutator {
   Expr VisitExpr_(const CallNode* call_node) override {
     auto call = Downcast<Call>(ExprMutator::VisitExpr_(call_node));
     if (auto const* gvar_node = call_node->op.as<GlobalVarNode>()) {
-      const GlobalVar gvar = GetRef<GlobalVar>(gvar_node);
+      const GlobalVar gvar = ffi::GetRef<GlobalVar>(gvar_node);
 
       auto create_call_dps_packed = [call_node, this](Expr extern_func,
                                                       StructInfo ret_struct_info) {
@@ -148,7 +148,7 @@ class CodeGenRunner : ExprMutator {
   }
 
   Expr VisitExpr_(const FunctionNode* func_node) override {
-    Function func = GetRef<Function>(func_node);
+    Function func = ffi::GetRef<Function>(func_node);
     auto opt_codegen = func->GetAttr<String>(attr::kCodegen);
     if (opt_codegen) {
       auto ext_symbol = GetExtSymbol(func);

@@ -64,11 +64,11 @@ class ScopeReplacer : public StmtMutator {
       : old_loop_(old_loop), new_loop_(new_loop), found_(false) {}
 
   Stmt VisitStmt(const Stmt& stmt) final { return found_ ? stmt : StmtMutator::VisitStmt(stmt); }
-  Stmt VisitStmt_(const BlockNode* block) final { return GetRef<Block>(block); }
+  Stmt VisitStmt_(const BlockNode* block) final { return ffi::GetRef<Block>(block); }
   Stmt VisitStmt_(const ForNode* loop) final {
     if (loop == old_loop_) {
       found_ = true;
-      return GetRef<For>(new_loop_);
+      return ffi::GetRef<For>(new_loop_);
     }
     return StmtMutator::VisitStmt_(loop);
   }
@@ -106,7 +106,7 @@ class ReadWriteAtBufferReplacer : public StmtExprMutator {
   }
 
   Stmt VisitStmt_(const BlockNode* _block) final {
-    Block old_block = GetRef<Block>(_block);
+    Block old_block = ffi::GetRef<Block>(_block);
     Block block = Downcast<Block>(StmtExprMutator::VisitStmt_(_block));
     ObjectPtr<BlockNode> new_block = ffi::make_object<BlockNode>(*block.get());
     new_block->reads = ReplaceBuffer(new_block->reads, src_, dst_);
@@ -126,7 +126,7 @@ struct ReadWriteAtImpl {
                        int buffer_index, const String& storage_scope,
                        Map<String, Any> annotations) {
     const BlockNode* block = TVM_SREF_TO_BLOCK(block_sref);
-    Buffer src = GetNthAccessBuffer(self, GetRef<Block>(block), buffer_index,
+    Buffer src = GetNthAccessBuffer(self, ffi::GetRef<Block>(block), buffer_index,
                                     is_read ? BufferIndexType::kRead : BufferIndexType::kWrite);
     Buffer dst = WithScope(src, storage_scope);
     ReadWriteAtImpl impl(self, loop_sref, src, dst, annotations);
@@ -153,7 +153,7 @@ struct ReadWriteAtImpl {
                                             /*require_stage_pipeline=*/true);
     const BlockNode* scope_block = TVM_SREF_TO_BLOCK(scope_root_sref);
     Block new_scope_block = ScopeReplacer::Replace(scope_block, dst_, loop_, new_loop);
-    block_sref_reuse_.Set(GetRef<Block>(scope_block), new_scope_block);
+    block_sref_reuse_.Set(ffi::GetRef<Block>(scope_block), new_scope_block);
     self_->Replace(scope_root_sref, new_scope_block, block_sref_reuse_);
     return self_->stmt2ref.at(new_block);
   }
@@ -197,10 +197,10 @@ struct ReadWriteAtImpl {
               /*buffer=*/src_,
               /*var_dom=*/
               arith::AsIntSet(LoopDomainOfSRefTreePath(
-                  /*low_inclusive=*/GetRef<StmtSRef>(self_->stmt2ref.at(block)->parent),
+                  /*low_inclusive=*/ffi::GetRef<StmtSRef>(self_->stmt2ref.at(block)->parent),
                   /*high_exclusive=*/loop_sref_,
                   /*extra_relax_scope=*/scope)),
-              /*bindings=*/GetBindings(GetRef<BlockRealize>(realize)),
+              /*bindings=*/GetBindings(ffi::GetRef<BlockRealize>(realize)),
               /*relaxed_regions=*/&relaxed_regions);
         }
         return false;

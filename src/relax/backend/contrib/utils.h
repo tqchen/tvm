@@ -71,7 +71,7 @@ inline std::string DType2String(const tvm::DataType dtype) {
 inline bool IsOp(const CallNode* call, const std::string& op_name) {
   const auto* op_node = call->op.as<OpNode>();
   if (!op_node) return false;
-  Op op = GetRef<Op>(op_node);
+  Op op = ffi::GetRef<Op>(op_node);
   return op == Op::Get(op_name);
 }
 

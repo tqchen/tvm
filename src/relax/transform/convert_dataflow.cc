@@ -134,7 +134,7 @@ class DataflowBlockExtractor : public ExprMutator {
     if (changed) {
       return SeqExpr(new_blocks, new_body);
     } else {
-      return GetRef<SeqExpr>(seq);
+      return ffi::GetRef<SeqExpr>(seq);
     }
   }
 

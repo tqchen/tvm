@@ -1348,7 +1348,7 @@ bool MatchBoundConstraints(PrimExpr pred, Map<Var, Range>* input_iters,
     // determine iter and bound, if we can not distinguish them simply,
     // try divide (lhs - rhs) into itervar aware and itervar free parts
     auto f_use_itervar = [&input_iters](const VarNode* v) {
-      return input_iters->count(GetRef<Var>(v));
+      return input_iters->count(ffi::GetRef<Var>(v));
     };
     bool bound_at_left;
     if (UsesVar(lhs_expr, f_use_itervar) || UsesVar(rhs_expr, f_use_itervar)) {
@@ -1430,7 +1430,7 @@ bool MatchBoundConstraints(PrimExpr pred, Map<Var, Range>* input_iters,
 bool IterRangeSanityCheck(const Map<Var, Range>& iter_ranges) {
   std::unordered_set<Var> iters;
   for (const auto& it : iter_ranges) iters.insert(it.first);
-  auto f = [&](const VarNode* var) { return iters.count(GetRef<Var>(var)); };
+  auto f = [&](const VarNode* var) { return iters.count(ffi::GetRef<Var>(var)); };
   for (const auto& it : iter_ranges) {
     if (UsesVar(it.second->min, f) || UsesVar(it.second->extent, f)) return false;
   }
@@ -1560,7 +1560,7 @@ TVM_FFI_STATIC_INIT_BLOCK({
 });
 
 PrimExpr IterMapRewriter::VisitExpr_(const VarNode* op) {
-  auto var = GetRef<Var>(op);
+  auto var = ffi::GetRef<Var>(op);
   auto it = var_map_.find(var);
   if (it != var_map_.end()) return it->second;
   return var;
@@ -1578,7 +1578,7 @@ PrimExpr IterMapRewriter::VisitExpr_(const AddNode* op) {
   // does not contain iter map.
   if (!a->IsInstance<IterMapExprNode>() && !b->IsInstance<IterMapExprNode>()) {
     if (op->a.same_as(a) && op->b.same_as(b)) {
-      return GetRef<PrimExpr>(op);
+      return ffi::GetRef<PrimExpr>(op);
     } else {
       return Add(a, b);
     }
@@ -1613,7 +1613,7 @@ PrimExpr IterMapRewriter::VisitExpr_(const SubNode* op) {
   // does not contain iter map.
   if (!a->IsInstance<IterMapExprNode>() && !b->IsInstance<IterMapExprNode>()) {
     if (op->a.same_as(a) && op->b.same_as(b)) {
-      return GetRef<PrimExpr>(op);
+      return ffi::GetRef<PrimExpr>(op);
     } else {
       return Sub(a, b);
     }
@@ -1648,7 +1648,7 @@ PrimExpr IterMapRewriter::VisitExpr_(const MulNode* op) {
   // does not contain iter map.
   if (!a->IsInstance<IterMapExprNode>() && !b->IsInstance<IterMapExprNode>()) {
     if (op->a.same_as(a) && op->b.same_as(b)) {
-      return GetRef<PrimExpr>(op);
+      return ffi::GetRef<PrimExpr>(op);
     } else {
       return Mul(a, b);
     }
@@ -1657,8 +1657,8 @@ PrimExpr IterMapRewriter::VisitExpr_(const MulNode* op) {
   if (a->IsInstance<IterMapExprNode>() && b->IsInstance<IterMapExprNode>()) {
     // cannot multiply two iterators, mark as unresolved.
     ErrorLogger(this) << "Product of two iterators cannot be represented as an IterMap, "
-                      << "occurs in " << GetRef<Mul>(op);
-    return GetRef<PrimExpr>(op);
+                      << "occurs in " << ffi::GetRef<Mul>(op);
+    return ffi::GetRef<PrimExpr>(op);
   }
 
   if (!a->IsInstance<IterMapExprNode>()) {
@@ -1961,7 +1961,7 @@ PrimExpr IterMapRewriter::VisitExpr_(const FloorDivNode* op) {
   // does not contain iter map.
   if (!a->IsInstance<IterMapExprNode>() && !b->IsInstance<IterMapExprNode>()) {
     if (op->a.same_as(a) && op->b.same_as(b)) {
-      return GetRef<PrimExpr>(op);
+      return ffi::GetRef<PrimExpr>(op);
     } else {
       return FloorDiv(a, b);
     }
@@ -1969,19 +1969,19 @@ PrimExpr IterMapRewriter::VisitExpr_(const FloorDivNode* op) {
 
   if (b->IsInstance<IterMapExprNode>()) {
     // cannot divide an iterator, mark as unresolved.
-    ErrorLogger(this) << "Cannot represent as an IterMap: the divisor in " << GetRef<PrimExpr>(op)
+    ErrorLogger(this) << "Cannot represent as an IterMap: the divisor in " << ffi::GetRef<PrimExpr>(op)
                       << " may not be an iterator";
-    return GetRef<PrimExpr>(op);
+    return ffi::GetRef<PrimExpr>(op);
   }
 
   IterSumExpr preprocessed = PreprocessDividend(Downcast<IterMapExpr>(a), op->a);
   if (!preprocessed.defined()) {
-    return GetRef<PrimExpr>(op);
+    return ffi::GetRef<PrimExpr>(op);
   }
   ICHECK_EQ(preprocessed->args.size(), 1U);
   PrimExpr remainder = SplitFloorDivConst(preprocessed->args[0], preprocessed->base, b);
   if (!remainder.defined()) {
-    return GetRef<PrimExpr>(op);
+    return ffi::GetRef<PrimExpr>(op);
   }
   return remainder;
 }
@@ -2045,7 +2045,7 @@ PrimExpr IterMapRewriter::VisitExpr_(const FloorModNode* op) {
   // does not contain iter map.
   if (!a->IsInstance<IterMapExprNode>() && !b->IsInstance<IterMapExprNode>()) {
     if (op->a.same_as(a) && op->b.same_as(b)) {
-      return GetRef<PrimExpr>(op);
+      return ffi::GetRef<PrimExpr>(op);
     } else {
       return FloorMod(a, b);
     }
@@ -2054,19 +2054,19 @@ PrimExpr IterMapRewriter::VisitExpr_(const FloorModNode* op) {
   if (b->IsInstance<IterMapExprNode>()) {
     // cannot mod an iterator, mark as unresolved.
     ErrorLogger(this) << "Cannot represent as an IterMap: the right-hand side of FloorMod in "
-                      << GetRef<PrimExpr>(op) << " may not be an iterator";
-    return GetRef<PrimExpr>(op);
+                      << ffi::GetRef<PrimExpr>(op) << " may not be an iterator";
+    return ffi::GetRef<PrimExpr>(op);
   }
 
   IterSumExpr preprocessed = PreprocessDividend(Downcast<IterMapExpr>(a), op->a);
   if (!preprocessed.defined()) {
-    return GetRef<PrimExpr>(op);
+    return ffi::GetRef<PrimExpr>(op);
   }
 
   ICHECK_EQ(preprocessed->args.size(), 1U);
   PrimExpr remainder = SplitFloorModConst(preprocessed->args[0], preprocessed->base, b);
   if (!remainder.defined()) {
-    return GetRef<PrimExpr>(op);
+    return ffi::GetRef<PrimExpr>(op);
   }
   return remainder;
 }
@@ -2543,7 +2543,7 @@ class InverseAffineIterMapTransformer {
 
     // initialize back propagation accumulator
     for (const IterMapExprNode* node : post_dfs_order) {
-      backprop_.Set(GetRef<IterMapExpr>(node), Integer(0));
+      backprop_.Set(ffi::GetRef<IterMapExpr>(node), Integer(0));
     }
     for (size_t i = 0; i < iter_map.size(); i++) {
       backprop_.Set(iter_map[i], outputs[i]);
@@ -2552,10 +2552,10 @@ class InverseAffineIterMapTransformer {
     // run back propagation
     for (const IterMapExprNode* node : post_dfs_order) {
       if (node->IsInstance<IterSumExprNode>()) {
-        Visit_(Downcast<IterSumExpr>(GetRef<IterMapExpr>(node)));
+        Visit_(Downcast<IterSumExpr>(ffi::GetRef<IterMapExpr>(node)));
       } else {
         ICHECK(node->IsInstance<IterSplitExprNode>());
-        Visit_(Downcast<IterSplitExpr>(GetRef<IterMapExpr>(node)));
+        Visit_(Downcast<IterSplitExpr>(ffi::GetRef<IterMapExpr>(node)));
       }
     }
     return std::move(inverse_);

@@ -79,7 +79,7 @@ class IndexInfoCollector : public StmtExprVisitor {
   static void Collect(const ScheduleState& self, const StmtSRef& block_sref,
                       const StmtSRef& scope_sref, IndexInfo* info) {
     IndexInfoCollector collector(self, block_sref, scope_sref, info->cse_thresh);
-    collector(GetRef<Stmt>(scope_sref->stmt));
+    collector(ffi::GetRef<Stmt>(scope_sref->stmt));
     info->loc_pos = collector.loc_pos_;
     info->index_exprs = collector.exprs_;
     info->range_map = collector.range_map_;
@@ -150,7 +150,7 @@ class IndexInfoCollector : public StmtExprVisitor {
 
       // Analyze sub expr candidates
       ComputationTable table_syntactic_comp_done_by_stmt =
-          ComputationsDoneBy::GetComputationsDoneBy(GetRef<Stmt>(store), IsEligibleComputation,
+          ComputationsDoneBy::GetComputationsDoneBy(ffi::GetRef<Stmt>(store), IsEligibleComputation,
                                                     [](const PrimExpr& expr) { return true; });
       std::vector<std::pair<PrimExpr, size_t>> semantic_comp_done_by_stmt =
           SyntacticToSemanticComputations(table_syntactic_comp_done_by_stmt, true);
@@ -370,7 +370,7 @@ class CacheIndexRewriter : public StmtExprMutator {
    */
   static Stmt Rewrite(const StmtSRef& scope_sref, IndexInfo* info) {
     CacheIndexRewriter rewriter(scope_sref, info);
-    return rewriter(GetRef<Stmt>(scope_sref->stmt));
+    return rewriter(ffi::GetRef<Stmt>(scope_sref->stmt));
   }
 
  private:
@@ -386,7 +386,7 @@ class CacheIndexRewriter : public StmtExprMutator {
   }
 
   Stmt VisitStmt_(const BlockNode* block) final {
-    Block old_stmt = GetRef<Block>(block);
+    Block old_stmt = ffi::GetRef<Block>(block);
     // Mutate the body
     visiting_target_block = static_cast<bool>(block == info_->target_block->stmt);
     Block stmt = Downcast<Block>(StmtMutator::VisitStmt_(block));
@@ -478,7 +478,7 @@ Array<StmtSRef> CacheIndex(ScheduleState self, const StmtSRef& block_sref,
       affine_binding = true;
     } else {
       arith::Analyzer analyzer;
-      StmtSRef parent_sref = GetRef<StmtSRef>(result_block_sref->parent);
+      StmtSRef parent_sref = ffi::GetRef<StmtSRef>(result_block_sref->parent);
       affine_binding = IsAffineBinding(/*realize=*/GetBlockRealize(self, result_block_sref),
                                        /*loop_var_ranges=*/LoopDomainOfSRefTreePath(parent_sref),
                                        /*analyzer=*/&analyzer);

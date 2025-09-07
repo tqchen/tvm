@@ -39,7 +39,7 @@ bool IsInSpatialPrimFunc(const tir::Schedule& sch, const tir::StmtSRef& block_sr
   for (; sref->parent != nullptr; sref = sref->parent) {
   }
   ICHECK(sref->stmt != nullptr && sref->stmt->IsInstance<BlockNode>());
-  return IsSpatialPrimFunc(GetRef<PrimFunc>(GetRootPrimFunc(sch->mod(), sref->stmt, nullptr)));
+  return IsSpatialPrimFunc(ffi::GetRef<PrimFunc>(GetRootPrimFunc(sch->mod(), sref->stmt, nullptr)));
 }
 
 /*! \brief The rule that inlines spatial blocks if it satisfies some conditions. */

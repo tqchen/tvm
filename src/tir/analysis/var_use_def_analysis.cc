@@ -104,7 +104,7 @@ void VarUseDefAnalyzer::VisitExpr_(const LetNode* op) {
 }
 
 void VarUseDefAnalyzer::VisitExpr_(const VarNode* op) {
-  this->HandleUse(GetRef<Var>(op));
+  this->HandleUse(ffi::GetRef<Var>(op));
   StmtExprVisitor::VisitExpr_(op);
 }
 
@@ -151,7 +151,7 @@ void VarUseDefAnalyzer::HandleUse(const Var& var) {
       ++it->second;
     }
   } else {
-    undefined_.push_back(GetRef<Var>(v));
+    undefined_.push_back(ffi::GetRef<Var>(v));
     use_count_[v] = -1;
   }
 }
@@ -176,7 +176,7 @@ void VarUseDefAnalyzer::HandleUse(const Buffer& buf) {
       ++it->second;
     }
   } else {
-    undefined_buffers_.push_back(GetRef<Buffer>(ptr));
+    undefined_buffers_.push_back(ffi::GetRef<Buffer>(ptr));
     buffer_use_count_[ptr] = -1;
   }
 

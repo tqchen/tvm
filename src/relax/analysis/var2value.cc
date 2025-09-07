@@ -52,7 +52,7 @@ Map<Var, Expr> AnalyzeVar2Value(const IRModule& m) {
   for (const auto& it : m->functions) {
     // visit relax.Function
     if (auto* n = it.second.as<FunctionNode>()) {
-      var2val_analysis.VisitExpr(GetRef<Function>(n));
+      var2val_analysis.VisitExpr(ffi::GetRef<Function>(n));
     }
   }
 
@@ -72,12 +72,12 @@ class Name2BindingAnalysis : public relax::ExprVisitor {
   std::map<String, Array<Binding>> name2bindings_;
   void VisitBinding_(const VarBindingNode* binding) override {
     const auto& vname = binding->var->name_hint();
-    name2bindings_[vname].push_back(GetRef<VarBinding>(binding));
+    name2bindings_[vname].push_back(ffi::GetRef<VarBinding>(binding));
   }
 
   void VisitBinding_(const MatchCastNode* binding) override {
     const auto& vname = binding->var->name_hint();
-    name2bindings_[vname].push_back(GetRef<MatchCast>(binding));
+    name2bindings_[vname].push_back(ffi::GetRef<MatchCast>(binding));
   }
 };
 

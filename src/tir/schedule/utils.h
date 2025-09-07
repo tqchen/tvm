@@ -61,7 +61,7 @@ inline Array<For> LoopSRefs2Loops(const Array<StmtSRef>& loop_srefs) {
   loops.reserve(loop_srefs.size());
   for (StmtSRef loop_sref : loop_srefs) {
     const ForNode* loop = TVM_SREF_TO_FOR(loop_sref);
-    loops.push_back(GetRef<For>(loop));
+    loops.push_back(ffi::GetRef<For>(loop));
   }
   return loops;
 }
@@ -224,7 +224,7 @@ inline const int64_t* GetLoopIntExtent(const StmtSRef& loop_sref) {
 inline Optional<Var> AnalyzeVarWithShift(const PrimExpr& expr, Optional<IntImm>* constant) {
   if (const auto* var = expr.as<VarNode>()) {
     *constant = std::nullopt;
-    return GetRef<Var>(var);
+    return ffi::GetRef<Var>(var);
   }
   arith::PVar<Var> var;
   arith::PVar<IntImm> shift;

@@ -48,7 +48,7 @@ class HipblasJSONSerializer : public JSONSerializer {
   NodeEntries VisitExpr_(const CallNode* call_node) final {
     const auto* fn_var = call_node->op.as<VarNode>();
     ICHECK(fn_var);
-    const auto fn = Downcast<Function>(bindings_[GetRef<Var>(fn_var)]);
+    const auto fn = Downcast<Function>(bindings_[ffi::GetRef<Var>(fn_var)]);
     ICHECK(fn.defined()) << "Expects the callee to be a function.";
 
     auto composite_opt = fn->GetAttr<String>(attr::kComposite);
@@ -78,7 +78,7 @@ class HipblasJSONSerializer : public JSONSerializer {
 
     const CallNode* root_call = backend::GetOpInFunction(fn, "relax.matmul");
     SetCallNodeAttribute(node, root_call);
-    return AddNode(node, GetRef<Expr>(call_node));
+    return AddNode(node, ffi::GetRef<Expr>(call_node));
   }
 
  private:

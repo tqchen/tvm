@@ -38,7 +38,7 @@ class NotAllRequiredBlocksAreVisitedError : public ScheduleError {
     required_.reserve(required.size());
     for (const StmtSRef& block_sref : required) {
       const BlockNode* block = TVM_SREF_TO_BLOCK(block_sref);
-      required_.push_back(GetRef<Block>(block));
+      required_.push_back(ffi::GetRef<Block>(block));
     }
   }
 
@@ -110,8 +110,8 @@ class NotInSameScopeError : public ScheduleError {
  private:
   explicit NotInSameScopeError(IRModule mod, const StmtSRef& block_sref, const StmtSRef& loop_sref)
       : mod_(mod),
-        block_(GetRef<Block>(block_sref->StmtAs<BlockNode>())),
-        loop_(GetRef<For>(loop_sref->StmtAs<ForNode>())) {}
+        block_(ffi::GetRef<Block>(block_sref->StmtAs<BlockNode>())),
+        loop_(ffi::GetRef<For>(loop_sref->StmtAs<ForNode>())) {}
 
   IRModule mod_;
   Block block_;
@@ -312,7 +312,7 @@ class ScopeReconstructor : private StmtMutator {
  private:
   Stmt VisitStmt_(const BlockNode* block) final {
     if (block != scope_root_.get()) {
-      return GetRef<Block>(block);
+      return ffi::GetRef<Block>(block);
     }
     if (block == rm_src_stmt_.get()) {
       block = TVM_TYPE_AS(rm_tgt_stmt_, BlockNode);
@@ -675,9 +675,9 @@ void CalculateProvidedRequiredRegions(
     const BlockNode* required_block = TVM_SREF_TO_BLOCK(required_block_sref);
     ICHECK(block2realize.count(required_block));
     RelaxBufferRegions</*relax_storage_scope=*/is_compute_at>(
-        /*binding=*/GetBindings(GetRef<BlockRealize>(block2realize.at(required_block))),
+        /*binding=*/GetBindings(ffi::GetRef<BlockRealize>(block2realize.at(required_block))),
         /*buffer_regions=*/is_compute_at ? required_block->reads : required_block->writes,
-        /*relax_path_low_inclusive=*/GetRef<StmtSRef>(required_block_sref->parent),
+        /*relax_path_low_inclusive=*/ffi::GetRef<StmtSRef>(required_block_sref->parent),
         /*relax_path_high_exclusive=*/loop_sref, /*relaxed=*/required_regions);
   }
 }
@@ -695,7 +695,7 @@ void ComputeAtOrReverseComputeAtImpl(ScheduleState self, const StmtSRef& block_s
   // Check condition 1) : scope stage pipeline
   StmtSRef scope_root_sref = GetScopeRoot(self, block_sref,
                                           /*require_stage_pipeline=*/true);
-  Block scope_root = GetRef<Block>(scope_root_sref->StmtAs<BlockNode>());
+  Block scope_root = ffi::GetRef<Block>(scope_root_sref->StmtAs<BlockNode>());
   AddShapeVarBounds(self, scope_root_sref.get(), analyzer);
   BlockScope scope = self->GetBlockScope(scope_root_sref);
   Array<StmtSRef> producer_srefs = GetProducers(block_sref, scope);
@@ -711,7 +711,7 @@ void ComputeAtOrReverseComputeAtImpl(ScheduleState self, const StmtSRef& block_s
     CheckNotOutputBlock(self, block_sref, scope_root_sref);
   }
   // Step 2. Plan for the removal of `block`
-  ScopeReconstructor reconstructor(scope_root, GetRef<Block>(block), GetRef<For>(loop));
+  ScopeReconstructor reconstructor(scope_root, ffi::GetRef<Block>(block), ffi::GetRef<For>(loop));
   LeafBlockRemovalPlan(self, block_sref, &reconstructor.rm_src_stmt_, &reconstructor.rm_tgt_stmt_);
   // Step 3. Find the insertion point under `loop`
   // Check condition 5): all the required block are under the given loop
@@ -755,7 +755,7 @@ void ComputeAtOrReverseComputeAtImpl(ScheduleState self, const StmtSRef& block_s
   BlockInfo& block_info = self->block_info[block_sref];
   block_info.affine_binding = IsAffineBinding(
       /*realize=*/reconstructor.new_block_realize_,
-      /*loop_var_ranges=*/LoopDomainOfSRefTreePath(GetRef<StmtSRef>(block_sref->parent)),
+      /*loop_var_ranges=*/LoopDomainOfSRefTreePath(ffi::GetRef<StmtSRef>(block_sref->parent)),
       /*analyzer=*/analyzer);
 }
 

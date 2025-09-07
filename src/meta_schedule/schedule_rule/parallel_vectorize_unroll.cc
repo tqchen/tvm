@@ -30,7 +30,7 @@ bool IsRootBlock(const Schedule& sch, const BlockRV& block_rv) {
 
 bool CheckSpatialPrimFunc(const Schedule& sch, const BlockRV& root_block_rv) {
   return IsSpatialPrimFunc(
-      GetRef<PrimFunc>(GetRootPrimFunc(sch->mod(), sch->Get(root_block_rv).get(), nullptr)));
+      ffi::GetRef<PrimFunc>(GetRootPrimFunc(sch->mod(), sch->Get(root_block_rv).get(), nullptr)));
 }
 
 }  // namespace tir
