@@ -172,7 +172,7 @@ class CrossThreadReductionNode : public ScheduleRuleNode {
   tir::ExprRV GetThreadIdxExtentFromTrace(const tir::Trace& trace) {
     tir::ExprRV extent{nullptr};
     for (const tir::Instruction& inst : trace->insts) {
-      if (inst->kind->name == "Bind" && Downcast<String>(inst->attrs[0]) == "threadIdx.x") {
+      if (inst->kind->name == "Bind" && Downcast<ffi::String>(inst->attrs[0]) == "threadIdx.x") {
         if (GetLoopRVExtentSource(trace, Downcast<tir::LoopRV>(inst->inputs[0]), &extent)) {
           return extent;
         }

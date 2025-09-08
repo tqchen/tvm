@@ -119,7 +119,7 @@ void FindSampleVectorize(const Trace& trace, std::vector<Instruction>* inst,
     if (inst->kind.same_as(inst_annotate)) {
       ICHECK_EQ(inst->attrs.size(), 1);
       ICHECK_EQ(inst->inputs.size(), 2);
-      if (Downcast<String>(inst->attrs[0]) == tir::attr::meta_schedule_cooperative_fetch) {
+      if (Downcast<ffi::String>(inst->attrs[0]) == tir::attr::meta_schedule_cooperative_fetch) {
         const auto* ann_val = inst->inputs[1].as<tir::ExprRVNode>();
         ICHECK(ann_val);
         annotated.insert(ann_val);

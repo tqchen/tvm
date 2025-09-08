@@ -93,7 +93,7 @@ StructInfo InferStructInfoQuantize(const Call& call, const BlockBuilder& ctx) {
   }
 
   auto check_param_size = [&](const TensorStructInfo& param_sinfo,
-                              const TensorStructInfo& data_sinfo, String param_name) {
+                              const TensorStructInfo& data_sinfo, ffi::String param_name) {
     const PrimExpr& param_dim = param_sinfo->GetShape().value()[0];
     const PrimExpr& input_dim = data_sinfo->GetShape().value()[axis];
     if (!ctx->GetAnalyzer()->CanProveEqual(param_dim, input_dim)) {
@@ -181,7 +181,7 @@ StructInfo InferStructInfoDequantize(const Call& call, const BlockBuilder& ctx) 
   }
 
   auto check_param_size = [&](const TensorStructInfo& param_sinfo,
-                              const TensorStructInfo& data_sinfo, String param_name) {
+                              const TensorStructInfo& data_sinfo, ffi::String param_name) {
     const PrimExpr& param_dim = param_sinfo->GetShape().value()[0];
     const PrimExpr& input_dim = data_sinfo->GetShape().value()[axis];
     if (!ctx->GetAnalyzer()->CanProveEqual(param_dim, input_dim)) {

@@ -27,14 +27,14 @@ namespace tir {
 namespace {
 class BufTypeError : public ScheduleError {
  public:
-  explicit BufTypeError(IRModule mod, const String& buf_type)
+  explicit BufTypeError(IRModule mod, const ffi::String& buf_type)
       : mod_(std::move(mod)), buf_type_(buf_type) {}
 
-  String FastErrorString() const final {
+  ffi::String FastErrorString() const final {
     return "ScheduleError: Invalid buffer type for hide_buffer_access schedule.";
   }
 
-  String DetailRenderTemplate() const final {
+  ffi::String DetailRenderTemplate() const final {
     return "The buffer type for hide_buffer_access schedule should either be 'read'"
            " or 'write', got " +
            buf_type_ + " instead.";
@@ -45,7 +45,7 @@ class BufTypeError : public ScheduleError {
 
  private:
   IRModule mod_;
-  String buf_type_;
+  ffi::String buf_type_;
 };
 
 class InvalidIndexError : public ScheduleError {
@@ -53,11 +53,11 @@ class InvalidIndexError : public ScheduleError {
   explicit InvalidIndexError(IRModule mod, int num_access_regions, int buf_idx)
       : mod_(std::move(mod)), num_access_regions_(num_access_regions), buf_idx_(buf_idx) {}
 
-  String FastErrorString() const final {
+  ffi::String FastErrorString() const final {
     return "ScheduleError: Invalid buffer index array for hide_buffer_access schedule.";
   }
 
-  String DetailRenderTemplate() const final {
+  ffi::String DetailRenderTemplate() const final {
     return "The buffer index array for hide_buffer_access schedule should be a list of integers"
            " between 0 and " +
            std::to_string(num_access_regions_ - 1) + ", got " + std::to_string(buf_idx_) +
@@ -78,7 +78,7 @@ class InvalidIndexError : public ScheduleError {
 
 /******** Implementation ********/
 
-void UnsafeHideBufferAccess(ScheduleState self, const StmtSRef& block_sref, const String& buf_type,
+void UnsafeHideBufferAccess(ScheduleState self, const StmtSRef& block_sref, const ffi::String& buf_type,
                             const Array<IntImm>& buf_index_array) {
   /*!
    * Check:
@@ -147,12 +147,12 @@ struct UnsafeHideBufferAccessTraits : public UnpackedInstTraits<UnsafeHideBuffer
   static constexpr size_t kNumAttrs = 0;
   static constexpr size_t kNumDecisions = 0;
 
-  static void UnpackedApplyToSchedule(Schedule sch, BlockRV block, String buf_type,
+  static void UnpackedApplyToSchedule(Schedule sch, BlockRV block, ffi::String buf_type,
                                       Array<IntImm> buf_index_array) {
     sch->UnsafeHideBufferAccess(block, buf_type, buf_index_array);
   }
 
-  static String UnpackedAsPython(Array<String> outputs, String block, String buf_type,
+  static ffi::String UnpackedAsPython(Array<ffi::String> outputs, ffi::String block, ffi::String buf_type,
                                  Array<IntImm> buf_index_array) {
     PythonAPICall py("unsafe_hide_buffer_access");
     py.Input("block", block);

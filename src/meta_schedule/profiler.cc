@@ -28,22 +28,22 @@ namespace meta_schedule {
 
 /**************** Profiler ****************/
 
-Map<String, FloatImm> ProfilerNode::Get() const {
-  Map<String, FloatImm> ret;
+Map<ffi::String, FloatImm> ProfilerNode::Get() const {
+  Map<ffi::String, FloatImm> ret;
   for (const auto& kv : stats_sec) {
     ret.Set(kv.first, FloatImm(DataType::Float(64), kv.second));
   }
   return ret;
 }
 
-String ProfilerNode::Table() const {
+ffi::String ProfilerNode::Table() const {
   CHECK(!stats_sec.empty()) << "ValueError: The stats are empty. Please run the profiler first.";
   CHECK(stats_sec.count("Total"))
       << "ValueError: The total time is not recorded. This method should be called only after "
          "exiting the profiler's with scope.";
   double total = stats_sec.at("Total");
   struct Entry {
-    String name;
+    ffi::String name;
     double minutes;
     double percentage;
     bool operator<(const Entry& other) const { return percentage > other.percentage; }
@@ -77,7 +77,7 @@ Profiler::Profiler() {
   data_ = n;
 }
 
-ffi::Function ProfilerTimedScope(String name) {
+ffi::Function ProfilerTimedScope(ffi::String name) {
   if (Optional<Profiler> opt_profiler = Profiler::Current()) {
     return ffi::TypedFunction<void()>([profiler = opt_profiler.value(),                  //
                                        tik = std::chrono::high_resolution_clock::now(),  //
@@ -91,7 +91,7 @@ ffi::Function ProfilerTimedScope(String name) {
   return nullptr;
 }
 
-ScopedTimer Profiler::TimedScope(String name) { return ScopedTimer(ProfilerTimedScope(name)); }
+ScopedTimer Profiler::TimedScope(ffi::String name) { return ScopedTimer(ProfilerTimedScope(name)); }
 
 /**************** Context Manager ****************/
 

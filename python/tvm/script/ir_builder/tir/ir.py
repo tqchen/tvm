@@ -1243,7 +1243,7 @@ def launch_thread(
     """
 
     if isinstance(thread, str):
-        thread = String(thread)
+        thread = ffi::String(thread)
     return _ffi_api.LaunchThread(thread, extent)  # type: ignore[attr-defined] # pylint: disable=no-member
 
 

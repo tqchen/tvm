@@ -32,7 +32,7 @@ namespace relax {
 /*! \brief Attributes used in take operator */
 struct TakeAttrs : public AttrsNodeReflAdapter<TakeAttrs> {
   Optional<int64_t> axis;
-  String mode;
+  ffi::String mode;
 
   static void RegisterReflection() {
     namespace refl = tvm::ffi::reflection;

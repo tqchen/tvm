@@ -24,11 +24,11 @@ namespace tvm {
 namespace script {
 namespace printer {
 
-Map<String, ExprDoc> BufferAttrs(tir::Buffer buffer, const AccessPath& buffer_p, const Frame& frame,
+Map<ffi::String, ExprDoc> BufferAttrs(tir::Buffer buffer, const AccessPath& buffer_p, const Frame& frame,
                                  const IRDocsifier& d, BufferVarDefinition var_definitions) {
   using tvm::tir::Var;
   using tvm::tir::VarNode;
-  Map<String, ExprDoc> kwargs;
+  Map<ffi::String, ExprDoc> kwargs;
   Array<ExprDoc> var_def_lhs;
   Array<ExprDoc> var_def_rhs;
 
@@ -148,7 +148,7 @@ Map<String, ExprDoc> BufferAttrs(tir::Buffer buffer, const AccessPath& buffer_p,
   }
   // Step 6. Handle `buffer.scope`
   {
-    String scope = buffer.scope();
+    ffi::String scope = buffer.scope();
     if (scope != "global") {
       kwargs.Set(
           "scope",
@@ -182,15 +182,15 @@ Map<String, ExprDoc> BufferAttrs(tir::Buffer buffer, const AccessPath& buffer_p,
   return kwargs;
 }
 
-ExprDoc BufferCall(const ExprDoc& prefix, const Map<String, ExprDoc>& attrs, Array<ExprDoc> args) {
-  Array<String> kwargs_keys;
+ExprDoc BufferCall(const ExprDoc& prefix, const Map<ffi::String, ExprDoc>& attrs, Array<ExprDoc> args) {
+  Array<ffi::String> kwargs_keys;
   Array<ExprDoc> kwargs_values;
-  for (String s : {"shape", "dtype"}) {
+  for (ffi::String s : {"shape", "dtype"}) {
     if (Optional<ExprDoc> doc = attrs.Get(s)) {
       args.push_back(doc.value());
     }
   }
-  for (String s : {"data", "strides", "elem_offset", "scope", "align", "offset_factor",
+  for (ffi::String s : {"data", "strides", "elem_offset", "scope", "align", "offset_factor",
                    "buffer_type", "axis_separators"}) {
     if (Optional<ExprDoc> doc = attrs.Get(s)) {
       kwargs_keys.push_back(s);
@@ -200,7 +200,7 @@ ExprDoc BufferCall(const ExprDoc& prefix, const Map<String, ExprDoc>& attrs, Arr
   return prefix->Call(args, kwargs_keys, kwargs_values);
 }
 
-ExprDoc BufferDecl(const tir::Buffer& buffer, const String& method, const Array<ExprDoc>& args,
+ExprDoc BufferDecl(const tir::Buffer& buffer, const ffi::String& method, const Array<ExprDoc>& args,
                    const AccessPath& p, const Frame& frame, const IRDocsifier& d,
                    BufferVarDefinition var_definitions) {
   return BufferCall(/*prefix=*/TIR(d, method),
@@ -210,7 +210,7 @@ ExprDoc BufferDecl(const tir::Buffer& buffer, const String& method, const Array<
 
 ExprDoc BufferAttn(const tir::Buffer& buffer, const AccessPath& p, const Frame& frame,
                    const IRDocsifier& d) {
-  Map<String, ExprDoc> attrs = BufferAttrs(buffer, p, frame, d, BufferVarDefinition::DataPointer);
+  Map<ffi::String, ExprDoc> attrs = BufferAttrs(buffer, p, frame, d, BufferVarDefinition::DataPointer);
   ExprDoc shape = attrs.Get("shape").value();
   ExprDoc dtype =
       attrs.Get("dtype").value_or(LiteralDoc::DataType(buffer->dtype, p->Attr("dtype")));

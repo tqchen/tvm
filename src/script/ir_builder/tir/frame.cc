@@ -71,7 +71,7 @@ void PrimFuncFrameNode::ExitWithScope() {
     CHECK(name.has_value()) << "ValueError: The function name must be defined before exiting the "
                                "function scope, if it's defined in a Module";
     const ir::IRModuleFrame& frame = opt_frame.value();
-    const String& func_name = name.value_or("");
+    const ffi::String& func_name = name.value_or("");
     if (!frame->global_var_map.count(func_name)) {
       // Case. First time visiting the function.
       ir::DeclFunction(func_name, func);
@@ -90,7 +90,7 @@ void BlockFrameNode::ExitWithScope() {
   for (const tvm::tir::Buffer& buffer : alloc_buffers) {
     tir_alloc_buffers.push_back(buffer);
   }
-  Map<String, Any> attrs = annotations.value_or({});
+  Map<ffi::String, Any> attrs = annotations.value_or({});
   if (int detect_access = (!reads.defined()) | (!writes.defined() << 1)) {
     attrs.Set("tir.script_parsing_detect_access", tvm::IntImm(DataType::Int(64), detect_access));
   }

@@ -50,7 +50,7 @@ namespace json {
 class JSONRuntimeBase : public ffi::ModuleObj {
  public:
   JSONRuntimeBase(const std::string& symbol_name, const std::string& graph_json,
-                  const Array<String> const_names)
+                  const Array<ffi::String> const_names)
       : symbol_name_(symbol_name), graph_json_(graph_json), const_names_(const_names) {
     LoadGraph(graph_json_);
   }
@@ -93,7 +93,7 @@ class JSONRuntimeBase : public ffi::ModuleObj {
    * \param sptr_to_self The pointer to the module node.
    * \return The packed function.
    */
-  Optional<ffi::Function> GetFunction(const String& name) override {
+  Optional<ffi::Function> GetFunction(const ffi::String& name) override {
     ObjectPtr<Object> sptr_to_self = ffi::GetObjectPtr<Object>(this);
     if (name == "get_symbol") {
       return ffi::Function(
@@ -123,8 +123,8 @@ class JSONRuntimeBase : public ffi::ModuleObj {
         // Bind argument tensors to data entries.
         this->SetInputOutputBuffers(args);
 
-        if (auto opt_str = rv->try_cast<String>()) {
-          String purpose = std::move(opt_str.value());
+        if (auto opt_str = rv->try_cast<ffi::String>()) {
+          ffi::String purpose = std::move(opt_str.value());
           if ("debug_dump" == purpose) {
             *rv = this->DebugDump();
           }
@@ -133,7 +133,7 @@ class JSONRuntimeBase : public ffi::ModuleObj {
           profiling::Profiler* prof = static_cast<profiling::Profiler*>(rv->cast<void*>());
           this->RunProfile(prof);
         }
-        // String vendor_prof = this->RunProfile(prof);
+        // ffi::String vendor_prof = this->RunProfile(prof);
       });
     } else if ("__init_" + this->symbol_name_ == name) {
       // The function to initialize constant tensors.
@@ -180,7 +180,7 @@ class JSONRuntimeBase : public ffi::ModuleObj {
     ICHECK(stream->Read(&symbol)) << "Loading symbol name failed";
     ICHECK(stream->Read(&graph_json)) << "Loading graph json failed";
     ICHECK(stream->Read(&consts)) << "Loading the const name list failed";
-    Array<String> const_names;
+    Array<ffi::String> const_names;
     for (const auto& it : consts) {
       const_names.push_back(it);
     }
@@ -194,7 +194,7 @@ class JSONRuntimeBase : public ffi::ModuleObj {
    * \param format the format to return.
    * \return A string of JSON.
    */
-  String InspectSource(const String& format) const override { return graph_json_; }
+  ffi::String InspectSource(const ffi::String& format) const override { return graph_json_; }
 
  protected:
   /*!
@@ -313,7 +313,7 @@ class JSONRuntimeBase : public ffi::ModuleObj {
   /*! \brief The graph. */
   std::string graph_json_;
   /*! \brief The required constant names. */
-  Array<String> const_names_;
+  Array<ffi::String> const_names_;
   /*! \brief The json graph nodes. */
   std::vector<JSONGraphNode> nodes_;
   /*! \brief The input nodes, including variables and constants. */

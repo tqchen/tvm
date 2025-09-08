@@ -45,7 +45,7 @@ namespace runtime {
  * \param target The target module name.
  * \return Whether runtime is enabled.
  */
-TVM_DLL bool RuntimeEnabled(const String& target);
+TVM_DLL bool RuntimeEnabled(const ffi::String& target);
 
 /*! \brief namespace for constant symbols */
 namespace symbol {
@@ -107,7 +107,7 @@ struct ModuleVTableEntryHelper<void (T::*)(Args...)> {
 
 #define TVM_MODULE_VTABLE_BEGIN(TypeKey)                                                 \
   const char* kind() const final { return TypeKey; }                                     \
-  ::tvm::ffi::Optional<::tvm::ffi::Function> GetFunction(const String& _name) override { \
+  ::tvm::ffi::Optional<::tvm::ffi::Function> GetFunction(const ffi::String& _name) override { \
     using SelfPtr = std::remove_cv_t<decltype(this)>;                                    \
     ::tvm::ffi::ObjectPtr<::tvm::ffi::Object> _self =                                    \
         ::tvm::ffi::GetObjectPtr<::tvm::ffi::Object>(this);

@@ -114,11 +114,11 @@ std::pair<Array<tir::ExprRV>, Array<tir::LoopRV>> MultiLevelTilingWideVectorNode
   }
 }
 
-ScheduleRule ScheduleRule::MultiLevelTilingWideVector(String structure,
+ScheduleRule ScheduleRule::MultiLevelTilingWideVector(ffi::String structure,
                                                       Integer vector_length_in_bits,
                                                       Optional<Integer> max_innermost_factor,
-                                                      Optional<Map<String, ffi::Any>> reuse_read,
-                                                      Optional<Map<String, ffi::Any>> reuse_write) {
+                                                      Optional<Map<ffi::String, ffi::Any>> reuse_read,
+                                                      Optional<Map<ffi::String, ffi::Any>> reuse_write) {
   auto node = MultiLevelTilingInitCommon<MultiLevelTilingWideVectorNode>(
       structure, std::nullopt, max_innermost_factor, std::nullopt, reuse_read, reuse_write);
   node->vector_length_in_bits = vector_length_in_bits->value;

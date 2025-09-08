@@ -219,7 +219,7 @@ class GlobalVarNormalizer : private ExprMutator {
   /*! \brief Check if any function needs to be renamed. */
   bool NeedRename() {
     for (const auto& [gvar, func] : module_->functions) {
-      auto global_symbol = func->GetAttr<String>("global_symbol");
+      auto global_symbol = func->GetAttr<ffi::String>("global_symbol");
       if (global_symbol && global_symbol.value() != gvar->name_hint) {
         return true;
       }
@@ -230,7 +230,7 @@ class GlobalVarNormalizer : private ExprMutator {
   /*! \brief Add public functions to the builder, and update the name supplier. */
   void AddPublicFunctions() {
     for (const auto& [gvar, func] : module_->functions) {
-      auto global_symbol = func->GetAttr<String>("global_symbol");
+      auto global_symbol = func->GetAttr<ffi::String>("global_symbol");
       if (!global_symbol) {
         continue;
       }
@@ -250,7 +250,7 @@ class GlobalVarNormalizer : private ExprMutator {
    */
   void AddPrivateFunctions() {
     for (auto [gvar, func] : module_->functions) {
-      auto global_symbol = func->GetAttr<String>("global_symbol");
+      auto global_symbol = func->GetAttr<ffi::String>("global_symbol");
       if (global_symbol) {
         continue;
       }

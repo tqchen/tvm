@@ -377,17 +377,17 @@ void SetTIRVarUpperBound(Function func, arith::Analyzer* ana,
   // memory planning.
   // NOTE: we only apply the annotated upper bounds to the TIR variables that
   // appear in the **function signature**.
-  Map<String, IntImm> var_upper_bound_attr_raw =
-      func->GetAttr<Map<String, IntImm>>("tir_var_upper_bound").value_or(Map<String, IntImm>());
-  Array<String> non_negative_var_attr_raw =
-      func->GetAttr<Array<String>>("tir_non_negative_var").value_or(Array<String>());
-  std::unordered_map<String, IntImm> var_upper_bound_attr;
-  std::unordered_set<String> non_negative_var_attr;
+  Map<ffi::String, IntImm> var_upper_bound_attr_raw =
+      func->GetAttr<Map<ffi::String, IntImm>>("tir_var_upper_bound").value_or(Map<ffi::String, IntImm>());
+  Array<ffi::String> non_negative_var_attr_raw =
+      func->GetAttr<Array<ffi::String>>("tir_non_negative_var").value_or(Array<ffi::String>());
+  std::unordered_map<ffi::String, IntImm> var_upper_bound_attr;
+  std::unordered_set<ffi::String> non_negative_var_attr;
   // We manually check the value type to ensure the values are all positive IntImm.
   for (auto [key, value] : var_upper_bound_attr_raw) {
     var_upper_bound_attr[key] = value;
   }
-  for (const String& var_name : non_negative_var_attr_raw) {
+  for (const ffi::String& var_name : non_negative_var_attr_raw) {
     non_negative_var_attr.insert(var_name);
   }
   Array<tir::Var> var_in_signature = TIRVarsInStructInfo(GetStructInfo(func));

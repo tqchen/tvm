@@ -426,7 +426,7 @@ class WarpMemoryRewriter : private StmtMutator {
     return stmt;
   }
 
-  std::unordered_map<const VarNode*, String> new_storage_scopes_;
+  std::unordered_map<const VarNode*, ffi::String> new_storage_scopes_;
 
  private:
   Stmt VisitStmt_(const AllocateNode* op) {

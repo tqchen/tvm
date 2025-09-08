@@ -21,7 +21,7 @@
 namespace tvm {
 namespace tir {
 
-String ScheduleError::RenderReport(const String& primitive) const {
+ffi::String ScheduleError::RenderReport(const ffi::String& primitive) const {
   IRModule mod = this->mod();
   std::ostringstream os;
 

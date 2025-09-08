@@ -94,7 +94,7 @@ class BufferNode : public Object {
   PrimExpr elem_offset;
   // Meta data
   /*! \brief optional name of the buffer */
-  String name;
+  ffi::String name;
   /*! \brief Alignment requirement of data pointer in bytes. */
   int data_alignment;
   /*!
@@ -159,7 +159,7 @@ class Buffer : public ObjectRef {
   // User can specify data_alignment and offset_factor to be 0
   // A default value will be picked.
   TVM_DLL Buffer(Var data, DataType dtype, Array<PrimExpr> shape, Array<PrimExpr> strides,
-                 PrimExpr elem_offset, String name, int data_alignment, int offset_factor,
+                 PrimExpr elem_offset, ffi::String name, int data_alignment, int offset_factor,
                  BufferType buffer_type, Array<IntImm> axis_separators = {}, Span span = Span());
 
   /*!
@@ -223,7 +223,7 @@ class Buffer : public ObjectRef {
   /*!
    * \brief Return the storage scope associated with this buffer.
    */
-  TVM_DLL String scope() const;
+  TVM_DLL ffi::String scope() const;
 
   TVM_DEFINE_OBJECT_REF_METHODS(Buffer, ObjectRef, BufferNode);
   TVM_DEFINE_OBJECT_REF_COW_METHOD(BufferNode);
@@ -241,7 +241,7 @@ class Buffer : public ObjectRef {
  * \sa Buffer for complete constructor.
  */
 TVM_DLL Buffer decl_buffer(Array<PrimExpr> shape, DataType dtype = DataType::Float(32),
-                           String name = "buffer", String storage_scope = "",
+                           ffi::String name = "buffer", ffi::String storage_scope = "",
                            Optional<Array<IntImm>> axis_separators = std::nullopt,
                            Span span = Span());
 
@@ -275,7 +275,7 @@ class DataProducerNode : public PrimExprConvertibleNode {
    * \brief Get the name hint of the data producer.
    * \return The data type.
    */
-  virtual String GetNameHint() const = 0;
+  virtual ffi::String GetNameHint() const = 0;
 
   static constexpr const char* _type_key = "tir.DataProducer";
   TVM_DECLARE_BASE_OBJECT_INFO(DataProducerNode, PrimExprConvertibleNode);

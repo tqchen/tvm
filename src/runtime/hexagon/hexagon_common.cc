@@ -94,7 +94,7 @@ TVM_FFI_STATIC_INIT_BLOCK({
   refl::GlobalDef().def_packed(
       "ffi.Module.load_from_file.hexagon", [](ffi::PackedArgs args, ffi::Any* rv) {
         auto floader = tvm::ffi::Function::GetGlobalRequired("ffi.Module.load_from_file.so");
-        *rv = floader(args[0].cast<String>(), "so");
+        *rv = floader(args[0].cast<ffi::String>(), "so");
       });
 });
 

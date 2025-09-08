@@ -43,7 +43,7 @@ LiteralDoc PrototxtPrinter::ToLiteralDoc(const ffi::Any& obj) {
   return LiteralDoc::Str(obj_des.str(), std::nullopt);
 }
 
-DictDoc PrototxtPrinter::ToDictDoc(const Map<String, ffi::Any>& dict) {
+DictDoc PrototxtPrinter::ToDictDoc(const Map<ffi::String, ffi::Any>& dict) {
   Array<ExprDoc> keys;
   Array<ExprDoc> values;
   for (const auto& pair : dict) {
@@ -57,7 +57,7 @@ DictDoc PrototxtPrinter::ToDictDoc(const Map<String, ffi::Any>& dict) {
   return DictDoc(keys, values);
 }
 
-DictDoc PrototxtPrinter::ToDictDoc(const std::vector<std::pair<String, Any>>& dict) {
+DictDoc PrototxtPrinter::ToDictDoc(const std::vector<std::pair<ffi::String, Any>>& dict) {
   Array<ExprDoc> keys;
   Array<ExprDoc> values;
   for (const auto& pair : dict) {
@@ -71,18 +71,18 @@ DictDoc PrototxtPrinter::ToDictDoc(const std::vector<std::pair<String, Any>>& di
   return DictDoc(keys, values);
 }
 
-void PrototxtPrinter::Append(const Map<String, ffi::Any>& dict) {
+void PrototxtPrinter::Append(const Map<ffi::String, ffi::Any>& dict) {
   DictDoc doc = ToDictDoc(dict);
   PrintDoc(doc, false);
 }
 
-void PrototxtPrinter::Append(const std::vector<std::pair<String, Any>>& dict) {
+void PrototxtPrinter::Append(const std::vector<std::pair<ffi::String, Any>>& dict) {
   DictDoc doc = ToDictDoc(dict);
   PrintDoc(doc, false);
 }
 
-void PrototxtPrinter::AppendPair(const String& key, const ffi::Any& value) {
-  Map<String, ffi::Any> dict;
+void PrototxtPrinter::AppendPair(const ffi::String& key, const ffi::Any& value) {
+  Map<ffi::String, ffi::Any> dict;
   dict.Set(key, value);
   return Append(dict);
 }

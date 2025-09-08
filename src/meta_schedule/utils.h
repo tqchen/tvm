@@ -136,7 +136,7 @@ inline bool using_ipython() {
  * \brief Print out the performance table interactively in jupyter notebook.
  * \param str The serialized performance table.
  */
-inline void print_interactive_table(const String& data) {
+inline void print_interactive_table(const ffi::String& data) {
   const auto f_print_interactive_table =
       tvm::ffi::Function::GetGlobal("meta_schedule.print_interactive_table");
   ICHECK(f_print_interactive_table.has_value())
@@ -214,14 +214,14 @@ std::string JSONDumps(Any json_obj);
  * \param hash_code The hash code
  * \return The string representation of the hash code
  */
-inline String SHash2Str(Workload::THashCode hash_code) { return std::to_string(hash_code); }
+inline ffi::String SHash2Str(Workload::THashCode hash_code) { return std::to_string(hash_code); }
 
 /*!
  * \brief Converts an TVM object to the hex string representation of its structural hash.
  * \param obj The TVM object.
  * \return The hex string representation of the hash code.
  */
-inline String SHash2Hex(const ObjectRef& obj) {
+inline ffi::String SHash2Hex(const ObjectRef& obj) {
   std::ostringstream os;
   size_t hash_code = 0;
   if (obj.defined()) {
@@ -272,7 +272,7 @@ inline IRModule DeepCopyIRModule(IRModule mod) { return LoadJSON(SaveJSON(mod)).
  * \param delim The delimiter
  * \return The concatenated string
  */
-inline std::string Concat(const Array<String>& strs, const std::string& delim) {
+inline std::string Concat(const Array<ffi::String>& strs, const std::string& delim) {
   if (strs.empty()) {
     return "";
   }
@@ -292,7 +292,7 @@ inline std::string Concat(const Array<String>& strs, const std::string& delim) {
  * \return The BlockRV
  */
 inline tir::BlockRV GetRVFromSRef(const tir::Schedule& sch, const tir::StmtSRef& block_sref,
-                                  const String& global_var_name) {
+                                  const ffi::String& global_var_name) {
   const tir::BlockNode* block = TVM_SREF_TO_BLOCK(block_sref);
   return sch->GetBlock(block->name_hint, global_var_name);
 }
@@ -577,12 +577,12 @@ class BlockCollector : public tir::StmtVisitor {
   /*! \brief Entry point */
   Array<tir::BlockRV> Run() {
     std::vector<tir::BlockRV> results;
-    auto f_collect = [this, &results](tir::PrimFunc func, String func_name) {
+    auto f_collect = [this, &results](tir::PrimFunc func, ffi::String func_name) {
       func_name_ = func_name;
       block_names_.clear();
       blocks_to_collect_.clear();
       VisitStmt(func->body);
-      for (const String& name : blocks_to_collect_) {
+      for (const ffi::String& name : blocks_to_collect_) {
         results.push_back(sch_->GetBlock(name, func_name_));
       }
     };
@@ -629,15 +629,15 @@ class BlockCollector : public tir::StmtVisitor {
   /*! \brief An optional packed func that allows only certain blocks to be collected. */
   const ffi::Function f_block_filter_;
   /*! \brief The set of func name and block name pair */
-  std::unordered_set<String> block_names_;
+  std::unordered_set<ffi::String> block_names_;
   /* \brief The list of blocks to collect in order */
-  Array<String> blocks_to_collect_;
+  Array<ffi::String> blocks_to_collect_;
   /*! \brief Name of the current PrimFunc */
-  String func_name_;
+  ffi::String func_name_;
 };
 
-void JSONFileAppendLine(const String& path, const std::string& line);
-std::vector<Any> JSONFileReadLines(const String& path, int num_threads, bool allow_missing);
+void JSONFileAppendLine(const ffi::String& path, const std::string& line);
+std::vector<Any> JSONFileReadLines(const ffi::String& path, int num_threads, bool allow_missing);
 }  // namespace meta_schedule
 }  // namespace tvm
 

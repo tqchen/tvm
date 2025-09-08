@@ -92,7 +92,7 @@ void FunctionFrameNode::ExitWithScope() {
     CHECK(name.has_value()) << "ValueError: The function name must be defined before exiting the "
                                "function scope, if it's defined in a Module";
     const IRModuleFrame& frame = opt_frame.value();
-    const String& func_name = name.value_or("");
+    const ffi::String& func_name = name.value_or("");
     if (!frame->global_var_map.count(func_name)) {
       // First time visiting the function.
       ir::DeclFunction(func_name, func);
@@ -241,7 +241,7 @@ void ThenFrameNode::EnterWithScope() {
 
 void ThenFrameNode::ExitWithScope() {
   SeqExprFrameNode::ExitWithScope();
-  String var_name;
+  ffi::String var_name;
   output = GetSeqExprForBranch(ffi::GetRef<ThenFrame>(this), &var_name);
   IfFrame frame = FindIfFrame("R.Then");
   frame->then_expr = output;
@@ -259,7 +259,7 @@ void ElseFrameNode::EnterWithScope() {
 
 void ElseFrameNode::ExitWithScope() {
   SeqExprFrameNode::ExitWithScope();
-  String var_name;
+  ffi::String var_name;
   output = GetSeqExprForBranch(ffi::GetRef<ElseFrame>(this), &var_name);
   IfFrame frame = FindIfFrame("R.Else");
   frame->else_expr = output;

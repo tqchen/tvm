@@ -243,7 +243,7 @@ class BufferAccessRegionCollector : public StmtExprVisitor {
     }
 
     // Step 2. Record explicit read/write region annotations
-    auto record_explicit_region = [&](const String& attr_key, BufferIndexType index_type) {
+    auto record_explicit_region = [&](const ffi::String& attr_key, BufferIndexType index_type) {
       auto it = op->annotations.find(attr_key);
       if (it != op->annotations.end()) {
         Array<Integer> buffer_indices = Downcast<Array<Integer>>((*it).second);

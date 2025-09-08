@@ -47,11 +47,11 @@ Array<PrimExpr> ScanOpNode::output_shape(size_t i) const {
   return state_placeholder[i]->shape;
 }
 
-ScanOp::ScanOp(std::string name, std::string tag, Optional<Map<String, ffi::Any>> attrs,
+ScanOp::ScanOp(std::string name, std::string tag, Optional<Map<ffi::String, ffi::Any>> attrs,
                IterVar axis, Array<Tensor> init, Array<Tensor> update,
                Array<Tensor> state_placeholder, Array<Tensor> inputs) {
   if (!attrs.defined()) {
-    attrs = Map<String, ffi::Any>();
+    attrs = Map<ffi::String, ffi::Any>();
   }
   auto n = ffi::make_object<ScanOpNode>();
   ICHECK_EQ(init.size(), update.size());
@@ -102,7 +102,7 @@ ScanOp::ScanOp(std::string name, std::string tag, Optional<Map<String, ffi::Any>
 TVM_FFI_STATIC_INIT_BLOCK({
   namespace refl = tvm::ffi::reflection;
   refl::GlobalDef().def(
-      "te.ScanOp", [](std::string name, std::string tag, Optional<Map<String, ffi::Any>> attrs,
+      "te.ScanOp", [](std::string name, std::string tag, Optional<Map<ffi::String, ffi::Any>> attrs,
                       IterVar axis, Array<Tensor> init, Array<Tensor> update,
                       Array<Tensor> state_placeholder, Array<Tensor> inputs) {
         return ScanOp(name, tag, attrs, axis, init, update, state_placeholder, inputs);
@@ -111,7 +111,7 @@ TVM_FFI_STATIC_INIT_BLOCK({
 
 Array<Tensor> scan(Array<Tensor> init, Array<Tensor> update, Array<Tensor> state_placeholder,
                    Array<Tensor> inputs, std::string name, std::string tag,
-                   Optional<Map<String, ffi::Any>> attrs) {
+                   Optional<Map<ffi::String, ffi::Any>> attrs) {
   IterVar scan_axis =
       IterVar(Range::FromMinExtent(init[0]->shape[0], update[0]->shape[0] - init[0]->shape[0]),
               Var(name + ".idx"), kOrdered);

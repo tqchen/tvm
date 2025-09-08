@@ -49,7 +49,7 @@ using namespace tvm::runtime::json;
 class cuDNNJSONRuntime : public JSONRuntimeBase {
  public:
   cuDNNJSONRuntime(const std::string& symbol_name, const std::string& graph_json,
-                   const Array<String> const_names)
+                   const Array<ffi::String> const_names)
       : JSONRuntimeBase(symbol_name, graph_json, const_names) {}
 
   void Init(const Array<Tensor>& consts) override {
@@ -238,8 +238,8 @@ class cuDNNJSONRuntime : public JSONRuntimeBase {
   std::vector<std::function<void()>> op_execs_;
 };
 
-ffi::Module cuDNNJSONRuntimeCreate(String symbol_name, String graph_json,
-                                   const Array<String>& const_names) {
+ffi::Module cuDNNJSONRuntimeCreate(ffi::String symbol_name, ffi::String graph_json,
+                                   const Array<ffi::String>& const_names) {
   auto n = ffi::make_object<cuDNNJSONRuntime>(symbol_name, graph_json, const_names);
   return ffi::Module(n);
 }

@@ -41,7 +41,7 @@ GlobalVarSupply::GlobalVarSupply(const NameSupply& name_supply,
 }
 
 std::string GetModuleName(const IRModule& module) {
-  return module->GetAttr<String>(tvm::attr::kModuleName).value_or("tvmgen_default");
+  return module->GetAttr<ffi::String>(tvm::attr::kModuleName).value_or("tvmgen_default");
 }
 
 GlobalVarSupply::GlobalVarSupply(const Array<IRModule>& modules) : GlobalVarSupply() {
@@ -72,8 +72,8 @@ GlobalVarSupplyNode::GlobalVarSupplyNode(NameSupply name_supply,
                                          std::unordered_map<std::string, GlobalVar> name_to_var_map)
     : name_supply_(std::move(name_supply)), name_to_var_map_(std::move(name_to_var_map)) {}
 
-GlobalVar GlobalVarSupplyNode::UniqueGlobalFor(const String& name, bool add_prefix) {
-  String final_name = name_supply_->ReserveName(name, add_prefix);
+GlobalVar GlobalVarSupplyNode::UniqueGlobalFor(const ffi::String& name, bool add_prefix) {
+  ffi::String final_name = name_supply_->ReserveName(name, add_prefix);
 
   auto it = name_to_var_map_.find(final_name);
   if (it != name_to_var_map_.end()) {
@@ -85,8 +85,8 @@ GlobalVar GlobalVarSupplyNode::UniqueGlobalFor(const String& name, bool add_pref
   }
 }
 
-GlobalVar GlobalVarSupplyNode::FreshGlobal(String name, bool add_prefix) {
-  String final_name = name_supply_->FreshName(name, add_prefix);
+GlobalVar GlobalVarSupplyNode::FreshGlobal(ffi::String name, bool add_prefix) {
+  ffi::String final_name = name_supply_->FreshName(name, add_prefix);
   ICHECK(name_to_var_map_.find(final_name) == name_to_var_map_.end())
       << "GlobalVar already exists for name " << final_name;
   GlobalVar var = GlobalVar(final_name);

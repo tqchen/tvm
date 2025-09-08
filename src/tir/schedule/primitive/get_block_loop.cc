@@ -22,9 +22,9 @@
 namespace tvm {
 namespace tir {
 
-Array<StmtSRef> GetBlocks(const ScheduleState& self, const String& name, const GlobalVar& gv) {
+Array<StmtSRef> GetBlocks(const ScheduleState& self, const ffi::String& name, const GlobalVar& gv) {
   struct Finder : public StmtVisitor {
-    explicit Finder(const ScheduleState& self, const String& name) : self_(self), name_(name) {}
+    explicit Finder(const ScheduleState& self, const ffi::String& name) : self_(self), name_(name) {}
 
     void VisitStmt_(const BlockNode* block) override {
       if (block->name_hint == name_) {
@@ -36,7 +36,7 @@ Array<StmtSRef> GetBlocks(const ScheduleState& self, const String& name, const G
     }
 
     const ScheduleState& self_;
-    const String& name_;
+    const ffi::String& name_;
     Array<StmtSRef> results_;
   };
 
@@ -104,11 +104,11 @@ struct GetBlockTraits : public UnpackedInstTraits<GetBlockTraits> {
   static constexpr size_t kNumAttrs = 2;
   static constexpr size_t kNumDecisions = 0;
 
-  static BlockRV UnpackedApplyToSchedule(Schedule sch, String name, String func_name) {
+  static BlockRV UnpackedApplyToSchedule(Schedule sch, ffi::String name, ffi::String func_name) {
     return sch->GetBlock(name, func_name);
   }
 
-  static String UnpackedAsPython(Array<String> outputs, String name, String func_name) {
+  static ffi::String UnpackedAsPython(Array<ffi::String> outputs, ffi::String name, ffi::String func_name) {
     PythonAPICall py("get_block");
     py.Input("name", name);
     py.Input("func_name", func_name);
@@ -133,7 +133,7 @@ struct GetLoopsTraits : public UnpackedInstTraits<GetLoopsTraits> {
     return sch->GetLoops(block_rv);
   }
 
-  static String UnpackedAsPython(Array<String> outputs, String block_rv) {
+  static ffi::String UnpackedAsPython(Array<ffi::String> outputs, ffi::String block_rv) {
     PythonAPICall py("get_loops");
     py.Input("block", block_rv);
     py.OutputList(outputs);
@@ -164,7 +164,7 @@ struct GetChildBlocksTraits : public UnpackedInstTraits<GetChildBlocksTraits> {
     throw;
   }
 
-  static String UnpackedAsPython(Array<String> outputs, String block_or_loop_rv) {
+  static ffi::String UnpackedAsPython(Array<ffi::String> outputs, ffi::String block_or_loop_rv) {
     PythonAPICall py("get_child_blocks");
     py.Input("", block_or_loop_rv);
     py.OutputList(outputs);
@@ -188,7 +188,7 @@ struct GetProducersTraits : public UnpackedInstTraits<GetProducersTraits> {
     return sch->GetProducers(block_rv);
   }
 
-  static String UnpackedAsPython(Array<String> outputs, String block_rv) {
+  static ffi::String UnpackedAsPython(Array<ffi::String> outputs, ffi::String block_rv) {
     PythonAPICall py("get_producers");
     py.Input("block", block_rv);
     py.OutputList(outputs);
@@ -212,7 +212,7 @@ struct GetConsumersTraits : public UnpackedInstTraits<GetConsumersTraits> {
     return sch->GetConsumers(block_rv);
   }
 
-  static String UnpackedAsPython(Array<String> outputs, String block_rv) {
+  static ffi::String UnpackedAsPython(Array<ffi::String> outputs, ffi::String block_rv) {
     PythonAPICall py("get_consumers");
     py.Input("block", block_rv);
     py.OutputList(outputs);
@@ -236,7 +236,7 @@ struct GetOutputBlocksTraits : public UnpackedInstTraits<GetOutputBlocksTraits> 
     return sch->GetOutputBlocks(block_rv);
   }
 
-  static String UnpackedAsPython(Array<String> outputs, String block_rv) {
+  static ffi::String UnpackedAsPython(Array<ffi::String> outputs, ffi::String block_rv) {
     PythonAPICall py("get_output_blocks");
     py.Input("block", block_rv);
     py.OutputList(outputs);

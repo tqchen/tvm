@@ -42,8 +42,8 @@ TVM_FFI_STATIC_INIT_BLOCK({
 /* relax.nn.conv1d */
 
 Expr conv1d(Expr data, Expr weight, Array<IntImm> strides, Array<IntImm> padding,
-            Array<IntImm> dilation, int groups, String data_layout, String kernel_layout,
-            Optional<String> out_layout, Optional<DataType> out_dtype) {
+            Array<IntImm> dilation, int groups, ffi::String data_layout, ffi::String kernel_layout,
+            Optional<ffi::String> out_layout, Optional<DataType> out_dtype) {
   padding = GetCompletePadding1D(std::move(padding));
 
   CHECK_GT(groups, 0) << "The number of groups in convolution is expected to be positive. However, "
@@ -138,7 +138,7 @@ StructInfo InferStructInfoConv1d(const Call& call, const BlockBuilder& ctx) {
 }
 
 InferLayoutOutput InferLayoutConv1d(const Call& call,
-                                    const Map<String, Array<String>>& desired_layouts,
+                                    const Map<ffi::String, Array<ffi::String>>& desired_layouts,
                                     const VarLayoutMap& var_layout_map) {
   const auto& it = desired_layouts.find("relax.nn.conv1d");
   const auto* attrs = call->attrs.as<Conv1DAttrs>();
@@ -201,8 +201,8 @@ TVM_REGISTER_OP("relax.nn.conv1d")
 /* relax.nn.conv2d */
 
 Expr conv2d(Expr data, Expr weight, Array<IntImm> strides, Array<IntImm> padding,
-            Array<IntImm> dilation, int groups, String data_layout, String kernel_layout,
-            Optional<String> out_layout, Optional<DataType> out_dtype) {
+            Array<IntImm> dilation, int groups, ffi::String data_layout, ffi::String kernel_layout,
+            Optional<ffi::String> out_layout, Optional<DataType> out_dtype) {
   padding = GetCompletePadding2D(std::move(padding));
   if (strides.size() == 1) {
     strides.push_back(strides[0]);
@@ -308,7 +308,7 @@ StructInfo InferStructInfoConv2d(const Call& call, const BlockBuilder& ctx) {
 }
 
 InferLayoutOutput InferLayoutConv2d(const Call& call,
-                                    const Map<String, Array<String>>& desired_layouts,
+                                    const Map<ffi::String, Array<ffi::String>>& desired_layouts,
                                     const VarLayoutMap& var_layout_map) {
   const auto& it = desired_layouts.find("relax.nn.conv2d");
   const auto* attrs = call->attrs.as<Conv2DAttrs>();
@@ -400,8 +400,8 @@ TVM_REGISTER_OP("relax.nn.conv2d")
 /* relax.nn.conv3d */
 
 Expr conv3d(Expr data, Expr weight, Array<IntImm> strides, Array<IntImm> padding,
-            Array<IntImm> dilation, int groups, String data_layout, String kernel_layout,
-            Optional<String> out_layout, Optional<DataType> out_dtype) {
+            Array<IntImm> dilation, int groups, ffi::String data_layout, ffi::String kernel_layout,
+            Optional<ffi::String> out_layout, Optional<DataType> out_dtype) {
   padding = GetCompletePadding3D(std::move(padding));
   if (strides.size() == 1) {
     strides.push_back(strides[0]);
@@ -515,7 +515,7 @@ StructInfo InferStructInfoConv3d(const Call& call, const BlockBuilder& ctx) {
 }
 
 InferLayoutOutput InferLayoutConv3d(const Call& call,
-                                    const Map<String, Array<String>>& desired_layouts,
+                                    const Map<ffi::String, Array<ffi::String>>& desired_layouts,
                                     const VarLayoutMap& var_layout_map) {
   const auto& it = desired_layouts.find("relax.nn.conv3d");
   const auto* attrs = call->attrs.as<Conv3DAttrs>();
@@ -577,7 +577,7 @@ TVM_REGISTER_OP("relax.nn.conv3d")
 
 Expr conv1d_transpose(Expr data, Expr weight, Array<IntImm> strides, Array<IntImm> padding,
                       Array<IntImm> output_padding, Array<IntImm> dilation, int groups,
-                      String data_layout, String kernel_layout, Optional<String> out_layout,
+                      ffi::String data_layout, ffi::String kernel_layout, Optional<ffi::String> out_layout,
                       Optional<DataType> out_dtype) {
   padding = GetCompletePadding1D(std::move(padding));
 
@@ -707,7 +707,7 @@ TVM_REGISTER_OP("relax.nn.conv1d_transpose")
 
 Expr conv2d_transpose(Expr data, Expr weight, Array<IntImm> strides, Array<IntImm> padding,
                       Array<IntImm> output_padding, Array<IntImm> dilation, int groups,
-                      String data_layout, String kernel_layout, Optional<String> out_layout,
+                      ffi::String data_layout, ffi::String kernel_layout, Optional<ffi::String> out_layout,
                       Optional<DataType> out_dtype) {
   padding = GetCompletePadding2D(std::move(padding));
   if (output_padding.size() == 1) {

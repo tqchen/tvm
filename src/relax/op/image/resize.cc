@@ -35,8 +35,8 @@ TVM_FFI_STATIC_INIT_BLOCK({ Resize2DAttrs::RegisterReflection(); });
 
 /* relax.resize2d */
 
-Expr resize2d(Expr data, Expr size, Array<FloatImm> roi, String layout, String method,
-              String coordinate_transformation_mode, String rounding_method, double cubic_alpha,
+Expr resize2d(Expr data, Expr size, Array<FloatImm> roi, ffi::String layout, ffi::String method,
+              ffi::String coordinate_transformation_mode, ffi::String rounding_method, double cubic_alpha,
               int cubic_exclude, double extrapolation_value, Optional<DataType> out_dtype) {
   ObjectPtr<Resize2DAttrs> attrs = ffi::make_object<Resize2DAttrs>();
   attrs->roi = std::move(roi);
@@ -109,7 +109,7 @@ StructInfo InferStructInfoResize2D(const Call& call, const BlockBuilder& ctx) {
 }
 
 InferLayoutOutput InferLayoutResize2d(const Call& call,
-                                      const Map<String, Array<String>>& desired_layouts,
+                                      const Map<ffi::String, Array<ffi::String>>& desired_layouts,
                                       const VarLayoutMap& var_layout_map) {
   const auto& it = desired_layouts.find("relax.image.resize2d");
   const auto* attrs = call->attrs.as<Resize2DAttrs>();

@@ -174,7 +174,7 @@ class IRConvertSSA final : public StmtExprMutator {
         return DictAttrs();
       }
 
-      Map<String, ffi::Any> dict;
+      Map<ffi::String, ffi::Any> dict;
       bool made_change = false;
 
       for (const auto& [key, old_value] : func->attrs->dict) {
@@ -530,7 +530,7 @@ class IRConvertSSA final : public StmtExprMutator {
 
 Stmt ConvertSSA(Stmt stmt) { return IRConvertSSA()(std::move(stmt)); }
 
-String GetPtrStorageScope(Var buffer_var) {
+ffi::String GetPtrStorageScope(Var buffer_var) {
   const auto* ptr_type = buffer_var->type_annotation.as<PointerTypeNode>();
   ICHECK(ptr_type) << "The provided variable is not of pointer type";
   return ptr_type->storage_scope;

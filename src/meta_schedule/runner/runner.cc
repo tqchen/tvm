@@ -23,7 +23,7 @@
 namespace tvm {
 namespace meta_schedule {
 
-RunnerInput::RunnerInput(String artifact_path, String device_type, Array<ArgInfo> args_info) {
+RunnerInput::RunnerInput(ffi::String artifact_path, ffi::String device_type, Array<ArgInfo> args_info) {
   ObjectPtr<RunnerInputNode> n = ffi::make_object<RunnerInputNode>();
   n->artifact_path = artifact_path;
   n->device_type = device_type;
@@ -31,7 +31,7 @@ RunnerInput::RunnerInput(String artifact_path, String device_type, Array<ArgInfo
   this->data_ = n;
 }
 
-RunnerResult::RunnerResult(Optional<Array<FloatImm>> run_secs, Optional<String> error_msg) {
+RunnerResult::RunnerResult(Optional<Array<FloatImm>> run_secs, Optional<ffi::String> error_msg) {
   ObjectPtr<RunnerResultNode> n = ffi::make_object<RunnerResultNode>();
   n->run_secs = run_secs;
   n->error_msg = error_msg;
@@ -64,11 +64,11 @@ TVM_FFI_STATIC_INIT_BLOCK({
   namespace refl = tvm::ffi::reflection;
   refl::GlobalDef()
       .def("meta_schedule.RunnerInput",
-           [](String artifact_path, String device_type, Array<ArgInfo> args_info) -> RunnerInput {
+           [](ffi::String artifact_path, ffi::String device_type, Array<ArgInfo> args_info) -> RunnerInput {
              return RunnerInput(artifact_path, device_type, args_info);
            })
       .def("meta_schedule.RunnerResult",
-           [](Optional<Array<FloatImm>> run_secs, Optional<String> error_msg) -> RunnerResult {
+           [](Optional<Array<FloatImm>> run_secs, Optional<ffi::String> error_msg) -> RunnerResult {
              return RunnerResult(run_secs, error_msg);
            })
       .def("meta_schedule.RunnerFuture",

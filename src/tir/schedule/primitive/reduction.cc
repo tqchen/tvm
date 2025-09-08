@@ -135,12 +135,12 @@ class LoopHeightError : public ScheduleError {
   explicit LoopHeightError(IRModule mod, For loop, Block block)
       : mod_(std::move(mod)), loop_(std::move(loop)), block_(std::move(block)) {}
 
-  String FastErrorString() const final {
+  ffi::String FastErrorString() const final {
     return "ScheduleError: decompose_reduction expect the loop to be higher than all the loops "
            "related to reduce block var";
   }
 
-  String DetailRenderTemplate() const final {
+  ffi::String DetailRenderTemplate() const final {
     std::ostringstream os;
     os << "ScheduleError: decompose_reduction expect the loop {0} to be higher than all the loops "
           "related to reduce block var of block {1}";
@@ -443,12 +443,12 @@ class NotSerialLoopKindError : public ScheduleError {
   explicit NotSerialLoopKindError(IRModule mod, For loop)
       : mod_(std::move(mod)), loop_(std::move(loop)) {}
 
-  String FastErrorString() const final {
+  ffi::String FastErrorString() const final {
     return "ScheduleError: The input loop of rfactor is required to be `kSerial`";
   }
 
-  String DetailRenderTemplate() const final {
-    String str_kind = ForKind2String(loop_->kind);
+  ffi::String DetailRenderTemplate() const final {
+    ffi::String str_kind = ForKind2String(loop_->kind);
     std::ostringstream os;
     os << "ScheduleError: The input loop {0} of rfactor is required to be `Serial`. However, the "
           "kind of {0} is `"
@@ -468,12 +468,12 @@ class FactorAxisOutOfRangeError : public ScheduleError {
   explicit FactorAxisOutOfRangeError(IRModule mod, Buffer buffer, int factor_axis)
       : mod_(std::move(mod)), buffer_(std::move(buffer)), factor_axis_(factor_axis) {}
 
-  String FastErrorString() const final {
+  ffi::String FastErrorString() const final {
     return "ScheduleError: The input `factor_axis` is out of range. It is required to be in range "
            "[-(ndim + 1), ndim] where `ndim` is the number of dimensions of the write buffer";
   }
 
-  String DetailRenderTemplate() const final {
+  ffi::String DetailRenderTemplate() const final {
     std::ostringstream os;
     int ndim = static_cast<int>(buffer_->shape.size());
     os << "The write buffer " << buffer_->name << " has " << ndim
@@ -515,7 +515,7 @@ class LoopPropertyError : public ScheduleError {
   explicit LoopPropertyError(IRModule mod, For loop, ErrorType error_type)
       : mod_(std::move(mod)), loop_(std::move(loop)), error_type_(error_type) {}
 
-  String FastErrorString() const final {
+  ffi::String FastErrorString() const final {
     switch (error_type_) {
       case kDataParIterTouchRFactorLoop:
         return "ScheduleError: The loop to be applied rfactor is required not to be touched by any "
@@ -534,7 +534,7 @@ class LoopPropertyError : public ScheduleError {
     throw;
   }
 
-  String DetailRenderTemplate() const final {
+  ffi::String DetailRenderTemplate() const final {
     switch (error_type_) {
       case kDataParIterTouchRFactorLoop:
         return "The loop to be applied rfactor is {0}, which is required not to be touched by any "
@@ -687,7 +687,7 @@ class BaseBlockCreator {
     }
     CreateReadWriteRegions();
 
-    String new_block_name = old_block_realize_->block->name_hint;
+    ffi::String new_block_name = old_block_realize_->block->name_hint;
     PrimExpr predicate = const_true();
     if (is_rf_block_) {
       new_block_name = new_block_name + "_rf";
@@ -1304,7 +1304,7 @@ struct DecomposeReductionTraits : public UnpackedInstTraits<DecomposeReductionTr
     return sch->DecomposeReduction(block_rv, loop_rv);
   }
 
-  static String UnpackedAsPython(Array<String> outputs, String block_rv, String loop_rv) {
+  static ffi::String UnpackedAsPython(Array<ffi::String> outputs, ffi::String block_rv, ffi::String loop_rv) {
     PythonAPICall py("decompose_reduction");
     py.Input("block", block_rv);
     py.Input("loop", loop_rv);
@@ -1329,7 +1329,7 @@ struct RFactorTraits : public UnpackedInstTraits<RFactorTraits> {
     return sch->RFactor(loop_rv, factor_axis->value);
   }
 
-  static String UnpackedAsPython(Array<String> outputs, String loop_rv, Integer factor_axis) {
+  static ffi::String UnpackedAsPython(Array<ffi::String> outputs, ffi::String loop_rv, Integer factor_axis) {
     PythonAPICall py("rfactor");
     py.Input("loop", loop_rv);
     py.Input("factor_axis", factor_axis->value);

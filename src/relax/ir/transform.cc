@@ -160,7 +160,7 @@ IRModule FunctionPassNode::operator()(IRModule mod, const PassContext& pass_ctx)
 }
 
 Pass CreateFunctionPass(std::function<Function(Function, IRModule, PassContext)> pass_func,
-                        int opt_level, String name, tvm::Array<String> required, bool traceable) {
+                        int opt_level, ffi::String name, tvm::Array<ffi::String> required, bool traceable) {
   PassInfo pass_info = PassInfo(opt_level, name, required, traceable);
   return FunctionPass(std::move(pass_func), pass_info);
 }
@@ -238,8 +238,8 @@ class DataflowBlockMutator : public ExprMutator {
    */
   BindingBlock VisitBindingBlock_(const DataflowBlockNode* n) final {
     // collect Global Scope Vars and Symbolic Vars inside the DataflowBlock
-    Map<String, Var> global_scope_vars;
-    Map<String, tir::Var> symbolic_vars;
+    Map<ffi::String, Var> global_scope_vars;
+    Map<ffi::String, tir::Var> symbolic_vars;
     for (const Binding& binding : n->bindings) {
       Var var = binding->var;
       if (const auto* match_cast = binding.as<MatchCastNode>()) {
@@ -384,7 +384,7 @@ IRModule DataflowBlockPassNode::operator()(IRModule mod, const PassContext& pass
 
 Pass CreateDataflowBlockPass(
     std::function<DataflowBlock(DataflowBlock, IRModule, PassContext)> pass_func, int opt_level,
-    String name, tvm::Array<String> required, bool traceable) {
+    ffi::String name, tvm::Array<ffi::String> required, bool traceable) {
   PassInfo pass_info = PassInfo(opt_level, name, required, traceable);
   return DataflowBlockPass(std::move(pass_func), pass_info);
 }

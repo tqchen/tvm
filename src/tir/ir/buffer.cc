@@ -50,7 +50,7 @@ Array<PrimExpr> SimplifyArray(arith::Analyzer* ana, Array<PrimExpr> array) {
   return array;
 }
 
-Buffer decl_buffer(Array<PrimExpr> shape, DataType dtype, String name, String storage_scope,
+Buffer decl_buffer(Array<PrimExpr> shape, DataType dtype, ffi::String name, ffi::String storage_scope,
                    Optional<Array<IntImm>> axis_separators, Span span) {
   DataType storage_dtype = (dtype == DataType::Bool() ? DataType::Int(8) : dtype);
   return Buffer(Var(name, PointerType(PrimType(storage_dtype), storage_scope), span), dtype, shape,
@@ -456,7 +456,7 @@ Stmt Buffer::vstore(Array<PrimExpr> begin, PrimExpr value, Optional<PrimExpr> pr
   return BufferStore(*this, value, indices, predicate);
 }
 
-String Buffer::scope() const {
+ffi::String Buffer::scope() const {
   const auto* ptr_type = (*this)->data->type_annotation.as<PointerTypeNode>();
   ICHECK(ptr_type) << "Buffer variable is not of pointer type";
   if (ptr_type->storage_scope.empty()) {
@@ -559,7 +559,7 @@ PrimExpr Buffer::access_ptr(int access_mask, DataType ptr_type, int content_lane
 }
 
 Buffer::Buffer(Var data, DataType dtype, Array<PrimExpr> shape, Array<PrimExpr> strides,
-               PrimExpr elem_offset, String name, int data_alignment, int offset_factor,
+               PrimExpr elem_offset, ffi::String name, int data_alignment, int offset_factor,
                BufferType buffer_type, Array<IntImm> axis_separators, Span span) {
   DataType storage_dtype = dtype;
   // specially handle bool
@@ -647,14 +647,14 @@ TVM_FFI_STATIC_INIT_BLOCK({
       .def_packed("tir.Buffer",
                   [](ffi::PackedArgs args, ffi::Any* ret) {
                     ICHECK_EQ(args.size(), 11);
-                    auto buffer_type = args[8].cast<String>();
+                    auto buffer_type = args[8].cast<ffi::String>();
                     BufferType type = (buffer_type == "auto_broadcast") ? kAutoBroadcast : kDefault;
                     auto data = args[0].cast<Var>();
                     auto dtype = args[1].cast<DataType>();
                     auto shape = args[2].cast<Array<PrimExpr>>();
                     auto strides = args[3].cast<Array<PrimExpr>>();
                     auto elem_offset = args[4].cast<PrimExpr>();
-                    auto name = args[5].cast<String>();
+                    auto name = args[5].cast<ffi::String>();
                     auto data_alignment = args[6].cast<int>();
                     auto offset_factor = args[7].cast<int>();
                     auto axis_separators = args[9].cast<Array<IntImm>>();

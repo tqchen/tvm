@@ -342,7 +342,7 @@ class SingleEnvThreadVerifier : public Verifier<SingleEnvThreadVerifier> {
     }
   }
 
-  std::unordered_map<String, std::tuple<Var, AccessPath>> env_thread_vars_;
+  std::unordered_map<ffi::String, std::tuple<Var, AccessPath>> env_thread_vars_;
 };
 
 bool VerifyWellFormed(const PrimFunc& func, bool assert_mode) {

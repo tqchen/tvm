@@ -139,7 +139,7 @@ class WellFormedChecker : public relax::ExprVisitor,
     // to check again
 
     // check name in global var and gsymbol
-    Optional<String> gsymbol = func->GetAttr<String>(tvm::attr::kGlobalSymbol);
+    Optional<ffi::String> gsymbol = func->GetAttr<ffi::String>(tvm::attr::kGlobalSymbol);
     if (gsymbol.has_value() && gsymbol != var->name_hint) {
       Malformed(Diagnostic::Error(func->span)
                 << "Name in GlobalVar is not equal to name in gsymbol: " << var

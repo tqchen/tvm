@@ -68,7 +68,7 @@ class TIRFrame : public IRBuilderFrame {
 class PrimFuncFrameNode : public TIRFrameNode {
  public:
   /*! \brief The name of the block. */
-  Optional<String> name;
+  Optional<ffi::String> name;
   /*! \brief Function parameters. */
   Array<tvm::tir::Var> args;
   /*! \brief Whether the PrimFunc is annotated as private. */
@@ -78,7 +78,7 @@ class PrimFuncFrameNode : public TIRFrameNode {
   /*! \brief Maps some parameters to specific Buffer data structures. */
   Map<tvm::tir::Var, tvm::tir::Buffer> buffer_map;
   /*! \brief Additional attributes storing the meta-data */
-  Map<String, Any> attrs;
+  Map<ffi::String, Any> attrs;
   /*! \brief The variable map bound to thread env. */
   Map<tvm::tir::Var, tvm::tir::IterVar> env_threads;
   /*! \brief The buffer allocated in root block. */
@@ -126,7 +126,7 @@ class PrimFuncFrame : public TIRFrame {
 class BlockFrameNode : public TIRFrameNode {
  public:
   /*! \brief The name of the block. */
-  String name;
+  ffi::String name;
   /*! \brief The variables of the block. */
   Array<tvm::tir::IterVar> iter_vars;
   /*! \brief The read buffer regions of the block. */
@@ -140,7 +140,7 @@ class BlockFrameNode : public TIRFrameNode {
   /*! \brief The match buffer regions. */
   Array<tvm::tir::MatchBufferRegion> match_buffers;
   /*! \brief The annotation of the block. */
-  Optional<Map<String, Any>> annotations;
+  Optional<Map<ffi::String, Any>> annotations;
   /*! \brief The corresponding values of the iter vars. */
   Array<PrimExpr> iter_values;
   /*!
@@ -369,7 +369,7 @@ class LaunchThreadFrameNode : public TIRFrameNode {
   /*! \brief The extent of environment thread. */
   PrimExpr extent;
   /*! \brief The attribute key, could be either virtual_thread or thread_extent. */
-  String attr_key;
+  ffi::String attr_key;
   /*! \brief The iteration variable. */
   tvm::tir::IterVar iter_var;
 
@@ -413,7 +413,7 @@ class RealizeFrameNode : public TIRFrameNode {
   /*! \brief The region of buffer access. */
   tvm::tir::BufferRegion buffer_slice;
   /*! \brief The storage scope associated with this realization. */
-  String storage_scope;
+  ffi::String storage_scope;
   /*! \brief The condition expression. */
   PrimExpr condition;
 
@@ -458,11 +458,11 @@ class AllocateFrameNode : public TIRFrameNode {
   /*! \brief The data type of the buffer. */
   DataType dtype;
   /*! \brief The storage scope. */
-  String storage_scope;
+  ffi::String storage_scope;
   /*! \brief The condition. */
   PrimExpr condition;
   /*! \brief Additional annotation hints. */
-  Map<String, Any> annotations;
+  Map<ffi::String, Any> annotations;
   /*! \brief The buffer var. */
   tvm::tir::Var buffer_var;
 
@@ -514,7 +514,7 @@ class AllocateConstFrameNode : public TIRFrameNode {
   /*! \brief The buffer var */
   tvm::tir::Var buffer_var;
   /*! \brief Additional annotations about the allocation. */
-  Map<String, Any> annotations;
+  Map<ffi::String, Any> annotations;
 
   static void RegisterReflection() {
     namespace refl = tvm::ffi::reflection;
@@ -557,7 +557,7 @@ class AttrFrameNode : public TIRFrameNode {
   /*! \brief The node to annotate the attribute. */
   Any node;
   /*! \brief Attribute type key. */
-  String attr_key;
+  ffi::String attr_key;
   /*! \brief The value of the attribute. */
   PrimExpr value;
 

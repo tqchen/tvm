@@ -646,7 +646,7 @@ void DirectSubexpr::VisitExpr(const PrimExpr& expr) {
  * \param var_name The variable name to check for
  * \return A boolean telling if `expr` uses `var_name`
  */
-bool UsesVarName::ExprUsesVarName(const PrimExpr& expr, String var_name) {
+bool UsesVarName::ExprUsesVarName(const PrimExpr& expr, ffi::String var_name) {
   UsesVarName uses_var_name(var_name);
   uses_var_name.VisitExpr(expr);
 
@@ -659,7 +659,7 @@ bool UsesVarName::ExprUsesVarName(const PrimExpr& expr, String var_name) {
  * \param var_name The variable name to check for
  * \return A boolean telling if `stmt` uses `var_name`
  */
-bool UsesVarName::StmtUsesVarName(const Stmt& stmt, String var_name) {
+bool UsesVarName::StmtUsesVarName(const Stmt& stmt, ffi::String var_name) {
   UsesVarName uses_var_name(var_name);
   uses_var_name.VisitStmt(stmt);
 
@@ -668,9 +668,9 @@ bool UsesVarName::StmtUsesVarName(const Stmt& stmt, String var_name) {
 
 /*!
  * \brief Protected constructor of UsesVarName.
- * \param var_name The String that we are looking for
+ * \param var_name The ffi::String that we are looking for
  */
-UsesVarName::UsesVarName(String var_name) : var_name_(var_name) {}
+UsesVarName::UsesVarName(ffi::String var_name) : var_name_(var_name) {}
 
 /*!
  * \brief The method which overrides the generic dispatcher of StmtExprVisitor for expressions.

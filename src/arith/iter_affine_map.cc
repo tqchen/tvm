@@ -188,7 +188,7 @@ class IterMapRewriter : public ExprMutator {
 
   explicit IterMapRewriter(Analyzer* analyzer, const Map<Var, Range>& input_iters,
                            IterMapLevel check_level, bool simplify_trivial_iterators,
-                           Array<String>* errors)
+                           Array<ffi::String>* errors)
       : analyzer_(analyzer),
         check_level_(check_level),
         errors_(*errors),
@@ -447,7 +447,7 @@ class IterMapRewriter : public ExprMutator {
   // Iter map check level
   IterMapLevel check_level_;
   // Error messages for each unresolved expression.
-  Array<String>& errors_;
+  Array<ffi::String>& errors_;
   // The var map
   std::unordered_map<Var, PrimExpr> var_map_;
   // input iter marks

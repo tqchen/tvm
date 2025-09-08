@@ -250,7 +250,7 @@ class IterMapResultNode : public Object {
 
   // Any errors that occurred while converting the input indices.  If
   // the array is empty, the conversion was successful.
-  Array<String> errors;
+  Array<ffi::String> errors;
 
   /*! \brief Boolean expression indicating if a specific value w
    *

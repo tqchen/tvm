@@ -82,13 +82,13 @@ class PassContextNode : public Object {
   int opt_level{2};
 
   /*! \brief The list of required passes. */
-  Array<String> required_pass;
+  Array<ffi::String> required_pass;
   /*! \brief The list of disabled passes. */
-  Array<String> disabled_pass;
+  Array<ffi::String> disabled_pass;
   /*! \brief The diagnostic context. */
   mutable Optional<DiagnosticContext> diag_ctx;
   /*! \brief Pass specific configurations. */
-  Map<String, Any> config;
+  Map<ffi::String, Any> config;
 
   /*! \brief A list of pass instrument implementations. */
   Array<instrument::PassInstrument> instruments;
@@ -189,7 +189,7 @@ class PassContext : public ObjectRef {
    * \brief Get all supported configuration names and metadata, registered within the PassContext.
    * \return Map indexed by the config name, pointing to the metadata map as key-value
    */
-  TVM_DLL static Map<String, Map<String, String>> ListConfigs();
+  TVM_DLL static Map<ffi::String, Map<ffi::String, ffi::String>> ListConfigs();
 
   /*!
    * \brief Call instrument implementations' callbacks when entering PassContext.
@@ -247,7 +247,7 @@ class PassContext : public ObjectRef {
       int32_t tindex = ffi::TypeToRuntimeTypeIndex<ValueType>::v();
       auto type_key = ffi::TypeIndexToTypeKey(tindex);
       auto legalization = [=](ffi::Any value) -> ffi::Any {
-        if (auto opt_map = value.try_cast<Map<String, ffi::Any>>()) {
+        if (auto opt_map = value.try_cast<Map<ffi::String, ffi::Any>>()) {
           return ffi::reflection::ObjectCreator(type_key)(opt_map.value());
         } else {
           auto opt_val = value.try_cast<ValueType>();
@@ -288,7 +288,7 @@ class PassContext : public ObjectRef {
   // The exit of a pass context scope.
   TVM_DLL void ExitWithScope();
   // Register configuration key value type.
-  TVM_DLL static void RegisterConfigOption(const char* key, String value_type_str,
+  TVM_DLL static void RegisterConfigOption(const char* key, ffi::String value_type_str,
                                            std::function<ffi::Any(ffi::Any)> legalization);
 
   // Classes to get the Python `with` like syntax.
@@ -318,13 +318,13 @@ class PassInfoNode : public Object {
   int opt_level;
 
   /*! \brief The name of an optimization/analysis pass. */
-  String name;
+  ffi::String name;
 
   /*! \brief Boolean that tells whether this pass will be traced or not. */
   bool traceable;
 
   /*! \brief The passes that are required to perform the current pass. */
-  Array<String> required;
+  Array<ffi::String> required;
 
   PassInfoNode() = default;
 
@@ -355,7 +355,7 @@ class PassInfo : public ObjectRef {
    * \param required  The passes that are required to perform the current pass.
    * \param traceable Boolean that tells whether the pass is traceable.
    */
-  TVM_DLL PassInfo(int opt_level, String name, Array<String> required, bool traceable);
+  TVM_DLL PassInfo(int opt_level, ffi::String name, Array<ffi::String> required, bool traceable);
 
   TVM_DEFINE_OBJECT_REF_METHODS(PassInfo, ObjectRef, PassInfoNode);
 };
@@ -508,7 +508,7 @@ class Sequential : public Pass {
    *        This allows users to only provide a list of passes and execute them
    *        under a given context.
    */
-  TVM_DLL Sequential(Array<Pass> passes, String name = "sequential");
+  TVM_DLL Sequential(Array<Pass> passes, ffi::String name = "sequential");
 
   Sequential() = default;
   explicit Sequential(ObjectPtr<Object> n) : Pass(n) {}
@@ -528,7 +528,7 @@ class Sequential : public Pass {
  * \return The created module pass.
  */
 TVM_DLL Pass CreateModulePass(std::function<IRModule(IRModule, PassContext)> pass_func,
-                              int opt_level, String name, Array<String> required,
+                              int opt_level, ffi::String name, Array<ffi::String> required,
                               bool traceable = false);
 
 /*
@@ -553,7 +553,7 @@ TVM_DLL Pass CreateModulePass(std::function<IRModule(IRModule, PassContext)> pas
  *
  * \return The modified IRModule to IRModule pass.
  */
-TVM_DLL Pass ApplyPassToFunction(Pass pass, String func_name_regex,
+TVM_DLL Pass ApplyPassToFunction(Pass pass, ffi::String func_name_regex,
                                  bool error_if_no_function_matches_regex = false);
 
 /*!
@@ -562,7 +562,7 @@ TVM_DLL Pass ApplyPassToFunction(Pass pass, String func_name_regex,
  * \param show_meta_data Whether should we show meta data.
  * \return The pass.
  */
-TVM_DLL Pass PrintIR(String header = "", bool show_meta_data = false);
+TVM_DLL Pass PrintIR(ffi::String header = "", bool show_meta_data = false);
 
 }  // namespace transform
 }  // namespace tvm

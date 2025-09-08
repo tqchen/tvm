@@ -700,10 +700,10 @@ class ConsumeBundledParams : public ExprMutator {
 };
 
 std::vector<std::pair<GlobalVar, Function>> GetTargetFunctions(
-    const IRModule& mod, const Variant<Bool, Array<String>>& shared_transform) {
+    const IRModule& mod, const Variant<Bool, Array<ffi::String>>& shared_transform) {
   std::vector<std::pair<GlobalVar, Function>> target_functions;
-  if (shared_transform.as<Array<String>>().value_or(Array<String>{}).size()) {
-    auto names = shared_transform.as<Array<String>>().value();
+  if (shared_transform.as<Array<ffi::String>>().value_or(Array<ffi::String>{}).size()) {
+    auto names = shared_transform.as<Array<ffi::String>>().value();
     for (const auto& name : names) {
       auto gvar = mod->global_var_map_.Get(name);
       CHECK(gvar) << "When LiftTransformParams is called with a list of function names, "
@@ -752,11 +752,11 @@ std::vector<std::pair<GlobalVar, Function>> GetTargetFunctions(
 
 namespace transform {
 
-Pass PartitionTransformParams(Variant<Bool, Array<String>> shared_transform) {
+Pass PartitionTransformParams(Variant<Bool, Array<ffi::String>> shared_transform) {
   auto pass_func = [=](IRModule mod, PassContext pc) {
     std::optional<GlobalCollectInfo> global_collect_info;
 
-    CHECK((shared_transform.as<Bool>() || shared_transform.as<Array<String>>()))
+    CHECK((shared_transform.as<Bool>() || shared_transform.as<Array<ffi::String>>()))
         << "shared_transform should be a boolean or an array of function names";
 
     auto target_functions = GetTargetFunctions(mod, shared_transform);
@@ -783,7 +783,7 @@ Pass PartitionTransformParams(Variant<Bool, Array<String>> shared_transform) {
       updated_runtime_functions->Add(gvar, new_runtime_func);
     }
 
-    Map<String, Function> lifted_transform_functions;
+    Map<ffi::String, Function> lifted_transform_functions;
     if (global_collect_info.has_value()) {
       auto global_transform = global_collect_info.value().MakeCompileTimeFunc();
       lifted_transform_functions.Set("transform_params", global_transform);
@@ -818,7 +818,7 @@ Pass PartitionTransformParams(Variant<Bool, Array<String>> shared_transform) {
   return tvm::transform::CreateModulePass(pass_func, 1, "PartitionTransformParams", {});
 }
 
-Pass LiftTransformParams(Variant<Bool, Array<String>> shared_transform) {
+Pass LiftTransformParams(Variant<Bool, Array<ffi::String>> shared_transform) {
   // A post-proc utility as as the third step in LiftTransformParams
   //
   // 1. PartitionTransformParams: Partition each function into a

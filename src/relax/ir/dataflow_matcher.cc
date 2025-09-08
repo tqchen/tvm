@@ -60,7 +60,7 @@ using tvm::arith::Analyzer;
  * \param attributes The attributes to match.
  * \return True if the attributes match, false otherwise.
  */
-bool MatchAttrs(const Any& attrs, const Map<String, ffi::Any>& attributes) {
+bool MatchAttrs(const Any& attrs, const Map<ffi::String, ffi::Any>& attributes) {
   // TODO(tqchen): consider lift to common utils
   if (auto* dict_attrs = attrs.as<DictAttrsNode>()) {
     for (auto kv : attributes) {
@@ -85,7 +85,7 @@ bool MatchAttrs(const Any& attrs, const Map<String, ffi::Any>& attributes) {
     const Object* obj = attrs.cast<const Object*>();
     ffi::reflection::ForEachFieldInfoWithEarlyStop(
         type_info, [&](const TVMFFIFieldInfo* field_info) {
-          String field_name(field_info->name);
+          ffi::String field_name(field_info->name);
           if (attributes.count(field_name)) {
             ffi::reflection::FieldGetter field_getter(field_info);
             ffi::Any field_value = field_getter(obj);
@@ -456,7 +456,7 @@ PrimExpr DFPatternMatcher::SimplifyCondition(PrimExpr condition) {
     return condition;
   }
 
-  auto sort_key = [](PrimExpr expr) -> String {
+  auto sort_key = [](PrimExpr expr) -> ffi::String {
     if (const auto* equal = expr.as<tir::EQNode>()) {
       if (const auto* var = equal->a.as<tir::VarNode>()) {
         return var->name_hint;

@@ -211,7 +211,7 @@ Stmt ConvertSSA(Stmt stmt);
  * \param buffer_var The input buffer variable.
  * \return A string representing the storage scope of this buffer variable.
  */
-String GetPtrStorageScope(Var buffer_var);
+ffi::String GetPtrStorageScope(Var buffer_var);
 
 /*!
  * \brief Convert match buffer target buffer access indices to original one.

@@ -73,9 +73,9 @@ class CUDAModuleNode : public ffi::ModuleObj {
     return ffi::Module::kBinarySerializable | ffi::Module::kRunnable;
   }
 
-  Optional<ffi::Function> GetFunction(const String& name) final;
+  Optional<ffi::Function> GetFunction(const ffi::String& name) final;
 
-  void WriteToFile(const String& file_name, const String& format) const final {
+  void WriteToFile(const ffi::String& file_name, const ffi::String& format) const final {
     std::string fmt = GetFileFormat(file_name, format);
     std::string meta_file = GetMetaFilePath(file_name);
     if (fmt == "cu") {
@@ -99,7 +99,7 @@ class CUDAModuleNode : public ffi::ModuleObj {
     return ffi::Bytes(buffer);
   }
 
-  String InspectSource(const String& format) const final {
+  ffi::String InspectSource(const ffi::String& format) const final {
     if (format == fmt_) return data_;
     if (cuda_source_.length() != 0) {
       return cuda_source_;
@@ -261,7 +261,7 @@ class CUDAPrepGlobalBarrier {
   mutable std::array<CUdeviceptr, kMaxNumGPUs> pcache_;
 };
 
-Optional<ffi::Function> CUDAModuleNode::GetFunction(const String& name) {
+Optional<ffi::Function> CUDAModuleNode::GetFunction(const ffi::String& name) {
   ObjectPtr<Object> sptr_to_self = ffi::GetObjectPtr<Object>(this);
   ICHECK_EQ(sptr_to_self.get(), this);
   if (name == symbol::tvm_prepare_global_barrier) {
@@ -283,7 +283,7 @@ ffi::Module CUDAModuleCreate(std::string data, std::string fmt,
 }
 
 // Load module from module.
-ffi::Module CUDAModuleLoadFile(const std::string& file_name, const String& format) {
+ffi::Module CUDAModuleLoadFile(const std::string& file_name, const ffi::String& format) {
   std::string data;
   std::unordered_map<std::string, FunctionInfo> fmap;
   std::string fmt = GetFileFormat(file_name, format);

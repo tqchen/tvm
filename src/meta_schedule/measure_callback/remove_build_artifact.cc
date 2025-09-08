@@ -32,7 +32,7 @@ class RemoveBuildArtifactNode : public MeasureCallbackNode {
     static auto f_rm = tvm::ffi::Function::GetGlobalRequired("meta_schedule.remove_build_dir");
     auto _ = Profiler::TimedScope("MeasureCallback/RemoveBuildArtifact");
     for (const BuilderResult& build_result : builder_results) {
-      if (Optional<String> path = build_result->artifact_path) {
+      if (Optional<ffi::String> path = build_result->artifact_path) {
         f_rm(path.value());
       }
     }

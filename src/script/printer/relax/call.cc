@@ -29,7 +29,7 @@ namespace printer {
 
 class AttrPrinter {
  public:
-  explicit AttrPrinter(AccessPath p, const IRDocsifier& d, Array<String>* keys,
+  explicit AttrPrinter(AccessPath p, const IRDocsifier& d, Array<ffi::String>* keys,
                        Array<ExprDoc>* values)
       : p(std::move(p)), d(d), keys(keys), values(values) {}
 
@@ -46,7 +46,7 @@ class AttrPrinter {
           << "` misses reflection registration and do not support serialization";
       // new printing mechanism using the new reflection
       ffi::reflection::ForEachFieldInfo(attrs_tinfo, [&](const TVMFFIFieldInfo* field_info) {
-        String field_name = String(field_info->name);
+        ffi::String field_name = ffi::String(field_info->name);
         Any field_value = ffi::reflection::FieldGetter(field_info)(attrs);
         keys->push_back(field_name);
         values->push_back(d->AsDoc<ExprDoc>(field_value, p->Attr(field_name)));
@@ -56,7 +56,7 @@ class AttrPrinter {
 
   AccessPath p;
   const IRDocsifier& d;
-  Array<String>* keys;
+  Array<ffi::String>* keys;
   Array<ExprDoc>* values;
 };
 
@@ -84,7 +84,7 @@ Optional<ExprDoc> PrintCallTIRDPSPacked(const relax::Call& n, const AccessPath& 
   ICHECK(n->args.size() == 2 || n->args.size() == 3);
   ICHECK(n->sinfo_args.size() == 1);
   Array<ExprDoc> args;
-  Array<String> kwargs_keys;
+  Array<ffi::String> kwargs_keys;
   Array<ExprDoc> kwargs_values;
   // Step 1. Print n->args[0], the callee
   args.push_back(PrintCallee(n->args[0], n_p->Attr("args")->ArrayItem(0), d));
@@ -188,7 +188,7 @@ Optional<ExprDoc> PrintHintOnDevice(const relax::Call& n, const AccessPath& n_p,
   Array<ExprDoc> args;
 
   args.push_back(PrintCallee(n->args[0], n_p->Attr("args")->ArrayItem(0), d));
-  Array<String> kwargs_keys;
+  Array<ffi::String> kwargs_keys;
   Array<ExprDoc> kwargs_values;
   ICHECK(n->attrs.defined());
   if (n->attrs.as<relax::HintOnDeviceAttrs>()) {
@@ -207,7 +207,7 @@ Optional<ExprDoc> PrintToVDevice(const relax::Call& n, const AccessPath& n_p,
   Array<ExprDoc> args;
 
   args.push_back(PrintCallee(n->args[0], n_p->Attr("args")->ArrayItem(0), d));
-  Array<String> kwargs_keys;
+  Array<ffi::String> kwargs_keys;
   Array<ExprDoc> kwargs_values;
   ICHECK(n->attrs.defined());
   if (const auto* attrs = n->attrs.as<relax::ToVDeviceAttrs>()) {
@@ -265,7 +265,7 @@ TVM_STATIC_IR_FUNCTOR(IRDocsifier, vtable)
           }
           ExprDoc prefix{nullptr};
           Array<ExprDoc> args;
-          Array<String> kwargs_keys;
+          Array<ffi::String> kwargs_keys;
           Array<ExprDoc> kwargs_values;
           // Step 1. Print op
           if (const auto* op = n->op.as<relax::ExternFuncNode>()) {
@@ -299,7 +299,7 @@ TVM_STATIC_IR_FUNCTOR(IRDocsifier, vtable)
               kwargs_values.push_back(LiteralDoc::Str(n->attrs->GetTypeKey(), n_p->Attr("attrs")));
             }
             if (const auto* attrs = n->attrs.as<tvm::DictAttrsNode>()) {
-              std::vector<std::pair<String, ffi::Any>> sorted;
+              std::vector<std::pair<ffi::String, ffi::Any>> sorted;
               for (const auto& kv : attrs->dict) {
                 sorted.push_back(kv);
               }

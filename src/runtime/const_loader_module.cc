@@ -67,7 +67,7 @@ class ConstLoaderModuleObj : public ffi::ModuleObj {
     }
   }
 
-  ffi::Optional<ffi::Function> GetFunction(const String& name) final {
+  ffi::Optional<ffi::Function> GetFunction(const ffi::String& name) final {
     VLOG(1) << "ConstLoaderModuleNode::GetFunction(" << name << ")";
     // Initialize and memoize the module.
     // Usually, we have some warmup runs. The module initialization should be
@@ -80,7 +80,7 @@ class ConstLoaderModuleObj : public ffi::ModuleObj {
 
     if (name == "get_const_var_tensor") {
       return ffi::Function([_self, this](ffi::PackedArgs args, ffi::Any* rv) {
-        Map<String, ffi::Any> ret_map;
+        Map<ffi::String, ffi::Any> ret_map;
         for (const auto& kv : const_var_tensor_) {
           ret_map.Set(kv.first, kv.second);
         }
@@ -159,7 +159,7 @@ class ConstLoaderModuleObj : public ffi::ModuleObj {
     std::vector<std::string> variables;
     std::vector<Tensor> const_var_tensor;
     for (const auto& it : const_var_tensor_) {
-      String var_name = it.first;
+      ffi::String var_name = it.first;
       variables.push_back(var_name);
       const_var_tensor.push_back(it.second);
     }

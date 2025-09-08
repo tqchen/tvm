@@ -48,7 +48,7 @@ TVM_STATIC_IR_FUNCTOR(IRDocsifier, vtable)
           }
           if (is_str_map) {
             std::sort(items.begin(), items.end(), [](const POO& lhs, const POO& rhs) {
-              return Downcast<String>(lhs.first) < Downcast<String>(rhs.first);
+              return Downcast<ffi::String>(lhs.first) < Downcast<ffi::String>(rhs.first);
             });
           }
           int n = dict.size();

@@ -47,13 +47,13 @@ class CostModelNode : public runtime::Object {
    * \brief Load the cost model from given file location.
    * \param path The file path.
    */
-  virtual void Load(const String& path) = 0;
+  virtual void Load(const ffi::String& path) = 0;
 
   /*!
    * \brief Save the cost model to given file location.
    * \param path The file path.
    */
-  virtual void Save(const String& path) = 0;
+  virtual void Save(const ffi::String& path) = 0;
 
   /*!
    * \brief Update the cost model given running results.
@@ -84,12 +84,12 @@ class PyCostModelNode : public CostModelNode {
    * \brief Load the cost model from given file location.
    * \param path The file path.
    */
-  using FLoad = ffi::TypedFunction<void(String)>;
+  using FLoad = ffi::TypedFunction<void(ffi::String)>;
   /*!
    * \brief Save the cost model to given file location.
    * \param path The file path.
    */
-  using FSave = ffi::TypedFunction<void(String)>;
+  using FSave = ffi::TypedFunction<void(ffi::String)>;
   /*!
    * \brief Update the cost model given running results.
    * \param context The tuning context.
@@ -124,8 +124,8 @@ class PyCostModelNode : public CostModelNode {
   /*! \brief The packed function to the `AsString` function. */
   FAsString f_as_string;
 
-  void Load(const String& path);
-  void Save(const String& path);
+  void Load(const ffi::String& path);
+  void Save(const ffi::String& path);
   void Update(const TuneContext& context, const Array<MeasureCandidate>& candidates,
               const Array<RunnerResult>& results);
   std::vector<double> Predict(const TuneContext& context,

@@ -194,7 +194,7 @@ class GraphPartitioner {
     size_t args_num{0};
 
     /*! \brief Optional attributes to annotate the grouped function. */
-    Map<String, Any> attrs;
+    Map<ffi::String, Any> attrs;
     /*!
      * \brief Find the group root, perform path compression
      * \return The root type node.

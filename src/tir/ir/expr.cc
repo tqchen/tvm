@@ -119,7 +119,7 @@ TVM_FFI_STATIC_INIT_BLOCK({
   }
 
 // Var
-Var::Var(String name_hint, DataType dtype, Span span) {
+Var::Var(ffi::String name_hint, DataType dtype, Span span) {
   auto n = ffi::make_object<VarNode>();
   n->name_hint = std::move(name_hint);
   n->type_annotation = GetTypeFromRuntimeDataType(dtype);
@@ -128,7 +128,7 @@ Var::Var(String name_hint, DataType dtype, Span span) {
   data_ = std::move(n);
 }
 
-Var::Var(String name_hint, Type type_annotation, Span span) {
+Var::Var(ffi::String name_hint, Type type_annotation, Span span) {
   auto n = ffi::make_object<VarNode>();
   n->name_hint = std::move(name_hint);
   n->dtype = GetRuntimeDataType(type_annotation);
@@ -137,7 +137,7 @@ Var::Var(String name_hint, Type type_annotation, Span span) {
   data_ = std::move(n);
 }
 
-Var Var::copy_with_name(const String& name) const {
+Var Var::copy_with_name(const ffi::String& name) const {
   const VarNode* node = get();
   ObjectPtr<VarNode> new_ptr;
   if (auto* ptr = this->as<SizeVarNode>()) {
@@ -149,7 +149,7 @@ Var Var::copy_with_name(const String& name) const {
   return Var(new_ptr);
 }
 
-Var Var::copy_with_suffix(const String& suffix) const {
+Var Var::copy_with_suffix(const ffi::String& suffix) const {
   return this->copy_with_name(get()->name_hint + suffix);
 }
 
@@ -168,7 +168,7 @@ Var Var::copy_with_dtype(DataType dtype) const {
 
 TVM_FFI_STATIC_INIT_BLOCK({
   namespace refl = tvm::ffi::reflection;
-  refl::GlobalDef().def("tir.Var", [](String name_hint, ffi::AnyView type, Span span) {
+  refl::GlobalDef().def("tir.Var", [](ffi::String name_hint, ffi::AnyView type, Span span) {
     if (type.as<Type>()) {
       return Var(name_hint, type.cast<Type>(), span);
     } else {
@@ -178,7 +178,7 @@ TVM_FFI_STATIC_INIT_BLOCK({
 });
 
 // SizeVar
-SizeVar::SizeVar(String name_hint, DataType dtype, Span span) {
+SizeVar::SizeVar(ffi::String name_hint, DataType dtype, Span span) {
   auto n = ffi::make_object<SizeVarNode>();
   n->name_hint = std::move(name_hint);
   n->type_annotation = GetTypeFromRuntimeDataType(dtype);
@@ -187,7 +187,7 @@ SizeVar::SizeVar(String name_hint, DataType dtype, Span span) {
   data_ = std::move(n);
 }
 
-SizeVar::SizeVar(String name_hint, Type type_annotation, Span span) {
+SizeVar::SizeVar(ffi::String name_hint, Type type_annotation, Span span) {
   auto n = ffi::make_object<SizeVarNode>();
   n->name_hint = std::move(name_hint);
   n->dtype = GetRuntimeDataType(type_annotation);
@@ -199,11 +199,11 @@ SizeVar::SizeVar(String name_hint, Type type_annotation, Span span) {
 TVM_FFI_STATIC_INIT_BLOCK({
   namespace refl = tvm::ffi::reflection;
   refl::GlobalDef().def("tir.SizeVar",
-                        [](String s, DataType t, Span span) { return SizeVar(s, t, span); });
+                        [](ffi::String s, DataType t, Span span) { return SizeVar(s, t, span); });
 });
 
 // IterVar
-IterVar::IterVar(Range dom, Var var, IterVarType t, String thread_tag, Span span) {
+IterVar::IterVar(Range dom, Var var, IterVarType t, ffi::String thread_tag, Span span) {
   ObjectPtr<IterVarNode> n = ffi::make_object<IterVarNode>();
   if (dom.defined() && dom->extent.defined()) {
     CHECK(dom->extent.dtype().is_int())
@@ -225,13 +225,13 @@ IterVar::IterVar(Range dom, Var var, IterVarType t, String thread_tag, Span span
 TVM_FFI_STATIC_INIT_BLOCK({
   namespace refl = tvm::ffi::reflection;
   refl::GlobalDef().def(
-      "tir.IterVar", [](Range dom, Var var, int iter_type, String thread_tag, Span span) {
+      "tir.IterVar", [](Range dom, Var var, int iter_type, ffi::String thread_tag, Span span) {
         return IterVar(dom, var, static_cast<IterVarType>(iter_type), thread_tag, span);
       });
 });
 
 // StringImm
-StringImm::StringImm(String value, Span span) {
+StringImm::StringImm(ffi::String value, Span span) {
   ObjectPtr<StringImmNode> node = ffi::make_object<StringImmNode>();
   node->dtype = DataType::Handle();
   node->value = std::move(value);
@@ -242,7 +242,7 @@ StringImm::StringImm(String value, Span span) {
 TVM_FFI_STATIC_INIT_BLOCK({
   namespace refl = tvm::ffi::reflection;
   refl::GlobalDef().def("tir.StringImm",
-                        [](String value, Span span) { return StringImm(value, span); });
+                        [](ffi::String value, Span span) { return StringImm(value, span); });
 });
 
 // Cast
@@ -599,10 +599,10 @@ TVM_FFI_STATIC_INIT_BLOCK({
   refl::GlobalDef().def(
       "tir.Call",
       [](Optional<DataType> dtype, RelaxExpr op,
-         Array<Variant<String, DLDataType, IterVar, BufferRegion, PrimExpr>> args, Span span) {
+         Array<Variant<ffi::String, DLDataType, IterVar, BufferRegion, PrimExpr>> args, Span span) {
         Array<PrimExpr> prim_expr_args;
         for (const auto& it : args) {
-          if (auto opt_str = it.as<String>()) {
+          if (auto opt_str = it.as<ffi::String>()) {
             prim_expr_args.push_back(StringImm(opt_str.value()));
           } else if (auto opt_dtype = it.as<DLDataType>()) {
             prim_expr_args.push_back(StringImm(ffi::DLDataTypeToString(opt_dtype.value())));

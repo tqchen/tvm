@@ -53,13 +53,13 @@ class TargetNode : public Object {
   /*! \brief Target host information, must be Target type */
   Optional<ObjectRef> host;
   /*! \brief Tag of the target, can be empty */
-  String tag;
+  ffi::String tag;
   /*! \brief Keys for this target */
-  Array<String> keys;
+  Array<ffi::String> keys;
   /*! \brief Collection of attributes */
-  Map<String, Any> attrs;
+  Map<ffi::String, Any> attrs;
   /*! \brief Target features */
-  Map<String, Any> features;
+  Map<ffi::String, Any> features;
 
   /*!
    * \brief The raw string representation of the target
@@ -68,7 +68,7 @@ class TargetNode : public Object {
    */
   TVM_DLL const std::string& str() const;
   /*! \return Export target to JSON-like configuration */
-  TVM_DLL Map<String, ffi::Any> Export() const;
+  TVM_DLL Map<ffi::String, ffi::Any> Export() const;
   /*! \return The Optional<Target> typed target host of the TargetNode */
   TVM_DLL Optional<Target> GetHost() const;
   /*! \return The device type for this target */
@@ -91,7 +91,7 @@ class TargetNode : public Object {
    * TODO(mbs): The ReprPrinter version should perhaps switch to this form, however currently
    * code depends on str() and << being the same.
    */
-  String ToDebugString() const;
+  ffi::String ToDebugString() const;
 
   static void RegisterReflection() {
     namespace refl = tvm::ffi::reflection;
@@ -196,12 +196,12 @@ class Target : public ObjectRef {
    * \brief Construct a Target given a string
    * \param tag_or_config_or_target_str the string to parse for target
    */
-  TVM_DLL explicit Target(const String& tag_or_config_or_target_str);
+  TVM_DLL explicit Target(const ffi::String& tag_or_config_or_target_str);
   /*!
    * \brief Construct a Target using a JSON-like configuration
    * \param config The JSON-like configuration for target
    */
-  TVM_DLL explicit Target(const Map<String, ffi::Any>& config);
+  TVM_DLL explicit Target(const Map<ffi::String, ffi::Any>& config);
   /*!
    * \brief Get the current target context from thread local storage.
    * \param allow_not_defined If the context stack is empty and this is set to true, an
@@ -230,8 +230,8 @@ class Target : public ObjectRef {
   Target WithoutHost() const;
 
  private:
-  Target(TargetKind kind, Optional<ObjectRef> host, String tag, Array<String> keys,
-         Map<String, ffi::Any> attrs);
+  Target(TargetKind kind, Optional<ObjectRef> host, ffi::String tag, Array<ffi::String> keys,
+         Map<ffi::String, ffi::Any> attrs);
 
   // enable with syntax.
   friend class TargetInternal;

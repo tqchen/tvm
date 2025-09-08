@@ -220,7 +220,7 @@ class IndexInfoCollector : public StmtExprVisitor {
  * \param storage_scope The storage scope of the cached buffer (only used in naming here)
  * \returns A block indicating the body of the loop nesting.
  */
-Array<Block> MakeIndexCacheStage(IndexInfo* info, const String& storage_scope) {
+Array<Block> MakeIndexCacheStage(IndexInfo* info, const ffi::String& storage_scope) {
   Array<Block> blocks;
   Array<Stmt> bodies;
   bodies.reserve(info->index_exprs.size());
@@ -437,7 +437,7 @@ class CacheIndexRewriter : public StmtExprMutator {
 };
 
 Array<StmtSRef> CacheIndex(ScheduleState self, const StmtSRef& block_sref,
-                           const String& storage_scope, int cse_thresh) {
+                           const ffi::String& storage_scope, int cse_thresh) {
   /*!
    * Check:
    *   - The index is in the array of block reading region
@@ -503,12 +503,12 @@ struct CacheIndexTraits : public UnpackedInstTraits<CacheIndexTraits> {
   static constexpr size_t kNumAttrs = 2;
   static constexpr size_t kNumDecisions = 0;
 
-  static Array<BlockRV> UnpackedApplyToSchedule(Schedule sch, BlockRV block, String storage_scope,
+  static Array<BlockRV> UnpackedApplyToSchedule(Schedule sch, BlockRV block, ffi::String storage_scope,
                                                 Integer cse_thresh) {
     return sch->CacheIndex(block, storage_scope, cse_thresh->value);
   }
 
-  static String UnpackedAsPython(Array<String> outputs, String block, String storage_scope,
+  static ffi::String UnpackedAsPython(Array<ffi::String> outputs, ffi::String block, ffi::String storage_scope,
                                  Integer cse_thresh) {
     PythonAPICall py("cache_index");
     py.Input("block", block);

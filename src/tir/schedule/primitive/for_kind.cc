@@ -29,13 +29,13 @@ class WrongBlockIterTypeError : public ScheduleError {
                   ? "parallel"
                   : (for_kind == ForKind::kVectorized ? "vectorize" : "bind");
   }
-  String FastErrorString() const final {
+  ffi::String FastErrorString() const final {
     std::ostringstream os;
     os << "ScheduleError: The \"" << op_str_
        << "\" cannot be fulfilled with regard to some of its underlying block";
     return os.str();
   }
-  String DetailRenderTemplate() const final {
+  ffi::String DetailRenderTemplate() const final {
     std::ostringstream os;
     if (op_str_ != "bind") {
       os << "The \"" << op_str_
@@ -144,7 +144,7 @@ void CheckParallelizability(const ScheduleState& self, const For& loop, ForKind 
  * `for_kind` is `kThreadBinding`
  */
 void ParallelizeComputation(const ScheduleState& self, const StmtSRef& loop_sref, ForKind for_kind,
-                            Optional<String> thread_axis) {
+                            Optional<ffi::String> thread_axis) {
   const ForNode* loop = TVM_SREF_TO_FOR(loop_sref);
 
   /*
@@ -189,7 +189,7 @@ void Vectorize(ScheduleState self, const StmtSRef& loop_sref) {
   ParallelizeComputation(self, loop_sref, ForKind::kVectorized, std::nullopt);
 }
 
-void Bind(ScheduleState self, const StmtSRef& loop_sref, const String& thread_axis) {
+void Bind(ScheduleState self, const StmtSRef& loop_sref, const ffi::String& thread_axis) {
   ParallelizeComputation(self, loop_sref, ForKind::kThreadBinding, thread_axis);
 }
 
@@ -216,7 +216,7 @@ struct ParallelTraits : public UnpackedInstTraits<ParallelTraits> {
     return sch->Parallel(loop_rv);
   }
 
-  static String UnpackedAsPython(Array<String> outputs, String loop_rv) {
+  static ffi::String UnpackedAsPython(Array<ffi::String> outputs, ffi::String loop_rv) {
     PythonAPICall py("parallel");
     py.Input("loop", loop_rv);
     return py.Str();
@@ -239,7 +239,7 @@ struct VectorizeTraits : public UnpackedInstTraits<VectorizeTraits> {
     return sch->Vectorize(loop_rv);
   }
 
-  static String UnpackedAsPython(Array<String> outputs, String loop_rv) {
+  static ffi::String UnpackedAsPython(Array<ffi::String> outputs, ffi::String loop_rv) {
     PythonAPICall py("vectorize");
     py.Input("loop", loop_rv);
     return py.Str();
@@ -258,11 +258,11 @@ struct BindTraits : public UnpackedInstTraits<BindTraits> {
   static constexpr size_t kNumAttrs = 1;
   static constexpr size_t kNumDecisions = 0;
 
-  static void UnpackedApplyToSchedule(Schedule sch, LoopRV loop_rv, String thread) {
+  static void UnpackedApplyToSchedule(Schedule sch, LoopRV loop_rv, ffi::String thread) {
     return sch->Bind(loop_rv, thread);
   }
 
-  static String UnpackedAsPython(Array<String> outputs, String loop_rv, String thread) {
+  static ffi::String UnpackedAsPython(Array<ffi::String> outputs, ffi::String loop_rv, ffi::String thread) {
     PythonAPICall py("bind");
     py.Input("loop", loop_rv);
     py.Input("thread_axis", thread);
@@ -284,7 +284,7 @@ struct UnrollTraits : public UnpackedInstTraits<UnrollTraits> {
 
   static void UnpackedApplyToSchedule(Schedule sch, LoopRV loop_rv) { return sch->Unroll(loop_rv); }
 
-  static String UnpackedAsPython(Array<String> outputs, String loop_rv) {
+  static ffi::String UnpackedAsPython(Array<ffi::String> outputs, ffi::String loop_rv) {
     PythonAPICall py("unroll");
     py.Input("loop", loop_rv);
     return py.Str();

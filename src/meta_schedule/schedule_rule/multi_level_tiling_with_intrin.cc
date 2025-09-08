@@ -39,7 +39,7 @@ Optional<tir::BlockRV> TileForIntrin(tir::Schedule sch, tir::BlockRV block,
   }
   ICHECK(tiled_loop_rv.defined());
   tir::BlockRV outer_block = sch->Blockize(tiled_loop_rv.value());
-  sch->Annotate(outer_block, tir::attr::meta_schedule_auto_tensorize, String(intrin_name));
+  sch->Annotate(outer_block, tir::attr::meta_schedule_auto_tensorize, ffi::String(intrin_name));
   return outer_block;
 }
 
@@ -87,18 +87,18 @@ class MultiLevelTilingWithIntrinNode : public MultiLevelTilingNode {
 
  public:
   /*! \brief The name of a tensor intrinsic. */
-  String intrin_name;
+  ffi::String intrin_name;
 
   static constexpr const char* _type_key = "meta_schedule.MultiLevelTilingWithIntrin";
   TVM_DECLARE_FINAL_OBJECT_INFO(MultiLevelTilingWithIntrinNode, MultiLevelTilingNode);
 };
 
-ScheduleRule ScheduleRule::MultiLevelTilingWithIntrin(String intrin_name, String structure,
-                                                      Optional<Array<String>> tile_binds,
+ScheduleRule ScheduleRule::MultiLevelTilingWithIntrin(ffi::String intrin_name, ffi::String structure,
+                                                      Optional<Array<ffi::String>> tile_binds,
                                                       Optional<Integer> max_innermost_factor,
                                                       Optional<Array<Integer>> vector_load_lens,
-                                                      Optional<Map<String, ffi::Any>> reuse_read,
-                                                      Optional<Map<String, ffi::Any>> reuse_write) {
+                                                      Optional<Map<ffi::String, ffi::Any>> reuse_read,
+                                                      Optional<Map<ffi::String, ffi::Any>> reuse_write) {
   ICHECK(tir::TensorIntrin::Get(intrin_name).defined())
       << "Provided tensor intrinsic " << intrin_name << " is not registered.";
   auto node = MultiLevelTilingInitCommon<MultiLevelTilingWithIntrinNode>(

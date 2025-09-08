@@ -130,7 +130,7 @@ class StrictListDoc : public ExprDoc {
 class PointerDocNode : public ExprDocNode {
  public:
   /*! \brief The name of the identifier */
-  String name;
+  ffi::String name;
 
   static void RegisterReflection() {
     namespace refl = tvm::ffi::reflection;
@@ -152,7 +152,7 @@ class PointerDoc : public ExprDoc {
    * \brief Constructor of PointerDoc.
    * \param name The name of identifier.
    */
-  explicit PointerDoc(String name);
+  explicit PointerDoc(ffi::String name);
   TVM_DEFINE_NOTNULLABLE_OBJECT_REF_METHODS(PointerDoc, ExprDoc, PointerDocNode);
 };
 

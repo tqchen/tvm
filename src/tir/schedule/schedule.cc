@@ -256,7 +256,7 @@ TVM_FFI_STATIC_INIT_BLOCK({
              LOG(FATAL) << "Unsupported target type: " << target->GetTypeKey();
            })
       .def("tir.schedule.ScheduleTensorize",
-           [](Schedule self, ObjectRef rv, String intrin, bool preserve_unit_iters) {
+           [](Schedule self, ObjectRef rv, ffi::String intrin, bool preserve_unit_iters) {
              if (auto block_rv = rv.as<BlockRV>()) {
                self->Tensorize(block_rv.value(), intrin, preserve_unit_iters);
              } else if (auto loop_rv = rv.as<LoopRV>()) {
@@ -273,7 +273,7 @@ TVM_FFI_STATIC_INIT_BLOCK({
   namespace refl = tvm::ffi::reflection;
   refl::GlobalDef()
       .def("tir.schedule.ScheduleAnnotate",
-           [](Schedule self, ObjectRef rv, const String& ann_key, const Any& ann_val) {
+           [](Schedule self, ObjectRef rv, const ffi::String& ann_key, const Any& ann_val) {
              if (auto block_rv = rv.as<BlockRV>()) {
                return self->Annotate(block_rv.value(), ann_key, ann_val);
              }
@@ -285,7 +285,7 @@ TVM_FFI_STATIC_INIT_BLOCK({
              throw;
            })
       .def("tir.schedule.ScheduleUnannotate", [](Schedule self, ObjectRef rv,
-                                                 const String& ann_key) {
+                                                 const ffi::String& ann_key) {
         if (auto block_rv = rv.as<BlockRV>()) {
           return self->Unannotate(block_rv.value(), ann_key);
         }

@@ -46,10 +46,10 @@ TVM_FFI_STATIC_INIT_BLOCK({
       .def("__data_from_json__", SourceName::Get);
 });
 
-ObjectPtr<Object> GetSourceNameNode(const String& name) {
+ObjectPtr<Object> GetSourceNameNode(const ffi::String& name) {
   // always return pointer as the reference can change as map re-allocate.
   // or use another level of indirection by creating a unique_ptr
-  static std::unordered_map<String, ObjectPtr<SourceNameNode>> source_map;
+  static std::unordered_map<ffi::String, ObjectPtr<SourceNameNode>> source_map;
 
   auto sn = source_map.find(name);
   if (sn == source_map.end()) {
@@ -66,7 +66,7 @@ ObjectPtr<Object> GetSourceNameNodeByStr(const std::string& name) {
   return GetSourceNameNode(name);
 }
 
-SourceName SourceName::Get(const String& name) { return SourceName(GetSourceNameNode(name)); }
+SourceName SourceName::Get(const ffi::String& name) { return SourceName(GetSourceNameNode(name)); }
 
 TVM_FFI_STATIC_INIT_BLOCK({
   namespace refl = tvm::ffi::reflection;
@@ -201,7 +201,7 @@ Source::Source(SourceName src_name, std::string source) {
   data_ = n;
 }
 
-tvm::String Source::GetLine(int line) {
+tvm::ffi::String Source::GetLine(int line) {
   VLOG(1) << "Source::GetLine: line=" << line;
   ICHECK(line - 1 < static_cast<int64_t>((*this)->line_map.size()))
       << "requested line: " << line << "at index: " << (line - 1)
@@ -212,7 +212,7 @@ tvm::String Source::GetLine(int line) {
   int line_start = range.first;
   int line_length = range.second;
   VLOG(1) << "Source::GetLine: line_start=" << line_start << " line_length=" << line_length;
-  // TODO(@jroesch): expose substring on tvm::String.
+  // TODO(@jroesch): expose substring on tvm::ffi::String.
   auto line_text = std::string((*this)->source).substr(line_start, line_length);
   VLOG(1) << "Source::GetLine: line_text=" << line_text;
   return line_text;
@@ -228,7 +228,7 @@ void SourceMap::Add(const Source& source) { (*this)->source_map.Set(source->sour
 
 TVM_FFI_STATIC_INIT_BLOCK({
   namespace refl = tvm::ffi::reflection;
-  refl::GlobalDef().def("SourceMapAdd", [](SourceMap map, String name, String content) {
+  refl::GlobalDef().def("SourceMapAdd", [](SourceMap map, ffi::String name, ffi::String content) {
     auto src_name = SourceName::Get(name);
     Source source(src_name, content);
     map.Add(source);

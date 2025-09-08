@@ -39,8 +39,8 @@ namespace relax {
 /*! \brief Append the loss function to the backbone function in an IRModule.*/
 class AppendLossMutator : private ExprMutator {
  public:
-  static IRModule Transform(IRModule mod, String func_name, Function loss_function,
-                            int num_backbone_outputs, Optional<String> new_func_name) {
+  static IRModule Transform(IRModule mod, ffi::String func_name, Function loss_function,
+                            int num_backbone_outputs, Optional<ffi::String> new_func_name) {
     auto* old_func = mod->Lookup(func_name).as<FunctionNode>();
     CHECK(old_func) << func_name << "is not a Relax Function";
 
@@ -204,8 +204,8 @@ class AppendLossMutator : private ExprMutator {
 
 namespace transform {
 
-Pass AppendLoss(String func_name, Function loss_function, int num_backbone_outputs,
-                Optional<String> new_func_name) {
+Pass AppendLoss(ffi::String func_name, Function loss_function, int num_backbone_outputs,
+                Optional<ffi::String> new_func_name) {
   auto pass_func = [=](IRModule mod, PassContext pc) {
     return relax::AppendLossMutator::Transform(mod, func_name, loss_function, num_backbone_outputs,
                                                new_func_name);

@@ -34,7 +34,7 @@ TVM_FFI_STATIC_INIT_BLOCK({
   ScatterCollectiveAttrs::RegisterReflection();
 });
 
-Expr allreduce(Expr x, String op_type, bool in_group) {
+Expr allreduce(Expr x, ffi::String op_type, bool in_group) {
   ObjectPtr<AllReduceAttrs> attrs = ffi::make_object<AllReduceAttrs>();
   attrs->op_type = std::move(op_type);
   attrs->in_group = std::move(in_group);

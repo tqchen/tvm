@@ -65,7 +65,7 @@ using FInferStructInfo = ffi::TypedFunction<StructInfo(const Call& call, const B
  * \brief Packed function implementation for operators. The relax operator will be lowered to
  * this packed function call during codegen.
  */
-using FCallPacked = String;
+using FCallPacked = ffi::String;
 
 /*!
  * \brief The function type of a normalization function.

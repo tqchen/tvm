@@ -41,7 +41,7 @@ static const char* dspCPUs[] = {"cortex-m55", "cortex-m4",   "cortex-m7",
 static const char* mveCPUs[] = {"cortex-m55", "cortex-m85"};
 
 template <typename Container>
-static inline bool MatchesCpu(Optional<String> mcpu, const Container& cpus) {
+static inline bool MatchesCpu(Optional<ffi::String> mcpu, const Container& cpus) {
   if (!mcpu) {
     return false;
   }
@@ -50,31 +50,31 @@ static inline bool MatchesCpu(Optional<String> mcpu, const Container& cpus) {
   return std::find_if(std::begin(cpus), std::end(cpus), matches_cpu) != std::end(cpus);
 }
 
-static inline bool HasFlag(String attr, std::string flag) {
+static inline bool HasFlag(ffi::String attr, std::string flag) {
   std::string attr_str = attr;
   return attr_str.find(flag) != std::string::npos;
 }
 
-static inline bool HasFlag(Optional<String> attr, std::string flag) {
+static inline bool HasFlag(Optional<ffi::String> attr, std::string flag) {
   if (!attr) {
     return false;
   }
   return HasFlag(attr.value(), flag);
 }
 
-static inline bool HasFlag(Optional<Array<String>> attr, std::string flag) {
+static inline bool HasFlag(Optional<Array<ffi::String>> attr, std::string flag) {
   if (!attr) {
     return false;
   }
-  Array<String> attr_array = attr.value();
+  Array<ffi::String> attr_array = attr.value();
 
   auto matching_attr = std::find_if(attr_array.begin(), attr_array.end(),
-                                    [flag](String attr_str) { return HasFlag(attr_str, flag); });
+                                    [flag](ffi::String attr_str) { return HasFlag(attr_str, flag); });
   return matching_attr != attr_array.end();
 }
 
 bool IsArch(TargetJSON attrs) {
-  Optional<String> mcpu = Downcast<Optional<String>>(attrs.Get("mcpu"));
+  Optional<ffi::String> mcpu = Downcast<Optional<ffi::String>>(attrs.Get("mcpu"));
   if (mcpu) {
     bool matches_base = MatchesCpu(mcpu, baseCPUs);
     bool matches_dsp = MatchesCpu(mcpu, dspCPUs);
@@ -85,8 +85,8 @@ bool IsArch(TargetJSON attrs) {
 }
 
 static TargetFeatures GetFeatures(TargetJSON target) {
-  Optional<String> mcpu = Downcast<Optional<String>>(target.Get("mcpu"));
-  Optional<Array<String>> mattr = Downcast<Optional<Array<String>>>(target.Get("mattr"));
+  Optional<ffi::String> mcpu = Downcast<Optional<ffi::String>>(target.Get("mcpu"));
+  Optional<Array<ffi::String>> mattr = Downcast<Optional<Array<ffi::String>>>(target.Get("mattr"));
 
   bool nomve = HasFlag(mcpu, "+nomve") || HasFlag(mattr, "+nomve");
   bool nodsp = HasFlag(mcpu, "+nodsp") || HasFlag(mattr, "+nodsp");
@@ -104,15 +104,15 @@ static TargetFeatures GetFeatures(TargetJSON target) {
   return kNoExt;
 }
 
-static Array<String> MergeKeys(Optional<Array<String>> existing_keys) {
-  const Array<String> kExtraKeys = {"arm_cpu", "cpu"};
+static Array<ffi::String> MergeKeys(Optional<Array<ffi::String>> existing_keys) {
+  const Array<ffi::String> kExtraKeys = {"arm_cpu", "cpu"};
 
   if (!existing_keys) {
     return kExtraKeys;
   }
 
-  Array<String> keys = existing_keys.value();
-  for (String key : kExtraKeys) {
+  Array<ffi::String> keys = existing_keys.value();
+  for (ffi::String key : kExtraKeys) {
     if (std::find(keys.begin(), keys.end(), key) == keys.end()) {
       keys.push_back(key);
     }
@@ -122,7 +122,7 @@ static Array<String> MergeKeys(Optional<Array<String>> existing_keys) {
 
 TargetJSON ParseTarget(TargetJSON target) {
   target.Set("features", GetFeatures(target));
-  target.Set("keys", MergeKeys(Downcast<Optional<Array<String>>>(target.Get("keys"))));
+  target.Set("keys", MergeKeys(Downcast<Optional<Array<ffi::String>>>(target.Get("keys"))));
 
   return target;
 }

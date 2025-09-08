@@ -59,7 +59,7 @@ inline tvm::tir::Stmt AsStmt(const Array<tvm::tir::Stmt>& stmt) {
  * \param method The method name to be printed when throwing exception.
  * \return The top frame of PrimFuncFrame.
  */
-inline PrimFuncFrame FindPrimFuncFrame(const String& method) {
+inline PrimFuncFrame FindPrimFuncFrame(const ffi::String& method) {
   if (Optional<PrimFuncFrame> frame = IRBuilder::Current()->GetLastFrame<PrimFuncFrame>()) {
     return frame.value();
   } else if (Optional<PrimFuncFrame> frame = IRBuilder::Current()->FindFrame<PrimFuncFrame>()) {
@@ -79,7 +79,7 @@ inline PrimFuncFrame FindPrimFuncFrame(const String& method) {
  * \param method The method name to be printed when throwing exception.
  * \return The top frame of BlockFrame.
  */
-inline BlockFrame FindBlockFrame(const String& method) {
+inline BlockFrame FindBlockFrame(const ffi::String& method) {
   if (Optional<BlockFrame> frame = IRBuilder::Current()->FindFrame<BlockFrame>()) {
     return frame.value();
   } else if (Optional<BlockFrame> frame = IRBuilder::Current()->FindFrame<BlockFrame>()) {
@@ -99,7 +99,7 @@ inline BlockFrame FindBlockFrame(const String& method) {
  * \param method The method name to be printed when throwing exception.
  * \return The top frame of IfFrame.
  */
-inline IfFrame FindIfFrame(const String& method) {
+inline IfFrame FindIfFrame(const ffi::String& method) {
   if (Optional<IfFrame> frame = IRBuilder::Current()->GetLastFrame<IfFrame>()) {
     return frame.value();
   } else if (Optional<IfFrame> frame = IRBuilder::Current()->FindFrame<IfFrame>()) {

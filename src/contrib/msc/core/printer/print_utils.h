@@ -44,10 +44,10 @@ using namespace tvm::script::printer;
 class DocSymbol {
  public:
   /*! * \brief The empty symbol*/
-  TVM_DLL static const String Empty();
+  TVM_DLL static const ffi::String Empty();
 
   /*! * \brief The next line symbol*/
-  TVM_DLL static const String NextLine();
+  TVM_DLL static const ffi::String NextLine();
 };
 
 /*!
@@ -68,18 +68,18 @@ class DocUtils {
   TVM_DLL static const ExprDoc ToDoc(double val);
   TVM_DLL static const ExprDoc ToDoc(const FloatImm& val);
   TVM_DLL static const ExprDoc ToDoc(const char* val);
-  TVM_DLL static const ExprDoc ToDoc(const String& val);
+  TVM_DLL static const ExprDoc ToDoc(const ffi::String& val);
   TVM_DLL static const ExprDoc ToDoc(bool val);
   TVM_DLL static const ExprDoc ToDoc(const ExprDoc& val);
-  TVM_DLL static const ExprDoc ToStr(const String& val);
-  TVM_DLL static const PointerDoc ToPtr(const String& val);
+  TVM_DLL static const ExprDoc ToStr(const ffi::String& val);
+  TVM_DLL static const PointerDoc ToPtr(const ffi::String& val);
 
   /*!
    * \brief Change object to DeclareDoc.
    * \return The DeclareDoc.
    */
   template <typename T>
-  TVM_DLL static const DeclareDoc ToDeclare(const String& type, const T& variable, size_t len = 0,
+  TVM_DLL static const DeclareDoc ToDeclare(const ffi::String& type, const T& variable, size_t len = 0,
                                             bool use_constructor = true) {
     Optional<ExprDoc> type_doc;
     if (type.size() == 0) {
@@ -101,15 +101,15 @@ class DocUtils {
    */
   template <typename LT, typename RT>
   TVM_DLL static const AssignDoc ToAssign(const LT& lhs, const RT& rhs,
-                                          const String& annotation = "") {
+                                          const ffi::String& annotation = "") {
     if (annotation.size() == 0) {
       return AssignDoc(ToDoc(lhs), ToDoc(rhs), std::nullopt);
     }
     return AssignDoc(ToDoc(lhs), ToDoc(rhs), IdDoc(annotation));
   }
   template <typename T>
-  TVM_DLL static const AssignDoc ToAssign(const T& lhs, const String& rhs,
-                                          const String& annotation = "") {
+  TVM_DLL static const AssignDoc ToAssign(const T& lhs, const ffi::String& rhs,
+                                          const ffi::String& annotation = "") {
     Optional<ExprDoc> rhs_doc;
     if (rhs.size() > 0) {
       rhs_doc = IdDoc(rhs);
@@ -130,7 +130,7 @@ class DocUtils {
    * \return The AttrAccessDoc.
    */
   template <typename T>
-  TVM_DLL static const AttrAccessDoc ToAttrAccess(const T& value, const String& name) {
+  TVM_DLL static const AttrAccessDoc ToAttrAccess(const T& value, const ffi::String& name) {
     return AttrAccessDoc(ToDoc(value), name);
   }
 
@@ -182,9 +182,9 @@ class DocUtils {
    */
   TVM_DLL static const StrictListDoc ToStrList(const std::vector<std::string>& values,
                                                bool allow_empty = false);
-  TVM_DLL static const StrictListDoc ToStrList(const std::vector<String>& values,
+  TVM_DLL static const StrictListDoc ToStrList(const std::vector<ffi::String>& values,
                                                bool allow_empty = false);
-  TVM_DLL static const StrictListDoc ToStrList(const Array<String>& values,
+  TVM_DLL static const StrictListDoc ToStrList(const Array<ffi::String>& values,
                                                bool allow_empty = false);
 
   /*!

@@ -26,9 +26,9 @@ import org.apache.tvm.rpc.ConnectTrackerServerProcessor;
  * Connect to RPC proxy and deal with requests.
  */
 class RPCProcessor extends Thread {
-  private String host;
+  private ffi::String host;
   private int port;
-  private String key;
+  private ffi::String key;
   private boolean running = false;
   private long startTime;
   private ConnectTrackerServerProcessor currProcessor;
@@ -84,7 +84,7 @@ class RPCProcessor extends Thread {
    * @param port proxy server port.
    * @param key proxy server key.
    */
-  synchronized void connect(String host, int port, String key) {
+  synchronized void connect(String host, int port, ffi::String key) {
     this.host = host;
     this.port = port;
     this.key = key;

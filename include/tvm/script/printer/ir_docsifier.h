@@ -82,7 +82,7 @@ class FrameNode : public Object {
    * \param d The docsifier.
    * \param token The token to be added.
    */
-  void AddDispatchToken(const IRDocsifier& d, const String& token);
+  void AddDispatchToken(const IRDocsifier& d, const ffi::String& token);
   /*!
    * \brief Method that's called when Frame enters the scope.
    */
@@ -129,7 +129,7 @@ class IRDocsifierNode : public Object {
     /*! \brief The creator */
     DocCreator creator;
     /*! \brief The name of the variable */
-    Optional<String> name;
+    Optional<ffi::String> name;
   };
   /*! \brief The configuration of the printer */
   PrinterConfig cfg{nullptr};
@@ -144,15 +144,15 @@ class IRDocsifierNode : public Object {
    * The dispatch token on the top decides which dispatch function to use
    * when converting IR node object to Doc.
    */
-  Array<String> dispatch_tokens;
+  Array<ffi::String> dispatch_tokens;
   /*! \brief Mapping from a var to its info */
   std::unordered_map<ObjectRef, VariableInfo, ObjectPtrHash, ObjectPtrEqual> obj2info;
   /*! \brief Metadata printing */
-  std::unordered_map<String, Array<ffi::Any>> metadata;
+  std::unordered_map<ffi::String, Array<ffi::Any>> metadata;
   /*! \brief GlobalInfo printing */
-  std::unordered_map<String, Array<GlobalInfo>> global_infos;
+  std::unordered_map<ffi::String, Array<GlobalInfo>> global_infos;
   /*! \brief The variable names used already */
-  std::unordered_set<String> defined_names;
+  std::unordered_set<ffi::String> defined_names;
   /*! \brief Common prefixes of variable usages */
   std::unordered_map<const Object*, std::vector<const Object*>> common_prefix;
   /*! \brief The IR usages for headers printing */
@@ -181,7 +181,7 @@ class IRDocsifierNode : public Object {
    * This function will rename the variable to avoid name conflict with other variables
    * in the table.
    */
-  IdDoc Define(const ObjectRef& obj, const Frame& frame, const String& name_hint);
+  IdDoc Define(const ObjectRef& obj, const Frame& frame, const ffi::String& name_hint);
 
   /*!
    * \brief Define variable by doc factory.
@@ -214,7 +214,7 @@ class IRDocsifierNode : public Object {
    * \param name The name of key of global_infos.
    * \param ginfo The GlobalInfo to be added.
    */
-  void AddGlobalInfo(const String& name, const GlobalInfo& ginfo);
+  void AddGlobalInfo(const ffi::String& name, const GlobalInfo& ginfo);
   /*!
    * \brief Check if a variable exists in the table.
    * \param obj The variable object.
@@ -295,7 +295,7 @@ inline static void AddDocDecoration(const Doc& d, const ObjectRef& obj, const Ac
   }
   for (const auto& pair : cfg->path_to_annotate) {
     AccessPath p = pair.first;
-    String attn = pair.second;
+    ffi::String attn = pair.second;
     if (p->IsPrefixOf(path) && path->IsPrefixOf(p)) {
       if (const auto* stmt = d.as<StmtDocNode>()) {
         if (stmt->comment.has_value()) {
@@ -352,7 +352,7 @@ inline TDoc IRDocsifierNode::AsDoc(const Any& value, const AccessPath& path) con
   }
 }
 
-inline void FrameNode::AddDispatchToken(const IRDocsifier& d, const String& token) {
+inline void FrameNode::AddDispatchToken(const IRDocsifier& d, const ffi::String& token) {
   d->dispatch_tokens.push_back(token);
   this->AddExitCallback([doc = d.get()]() { doc->dispatch_tokens.pop_back(); });
 }

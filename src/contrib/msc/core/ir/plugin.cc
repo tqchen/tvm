@@ -35,8 +35,8 @@ namespace tvm {
 namespace contrib {
 namespace msc {
 
-PluginAttr::PluginAttr(const String& name, const String& type, const String& default_value,
-                       const String& describe) {
+PluginAttr::PluginAttr(const ffi::String& name, const ffi::String& type, const ffi::String& default_value,
+                       const ffi::String& describe) {
   ObjectPtr<PluginAttrNode> n = ffi::make_object<PluginAttrNode>();
   n->name = std::move(name);
   n->type = std::move(type);
@@ -81,8 +81,8 @@ void PluginAttrNode::FromJson(const std::string& json_str) {
   FromJson(j_attr);
 }
 
-PluginTensor::PluginTensor(const String& name, const String& dtype, const Integer& ndim,
-                           const String& device, const String& describe) {
+PluginTensor::PluginTensor(const ffi::String& name, const ffi::String& dtype, const Integer& ndim,
+                           const ffi::String& device, const ffi::String& describe) {
   ObjectPtr<PluginTensorNode> n = ffi::make_object<PluginTensorNode>();
   n->name = std::move(name);
   n->dtype = std::move(dtype);
@@ -130,8 +130,8 @@ void PluginTensorNode::FromJson(const std::string& json_str) {
   FromJson(j_tensor);
 }
 
-PluginExtern::PluginExtern(const String& name, const String& header, const String& source,
-                           const String& lib, const String& describe) {
+PluginExtern::PluginExtern(const ffi::String& name, const ffi::String& header, const ffi::String& source,
+                           const ffi::String& lib, const ffi::String& describe) {
   ObjectPtr<PluginExternNode> n = ffi::make_object<PluginExternNode>();
   n->name = std::move(name);
   n->header = std::move(header);
@@ -179,12 +179,12 @@ void PluginExternNode::FromJson(const std::string& json_str) {
   FromJson(j_extern);
 }
 
-Plugin::Plugin(const String& name, const String& version, const String& describe,
+Plugin::Plugin(const ffi::String& name, const ffi::String& version, const ffi::String& describe,
                const Array<PluginAttr>& attrs, const Array<PluginTensor>& inputs,
                const Array<PluginTensor>& outputs, const Array<PluginTensor>& buffers,
-               const Map<String, PluginExtern>& externs,
-               const Map<String, Array<String>>& support_dtypes,
-               const Map<String, String>& options) {
+               const Map<ffi::String, PluginExtern>& externs,
+               const Map<ffi::String, Array<ffi::String>>& support_dtypes,
+               const Map<ffi::String, ffi::String>& options) {
   ObjectPtr<PluginNode> n = ffi::make_object<PluginNode>();
   n->name = std::move(name);
   n->version = std::move(version);
@@ -264,7 +264,7 @@ void PluginNode::FromJson(const JsonPlugin& j_plugin) {
     externs.Set(pair.first, PluginExtern(pair.second));
   }
   for (const auto& pair : j_plugin.support_dtypes) {
-    Array<String> dtypes;
+    Array<ffi::String> dtypes;
     for (const auto& d : pair.second) {
       dtypes.push_back(d);
     }
@@ -301,11 +301,11 @@ int PluginNode::FindDeviceRefIdx(const PluginTensor& tensor) const {
   return -1;
 }
 
-const Array<String> ListPluginNames() { return PluginRegistry::Global()->ListAllNames(); }
+const Array<ffi::String> ListPluginNames() { return PluginRegistry::Global()->ListAllNames(); }
 
-const Plugin GetPlugin(const String& name) { return PluginRegistry::Global()->Get(name); }
+const Plugin GetPlugin(const ffi::String& name) { return PluginRegistry::Global()->Get(name); }
 
-bool IsPlugin(const String& name) { return PluginRegistry::Global()->Registered(name); }
+bool IsPlugin(const ffi::String& name) { return PluginRegistry::Global()->Registered(name); }
 
 TVM_FFI_STATIC_INIT_BLOCK({
   PluginAttrNode::RegisterReflection();
@@ -318,12 +318,12 @@ TVM_FFI_STATIC_INIT_BLOCK({
   namespace refl = tvm::ffi::reflection;
   refl::GlobalDef()
       .def("msc.core.RegisterPlugin",
-           [](const String& name, const String& json_str) {
+           [](const ffi::String& name, const ffi::String& json_str) {
              PluginRegistry::Global()->Register(name, json_str);
            })
-      .def("msc.core.ListPluginNames", []() -> Array<String> { return ListPluginNames(); })
-      .def("msc.core.GetPlugin", [](const String& name) -> Plugin { return GetPlugin(name); })
-      .def("msc.core.IsPlugin", [](const String& name) -> Bool { return Bool(IsPlugin(name)); });
+      .def("msc.core.ListPluginNames", []() -> Array<ffi::String> { return ListPluginNames(); })
+      .def("msc.core.GetPlugin", [](const ffi::String& name) -> Plugin { return GetPlugin(name); })
+      .def("msc.core.IsPlugin", [](const ffi::String& name) -> Bool { return Bool(IsPlugin(name)); });
 });
 
 }  // namespace msc

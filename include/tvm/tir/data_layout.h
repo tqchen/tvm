@@ -99,7 +99,7 @@ class LayoutAxis {
 class LayoutNode : public Object {
  public:
   /*! \brief string representation of layout, "" for scalar. */
-  String name;
+  ffi::String name;
   /*! \brief specify each axis of the layout,
    *   in which the variable name is the name of the axis.
    *   The IterVar's extent indicates the size of the axis,
@@ -128,7 +128,7 @@ class Layout : public ObjectRef {
   explicit Layout(const Array<tir::IterVar>& axes);
 
   /*! \brief construct from a string */
-  Layout(const tvm::String& name) : Layout(name.operator std::string()) {}  // NOLINT(*)
+  Layout(const tvm::ffi::String& name) : Layout(name.operator std::string()) {}  // NOLINT(*)
 
   /*! \brief construct from a string */
   Layout(const char* name) : Layout(std::string(name)) {}  // NOLINT(*)

@@ -63,12 +63,12 @@ class IRModuleNode : public Object {
   /* \brief Additional attributes storing meta-data about the module. */
   DictAttrs attrs;
   /*! \brief Globally static object that are referred by the IR itself */
-  Map<String, Array<GlobalInfo>> global_infos;
+  Map<ffi::String, Array<GlobalInfo>> global_infos;
   /*!
    * \brief A map from string names to global variables that
    * ensures global uniqueness.
    */
-  Map<String, GlobalVar> global_var_map_;
+  Map<ffi::String, GlobalVar> global_var_map_;
 
   /*!
    * \brief Get a module attribute.
@@ -179,7 +179,7 @@ class IRModuleNode : public Object {
    * \param name The name of the global info.
    * \param info The new array of global infos.
    */
-  TVM_DLL void UpdateGlobalInfo(const String& name, const Array<GlobalInfo>& info);
+  TVM_DLL void UpdateGlobalInfo(const ffi::String& name, const Array<GlobalInfo>& info);
 
   /*!
    * \brief Remove a function from the global environment.
@@ -192,14 +192,14 @@ class IRModuleNode : public Object {
    * \param name The variable name.
    * \returns true if contains, otherise false.
    */
-  TVM_DLL bool ContainGlobalVar(const String& name) const;
+  TVM_DLL bool ContainGlobalVar(const ffi::String& name) const;
 
   /*!
    * \brief Lookup a global function by its variable.
    * \param str The unique string specifying the global variable.
    * \returns The global variable.
    */
-  TVM_DLL GlobalVar GetGlobalVar(const String& str) const;
+  TVM_DLL GlobalVar GetGlobalVar(const ffi::String& str) const;
 
   /*!
    * \brief Collect all global vars defined in this module, ordered by
@@ -220,7 +220,7 @@ class IRModuleNode : public Object {
    * \param name The name of the function.
    * \returns The function named by the argument.
    */
-  TVM_DLL BaseFunc Lookup(const String& name) const;
+  TVM_DLL BaseFunc Lookup(const ffi::String& name) const;
 
   /*!
    * \brief Update the functions inside this environment by
@@ -237,7 +237,7 @@ class IRModuleNode : public Object {
   /*!
    * \brief The set of imported files.
    */
-  TVM_DLL std::unordered_set<String> Imports() const;
+  TVM_DLL std::unordered_set<ffi::String> Imports() const;
 
   TVM_OBJECT_ENABLE_SCRIPT_PRINTER();
 
@@ -265,7 +265,7 @@ class IRModule : public ObjectRef {
    */
   TVM_DLL explicit IRModule(Map<GlobalVar, BaseFunc> functions, SourceMap map = {},
                             DictAttrs attrs = DictAttrs(),
-                            Map<String, Array<GlobalInfo>> global_infos = {});
+                            Map<ffi::String, Array<GlobalInfo>> global_infos = {});
 
   /*! \brief default constructor */
   IRModule() : IRModule(Map<GlobalVar, BaseFunc>({})) {}
@@ -365,7 +365,7 @@ constexpr const char* kSystemLibPrefix = "system_lib_prefix";
  * and during module initialization these bindings will be recovered from a ConstLoaderModule.
  * See also kConstantsArray above, which is the analog for PrimFuncs.
  *
- * Type: Map<String, runtime::Tensor>
+ * Type: Map<ffi::String, runtime::Tensor>
  */
 constexpr const char* kConstNameToConstant = "const_name_to_constant";
 

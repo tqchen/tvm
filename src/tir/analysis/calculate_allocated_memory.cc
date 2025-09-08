@@ -41,7 +41,7 @@ template <typename T>
 class AllocationCalculator : public StmtExprVisitor {
  public:
   AllocationCalculator() = default;
-  tvm::Map<String, Integer> operator()(const PrimFunc& func);
+  tvm::Map<ffi::String, Integer> operator()(const PrimFunc& func);
 
  private:
   void VisitStmt_(const T* op) override;
@@ -50,11 +50,11 @@ class AllocationCalculator : public StmtExprVisitor {
 };
 
 template <typename T>
-tvm::Map<String, Integer> AllocationCalculator<T>::operator()(const PrimFunc& func) {
+tvm::Map<ffi::String, Integer> AllocationCalculator<T>::operator()(const PrimFunc& func) {
   this->VisitStmt(func->body);
-  tvm::Map<String, Integer> res;
+  tvm::Map<ffi::String, Integer> res;
   for (auto [k, v] : _max_size) {
-    res.Set(String(k), Integer(v));
+    res.Set(ffi::String(k), Integer(v));
   }
   return res;
 }
@@ -80,17 +80,17 @@ void AllocationCalculator<T>::VisitStmt_(const T* op) {
   _current_size[storage_scope] -= size;
 }
 
-tvm::Map<String, tvm::Map<String, Integer> > CalculateAllocatedBytes(const PrimFunc& func) {
-  tvm::Map<String, tvm::Map<String, Integer> > results;
+tvm::Map<ffi::String, tvm::Map<ffi::String, Integer> > CalculateAllocatedBytes(const PrimFunc& func) {
+  tvm::Map<ffi::String, tvm::Map<ffi::String, Integer> > results;
   results.Set("main", AllocationCalculator<AllocateNode>()(func));
   return results;
 }
 
-tvm::Map<String, tvm::Map<String, Integer> > CalculateAllocatedBytes(const IRModule& mod) {
-  tvm::Map<String, tvm::Map<String, Integer> > results;
+tvm::Map<ffi::String, tvm::Map<ffi::String, Integer> > CalculateAllocatedBytes(const IRModule& mod) {
+  tvm::Map<ffi::String, tvm::Map<ffi::String, Integer> > results;
   for (const auto& kv : mod->functions) {
     if (auto prim_func = kv.second.as<tir::PrimFunc>()) {
-      String func_name = kv.first->name_hint;
+      ffi::String func_name = kv.first->name_hint;
       results.Set(func_name, AllocationCalculator<AllocateNode>()(prim_func.value()));
     }
   }
@@ -101,7 +101,7 @@ TVM_FFI_STATIC_INIT_BLOCK({
   namespace refl = tvm::ffi::reflection;
   refl::GlobalDef().def(
       "tir.analysis.calculate_allocated_bytes",
-      [](ObjectRef obj) -> tvm::Map<String, tvm::Map<String, Integer> > {
+      [](ObjectRef obj) -> tvm::Map<ffi::String, tvm::Map<ffi::String, Integer> > {
         if (auto func = obj.as<PrimFunc>()) {
           return CalculateAllocatedBytes(func.value());
         } else if (auto mod = obj.as<IRModule>()) {

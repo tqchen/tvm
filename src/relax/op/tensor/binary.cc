@@ -143,7 +143,7 @@ StructInfo InferStructInfoBroadcastCMP(const Call& call, const BlockBuilder& ctx
 }
 
 InferLayoutOutput InferLayoutBinaryEwise(const Call& call,
-                                         const Map<String, Array<String>>& desired_layouts,
+                                         const Map<ffi::String, Array<ffi::String>>& desired_layouts,
                                          const VarLayoutMap& var_layout_map) {
   ICHECK(NoDesiredLayout(call, desired_layouts));
   LayoutDecision layout1 = GetLayoutDecision(var_layout_map, call->args[0]);

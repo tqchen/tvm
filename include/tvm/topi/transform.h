@@ -1791,10 +1791,10 @@ inline Tensor layout_transform(const Tensor& src, const std::string& src_layout,
 
   Array<PrimExpr> dst_shape = layout_converter.ForwardShape(src->shape);
 
-  Map<String, ffi::Any> attrs = {{"schedule_rule", String(schedule_rule)},
+  Map<ffi::String, ffi::Any> attrs = {{"schedule_rule", ffi::String(schedule_rule)},
                                  // Information about layouts needed for the schedule rule
-                                 {"src_layout", String(src_layout)},
-                                 {"dst_layout", String(dst_layout)},
+                                 {"src_layout", ffi::String(src_layout)},
+                                 {"dst_layout", ffi::String(dst_layout)},
                                  {"input_shape", src->shape}};
 
   return compute(
@@ -1812,7 +1812,7 @@ inline Tensor layout_transform(const Tensor& src, const std::string& src_layout,
 }
 
 /*! \brief Utility function for auto_scheduler_layout_transform */
-inline void parse_auto_scheduler_layout(const String& layout, Array<PrimExpr>* shape,
+inline void parse_auto_scheduler_layout(const ffi::String& layout, Array<PrimExpr>* shape,
                                         std::vector<std::string>* axes) {
   int32_t factor = 0;
   std::string axis = "";
@@ -1848,10 +1848,10 @@ inline void parse_auto_scheduler_layout(const String& layout, Array<PrimExpr>* s
  * \param tag output tensor tag.
  * \return A tensor with shape in \p dst_layout
  */
-inline Tensor auto_scheduler_layout_transform(const Tensor& src, const String& src_layout,
-                                              const String& dst_layout,
-                                              const String name = "T_auto_scheduler_layout_trans",
-                                              const String tag = kInjective) {
+inline Tensor auto_scheduler_layout_transform(const Tensor& src, const ffi::String& src_layout,
+                                              const ffi::String& dst_layout,
+                                              const ffi::String name = "T_auto_scheduler_layout_trans",
+                                              const ffi::String tag = kInjective) {
   Array<PrimExpr> src_shape;
   std::vector<std::string> src_axes;
   Array<PrimExpr> dst_shape;
@@ -1916,8 +1916,8 @@ inline Tensor auto_scheduler_layout_transform(const Tensor& src, const String& s
  *    A'[a, b, c, d] = A[a * 4 + c, b * 16 + d]
  */
 inline Tensor meta_schedule_layout_transform(const Tensor& src, const tir::IndexMap& index_map,
-                                             const String name = "T_meta_schedule_layout_trans",
-                                             const String tag = kInjective) {
+                                             const ffi::String name = "T_meta_schedule_layout_trans",
+                                             const ffi::String tag = kInjective) {
   arith::Analyzer analyzer;
   Array<Range> iter_domain;
   iter_domain.reserve(src->shape.size());

@@ -82,11 +82,11 @@ class CodeGenVM : public ExprFunctor<Instruction::Arg(const Expr&)> {
   }
 
   void Codegen(const Function& func) {
-    Optional<String> gsymbol = func->GetAttr<String>(tvm::attr::kGlobalSymbol);
+    Optional<ffi::String> gsymbol = func->GetAttr<ffi::String>(tvm::attr::kGlobalSymbol);
     ICHECK(gsymbol.has_value()) << "there should be no local functions in Relax VM codegen phase. "
                                    "Did you forget to apply LambdaLift or AttachGlobalSymbol Pass?";
 
-    Array<String> param_names;
+    Array<ffi::String> param_names;
     for (Var param : func->params) {
       param_names.push_back(param->name_hint());
     }
@@ -274,7 +274,7 @@ class CodeGenVM : public ExprFunctor<Instruction::Arg(const Expr&)> {
 
   Instruction::Arg VisitExpr_(const GlobalVarNode* op) final {
     GlobalVar gvar = ffi::GetRef<GlobalVar>(op);
-    Optional<String> symbol;
+    Optional<ffi::String> symbol;
     VMFuncInfo::FuncKind kind = VMFuncInfo::FuncKind::kPackedFunc;
 
     // Run a look up in the env to see if it maps to an extern func.
@@ -306,10 +306,10 @@ class CodeGenVM : public ExprFunctor<Instruction::Arg(const Expr&)> {
   Instruction::Arg VisitExpr_(const ExternFuncNode* op) final {
     static const constexpr char* kCSource = "c_source";
     static const constexpr char* kCSourceFmt = "c_source_fmt";
-    if (Optional<String> opt_code = op->attrs.GetAttr<String>(kCSource)) {
-      String sym = op->global_symbol;
-      String fmt = op->attrs.GetAttr<String>(kCSourceFmt).value_or("c");
-      String code = opt_code.value();
+    if (Optional<ffi::String> opt_code = op->attrs.GetAttr<ffi::String>(kCSource)) {
+      ffi::String sym = op->global_symbol;
+      ffi::String fmt = op->attrs.GetAttr<ffi::String>(kCSourceFmt).value_or("c");
+      ffi::String code = opt_code.value();
       ffi::Module c_source_module =
           codegen::CSourceModuleCreate(/*code=*/code, /*fmt=*/fmt, /*func_names=*/{sym},
                                        /*const_vars=*/{});
@@ -440,7 +440,7 @@ TVM_FFI_STATIC_INIT_BLOCK({
  * module(s).
  * \return The created module.
  */
-void LinkModules(ObjectPtr<VMExecutable> exec, const Map<String, runtime::Tensor>& params,
+void LinkModules(ObjectPtr<VMExecutable> exec, const Map<ffi::String, runtime::Tensor>& params,
                  const tvm::ffi::Module& lib, const Array<ffi::Module>& ext_libs) {
   // query if we need const loader for ext_modules
   // Wrap all submodules in the initialization wrapper.
@@ -450,8 +450,8 @@ void LinkModules(ObjectPtr<VMExecutable> exec, const Map<String, runtime::Tensor
     auto pf_var = mod->GetFunction("get_const_vars");
     std::vector<std::string> symbol_const_vars;
     if (pf_sym.has_value() && pf_var.has_value()) {
-      String symbol = (*pf_sym)().cast<String>();
-      Array<String> variables = (*pf_var)().cast<Array<String>>();
+      ffi::String symbol = (*pf_sym)().cast<ffi::String>();
+      Array<ffi::String> variables = (*pf_var)().cast<Array<ffi::String>>();
       for (size_t i = 0; i < variables.size(); i++) {
         symbol_const_vars.push_back(variables[i].operator std::string());
       }
@@ -485,10 +485,10 @@ void LinkModules(ObjectPtr<VMExecutable> exec, const Map<String, runtime::Tensor
  * \brief Link the libraries together.
  */
 ffi::Module VMLink(ExecBuilder builder, Target target, Optional<ffi::Module> lib,
-                   Array<ffi::Module> ext_libs, Map<String, runtime::Tensor> params) {
+                   Array<ffi::Module> ext_libs, Map<ffi::String, runtime::Tensor> params) {
   ObjectPtr<VMExecutable> executable = builder->Get();
   if (!lib.defined()) {
-    lib = codegen::CSourceModuleCreate(";", "c", Array<String>{});
+    lib = codegen::CSourceModuleCreate(";", "c", Array<ffi::String>{});
   }
   LinkModules(executable, params, lib.value(), ext_libs);
   return ffi::Module(executable);

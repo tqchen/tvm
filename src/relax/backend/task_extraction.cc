@@ -67,7 +67,7 @@ class BlockCounter : public tir::StmtVisitor {
 
 class TaskExtractor : public ExprVisitor {
  public:
-  static Array<ExtractedTask> ExtractTask(IRModule mod, Target target, String mod_eq_name) {
+  static Array<ExtractedTask> ExtractTask(IRModule mod, Target target, ffi::String mod_eq_name) {
     TaskExtractor extractor(mod, target, mod_eq_name);
     // We go through each Relax function in the module.
     for (const auto& kv : mod->functions) {
@@ -83,7 +83,7 @@ class TaskExtractor : public ExprVisitor {
   }
 
  private:
-  explicit TaskExtractor(IRModule mod, Target target, String mod_eq_name)
+  explicit TaskExtractor(IRModule mod, Target target, ffi::String mod_eq_name)
       : mod_(std::move(mod)),
         target_(std::move(target)),
         mod_eq_(ModuleEquality::Create(mod_eq_name)),
@@ -143,7 +143,7 @@ class TaskExtractor : public ExprVisitor {
 TVM_FFI_STATIC_INIT_BLOCK({
   namespace refl = tvm::ffi::reflection;
   refl::GlobalDef().def("relax.backend.MetaScheduleExtractTask", [](IRModule mod, Target target,
-                                                                    String mod_eq_name) {
+                                                                    ffi::String mod_eq_name) {
     return TaskExtractor::ExtractTask(std::move(mod), std::move(target), std::move(mod_eq_name));
   });
 });

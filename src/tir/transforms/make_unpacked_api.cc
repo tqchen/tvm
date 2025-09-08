@@ -102,7 +102,7 @@ PrimFunc MakeUnpackedAPI(PrimFunc func) {
   }
 
   // Internal function calls do not need API updates
-  auto global_symbol = func->GetAttr<String>(tvm::attr::kGlobalSymbol);
+  auto global_symbol = func->GetAttr<ffi::String>(tvm::attr::kGlobalSymbol);
   if (!global_symbol.has_value()) {
     return func;
   }
@@ -169,7 +169,7 @@ Pass MakeUnpackedAPI() {
     std::unordered_set<const GlobalVarNode*> external_methods;
     for (const auto& [gvar, base_func] : mod->functions) {
       if (auto* prim_func = base_func.as<PrimFuncNode>()) {
-        if (prim_func->GetAttr<String>(tvm::attr::kGlobalSymbol)) {
+        if (prim_func->GetAttr<ffi::String>(tvm::attr::kGlobalSymbol)) {
           external_methods.insert(gvar.get());
         }
       }

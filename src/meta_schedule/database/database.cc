@@ -46,7 +46,7 @@ ObjectRef WorkloadNode::AsJSON() const {
   // Dump the JSON string to base64
   std::string b64_mod = Base64Encode(json_mod);
   // Output
-  return Array<ffi::Any>{SHash2Str(this->shash), String(b64_mod)};
+  return Array<ffi::Any>{SHash2Str(this->shash), ffi::String(b64_mod)};
 }
 
 Workload Workload::FromJSON(const ObjectRef& json_obj) {
@@ -56,10 +56,10 @@ Workload Workload::FromJSON(const ObjectRef& json_obj) {
     const ffi::ArrayObj* json_array = json_obj.as<ffi::ArrayObj>();
     CHECK(json_array && json_array->size() == 2);
     // Load json[0] => shash
-    String str_shash = json_array->at(0).cast<String>();
+    ffi::String str_shash = json_array->at(0).cast<ffi::String>();
     // Load json[1] => mod
     {
-      String b64_mod = json_array->at(1).cast<String>();
+      ffi::String b64_mod = json_array->at(1).cast<ffi::String>();
       std::string json_mod = Base64Decode(b64_mod);
       mod = LoadJSON(json_mod).cast<IRModule>();
       std::stringstream(str_shash) >> shash;
@@ -144,7 +144,7 @@ TuningRecord TuningRecord::FromJSON(const ObjectRef& json_obj, const Workload& w
     }
     // Load json[2] => target
     if (json_array->at(2) != nullptr) {
-      target = Target(json_array->at(2).cast<Map<String, ffi::Any>>());
+      target = Target(json_array->at(2).cast<Map<ffi::String, ffi::Any>>());
     }
     // Load json[3] => args_info
     if (json_array->at(3) != nullptr) {
@@ -173,11 +173,11 @@ TuningRecord TuningRecord::FromJSON(const ObjectRef& json_obj, const Workload& w
 }
 
 /******** Database ********/
-DatabaseNode::DatabaseNode(String mod_eq_name) { mod_eq_ = ModuleEquality::Create(mod_eq_name); }
+DatabaseNode::DatabaseNode(ffi::String mod_eq_name) { mod_eq_ = ModuleEquality::Create(mod_eq_name); }
 DatabaseNode::~DatabaseNode() = default;
 
 Optional<TuningRecord> DatabaseNode::QueryTuningRecord(const IRModule& mod, const Target& target,
-                                                       const String& workload_name) {
+                                                       const ffi::String& workload_name) {
   if (!this->HasWorkload(mod)) {
     return std::nullopt;
   }
@@ -190,7 +190,7 @@ Optional<TuningRecord> DatabaseNode::QueryTuningRecord(const IRModule& mod, cons
 }
 
 Optional<tir::Schedule> DatabaseNode::QuerySchedule(const IRModule& mod, const Target& target,
-                                                    const String& workload_name) {
+                                                    const ffi::String& workload_name) {
   if (Optional<TuningRecord> opt_record = this->QueryTuningRecord(mod, target, workload_name)) {
     TuningRecord record = opt_record.value();
     tir::Schedule sch =
@@ -204,7 +204,7 @@ Optional<tir::Schedule> DatabaseNode::QuerySchedule(const IRModule& mod, const T
 }
 
 Optional<IRModule> DatabaseNode::QueryIRModule(const IRModule& mod, const Target& target,
-                                               const String& workload_name) {
+                                               const ffi::String& workload_name) {
   if (Optional<tir::Schedule> opt_sch = this->QuerySchedule(mod, target, workload_name)) {
     return opt_sch.value()->mod();
   } else {
@@ -254,7 +254,7 @@ Optional<Database> Database::Current() {
 }
 
 /******** PyDatabase ********/
-PyDatabaseNode::PyDatabaseNode(String mod_eq_name) : DatabaseNode(mod_eq_name) {}
+PyDatabaseNode::PyDatabaseNode(ffi::String mod_eq_name) : DatabaseNode(mod_eq_name) {}
 
 Database Database::PyDatabase(PyDatabaseNode::FHasWorkload f_has_workload,
                               PyDatabaseNode::FCommitWorkload f_commit_workload,
@@ -264,7 +264,7 @@ Database Database::PyDatabase(PyDatabaseNode::FHasWorkload f_has_workload,
                               PyDatabaseNode::FQueryTuningRecord f_query_tuning_record,
                               PyDatabaseNode::FQuerySchedule f_query_schedule,
                               PyDatabaseNode::FQueryIRModule f_query_ir_module,
-                              PyDatabaseNode::FSize f_size, String mod_eq_name) {
+                              PyDatabaseNode::FSize f_size, ffi::String mod_eq_name) {
   ObjectPtr<PyDatabaseNode> n = ffi::make_object<PyDatabaseNode>(mod_eq_name);
   n->f_has_workload = f_has_workload;
   n->f_commit_workload = f_commit_workload;

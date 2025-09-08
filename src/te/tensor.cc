@@ -86,7 +86,7 @@ PrimExpr Tensor::IndexWithNegativeIndices(Array<PrimExpr> indices) const {
   return IndexTensor(indices, true);
 }
 
-String TensorNode::GetNameHint() const {
+ffi::String TensorNode::GetNameHint() const {
   return op->num_outputs() == 1 ? op->name : (op->name + ".v" + std::to_string(value_index));
 }
 

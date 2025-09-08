@@ -61,10 +61,10 @@ StmtSRef GetScopeRoot(const ScheduleState& self, const StmtSRef& sref,
    public:
     explicit RootBlockError(IRModule mod) : mod_(mod) {}
     IRModule mod() const final { return mod_; }
-    String FastErrorString() const final {
+    ffi::String FastErrorString() const final {
       return "ScheduleError: The primitive does not operate on the root block";
     }
-    String DetailRenderTemplate() const final {
+    ffi::String DetailRenderTemplate() const final {
       return "The primitive does not operate on the root block";
     }
     Array<ObjectRef> LocationsOfInterest() const final { return {}; }
@@ -75,10 +75,10 @@ StmtSRef GetScopeRoot(const ScheduleState& self, const StmtSRef& sref,
    public:
     explicit NotStagePipelineError(IRModule mod, Block block) : mod_(mod), block_(block) {}
     IRModule mod() const final { return mod_; }
-    String FastErrorString() const final {
+    ffi::String FastErrorString() const final {
       return "ScheduleError: The scope root is not a stage pipeline";
     }
-    String DetailRenderTemplate() const final {
+    ffi::String DetailRenderTemplate() const final {
       return R"(The scope {0} is not a stage pipeline.
 Definition of a scope that is a stage pipeline:
 - The region cover property holds for every of its child blocks
@@ -275,8 +275,8 @@ void CheckCompleteBlock(const ScheduleState& self, const StmtSRef& block_sref,
    public:
     explicit IncompleteBlockError(IRModule mod, Block block, int violated_cond)
         : mod_(std::move(mod)), block_(std::move(block)), violated_cond_(violated_cond) {}
-    String FastErrorString() const final { return "ScheduleError: Incomplete block"; }
-    String DetailRenderTemplate() const final {
+    ffi::String FastErrorString() const final { return "ScheduleError: Incomplete block"; }
+    ffi::String DetailRenderTemplate() const final {
       std::ostringstream os;
       os << "The block {0} is not a complete block - it violates condition #" << violated_cond_;
       os << ".\n" << kCompleteBlockDefinition;
@@ -349,8 +349,8 @@ void CheckReductionBlock(const ScheduleState& self, const StmtSRef& block_sref,
    public:
     explicit NotReductionBlockError(IRModule mod, Block block, int violated_cond)
         : mod_(std::move(mod)), block_(std::move(block)), violated_cond_(violated_cond) {}
-    String FastErrorString() const final { return "ScheduleError: Not a reduction block"; }
-    String DetailRenderTemplate() const final {
+    ffi::String FastErrorString() const final { return "ScheduleError: Not a reduction block"; }
+    ffi::String DetailRenderTemplate() const final {
       std::ostringstream os;
       os << "The block {0} is not a reduction block - it violates condition #" << violated_cond_;
       os << ".\n" << kReductionBlockDefinition;
@@ -382,10 +382,10 @@ void CheckCompleteOrReductionBlock(const ScheduleState& self, const StmtSRef& bl
           complete_block_error_code_(complete_block_error_code),
           reduction_block_error_code_(reduction_block_error_code) {}
 
-    String FastErrorString() const final {
+    ffi::String FastErrorString() const final {
       return "ScheduleError: Not a complete or reduction block";
     }
-    String DetailRenderTemplate() const final {
+    ffi::String DetailRenderTemplate() const final {
       std::ostringstream os;
       os << "The block {0} is not a complete block - it violates condition #"
          << complete_block_error_code_;
@@ -429,12 +429,12 @@ void CheckSubtreeCompactDataflow(const ScheduleState& self, const StmtSRef& subt
           local_reduction_block_code_(local_reduction_block_code) {
       ICHECK(subtree_root_->IsInstance<BlockNode>() || subtree_root_->IsInstance<ForNode>());
     }
-    String FastErrorString() const final {
+    ffi::String FastErrorString() const final {
       return "ScheduleError: The queried subtree root in SRef tree does not have compact dataflow, "
              "because some of its child block on SRef tree is neither a local complete block nor a "
              "local reduction block.";
     }
-    String DetailRenderTemplate() const final {
+    ffi::String DetailRenderTemplate() const final {
       std::ostringstream os;
       os << "The queried subtree root {0} in SRef tree does not have compact dataflow, because "
             "its child block {1} on SRef tree is neither a local complete block nor a local "
@@ -492,10 +492,10 @@ void CheckNotOutputBlock(const ScheduleState& self, const StmtSRef& block_sref,
   class OutputBlockError : public ScheduleError {
    public:
     explicit OutputBlockError(IRModule mod, Block block) : mod_(mod), block_(block) {}
-    String FastErrorString() const final {
+    ffi::String FastErrorString() const final {
       return "ScheduleError: Cannot operate on an output block";
     }
-    String DetailRenderTemplate() const final { return "The block {0} is an output block"; }
+    ffi::String DetailRenderTemplate() const final { return "The block {0} is an output block"; }
     IRModule mod() const final { return mod_; }
     Array<ObjectRef> LocationsOfInterest() const final { return {block_}; }
 
@@ -579,7 +579,7 @@ void CheckPartialAffineBinding(const ScheduleState& self, Block block,
         high_exclusive_loop_ = high_exclusive.value()->StmtAs<ForNode>();
       }
     }
-    String FastErrorString() const final {
+    ffi::String FastErrorString() const final {
       std::ostringstream ss;
       if (high_exclusive_loop_) {
         ss << "ScheduleError: The block is required to have an partial affine binding under "
@@ -589,7 +589,7 @@ void CheckPartialAffineBinding(const ScheduleState& self, Block block,
       }
       return ss.str();
     }
-    String DetailRenderTemplate() const final {
+    ffi::String DetailRenderTemplate() const final {
       std::ostringstream ss;
       if (high_exclusive_loop_) {
         ss << "The block {0} is required to have an partial affine binding under "
@@ -633,11 +633,11 @@ void CheckBlockHasTrivialBinding(const ScheduleState& self, const StmtSRef& bloc
     explicit NotTrivialBindingError(IRModule mod, Block block)
         : mod_(std::move(mod)), block_(std::move(block)) {}
 
-    String FastErrorString() const final {
+    ffi::String FastErrorString() const final {
       return "ScheduleError: The binding values of the block are not variables of outer loops.";
     }
 
-    String DetailRenderTemplate() const final {
+    ffi::String DetailRenderTemplate() const final {
       std::ostringstream os;
       os << "The binding values of the {0} are not variables of outer loops.";
       return os.str();
@@ -673,7 +673,7 @@ Map<Var, Range> LoopDomainOfSRefTreePath(const StmtSRef& low_inclusive,
     for (; p; p = p->parent) {
       if (const ForNode* loop = p->StmtAs<ForNode>()) {
         if (loop->kind == ForKind::kThreadBinding) {
-          const String& thread_tag = loop->thread_binding.value()->thread_tag;
+          const ffi::String& thread_tag = loop->thread_binding.value()->thread_tag;
           if (CanRelaxStorageUnderThread(extra_relax_scope,
                                          runtime::ThreadScope::Create(thread_tag))) {
             result.Set(loop->loop_var, Range::FromMinExtent(loop->min, loop->extent));
@@ -742,11 +742,11 @@ void CheckLoopStartsWithZero(const ScheduleState& self, const StmtSRef& loop_sre
     explicit LoopNotStartWithZeroError(IRModule mod, For loop)
         : mod_(mod), loop_(std::move(loop)) {}
 
-    String FastErrorString() const final {
+    ffi::String FastErrorString() const final {
       return "ScheduleError: The primitive only supports loop starting with 0";
     }
 
-    String DetailRenderTemplate() const final {
+    ffi::String DetailRenderTemplate() const final {
       return "The loop {0} does not start with 0, which is not supported";
     }
 
@@ -811,13 +811,13 @@ BlockRealize CheckGetSingleChildBlockRealizeOnSRefTree(const ScheduleState& self
       sref_type_ = stmt_.as<BlockNode>() != nullptr ? "block" : "loop";
     }
 
-    String FastErrorString() const final {
+    ffi::String FastErrorString() const final {
       std::ostringstream os;
       os << "ScheduleError: The " << sref_type_ << " is required to have only one child block";
       return os.str();
     }
 
-    String DetailRenderTemplate() const final {
+    ffi::String DetailRenderTemplate() const final {
       std::ostringstream os;
       os << "The " << sref_type_ << " {0} is required to have only one child block";
       return os.str();
@@ -828,7 +828,7 @@ BlockRealize CheckGetSingleChildBlockRealizeOnSRefTree(const ScheduleState& self
 
     IRModule mod_;
     Stmt stmt_;
-    String sref_type_;
+    ffi::String sref_type_;
   };
 
   Array<BlockRealize> child_block_realize = GetChildBlockRealizeOnSRefTree(parent_sref);
@@ -949,7 +949,7 @@ StmtSRef GetSRefLowestCommonAncestor(const Array<StmtSRef>& srefs) {
 }
 
 bool HasBeenMultiLevelTiled(const StmtSRef& block_sref) {
-  return tir::GetAnn<String>(block_sref, tir::attr::meta_schedule_tiling_structure).has_value();
+  return tir::GetAnn<ffi::String>(block_sref, tir::attr::meta_schedule_tiling_structure).has_value();
 }
 
 std::pair<Array<StmtSRef>, std::vector<int>> CollectComputeLocation(const ScheduleState& self,
@@ -1104,12 +1104,12 @@ ProducerConsumerSplit ProducerConsumerSplit::Find(
           last_producer_position_(last_producer_position),
           first_consumer_position_(first_consumer_position) {}
 
-    String FastErrorString() const final {
+    ffi::String FastErrorString() const final {
       return "ScheduleError: Cannot find the insertion point that satisfies the producer-consumer "
              "constraint";
     }
 
-    String DetailRenderTemplate() const final {
+    ffi::String DetailRenderTemplate() const final {
       return "Cannot find the insertion point that satisfies the producer-consumer constraint. In "
              "0-based indexing, the last producer appears in subtree " +
              std::to_string(last_producer_position_) +
@@ -1202,7 +1202,7 @@ BufferRegion GetNthAccessBufferRegion(const ScheduleState& self, const Block& bl
           buffer_index_(buffer_index),
           index_type_(index_type) {}
 
-    String FastErrorString() const final {
+    ffi::String FastErrorString() const final {
       if (index_type_ == BufferIndexType::kWrite) {
         return "ScheduleError: The input `buffer_index` is out of range. It is required to be in "
                "range "
@@ -1216,7 +1216,7 @@ BufferRegion GetNthAccessBufferRegion(const ScheduleState& self, const Block& bl
       }
     }
 
-    String DetailRenderTemplate() const final {
+    ffi::String DetailRenderTemplate() const final {
       std::ostringstream os;
       size_t num =
           index_type_ == BufferIndexType::kWrite ? block_->writes.size() : block_->reads.size();
@@ -1440,17 +1440,17 @@ AnalyzeReadWritePattern(const BufferRegion& read_region, const BufferRegion& wri
 
 /******** Storage Scope ********/
 
-void CheckStorageScope(const ScheduleState& self, String storage_scope) {
+void CheckStorageScope(const ScheduleState& self, ffi::String storage_scope) {
   class InvalidStorageScopeError : public ScheduleError {
    public:
-    explicit InvalidStorageScopeError(IRModule mod, String storage_scope)
+    explicit InvalidStorageScopeError(IRModule mod, ffi::String storage_scope)
         : mod_(std::move(mod)), storage_scope_(std::move(storage_scope)) {}
 
-    String FastErrorString() const final {
+    ffi::String FastErrorString() const final {
       return "ScheduleError: The input storage scope is invalid";
     }
 
-    String DetailRenderTemplate() const final {
+    ffi::String DetailRenderTemplate() const final {
       return "The input storage scope \"" + storage_scope_ + "\" is invalid.";
     }
 
@@ -1459,7 +1459,7 @@ void CheckStorageScope(const ScheduleState& self, String storage_scope) {
 
    private:
     IRModule mod_;
-    String storage_scope_;
+    ffi::String storage_scope_;
   };
 
   try {
@@ -2149,7 +2149,7 @@ TVM_FFI_STATIC_INIT_BLOCK({
              auto block_sref = sch->GetSRef(block);
              return IsOutputBlock(state, block_sref, GetScopeRoot(state, block_sref, false));
            })
-      .def("tir.schedule.GetLoopIterType", [](Schedule sch, LoopRV loop) -> String {
+      .def("tir.schedule.GetLoopIterType", [](Schedule sch, LoopRV loop) -> ffi::String {
         IterVarType kind = GetLoopIterType(sch->GetSRef(loop));
         if (kind == kDataPar) {
           return "S";

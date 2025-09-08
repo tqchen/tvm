@@ -120,7 +120,7 @@ class GraphCreator : public ExprVisitor {
       // true.
       const auto* func = it.second.as<FunctionNode>();
       if (func == nullptr || func->HasNonzeroAttr(attr::kPrimitive) ||
-          func->GetAttr<String>(attr::kCodegen).has_value()) {
+          func->GetAttr<ffi::String>(attr::kCodegen).has_value()) {
         continue;
       }
       creator(ffi::GetRef<Function>(func));
@@ -481,7 +481,7 @@ class FunctionCreator : public ExprMutator {
    * It will become the value of the kComposite attribute of the created function.
    * \note The created function won't be returned immediately. It's stored in the `function_` field.
    */
-  void CreateFunction(Map<String, Any> group_attrs) {
+  void CreateFunction(Map<ffi::String, Any> group_attrs) {
     // Step 1. Start constructing a new dataflow block.
     builder_->BeginDataflowBlock();
 
@@ -493,7 +493,7 @@ class FunctionCreator : public ExprMutator {
       ICHECK(!item_indices.empty());
       int param_idx = tuple_param_idx_[tuple_arg];
       Var param = params_[param_idx];
-      String param_name = params_[param_idx]->name_hint();
+      ffi::String param_name = params_[param_idx]->name_hint();
       TupleStructInfo param_sinfo = Downcast<TupleStructInfo>(tuple_arg->struct_info_);
 
       Array<Expr> item_args;
@@ -583,7 +583,7 @@ class FunctionCreator : public ExprMutator {
   /*! \brief The arguments to call the function on the caller side */
   Array<Expr> arguments_;
   /*! \brief The name for the fused function */
-  String name_hint_ = "fused";
+  ffi::String name_hint_ = "fused";
   /*! \brief The constructed Relax function */
   Optional<Function> function_ = std::nullopt;
 
@@ -612,8 +612,8 @@ class FunctionCreator : public ExprMutator {
     const auto* var = expr.as<VarNode>();
     if ((var == nullptr || defined_vars_.count(var) == 0) &&
         (lift_constant_ || !expr->IsInstance<ConstantNode>())) {
-      String name = var != nullptr ? var->name_hint()
-                                   : String("param_" + std::to_string(n_param_for_const_++));
+      ffi::String name = var != nullptr ? var->name_hint()
+                                   : ffi::String("param_" + std::to_string(n_param_for_const_++));
       StructInfo param_sinfo = GetStructInfo(expr);
       if (!IsInlinableConstants(expr)) {
         Var param(std::move(name), GetStructInfo(expr));
@@ -719,7 +719,7 @@ class OperatorFusor : public ExprMutator {
    * \brief The main transformation on the IRModule
    * \return The new IRModule after transformation
    */
-  IRModule Transform(const Array<String>& entry_function_names = {}) {
+  IRModule Transform(const Array<ffi::String>& entry_function_names = {}) {
     Array<GlobalVar> entry_functions;
     if (entry_function_names.empty()) {
       entry_functions = mod_->GetGlobalVars();
@@ -733,7 +733,7 @@ class OperatorFusor : public ExprMutator {
       // Only visit Relax functions with neither attr::kPrimitive nor
       // attr::kCodegen.
       if (func->IsInstance<relax::FunctionNode>() && !func->HasNonzeroAttr(attr::kPrimitive) &&
-          !func->GetAttr<String>(attr::kCodegen).has_value()) {
+          !func->GetAttr<ffi::String>(attr::kCodegen).has_value()) {
         auto updated_func = Downcast<Function>(VisitExpr(func));
         builder_->UpdateFunction(gv, updated_func);
       }
@@ -1054,7 +1054,7 @@ IRModule FuseOps(IRModule mod, int opt_level, size_t max_fuse_depth) {
 
 IRModule MakeGroupedFunctions(
     IRModule mod, const std::unordered_map<const Object*, GraphPartitioner::Group*>& partition,
-    bool lift_constants, const Array<String>& entry_function_names) {
+    bool lift_constants, const Array<ffi::String>& entry_function_names) {
   return OperatorFusor(mod, partition, lift_constants).Transform(entry_function_names);
 }
 
@@ -1069,10 +1069,10 @@ class PatternBasedPartitioner : ExprVisitor {
   using PatternCheckContext = transform::PatternCheckContext;
   using ExprVisitor::VisitExpr_;
   using FCheckMatch = ffi::TypedFunction<bool(const transform::PatternCheckContext&)>;
-  using FAttrsGetter = ffi::TypedFunction<Map<String, ffi::Any>(const Map<String, Expr>&)>;
+  using FAttrsGetter = ffi::TypedFunction<Map<ffi::String, ffi::Any>(const Map<ffi::String, Expr>&)>;
 
-  static GroupMap Run(String pattern_name, DFPattern pattern,
-                      Map<String, DFPattern> annotation_patterns, FCheckMatch check, Expr expr,
+  static GroupMap Run(ffi::String pattern_name, DFPattern pattern,
+                      Map<ffi::String, DFPattern> annotation_patterns, FCheckMatch check, Expr expr,
                       support::Arena* arena, FAttrsGetter attrs_getter) {
     PatternBasedPartitioner part(pattern_name, pattern, annotation_patterns, check, arena,
                                  attrs_getter);
@@ -1080,8 +1080,8 @@ class PatternBasedPartitioner : ExprVisitor {
     return part.group_map_;
   }
 
-  PatternBasedPartitioner(String pattern_name, DFPattern pattern,
-                          Map<String, DFPattern> annotation_patterns, FCheckMatch check,
+  PatternBasedPartitioner(ffi::String pattern_name, DFPattern pattern,
+                          Map<ffi::String, DFPattern> annotation_patterns, FCheckMatch check,
                           support::Arena* arena, FAttrsGetter attrs_getter)
       : pat_name_(pattern_name),
         pat_(pattern),
@@ -1197,7 +1197,7 @@ class PatternBasedPartitioner : ExprVisitor {
 
   PatternCheckContext CreatePatternCheckContext(const CallNode* call,
                                                 const Map<DFPattern, Expr>& matched_result) {
-    Map<String, Expr> annotated_expr;
+    Map<ffi::String, Expr> annotated_expr;
     for (const auto& it : annotation_pat_) {
       if (matched_result.count(it.second)) {
         annotated_expr.Set(it.first, matched_result[it.second]);
@@ -1230,9 +1230,9 @@ class PatternBasedPartitioner : ExprVisitor {
     return true;
   }
 
-  String pat_name_;
+  ffi::String pat_name_;
   DFPattern pat_;
-  Map<String, DFPattern> annotation_pat_;
+  Map<ffi::String, DFPattern> annotation_pat_;
   FCheckMatch check_;
   support::Arena* arena_;
   FAttrsGetter attrs_getter_;
@@ -1263,8 +1263,8 @@ class CompositeFunctionAnnotator : public ExprMutator {
       }
       const auto& base_func = (*it).second;
       if (const auto* func = base_func.as<FunctionNode>()) {
-        if (func->GetAttr<String>(attr::kComposite).has_value() ||
-            func->GetAttr<String>(attr::kCodegen).has_value()) {
+        if (func->GetAttr<ffi::String>(attr::kComposite).has_value() ||
+            func->GetAttr<ffi::String>(attr::kCodegen).has_value()) {
           continue;
         }
 
@@ -1285,7 +1285,7 @@ class CompositeFunctionAnnotator : public ExprMutator {
         return Call(it->second, call_node->args);
       }
       auto func = builder_->GetContextIRModule()->Lookup(ffi::GetRef<GlobalVar>(gvar));
-      if (auto composite_name = func->GetAttr<String>(attr::kComposite)) {
+      if (auto composite_name = func->GetAttr<ffi::String>(attr::kComposite)) {
         auto new_func = Downcast<Function>(VisitExpr(func));
         auto codegen_name = GetCodegenName(composite_name.value());
         auto gsymbol = gvar->name_hint + "_" + codegen_name;
@@ -1304,7 +1304,7 @@ class CompositeFunctionAnnotator : public ExprMutator {
   Expr VisitExpr_(const FunctionNode* func_node) final {
     Function f_inner = Downcast<Function>(ExprMutator::VisitExpr_(func_node));
 
-    if (!func_node->GetAttr<String>(attr::kComposite)) {
+    if (!func_node->GetAttr<ffi::String>(attr::kComposite)) {
       // This lambda function doesn't have `attr::kComposite`, so it
       // was not produced by FuseOps.
       return f_inner;
@@ -1343,7 +1343,7 @@ class CompositeFunctionAnnotator : public ExprMutator {
 
 IRModule FuseOpsByPattern(const tvm::Array<transform::FusionPattern>& patterns, IRModule mod,
                           bool bind_constants, bool annotate_codegen,
-                          Array<String> entry_function_names) {
+                          Array<ffi::String> entry_function_names) {
   support::Arena arena;
 
   for (const auto& pattern : patterns) {
@@ -1363,8 +1363,8 @@ IRModule FuseOpsByPattern(const tvm::Array<transform::FusionPattern>& patterns, 
         }
         const FunctionNode* function = base_func.as<FunctionNode>();
         if (function->GetAttr<bool>(attr::kPrimitive).value_or(false) ||
-            function->GetAttr<String>(attr::kComposite).has_value() ||
-            function->GetAttr<String>(attr::kCodegen).has_value()) {
+            function->GetAttr<ffi::String>(attr::kComposite).has_value() ||
+            function->GetAttr<ffi::String>(attr::kCodegen).has_value()) {
           continue;
         }
         entry_functions.push_back(Downcast<Function>(base_func));
@@ -1395,8 +1395,8 @@ IRModule FuseOpsByPattern(const tvm::Array<transform::FusionPattern>& patterns, 
 
 namespace transform {
 
-FusionPattern::FusionPattern(String name, DFPattern pattern,
-                             Map<String, DFPattern> annotation_patterns,
+FusionPattern::FusionPattern(ffi::String name, DFPattern pattern,
+                             Map<ffi::String, DFPattern> annotation_patterns,
                              Optional<ffi::Function> check, Optional<ffi::Function> attrs_getter) {
   ObjectPtr<FusionPatternNode> n = ffi::make_object<FusionPatternNode>();
   n->name = std::move(name);
@@ -1411,13 +1411,13 @@ TVM_FFI_STATIC_INIT_BLOCK({
   namespace refl = tvm::ffi::reflection;
   refl::GlobalDef().def(
       "relax.transform.FusionPattern",
-      [](String name, DFPattern pattern, Map<String, DFPattern> annotation_patterns,
+      [](ffi::String name, DFPattern pattern, Map<ffi::String, DFPattern> annotation_patterns,
          Optional<ffi::Function> check, Optional<ffi::Function> attrs_getter) {
         return FusionPattern(name, pattern, annotation_patterns, check, attrs_getter);
       });
 });
 
-PatternCheckContext::PatternCheckContext(Expr matched_expr, Map<String, Expr> annotated_expr,
+PatternCheckContext::PatternCheckContext(Expr matched_expr, Map<ffi::String, Expr> annotated_expr,
                                          Map<Var, Expr> matched_bindings,
                                          Map<Var, Array<Var>> var_usages,
                                          Map<Expr, Var> value_to_bound_var) {
@@ -1449,7 +1449,7 @@ TVM_FFI_STATIC_INIT_BLOCK({
 });
 
 Pass FuseOpsByPattern(const tvm::Array<FusionPattern>& patterns, bool bind_constants,
-                      bool annotate_codegen, const Array<String>& entry_function_names) {
+                      bool annotate_codegen, const Array<ffi::String>& entry_function_names) {
   auto pass_func =  //
       [=](IRModule m, PassContext pc) {
         return relax::FuseOpsByPattern(patterns, m, bind_constants, annotate_codegen,

@@ -42,7 +42,7 @@ class Doc;
  * \param doc Doc to be converted
  * \param cfg The configuration of the printer
  */
-String DocToPythonScript(Doc doc, const PrinterConfig& cfg);
+ffi::String DocToPythonScript(Doc doc, const PrinterConfig& cfg);
 
 /*!
  * \brief The base class of all Doc.
@@ -106,7 +106,7 @@ class ExprDocNode : public DocNode {
    * \brief Create a doc representing attribute access on the current ExprDoc
    * \param attr The attribute to access.
    */
-  ExprDoc Attr(String attr) const;
+  ExprDoc Attr(ffi::String attr) const;
 
   /*!
    * \brief Create a doc representing index access on the current ExprDoc
@@ -127,7 +127,7 @@ class ExprDocNode : public DocNode {
    * \param kwargs_values Values of keywords arguments of the function call.
    */
   ExprDoc Call(Array<ExprDoc, void> args,  //
-               Array<String> kwargs_keys,  //
+               Array<ffi::String> kwargs_keys,  //
                Array<ExprDoc, void> kwargs_values) const;
 
   static void RegisterReflection() {
@@ -174,7 +174,7 @@ class StmtDocNode : public DocNode {
    * line as the statement, or the line above, or inside the statement
    * if it spans over multiple lines.
    * */
-  mutable Optional<String> comment{std::nullopt};
+  mutable Optional<ffi::String> comment{std::nullopt};
 
   static void RegisterReflection() {
     namespace refl = tvm::ffi::reflection;
@@ -306,7 +306,7 @@ class LiteralDoc : public ExprDoc {
    * \param v The string value.
    * \param p The object path
    */
-  static LiteralDoc Str(const String& v, const Optional<AccessPath>& p) { return LiteralDoc(v, p); }
+  static LiteralDoc Str(const ffi::String& v, const Optional<AccessPath>& p) { return LiteralDoc(v, p); }
   /*!
    * \brief Create a LiteralDoc to represent string.
    * \param v The string value.
@@ -338,7 +338,7 @@ class LiteralDoc : public ExprDoc {
 class IdDocNode : public ExprDocNode {
  public:
   /*! \brief The name of the identifier */
-  String name;
+  ffi::String name;
 
   static void RegisterReflection() {
     namespace refl = tvm::ffi::reflection;
@@ -361,7 +361,7 @@ class IdDoc : public ExprDoc {
    * \brief Constructor of IdDoc.
    * \param name The name of identifier.
    */
-  explicit IdDoc(String name);
+  explicit IdDoc(ffi::String name);
   explicit IdDoc(std::nullptr_t) : ExprDoc(nullptr) {}
   TVM_DEFINE_NOTNULLABLE_OBJECT_REF_METHODS(IdDoc, ExprDoc, IdDocNode);
 };
@@ -376,7 +376,7 @@ class AttrAccessDocNode : public ExprDocNode {
   /*! \brief The target expression to be accessed */
   ExprDoc value{nullptr};
   /*! \brief The attribute to be accessed */
-  String name;
+  ffi::String name;
 
   static void RegisterReflection() {
     namespace refl = tvm::ffi::reflection;
@@ -402,7 +402,7 @@ class AttrAccessDoc : public ExprDoc {
    * \param value The target expression of attribute access.
    * \param name The name of attribute to access.
    */
-  explicit AttrAccessDoc(ExprDoc value, String name);
+  explicit AttrAccessDoc(ExprDoc value, ffi::String name);
   TVM_DEFINE_NOTNULLABLE_OBJECT_REF_METHODS(AttrAccessDoc, ExprDoc, AttrAccessDocNode);
 };
 
@@ -464,7 +464,7 @@ class CallDocNode : public ExprDocNode {
   /*! \brief The positional arguments */
   Array<ExprDoc> args;
   /*! \brief The keys of keyword arguments */
-  Array<String> kwargs_keys;
+  Array<ffi::String> kwargs_keys;
   /*!
    * \brief The values of keyword arguments.
    *
@@ -501,7 +501,7 @@ class CallDoc : public ExprDoc {
    * \param kwargs_keys Keys of keyword arguments.
    * \param kwargs_values Values of keyword arguments, must have the same length as `kwargs_keys.
    */
-  CallDoc(ExprDoc callee, Array<ExprDoc> args, Array<String> kwargs_keys,
+  CallDoc(ExprDoc callee, Array<ExprDoc> args, Array<ffi::String> kwargs_keys,
           Array<ExprDoc> kwargs_values);
   TVM_DEFINE_NOTNULLABLE_OBJECT_REF_METHODS(CallDoc, ExprDoc, CallDocNode);
 };
@@ -1276,7 +1276,7 @@ class CommentDocNode : public StmtDocNode {
  */
 class CommentDoc : public StmtDoc {
  public:
-  explicit CommentDoc(String comment);
+  explicit CommentDoc(ffi::String comment);
   TVM_DEFINE_NOTNULLABLE_OBJECT_REF_METHODS(CommentDoc, StmtDoc, CommentDocNode);
 };
 
@@ -1303,7 +1303,7 @@ class DocStringDocNode : public StmtDocNode {
  */
 class DocStringDoc : public StmtDoc {
  public:
-  explicit DocStringDoc(String docs);
+  explicit DocStringDoc(ffi::String docs);
   TVM_DEFINE_NOTNULLABLE_OBJECT_REF_METHODS(DocStringDoc, StmtDoc, DocStringDocNode);
 };
 

@@ -56,7 +56,7 @@ void InlinePostBlocks(Schedule sch, Trace anchor_trace, Target target) {
   std::unordered_set<std::string> get_block_names;
   for (const auto& inst : anchor_trace->insts) {
     if (inst->kind.same_as(kind_get_block)) {
-      auto block_name = Downcast<String>(inst->attrs[0]);
+      auto block_name = Downcast<ffi::String>(inst->attrs[0]);
       get_block_names.insert(block_name);
     }
   }
@@ -142,7 +142,7 @@ std::vector<BlockRV> ApplyAnchorTrace(Schedule sch, Trace anchor_trace) {
 
     Array<Any> inputs = TranslateInputRVs(inst->inputs, rv_map);
 
-    if (inst->kind.same_as(kind_get_block) && !HasBlock(sch, Downcast<String>(inst->attrs[0]))) {
+    if (inst->kind.same_as(kind_get_block) && !HasBlock(sch, Downcast<ffi::String>(inst->attrs[0]))) {
       // The anchor trace does get_block on a block that is not part of the target schedule.
       auto block = Downcast<BlockRV>(inst->outputs[0]);
       foreign_blocks.insert(block);

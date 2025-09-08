@@ -144,8 +144,8 @@ inline InlineType AutoInlineNode::CheckInline(const tir::Schedule& sch,
     }
   }
   // Cond 6. The block is disallowed for auto inline
-  if (Optional<String> ann =
-          tir::GetAnn<String>(block_sref, tir::attr::meta_schedule_inline_rule)) {
+  if (Optional<ffi::String> ann =
+          tir::GetAnn<ffi::String>(block_sref, tir::attr::meta_schedule_inline_rule)) {
     if (ann.value() == "disable") return InlineType::kNoInline;
   }
   // Last cond: Check inline into the consumers or the spatial producer
@@ -162,7 +162,7 @@ inline InlineType AutoInlineNode::CheckInline(const tir::Schedule& sch,
     if (producer_srefs.size() == 1 &&
         tir::IsCompleteBlock(sch->state(), producer_srefs[0], scope_block) &&
         CanReverseComputeInline(state, block_sref) &&
-        !GetAnn<String>(producer_srefs[0], tir::attr::meta_schedule_auto_tensorize).has_value()) {
+        !GetAnn<ffi::String>(producer_srefs[0], tir::attr::meta_schedule_auto_tensorize).has_value()) {
       return InlineType::kInlineIntoProducer;
     }
   }
@@ -175,7 +175,7 @@ ScheduleRule ScheduleRule::AutoInline(bool into_producer,          //
                                       bool disallow_if_then_else,  //
                                       bool require_injective,      //
                                       bool require_ordered,        //
-                                      Optional<Array<String>> disallow_op) {
+                                      Optional<Array<ffi::String>> disallow_op) {
   ObjectPtr<AutoInlineNode> n = ffi::make_object<AutoInlineNode>();
   n->into_producer = into_producer;
   n->into_consumer = into_consumer;
@@ -185,9 +185,9 @@ ScheduleRule ScheduleRule::AutoInline(bool into_producer,          //
   n->require_ordered = require_ordered;
   n->disallow_op.clear();
   if (disallow_op.defined()) {
-    Array<String> op_names = disallow_op.value();
+    Array<ffi::String> op_names = disallow_op.value();
     n->disallow_op.reserve(op_names.size());
-    for (const String& op_name : op_names) {
+    for (const ffi::String& op_name : op_names) {
       n->disallow_op.push_back(Op::Get(op_name));
     }
   }

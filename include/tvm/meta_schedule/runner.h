@@ -35,9 +35,9 @@ namespace meta_schedule {
 class RunnerInputNode : public runtime::Object {
  public:
   /*! \brief The path to the built artifact. */
-  String artifact_path;
+  ffi::String artifact_path;
   /*! \brief The type of device. */
-  String device_type;
+  ffi::String device_type;
   /*! \brief The argument information. */
   Array<ArgInfo> args_info;
 
@@ -66,7 +66,7 @@ class RunnerInput : public runtime::ObjectRef {
    * \param device_type The type of device.
    * \param args_info The argument information.
    */
-  TVM_DLL explicit RunnerInput(String artifact_path, String device_type, Array<ArgInfo> args_info);
+  TVM_DLL explicit RunnerInput(ffi::String artifact_path, ffi::String device_type, Array<ArgInfo> args_info);
   TVM_DEFINE_NOTNULLABLE_OBJECT_REF_METHODS(RunnerInput, runtime::ObjectRef, RunnerInputNode);
 };
 
@@ -76,7 +76,7 @@ class RunnerResultNode : public runtime::Object {
   /*! \brief The run time in seconds.*/
   Optional<Array<FloatImm>> run_secs;
   /*! \brief The error message, if any. */
-  Optional<String> error_msg;
+  Optional<ffi::String> error_msg;
 
   static void RegisterReflection() {
     namespace refl = tvm::ffi::reflection;
@@ -101,7 +101,7 @@ class RunnerResult : public runtime::ObjectRef {
    * \brief The run time in seconds.
    * \brief The error message, if any.
    */
-  TVM_DLL explicit RunnerResult(Optional<Array<FloatImm>> run_secs, Optional<String> error_msg);
+  TVM_DLL explicit RunnerResult(Optional<Array<FloatImm>> run_secs, Optional<ffi::String> error_msg);
   TVM_DEFINE_NOTNULLABLE_OBJECT_REF_METHODS(RunnerResult, runtime::ObjectRef, RunnerResultNode);
 };
 

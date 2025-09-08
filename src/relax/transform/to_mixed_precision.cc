@@ -317,9 +317,9 @@ class ToMixedPrecisionRewriter : public ExprMutator {
       // We only rewrite the expr if the dtype is fp16 or fp32, dtypes such as int32, float64 is not
       // supported to be rewritten
       if (tensor->dtype != fp16_ && tensor->dtype != fp32_) return expr;
-      return astype(expr, DataType(StringToDLDataType(to[0].LeafValue())));
+      return astype(expr, DataType(ffi::StringToDLDataType(to[0].LeafValue())));
     };
-    return TransformTupleLeaf<String>(expr, std::array<NType, 1>({to}), fvisitleaf);
+    return TransformTupleLeaf<ffi::String>(expr, std::array<NType, 1>({to}), fvisitleaf);
   }
 
   Array<Expr> RewriteArgs(const Array<Expr>& args, DataType to) {
@@ -413,11 +413,11 @@ class ToMixedPrecisionRewriter : public ExprMutator {
     auto it = only_fp16_map_->find(var);
     if (it == only_fp16_map_->end()) return;
     // Get the to dtype, cast to fp16 if the var is fp16 only, otherwise do nothing
-    auto fcombine = [](const String& from, const String& required) -> String {
+    auto fcombine = [](const ffi::String& from, const ffi::String& required) -> ffi::String {
       return required == "float16" ? required : from;
     };
     NType from = NTypeFrom(cur_var);
-    NType to = CombineNestedMsg<String>(from, it->second, fcombine);
+    NType to = CombineNestedMsg<ffi::String>(from, it->second, fcombine);
     Expr rewrite = RewriteExpr(cur_var, to);
     // If cur_var is not rewritten, we don't need to emit a new var
     if (!rewrite.same_as(cur_var)) {
@@ -600,7 +600,7 @@ class ToMixedPrecisionRewriter : public ExprMutator {
 };
 
 Expr ToMixedPrecision(const Function& f, const DataType& out_dtype,
-                      Optional<Array<String>> fp16_input_names) {
+                      Optional<Array<ffi::String>> fp16_input_names) {
   VarDTypeMap only_fp16_map = DTypeDecisionCollector::Collect(f, out_dtype);
   std::unordered_set<std::string> fp16_input_names_set;
   if (fp16_input_names) {
@@ -612,7 +612,7 @@ Expr ToMixedPrecision(const Function& f, const DataType& out_dtype,
 
 namespace transform {
 
-Pass ToMixedPrecision(const DataType& out_dtype, Optional<Array<String>> fp16_input_names) {
+Pass ToMixedPrecision(const DataType& out_dtype, Optional<Array<ffi::String>> fp16_input_names) {
   auto pass_func = [=](Function f, IRModule m, PassContext pc) {
     return Downcast<Function>(ToMixedPrecision(f, out_dtype, fp16_input_names));
   };

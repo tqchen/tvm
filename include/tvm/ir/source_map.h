@@ -46,7 +46,7 @@ class SourceName;
 class SourceNameNode : public Object {
  public:
   /*! \brief The source name. */
-  String name;
+  ffi::String name;
 
   static void RegisterReflection() {
     namespace refl = tvm::ffi::reflection;
@@ -70,7 +70,7 @@ class SourceName : public ObjectRef {
    * \param name Name of the operator.
    * \return SourceName valid throughout program lifetime.
    */
-  TVM_DLL static SourceName Get(const String& name);
+  TVM_DLL static SourceName Get(const ffi::String& name);
 
   TVM_DEFINE_OBJECT_REF_METHODS(SourceName, ObjectRef, SourceNameNode);
 };
@@ -163,7 +163,7 @@ class SourceNode : public Object {
   SourceName source_name;
 
   /*! \brief The raw source. */
-  String source;
+  ffi::String source;
 
   /*! \brief A mapping of line breaks into the raw source. */
   std::vector<std::pair<int, int>> line_map;
@@ -182,7 +182,7 @@ class SourceNode : public Object {
 class Source : public ObjectRef {
  public:
   TVM_DLL Source(SourceName src_name, std::string source);
-  TVM_DLL tvm::String GetLine(int line);
+  TVM_DLL tvm::ffi::String GetLine(int line);
 
   TVM_DEFINE_NOTNULLABLE_OBJECT_REF_METHODS(Source, ObjectRef, SourceNode);
 };

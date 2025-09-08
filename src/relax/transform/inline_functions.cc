@@ -35,7 +35,7 @@ namespace {
 
 class FunctionInliner : public ExprMutator {
  public:
-  explicit FunctionInliner(const Map<Variant<String, GlobalVar>, Function>& replacements)
+  explicit FunctionInliner(const Map<Variant<ffi::String, GlobalVar>, Function>& replacements)
       : replacements_(replacements) {}
 
   using ExprMutator::VisitExpr_;
@@ -138,7 +138,7 @@ class FunctionInliner : public ExprMutator {
     return SeqExpr({binding_block}, body);
   }
 
-  const Map<Variant<String, GlobalVar>, Function>& replacements_;
+  const Map<Variant<ffi::String, GlobalVar>, Function>& replacements_;
   std::unordered_set<GlobalVar, ObjectPtrHash, ObjectPtrEqual> inline_stack_;
 };
 }  // namespace
@@ -150,7 +150,7 @@ class FunctionInliner : public ExprMutator {
  * \return Function
  */
 Function FunctionInlineFunctions(Function func,
-                                 const Map<Variant<String, GlobalVar>, Function>& replacements) {
+                                 const Map<Variant<ffi::String, GlobalVar>, Function>& replacements) {
   for (const auto& [key, func] : replacements) {
     if (auto ptr = key.as<GlobalVarNode>()) {
       CHECK(!replacements.count(ptr->name_hint))
@@ -174,11 +174,11 @@ namespace transform {
 
 Pass InlinePrivateFunctions() {
   auto pass_func = [=](IRModule mod, PassContext pc) {
-    Map<Variant<String, GlobalVar>, Function> replacements;
+    Map<Variant<ffi::String, GlobalVar>, Function> replacements;
     for (const auto& [gvar, base_func] : mod->functions) {
       if (auto opt = base_func.as<relax::Function>()) {
         auto func = opt.value();
-        bool is_private = !func->GetAttr<String>(tvm::attr::kGlobalSymbol).has_value();
+        bool is_private = !func->GetAttr<ffi::String>(tvm::attr::kGlobalSymbol).has_value();
         if (is_private) {
           replacements.Set(gvar, func);
         }

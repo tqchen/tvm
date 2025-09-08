@@ -55,11 +55,11 @@ class RollingBufferDependencyError : public ScheduleError {
   explicit RollingBufferDependencyError(IRModule mod, Block block)
       : mod_(mod), block_(std::move(block)) {}
 
-  String FastErrorString() const final {
+  ffi::String FastErrorString() const final {
     return "ScheduleError: The target block is required to have only RAW dependencies";
   }
 
-  String DetailRenderTemplate() const final {
+  ffi::String DetailRenderTemplate() const final {
     return "The target block {0} is required to have only RAW dependencies";
   }
 
@@ -99,11 +99,11 @@ class RollingBufferMatchError : public ScheduleError {
  public:
   RollingBufferMatchError(IRModule mod, Block block, BufferRegion buffer_region)
       : mod_(mod), block_(block), buffer_region_(buffer_region) {}
-  String FastErrorString() const final {
+  ffi::String FastErrorString() const final {
     return "ScheduleError: rolling_buffer expect the buffer region to have at least one dimention"
            "matching the rolling pattern such as: hh.outer * stride + hh.inner";
   }
-  String DetailRenderTemplate() const final {
+  ffi::String DetailRenderTemplate() const final {
     std::ostringstream os;
     os << "The target buffer " << buffer_region_->buffer->name << " with region "
        << buffer_region_->region
@@ -125,12 +125,12 @@ class RollingBufferInsertionError : public ScheduleError {
  public:
   RollingBufferInsertionError(IRModule mod, Buffer buffer, Block block)
       : mod_(mod), buffer_(std::move(buffer)), block_(block) {}
-  String FastErrorString() const final {
+  ffi::String FastErrorString() const final {
     return "ScheduleError: rolling_buffer injection is invalid, the lca of the access "
            "location of the target buffer is not a for loop. ";
   }
 
-  String DetailRenderTemplate() const final {
+  ffi::String DetailRenderTemplate() const final {
     std::ostringstream os;
     os << "rolling_buffer injection is invalid. The block {0} should be tiled so that "
        << "the lca of the access location of the target buffer " << buffer_->name
@@ -458,7 +458,7 @@ struct RollingBufferTraits : public UnpackedInstTraits<RollingBufferTraits> {
     return sch->RollingBuffer(block, write_buffer_index.IntValue());
   }
 
-  static String UnpackedAsPython(Array<String> outputs, String block, Integer write_buffer_index) {
+  static ffi::String UnpackedAsPython(Array<ffi::String> outputs, ffi::String block, Integer write_buffer_index) {
     PythonAPICall py("rolling_buffer");
     py.Input("block", block);
     py.Input("write_buffer_index", write_buffer_index);

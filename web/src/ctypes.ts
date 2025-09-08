@@ -84,7 +84,7 @@ export const enum TypeIndex {
    */
   kTVMFFIObject = 64,
   /*!
-   * \brief String object, layout = { TVMFFIObject, TVMFFIByteArray, ... }
+   * \brief ffi::String object, layout = { TVMFFIObject, TVMFFIByteArray, ... }
    */
   kTVMFFIStr = 65,
   /*!

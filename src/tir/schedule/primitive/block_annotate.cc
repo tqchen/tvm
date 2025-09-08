@@ -30,13 +30,13 @@ class StorageAlignAxisOutOfRangeError : public ScheduleError {
   explicit StorageAlignAxisOutOfRangeError(IRModule mod, Buffer buffer, int axis)
       : mod_(std::move(mod)), buffer_(std::move(buffer)), axis_(axis) {}
 
-  String FastErrorString() const final {
+  ffi::String FastErrorString() const final {
     return "ScheduleError: The input `axis` is out of range. It is required to be in range "
            "[-ndim, ndim) where `ndim` is the number of dimensions of the buffer to set "
            "storage alignment.";
   }
 
-  String DetailRenderTemplate() const final {
+  ffi::String DetailRenderTemplate() const final {
     std::ostringstream os;
     int ndim = static_cast<int>(buffer_->shape.size());
     os << "The buffer to set storage alignment of, " << buffer_->name << ", has " << ndim
@@ -71,12 +71,12 @@ class NonAllocatedBufferError : public ScheduleError {
  public:
   explicit NonAllocatedBufferError(IRModule mod, Buffer buffer) : mod_(mod), buffer_(buffer) {}
 
-  String FastErrorString() const final {
+  ffi::String FastErrorString() const final {
     return "ScheduleError: The input buffer is not allocated by a block. This means the buffer is "
            " either a function parameter or defined in `match_buffer` of a block.";
   }
 
-  String DetailRenderTemplate() const final {
+  ffi::String DetailRenderTemplate() const final {
     std::ostringstream os;
     os << "The input buffer " << buffer_->name
        << " is not allocated by a block. This means the buffer is either a function parameter or "
@@ -107,12 +107,12 @@ class StorageAlignInvalidFactorError : public ScheduleError {
   explicit StorageAlignInvalidFactorError(IRModule mod, int factor)
       : mod_(std::move(mod)), factor_(factor) {}
 
-  String FastErrorString() const final {
+  ffi::String FastErrorString() const final {
     return "ScheduleError: The input `factor` of storage_align is expected to be a positive "
            "number.";
   }
 
-  String DetailRenderTemplate() const final {
+  ffi::String DetailRenderTemplate() const final {
     std::ostringstream os;
     os << "The input `factor` of storage_align is expected to be a positive number. However, the "
           "input `factor` is "
@@ -139,12 +139,12 @@ class StorageAlignInvalidAnnotationError : public ScheduleError {
   explicit StorageAlignInvalidAnnotationError(IRModule mod, Block block)
       : mod_(std::move(mod)), block_(std::move(block)) {}
 
-  String FastErrorString() const final {
+  ffi::String FastErrorString() const final {
     return "ScheduleError: The block annotation for storage align is expected to be an array of "
            "4-integer-tuples (buffer_index, axis, factor, offset).";
   }
 
-  String DetailRenderTemplate() const final {
+  ffi::String DetailRenderTemplate() const final {
     std::ostringstream os;
     os << "The block annotation for storage align is expected to be an array of 4-integer-tuples "
           "(buffer_index, axis, factor, offset). However, the block annotation with key "
@@ -194,7 +194,7 @@ class StorageScopeMutator : private ReplaceBufferMutator {
    * \return The new block after the mutation
    */
   static Block Mutate(const Block& allocate_site, const Buffer& old_buffer,
-                      const String& storage_scope, Map<Block, Block>* block_sref_reuse) {
+                      const ffi::String& storage_scope, Map<Block, Block>* block_sref_reuse) {
     Buffer new_buffer = WithScope(old_buffer, storage_scope);
     StorageScopeMutator mutator(old_buffer, new_buffer, storage_scope, block_sref_reuse);
     Stmt new_block = mutator.VisitStmt(allocate_site);
@@ -202,7 +202,7 @@ class StorageScopeMutator : private ReplaceBufferMutator {
   }
 
  private:
-  StorageScopeMutator(const Buffer& old_buffer, Buffer new_buffer, String storage_scope,
+  StorageScopeMutator(const Buffer& old_buffer, Buffer new_buffer, ffi::String storage_scope,
                       Map<Block, Block>* block_sref_reuse)
       : ReplaceBufferMutator(old_buffer, std::move(new_buffer), block_sref_reuse) {}
 
@@ -254,7 +254,7 @@ void StorageAlign(ScheduleState self, const StmtSRef& block_sref, int buffer_ind
 }
 
 void SetScope(ScheduleState self, const StmtSRef& block_sref, int buffer_index,
-              const String& storage_scope) {
+              const ffi::String& storage_scope) {
   const BlockNode* block = TVM_SREF_TO_BLOCK(block_sref);
   Buffer buffer =
       GetNthAccessBuffer(self, ffi::GetRef<Block>(block), buffer_index, BufferIndexType::kWrite);
@@ -343,11 +343,11 @@ class DTypeMutator : private ReplaceBufferMutator {
 };
 
 void UnsafeSetDType(ScheduleState self, const StmtSRef& block_sref, int buffer_index,
-                    const String& dtype) {
+                    const ffi::String& dtype) {
   const BlockNode* block = TVM_SREF_TO_BLOCK(block_sref);
   Buffer buffer =
       GetNthAccessBuffer(self, ffi::GetRef<Block>(block), buffer_index, BufferIndexType::kWrite);
-  DataType target_dtype(StringToDLDataType(dtype));
+  DataType target_dtype(ffi::StringToDLDataType(dtype));
 
   // Step 1. If `dtype` equals the original data type, just return.
   if (buffer->dtype == target_dtype) {
@@ -384,7 +384,7 @@ struct StorageAlignTraits : public UnpackedInstTraits<StorageAlignTraits> {
                              offset->value);
   }
 
-  static String UnpackedAsPython(Array<String> outputs, String block_rv, Integer buffer_index,
+  static ffi::String UnpackedAsPython(Array<ffi::String> outputs, ffi::String block_rv, Integer buffer_index,
                                  Integer axis, Integer factor, Integer offset) {
     PythonAPICall py("storage_align");
     py.Input("block", block_rv);
@@ -409,12 +409,12 @@ struct SetScopeTraits : public UnpackedInstTraits<SetScopeTraits> {
   static constexpr size_t kNumDecisions = 0;
 
   static void UnpackedApplyToSchedule(Schedule sch, BlockRV block_rv, Integer buffer_index,
-                                      String storage_scope) {
+                                      ffi::String storage_scope) {
     return sch->SetScope(block_rv, buffer_index->value, storage_scope);
   }
 
-  static String UnpackedAsPython(Array<String> outputs, String block_rv, Integer buffer_index,
-                                 String storage_scope) {
+  static ffi::String UnpackedAsPython(Array<ffi::String> outputs, ffi::String block_rv, Integer buffer_index,
+                                 ffi::String storage_scope) {
     PythonAPICall py("set_scope");
     py.Input("block", block_rv);
     py.Input("buffer_index", buffer_index);
@@ -436,12 +436,12 @@ struct UnsafeSetDTypeTraits : public UnpackedInstTraits<UnsafeSetDTypeTraits> {
   static constexpr size_t kNumDecisions = 0;
 
   static void UnpackedApplyToSchedule(Schedule sch, BlockRV block_rv, Integer buffer_index,
-                                      String dtype) {
+                                      ffi::String dtype) {
     return sch->UnsafeSetDType(block_rv, buffer_index->value, dtype);
   }
 
-  static String UnpackedAsPython(Array<String> outputs, String block_rv, Integer buffer_index,
-                                 String dtype) {
+  static ffi::String UnpackedAsPython(Array<ffi::String> outputs, ffi::String block_rv, Integer buffer_index,
+                                 ffi::String dtype) {
     PythonAPICall py("unsafe_set_dtype");
     py.Input("block", block_rv);
     py.Input("buffer_index", buffer_index);

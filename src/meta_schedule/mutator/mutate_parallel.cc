@@ -37,7 +37,7 @@ bool IsAnnotateWithParallel(const Instruction& inst) {
     return false;
   }
   ICHECK_EQ(inst->attrs.size(), 1);
-  String ann_key = Downcast<String>(inst->attrs[0]);
+  ffi::String ann_key = Downcast<ffi::String>(inst->attrs[0]);
   return ann_key == attr::meta_schedule_parallel;
 }
 
@@ -79,7 +79,7 @@ const BlockRVNode* GetInstGetBlockOutput(const Instruction& inst) {
  * \return The parallel structure
  */
 std::vector<std::vector<int64_t>> AnalyzeParallel(const ScheduleState& self,
-                                                  const String& block_name, const String& func_name,
+                                                  const ffi::String& block_name, const ffi::String& func_name,
                                                   int64_t limit) {
   Array<StmtSRef> block_srefs =
       tir::GetBlocks(self, block_name, self->mod->GetGlobalVar(func_name));
@@ -204,9 +204,9 @@ struct MutateParallelNode::Candidate {
   /*! \brief The current parallel extent */
   int64_t parallel_extent;
   /*! \brief The name of the root block */
-  String block_name;
+  ffi::String block_name;
   /*! \brief The name of the PrimFunc */
-  String func_name;
+  ffi::String func_name;
 };
 
 /*!
@@ -243,8 +243,8 @@ bool FindParallelDecision(const Trace& trace, TRandState* rand_state,
   ICHECK_EQ(get_block_inst->attrs.size(), 2);
   candidate->inst = ffi::GetRef<Instruction>(ann_inst);
   candidate->parallel_extent = Downcast<IntImm>(ann_inst->inputs[1])->value;
-  candidate->block_name = Downcast<String>(get_block_inst->attrs[0]);
-  candidate->func_name = Downcast<String>(get_block_inst->attrs[1]);
+  candidate->block_name = Downcast<ffi::String>(get_block_inst->attrs[0]);
+  candidate->func_name = Downcast<ffi::String>(get_block_inst->attrs[1]);
   return true;
 }
 

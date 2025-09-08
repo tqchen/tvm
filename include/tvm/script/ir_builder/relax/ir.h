@@ -45,19 +45,19 @@ TVM_DLL FunctionFrame Function(const Bool& is_pure, const Bool& is_private);
  * \param struct_info The struct_info of the parameter.
  * \return The created function parameter var.
  */
-TVM_DLL tvm::relax::Var Arg(const String& name, const tvm::relax::StructInfo& struct_info);
+TVM_DLL tvm::relax::Var Arg(const ffi::String& name, const tvm::relax::StructInfo& struct_info);
 
 /*!
  * \brief Specify the name of the last function frame.
  * \param name The function name.
  */
-TVM_DLL void FuncName(const String& name);
+TVM_DLL void FuncName(const ffi::String& name);
 
 /*!
  * \brief Specify the attrs of the last function frame.
  * \param attrs The function attrs.
  */
-TVM_DLL void FuncAttrs(Map<String, Any> attrs);
+TVM_DLL void FuncAttrs(Map<ffi::String, Any> attrs);
 
 /*!
  * \brief Specify the return struct info of the last function frame.

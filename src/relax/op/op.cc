@@ -634,7 +634,7 @@ TVM_REGISTER_OP("relax.call_tir_with_grad")
     .set_attr<Bool>("FPurity", Bool(true));
 
 Expr MakeCallTIRWithGrad(Expr func, Tuple args, Array<TensorStructInfo> out_sinfo_list,
-                         String te_grad_name, Map<String, ffi::Any> te_grad_kwargs,
+                         ffi::String te_grad_name, Map<ffi::String, ffi::Any> te_grad_kwargs,
                          Optional<Expr> packed_ints) {
   for (const TensorStructInfo& sinfo : out_sinfo_list) {
     const auto* shape = sinfo->shape.as<ShapeExprNode>();

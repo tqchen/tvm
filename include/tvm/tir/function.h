@@ -198,7 +198,7 @@ class TensorIntrin : public ObjectRef {
    * \throws This method throws an exception if the TensorIntrin with the specified name already
    *         exists.
    */
-  TVM_DLL static void Register(String name, TensorIntrin intrin, bool override = false);
+  TVM_DLL static void Register(ffi::String name, TensorIntrin intrin, bool override = false);
 
   /*!
    * \brief Look up TensorIntrin by name. Raises an exception if not found.
@@ -209,7 +209,7 @@ class TensorIntrin : public ObjectRef {
    * \throws This method throws an exception if the TensorIntrin does not exist and allow_missing is
    * false.
    */
-  TVM_DLL static Optional<TensorIntrin> Get(String name, bool allow_missing = false);
+  TVM_DLL static Optional<TensorIntrin> Get(ffi::String name, bool allow_missing = false);
 
   TVM_DEFINE_OBJECT_REF_METHODS(TensorIntrin, ObjectRef, TensorIntrinNode);
 };
@@ -264,7 +264,7 @@ namespace attr {
 /*!
  * \brief List of thread IterVar that a DeviceLaunch function corresponds to.
  *
- * Type: Array<String>
+ * Type: Array<ffi::String>
  *
  * We call a device kernel launch function f using the following convention:
  *

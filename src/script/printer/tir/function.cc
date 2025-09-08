@@ -107,8 +107,8 @@ TVM_STATIC_IR_FUNCTOR(IRDocsifier, vtable)
       if (func->attrs.defined() && !func->attrs->dict.empty()) {
         // for global symbol, don't display it if it matches the func name
         if (func->attrs->dict.count(tvm::attr::kGlobalSymbol) &&
-            Downcast<String>(func->attrs->dict.at(tvm::attr::kGlobalSymbol)) == func_name->name) {
-          Map<String, Any> new_attrs;
+            Downcast<ffi::String>(func->attrs->dict.at(tvm::attr::kGlobalSymbol)) == func_name->name) {
+          Map<ffi::String, Any> new_attrs;
           for (auto kv : func->attrs->dict) {
             if (kv.first != tvm::attr::kGlobalSymbol) {
               new_attrs.Set(kv.first, kv.second);

@@ -69,7 +69,7 @@ class Name2BindingAnalysis : public relax::ExprVisitor {
  public:
   // Map is not suitable for doing in-place update.
   // so we use standard container for internal usage.
-  std::map<String, Array<Binding>> name2bindings_;
+  std::map<ffi::String, Array<Binding>> name2bindings_;
   void VisitBinding_(const VarBindingNode* binding) override {
     const auto& vname = binding->var->name_hint();
     name2bindings_[vname].push_back(ffi::GetRef<VarBinding>(binding));
@@ -81,10 +81,10 @@ class Name2BindingAnalysis : public relax::ExprVisitor {
   }
 };
 
-Map<String, Array<Binding>> NameToBinding(const Function& fn) {
+Map<ffi::String, Array<Binding>> NameToBinding(const Function& fn) {
   Name2BindingAnalysis analysis{};
   analysis.VisitExpr_(fn.get());
-  return Map<String, Array<Binding>>(std::make_move_iterator(analysis.name2bindings_.begin()),
+  return Map<ffi::String, Array<Binding>>(std::make_move_iterator(analysis.name2bindings_.begin()),
                                      std::make_move_iterator(analysis.name2bindings_.end()));
 }
 

@@ -343,7 +343,7 @@ class BlockNameDeduplicator : public tir::StmtMutator {
   Stmt VisitStmt_(const BlockNode* op) final {
     Block block = Downcast<Block>(tir::StmtMutator::VisitStmt_(op));
 
-    String name = GetUniqueName(block->name_hint);
+    ffi::String name = GetUniqueName(block->name_hint);
 
     if (name == block->name_hint) {
       return block;
@@ -355,8 +355,8 @@ class BlockNameDeduplicator : public tir::StmtMutator {
     }
   }
 
-  String GetUniqueName(const String& prefix) {
-    String unique_prefix = prefix;
+  ffi::String GetUniqueName(const ffi::String& prefix) {
+    ffi::String unique_prefix = prefix;
     auto it = name_count_.find(prefix);
     while (name_count_.count(unique_prefix)) {
       unique_prefix = prefix + "_" + std::to_string(++it->second);
@@ -368,7 +368,7 @@ class BlockNameDeduplicator : public tir::StmtMutator {
   // TODO(relax-team): It should detects the number suffix and do renaming properly
   // e.g. GetUniqueName("name1") should return "name2" instead of "name10".
   /*! \brief The count map to make block name unique. */
-  std::unordered_map<String, int> name_count_;
+  std::unordered_map<ffi::String, int> name_count_;
 };
 
 }  // namespace tir
@@ -508,7 +508,7 @@ class FusedTIRConstructor : public ExprVisitor {
   }
 
  private:
-  explicit FusedTIRConstructor(const IRModule& mod, const String& func_name)
+  explicit FusedTIRConstructor(const IRModule& mod, const ffi::String& func_name)
       : mod_(mod), func_name_(func_name) {}
 
   void VisitExpr_(const FunctionNode* func) final {
@@ -868,8 +868,8 @@ class FusedTIRConstructor : public ExprVisitor {
       }
 
       auto unify_name_hints = [this, &buffer]() {
-        String base_name = buffer->name;
-        String unique_name = base_name + "_intermediate";
+        ffi::String base_name = buffer->name;
+        ffi::String unique_name = base_name + "_intermediate";
         size_t unique_id = 0;
         std::unordered_set<std::string> names;
 
@@ -955,7 +955,7 @@ class FusedTIRConstructor : public ExprVisitor {
    * \return The fused TIR
    */
   tir::PrimFunc ConstructFunc() {
-    Map<String, Any> attr_map;
+    Map<ffi::String, Any> attr_map;
     attr_map.Set(tir::attr::kNoAlias, true);
     tir::FuseTIRBufferSubstitutor subst(func_info_.buffer_subst_map, func_info_.symbolic_var_remap);
     ICHECK(func_info_.global_name != "fused");
@@ -1046,7 +1046,7 @@ class FusedTIRConstructor : public ExprVisitor {
   /*! \brief The IRModule */
   const IRModule& mod_;
   /*! \brief The name hint for the input func. */
-  String func_name_;
+  ffi::String func_name_;
   /*! \brief The helper info to fuse TIR prim_func */
   FuseFuncInfo func_info_;
   /*! \brief The tir function after fusion*/

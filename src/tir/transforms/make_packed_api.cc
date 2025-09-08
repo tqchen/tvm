@@ -125,7 +125,7 @@ class ReturnRewriter : public StmtMutator {
 
 class SubroutineCallRewriter : public StmtExprMutator {
  public:
-  static Optional<Stmt> Apply(const Map<GlobalVar, String>& packed_func_methods, Stmt stmt) {
+  static Optional<Stmt> Apply(const Map<GlobalVar, ffi::String>& packed_func_methods, Stmt stmt) {
     SubroutineCallRewriter rewriter(packed_func_methods);
     stmt = rewriter.VisitStmt(std::move(stmt));
     if (rewriter.made_change_) {
@@ -136,7 +136,7 @@ class SubroutineCallRewriter : public StmtExprMutator {
   }
 
  private:
-  explicit SubroutineCallRewriter(const Map<GlobalVar, String>& packed_func_methods)
+  explicit SubroutineCallRewriter(const Map<GlobalVar, ffi::String>& packed_func_methods)
       : packed_func_methods(packed_func_methods) {}
 
   PrimExpr VisitExpr_(const CallNode* op) override {
@@ -160,7 +160,7 @@ class SubroutineCallRewriter : public StmtExprMutator {
 
     return node;
   }
-  const Map<GlobalVar, String>& packed_func_methods;
+  const Map<GlobalVar, ffi::String>& packed_func_methods;
   bool made_change_{false};
 };
 
@@ -182,7 +182,7 @@ inline Stmt MakeAssertNotNull(PrimExpr ptr, std::string msg) {
  * \returns The global_symbol to be used for the function at call
  * sites, or std::nullopt if the function is to remain unchanged.
  */
-Optional<String> RequiresPackedAPI(const PrimFunc& func) {
+Optional<ffi::String> RequiresPackedAPI(const PrimFunc& func) {
   // A function with an explicit calling convention has already been
   // lowered, and should not be modified.
   if (auto opt = func->GetAttr<Integer>(tvm::attr::kCallingConv)) {
@@ -192,7 +192,7 @@ Optional<String> RequiresPackedAPI(const PrimFunc& func) {
   }
 
   // Internal function calls do not need the ffi::Function API
-  auto global_symbol = func->GetAttr<String>(tvm::attr::kGlobalSymbol);
+  auto global_symbol = func->GetAttr<ffi::String>(tvm::attr::kGlobalSymbol);
   if (!global_symbol.has_value()) {
     return std::nullopt;
   }
@@ -411,7 +411,7 @@ namespace transform {
 
 Pass MakePackedAPI() {
   auto pass_func = [](IRModule mod, PassContext ctx) {
-    Map<GlobalVar, String> packed_func_methods;
+    Map<GlobalVar, ffi::String> packed_func_methods;
     for (const auto& [gvar, base_func] : mod->functions) {
       if (auto opt = base_func.as<PrimFunc>()) {
         auto prim_func = opt.value();

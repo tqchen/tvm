@@ -69,9 +69,9 @@ class ProfilerNode : public runtime::Object {
 
  public:
   /*! \brief Get the internal stats of the running time */
-  Map<String, FloatImm> Get() const;
+  Map<ffi::String, FloatImm> Get() const;
   /*! \brief Return a summary of profiling results as table format */
-  String Table() const;
+  ffi::String Table() const;
 };
 
 /*!
@@ -94,7 +94,7 @@ class Profiler : public runtime::ObjectRef {
    * \param name Name for the scope.
    * \return A scope timer for time profiling.
    */
-  static ScopedTimer TimedScope(String name);
+  static ScopedTimer TimedScope(ffi::String name);
 };
 
 }  // namespace meta_schedule

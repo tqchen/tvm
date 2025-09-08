@@ -70,10 +70,10 @@ class InvalidPaddingError : public ScheduleError {
       : mod_(std::move(mod)), block_(std::move(block)), padding_(std::move(padding)) {}
   IRModule mod() const final { return mod_; }
   Array<ObjectRef> LocationsOfInterest() const final { return {block_}; }
-  String FastErrorString() const final {
+  ffi::String FastErrorString() const final {
     return "ScheduleError: The padding size for the block is invalid.";
   }
-  String DetailRenderTemplate() const final {
+  ffi::String DetailRenderTemplate() const final {
     std::ostringstream os;
     os << "The padding for the block {0} are invalid. It should be a list of "
        << block_->iter_vars.size() << " positive integers. Got " << padding_;
@@ -105,10 +105,10 @@ class NonEinsumError : public ScheduleError {
 
   IRModule mod() const final { return mod_; }
   Array<ObjectRef> LocationsOfInterest() const final { return {block_}; }
-  String FastErrorString() const final {
+  ffi::String FastErrorString() const final {
     return "ScheduleError: The block is not a computation of Einsum pattern.";
   }
-  String DetailRenderTemplate() const final {
+  ffi::String DetailRenderTemplate() const final {
     return "The block {0} not a computation of Einsum pattern.";
   }
 
@@ -247,12 +247,12 @@ class BufferNotAllocatedInScopeError : public ScheduleError {
   explicit BufferNotAllocatedInScopeError(IRModule mod, Buffer buffer)
       : mod_(std::move(mod)), buffer_(std::move(buffer)) {}
 
-  String FastErrorString() const final {
+  ffi::String FastErrorString() const final {
     return "ScheduleError: The buffer is not allocated as an intermediate buffer in current "
            "PrimFunc.";
   }
 
-  String DetailRenderTemplate() const final {
+  ffi::String DetailRenderTemplate() const final {
     std::ostringstream os;
     os << "The buffer " << buffer_->name
        << " is not allocated as an intermediate buffer in current PrimFunc.";
@@ -273,11 +273,11 @@ class InvalidProducerError : public ScheduleError {
   explicit InvalidProducerError(IRModule mod, Block producer)
       : mod_(std::move(mod)), producer_(std::move(producer)) {}
 
-  String FastErrorString() const final {
+  ffi::String FastErrorString() const final {
     return "ScheduleError: The producer block cannot be padded.";
   }
 
-  String DetailRenderTemplate() const final {
+  ffi::String DetailRenderTemplate() const final {
     std::ostringstream os;
     os << "The producer block {0} cannot be padded. It should write to a single buffer and the "
           "body should be a BufferStore.";
@@ -494,7 +494,7 @@ struct PadEinsumTraits : public UnpackedInstTraits<PadEinsumTraits> {
     sch->PadEinsum(block, padding);
   }
 
-  static String UnpackedAsPython(Array<String> outputs, String block, Array<Integer> padding) {
+  static ffi::String UnpackedAsPython(Array<ffi::String> outputs, ffi::String block, Array<Integer> padding) {
     PythonAPICall py("pad_einsum");
     py.Input("block", block);
     py.Input("padding", padding);

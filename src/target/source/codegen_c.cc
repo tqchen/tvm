@@ -76,7 +76,7 @@ void CodeGenC::ReserveKeywordsAsUnique() {
   name_supply_->ReserveName("return");
 }
 
-void CodeGenC::PrintFunctionSignature(const String& function_name, const PrimFunc& func,
+void CodeGenC::PrintFunctionSignature(const ffi::String& function_name, const PrimFunc& func,
                                       std::ostream& os) {
   PrintFuncPrefix(os);
   PrintType(func->ret_type, os);
@@ -136,8 +136,8 @@ void CodeGenC::DeclareFunction(const GlobalVar& gvar, const PrimFunc& func) {
     return;
   }
 
-  auto function_name = [&]() -> String {
-    if (auto global_symbol = func->GetAttr<String>(tvm::attr::kGlobalSymbol)) {
+  auto function_name = [&]() -> ffi::String {
+    if (auto global_symbol = func->GetAttr<ffi::String>(tvm::attr::kGlobalSymbol)) {
       auto name = global_symbol.value();
       ICHECK(!func_name_supply_->ContainsName(name))
           << "Function " << gvar << " must use global symbol " << name
@@ -159,7 +159,7 @@ void CodeGenC::DeclareFunction(const GlobalVar& gvar, const PrimFunc& func) {
   fwd_decl_stream << ";\n";
 }
 
-String CodeGenC::GetFunctionName(const GlobalVar& gvar) {
+ffi::String CodeGenC::GetFunctionName(const GlobalVar& gvar) {
   auto it = internal_functions_.find(gvar);
   ICHECK(it != internal_functions_.end())
       << "Attempted to find name of " << gvar
@@ -592,7 +592,7 @@ void CodeGenC::VisitExpr_(const NotNode* op, std::ostream& os) {  // NOLINT(*)
   PrintExpr(op->a, os);
 }
 
-void CodeGenC::PrintCallExtern(Type ret_type, String global_symbol, const Array<PrimExpr>& args,
+void CodeGenC::PrintCallExtern(Type ret_type, ffi::String global_symbol, const Array<PrimExpr>& args,
                                bool skip_first_arg, std::ostream& os) {  // NOLINT(*)
   os << global_symbol << "(";
   for (size_t i = static_cast<size_t>(skip_first_arg); i < args.size(); ++i) {

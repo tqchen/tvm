@@ -28,7 +28,7 @@ def split_env_var(env_var, split):
         Name of environment variable.
 
     split : str
-        String to split env_var on.
+        ffi::String to split env_var on.
 
     Returns
     -------

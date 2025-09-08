@@ -38,8 +38,8 @@ void RegisterPatterns(Array<FusionPattern> entries) {
   }
 }
 
-void RemovePatterns(Array<String> names) {
-  std::unordered_set<String> name_set{names.begin(), names.end()};
+void RemovePatterns(Array<ffi::String> names) {
+  std::unordered_set<ffi::String> name_set{names.begin(), names.end()};
 
   auto* table = GetRegistryTable();
   table->erase(
@@ -48,7 +48,7 @@ void RemovePatterns(Array<String> names) {
       table->end());
 }
 
-Array<FusionPattern> GetPatternsWithPrefix(const String& prefix) {
+Array<FusionPattern> GetPatternsWithPrefix(const ffi::String& prefix) {
   auto* table = GetRegistryTable();
   Array<FusionPattern> result;
   for (auto it = table->rbegin(); it != table->rend(); ++it) {
@@ -59,7 +59,7 @@ Array<FusionPattern> GetPatternsWithPrefix(const String& prefix) {
   return result;
 }
 
-Optional<FusionPattern> GetPattern(const String& pattern_name) {
+Optional<FusionPattern> GetPattern(const ffi::String& pattern_name) {
   auto* table = GetRegistryTable();
   for (auto it = table->rbegin(); it != table->rend(); ++it) {
     if ((*it)->name == pattern_name) {

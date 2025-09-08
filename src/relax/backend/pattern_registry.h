@@ -50,21 +50,21 @@ void RegisterPatterns(Array<FusionPattern> patterns);
  * \brief Remove patterns from the registry by their name.
  * \param names The name of patterns to be removed
  */
-void RemovePatterns(Array<String> names);
+void RemovePatterns(Array<ffi::String> names);
 
 /*!
  * \brief Find patterns whose name starts with a particular prefix.
  * \param prefx The pattern name prefix.
  * \return Matched patterns, ordered by priority from high to low.
  */
-Array<FusionPattern> GetPatternsWithPrefix(const String& prefix);
+Array<FusionPattern> GetPatternsWithPrefix(const ffi::String& prefix);
 
 /*!
  * \brief Find the pattern with a particular name.
  * \param name The pattern name.
  * \return The matched pattern. std::nullopt if not found.
  */
-Optional<FusionPattern> GetPattern(const String& name);
+Optional<FusionPattern> GetPattern(const ffi::String& name);
 
 }  // namespace backend
 }  // namespace relax

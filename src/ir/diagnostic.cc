@@ -41,7 +41,7 @@ TVM_FFI_STATIC_INIT_BLOCK({
 
 TVM_FFI_STATIC_INIT_BLOCK({
   namespace refl = tvm::ffi::reflection;
-  refl::GlobalDef().def("diagnostics.Diagnostic", [](int level, Span span, String message) {
+  refl::GlobalDef().def("diagnostics.Diagnostic", [](int level, Span span, ffi::String message) {
     return Diagnostic(static_cast<DiagnosticLevel>(level), span, message);
   });
 });

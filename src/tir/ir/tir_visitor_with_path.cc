@@ -43,7 +43,7 @@ void TIRVisitorWithPath::Visit(const IRModule& mod, AccessPath path) {
   std::unordered_set<GlobalVar> externally_exposed;
   for (const auto& [gvar, func] : mod->functions) {
     gvars.push_back(gvar);
-    if (func->GetAttr<String>(tvm::attr::kGlobalSymbol).has_value()) {
+    if (func->GetAttr<ffi::String>(tvm::attr::kGlobalSymbol).has_value()) {
       externally_exposed.insert(gvar);
     }
   }

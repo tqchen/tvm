@@ -81,7 +81,7 @@ class DocPrinter {
    *
    * \sa Append
    */
-  String GetString() const;
+  ffi::String GetString() const;
 
  protected:
   /*!

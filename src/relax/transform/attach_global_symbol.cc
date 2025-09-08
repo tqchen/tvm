@@ -34,17 +34,17 @@ namespace transform {
 
 Pass AttachGlobalSymbol() {
   auto pass_func = [=](IRModule mod, PassContext pc) {
-    String c_prefix = mod->GetAttr<String>(tvm::attr::kSystemLibPrefix).value_or("");
+    ffi::String c_prefix = mod->GetAttr<ffi::String>(tvm::attr::kSystemLibPrefix).value_or("");
     IRModule updates;
     Map<GlobalVar, GlobalVar> gvar_updates;
 
     for (const auto& [gvar, func] : mod->functions) {
-      Optional<String> old_name = func->GetAttr<String>(tvm::attr::kGlobalSymbol);
+      Optional<ffi::String> old_name = func->GetAttr<ffi::String>(tvm::attr::kGlobalSymbol);
 
       // TODO(tvm-team): re-enable once fix relax integration part
       // if (old_name) continue;
 
-      Optional<String> new_name;
+      Optional<ffi::String> new_name;
       BaseFunc new_func;
 
       if (auto* prim_func = func.as<tir::PrimFuncNode>()) {

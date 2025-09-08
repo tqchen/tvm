@@ -32,8 +32,8 @@ namespace relax {
 
 /*! \brief Attributes used in call_tir_with_grad */
 struct CallTIRWithGradAttrs : public AttrsNodeReflAdapter<CallTIRWithGradAttrs> {
-  String te_grad_name;
-  Map<String, Any> te_grad_kwargs;
+  ffi::String te_grad_name;
+  Map<ffi::String, Any> te_grad_kwargs;
 
   static void RegisterReflection() {
     namespace refl = tvm::ffi::reflection;

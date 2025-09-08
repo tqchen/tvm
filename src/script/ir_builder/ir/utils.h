@@ -26,7 +26,7 @@ namespace script {
 namespace ir_builder {
 namespace ir {
 
-inline IRModuleFrame FindModuleFrame(const String& method) {
+inline IRModuleFrame FindModuleFrame(const ffi::String& method) {
   IRBuilder builder = IRBuilder::Current();
   if (Optional<IRModuleFrame> frame = builder->FindFrame<IRModuleFrame>()) {
     const Optional<IRModuleFrame>& last_module_frame = builder->GetLastFrame<IRModuleFrame>();

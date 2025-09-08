@@ -111,7 +111,7 @@ Expr dropout(Expr data, double rate);
 Expr cross_entropy_with_logits(Expr predictions, Expr labels);
 
 /*! \brief Negative log likelihood loss. */
-Expr nll_loss(Expr predictions, Expr targets, Optional<Expr> weights, String reduction,
+Expr nll_loss(Expr predictions, Expr targets, Optional<Expr> weights, ffi::String reduction,
               int ignore_index);
 
 }  // namespace relax

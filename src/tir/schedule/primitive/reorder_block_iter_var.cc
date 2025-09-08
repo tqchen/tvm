@@ -30,14 +30,14 @@ class InvalidReorderIndex : public ScheduleError {
   explicit InvalidReorderIndex(IRModule mod, Block block, Array<Integer> new_order)
       : mod_(mod), block_(block), new_order_(new_order) {}
   IRModule mod() const final { return mod_; }
-  String FastErrorString() const final {
+  ffi::String FastErrorString() const final {
     return "ScheduleError: The specified reorder indices are invalid.";
   }
-  String DetailRenderTemplate() const final {
+  ffi::String DetailRenderTemplate() const final {
     std::ostringstream os;
     os << "The user provided block itervar index order " << new_order_
        << " is not a valid permutation of [0, 1, ..., num_block_iter_vars-1] in block {0}.";
-    return String(os.str());
+    return ffi::String(os.str());
   }
   Array<ObjectRef> LocationsOfInterest() const final { return {block_}; }
 
@@ -131,7 +131,7 @@ struct ReorderBlockIterVarTraits : public UnpackedInstTraits<ReorderBlockIterVar
     sch->ReorderBlockIterVar(block, new_order);
   }
 
-  static String UnpackedAsPython(Array<String> outputs, String block, Array<Integer> new_order) {
+  static ffi::String UnpackedAsPython(Array<ffi::String> outputs, ffi::String block, Array<Integer> new_order) {
     PythonAPICall py("reorder_block_iter_var");
     py.Input("block", block);
     py.Input("new_order", new_order);

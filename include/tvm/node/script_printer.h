@@ -40,7 +40,7 @@ namespace tvm {
 class PrinterConfigNode : public ffi::Object {
  public:
   /*! \brief A stack that tracks the names of the binding hierarchy */
-  Array<String> binding_names = {};
+  Array<ffi::String> binding_names = {};
   /*! \brief Whether or not to show metadata. */
   bool show_meta = false;
   /*! \brief The prefix of IR nodes */
@@ -115,11 +115,11 @@ class PrinterConfigNode : public ffi::Object {
   /* \brief Object path to be underlined */
   Array<ffi::reflection::AccessPath> path_to_underline;
   /*! \brief Object path to be annotated. */
-  Map<ffi::reflection::AccessPath, String> path_to_annotate;
+  Map<ffi::reflection::AccessPath, ffi::String> path_to_annotate;
   /*! \brief Object to be underlined. */
   Array<ObjectRef> obj_to_underline = Array<ObjectRef>();
   /*! \brief Object to be annotated. */
-  Map<ObjectRef, String> obj_to_annotate = Map<ObjectRef, String>();
+  Map<ObjectRef, ffi::String> obj_to_annotate = Map<ObjectRef, ffi::String>();
 
   static void RegisterReflection() {
     namespace refl = tvm::ffi::reflection;
@@ -146,7 +146,7 @@ class PrinterConfigNode : public ffi::Object {
         .def_ro("obj_to_annotate", &PrinterConfigNode::obj_to_annotate);
   }
 
-  Array<String> GetBuiltinKeywords();
+  Array<ffi::String> GetBuiltinKeywords();
 
   static constexpr const char* _type_key = "script.PrinterConfig";
   TVM_DECLARE_FINAL_OBJECT_INFO(PrinterConfigNode, Object);
@@ -154,7 +154,7 @@ class PrinterConfigNode : public ffi::Object {
 
 class PrinterConfig : public ObjectRef {
  public:
-  explicit PrinterConfig(Map<String, ffi::Any> config_dict = Map<String, ffi::Any>());
+  explicit PrinterConfig(Map<ffi::String, ffi::Any> config_dict = Map<ffi::String, ffi::Any>());
 
   TVM_DEFINE_MUTABLE_NOTNULLABLE_OBJECT_REF_METHODS(PrinterConfig, runtime::ObjectRef,
                                                     PrinterConfigNode);

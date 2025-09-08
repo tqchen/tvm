@@ -47,7 +47,7 @@ TVM_STATIC_IR_FUNCTOR(IRDocsifier, vtable)
       IdDoc func_name("");
       // if we are binding a local definition, then calling d->Define
       // will result in a repeated definition and an incorrect displayed name
-      if (Optional<String> name = GetBindingName(d)) {
+      if (Optional<ffi::String> name = GetBindingName(d)) {
         func_name = IdDoc(name.value());
       } else {
         func_name = IdDoc(FindFunctionName(d, n).value_or("main"));
@@ -81,8 +81,8 @@ TVM_STATIC_IR_FUNCTOR(IRDocsifier, vtable)
         // For a function without an IR module whose global symbol
         // doesn't match the function name, we should still print the global symbol attribute.
         if (AtTopLevelFunction(d) && n->attrs->dict.count(tvm::attr::kGlobalSymbol) &&
-            Downcast<String>(n->attrs->dict.at(tvm::attr::kGlobalSymbol)) == func_name->name) {
-          Map<String, Any> new_attrs;
+            Downcast<ffi::String>(n->attrs->dict.at(tvm::attr::kGlobalSymbol)) == func_name->name) {
+          Map<ffi::String, Any> new_attrs;
           for (auto kv : n->attrs->dict) {
             if (kv.first != tvm::attr::kGlobalSymbol) {
               new_attrs.Set(kv.first, kv.second);
@@ -102,7 +102,7 @@ TVM_STATIC_IR_FUNCTOR(IRDocsifier, vtable)
       // Step 5. Prepare the decorator (include purity if it's impure)
       ExprDoc decorator = Relax(d, "function");
       Array<ExprDoc, void> pos_args = {};
-      Array<String, void> dec_keys;
+      Array<ffi::String, void> dec_keys;
       Array<ExprDoc, void> dec_values;
       if (!n->is_pure) {
         dec_keys.push_back("pure");

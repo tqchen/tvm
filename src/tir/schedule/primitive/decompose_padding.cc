@@ -41,12 +41,12 @@ class PaddingPatternMatchError : public ScheduleError {
   PaddingPatternMatchError(IRModule mod, Block block, const std::string& error_msg)
       : mod_(std::move(mod)), block_(std::move(block)), error_msg_(error_msg) {}
 
-  String FastErrorString() const final {
+  ffi::String FastErrorString() const final {
     return "ScheduleError: decompose_padding expect the block to match padding pattern\n  " +
            error_msg_;
   }
 
-  String DetailRenderTemplate() const final {
+  ffi::String DetailRenderTemplate() const final {
     std::ostringstream os;
     os << "ScheduleError: decompose_padding expect the block {0} to match padding pattern\n  "
        << error_msg_;
@@ -556,7 +556,7 @@ struct DecomposPaddingTraits : public UnpackedInstTraits<DecomposPaddingTraits> 
     return sch->DecomposePadding(block_rv, loop_rv);
   }
 
-  static String UnpackedAsPython(Array<String> outputs, String block_rv, LoopRV loop_rv) {
+  static ffi::String UnpackedAsPython(Array<ffi::String> outputs, ffi::String block_rv, LoopRV loop_rv) {
     PythonAPICall py("decompose_padding");
     py.Input("block", block_rv);
     py.Input("loop", loop_rv);

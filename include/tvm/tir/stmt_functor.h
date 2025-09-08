@@ -325,7 +325,7 @@ class StmtExprMutator : public StmtMutator, public ExprMutator {
  *          when the IRNode's type key is in the list.
  */
 TVM_DLL Stmt IRTransform(Stmt stmt, const ffi::Function& preorder, const ffi::Function& postorder,
-                         Optional<Array<String>> only_enable = std::nullopt);
+                         Optional<Array<ffi::String>> only_enable = std::nullopt);
 
 /*!
  * \brief Recursively visit the ir in post DFS order node, apply fvisit

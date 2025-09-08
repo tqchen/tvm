@@ -311,7 +311,7 @@ runtime::Tensor IndexMapNode::MapTensor(runtime::Tensor arr_src) const {
 }
 
 IndexMap IndexMap::RenameVariables(
-    const std::function<Optional<String>(const Var& var)>& f_name_map) const {
+    const std::function<Optional<ffi::String>(const Var& var)>& f_name_map) const {
   std::unordered_set<std::string> used_names;
   Map<Var, Var> var_remap;
   NameSupply name_supply;
@@ -329,8 +329,8 @@ IndexMap IndexMap::RenameVariables(
         }
         visited.emplace(obj.get());
         Var var = Downcast<Var>(obj);
-        if (Optional<String> opt_name = f_name_map(var); opt_name.has_value()) {
-          String name = opt_name.value();
+        if (Optional<ffi::String> opt_name = f_name_map(var); opt_name.has_value()) {
+          ffi::String name = opt_name.value();
           ICHECK(!name_supply->ContainsName(name, /*add_prefix=*/false));
           name_supply->ReserveName(name, /*add_prefix=*/false);
           var_remap.Set(var, Var(name, var->dtype));
@@ -344,7 +344,7 @@ IndexMap IndexMap::RenameVariables(
       // The name of the variable is pre-defined.
       continue;
     }
-    String unique_name = name_supply->FreshName(initial_index->name_hint, /*add_prefix=*/false);
+    ffi::String unique_name = name_supply->FreshName(initial_index->name_hint, /*add_prefix=*/false);
     if (unique_name != initial_index->name_hint) {
       var_remap.Set(initial_index, Var(unique_name));
     }
@@ -391,13 +391,13 @@ std::string IndexMap2PythonLambdaExpr(const Array<Var>& initial_indices,
   return oss.str();
 }
 
-String IndexMapNode::ToPythonString(
-    const std::function<Optional<String>(const Var& var)>& f_name_map) const {
+ffi::String IndexMapNode::ToPythonString(
+    const std::function<Optional<ffi::String>(const Var& var)>& f_name_map) const {
   auto index_map = ffi::GetRef<IndexMap>(this).RenameVariables(f_name_map);
   std::string lambda_expr =
       IndexMap2PythonLambdaExpr(index_map->initial_indices, index_map->final_indices);
   if (!index_map->inverse_index_map.defined()) {
-    return String(lambda_expr);
+    return ffi::String(lambda_expr);
   }
   // Also convert the inverse index map.
   IndexMap inverse = Downcast<IndexMap>(index_map->inverse_index_map.value());
@@ -406,7 +406,7 @@ String IndexMapNode::ToPythonString(
   std::ostringstream oss;
   oss << "tvm.tir.IndexMap.from_func(" << lambda_expr
       << ", inverse_index_map=" << inverse_lambda_expr << ")";
-  return String(oss.str());
+  return ffi::String(oss.str());
 }
 
 IndexMap Substitute(const IndexMap& index_map,

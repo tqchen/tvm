@@ -121,7 +121,7 @@ def link_shared(so_name, objs, extra_args=None):
     so_name : str
         Name of the shared library file.
     objs : list[str,StringImm]
-    extra_args : dict (str->str) or Map<String,String>
+    extra_args : dict (str->str) or Map<ffi::String,String>
         Additional arguments:
             'hex_arch' - Hexagon architecture, e.g. v68
             'verbose'  - Print additional information if the key is present
@@ -193,7 +193,7 @@ def link_shared_macos(so_name, objs, extra_args=None):
     so_name : str
         Name of the shared library file.
     objs : list[str,StringImm]
-    extra_args : dict (str->str) or Map<String,String>
+    extra_args : dict (str->str) or Map<ffi::String,String>
         Additional arguments:
             'hex_arch' - Hexagon architecture, e.g. v68
 

@@ -346,7 +346,7 @@ Pass TopologicalSort(TraversalOrder order, StartingLocation starting_location) {
 TVM_FFI_STATIC_INIT_BLOCK({
   namespace refl = tvm::ffi::reflection;
   refl::GlobalDef().def(
-      "relax.transform.TopologicalSort", [](String order_str, String direction_str) -> Pass {
+      "relax.transform.TopologicalSort", [](ffi::String order_str, ffi::String direction_str) -> Pass {
         TraversalOrder order = [&]() {
           if (order_str == "depth-first") {
             return TraversalOrder::DepthFirst;

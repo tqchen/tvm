@@ -23,12 +23,12 @@
 namespace tvm {
 namespace meta_schedule {
 
-void PyCostModelNode::Load(const String& path) {
+void PyCostModelNode::Load(const ffi::String& path) {
   ICHECK(f_load != nullptr) << "PyCostModel's Load method not implemented!";
   f_load(path);
 }
 
-void PyCostModelNode::Save(const String& path) {
+void PyCostModelNode::Save(const ffi::String& path) {
   ICHECK(f_save != nullptr) << "PyCostModel's Save method not implemented!";
   f_save(path);
 }

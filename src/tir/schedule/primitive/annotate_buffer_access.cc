@@ -47,8 +47,8 @@ class AnnotateRegionRewriter : public StmtExprMutator {
     }
 
     // Annotate the block with explicit_read_region or explicit_write_region
-    Map<String, ffi::Any> new_annotations = n->annotations;
-    String annotation_key = buffer_index_type_ == BufferIndexType::kWrite
+    Map<ffi::String, ffi::Any> new_annotations = n->annotations;
+    ffi::String annotation_key = buffer_index_type_ == BufferIndexType::kWrite
                                 ? attr::explicit_write_region
                                 : attr::explicit_read_region;
     if (new_annotations.count(annotation_key)) {
@@ -122,7 +122,7 @@ struct AnnotateBufferAccessTraits : public UnpackedInstTraits<AnnotateBufferAcce
                                      index_map);
   }
 
-  static String IndexMap2GenNewRangesLambda(const IndexMap& index_map) {
+  static ffi::String IndexMap2GenNewRangesLambda(const IndexMap& index_map) {
     std::ostringstream oss;
     oss << "lambda ";
     for (size_t i = 0; i < index_map->initial_indices.size(); ++i) {
@@ -139,10 +139,10 @@ struct AnnotateBufferAccessTraits : public UnpackedInstTraits<AnnotateBufferAcce
       }
     }
     oss << "]";
-    return String(oss.str());
+    return ffi::String(oss.str());
   }
 
-  static String UnpackedAsPython(Array<String> outputs, String block, Integer buffer_index,
+  static ffi::String UnpackedAsPython(Array<ffi::String> outputs, ffi::String block, Integer buffer_index,
                                  Integer buffer_index_type, IndexMap index_map) {
     PythonAPICall py("annotate_buffer_access");
     py.Input("block", block);
@@ -151,7 +151,7 @@ struct AnnotateBufferAccessTraits : public UnpackedInstTraits<AnnotateBufferAcce
     std::ostringstream os;
     os << "\"" << BufferIndexType2Str(static_cast<BufferIndexType>(buffer_index_type->value))
        << "\"";
-    py.Input("buf_type", String(os.str()));
+    py.Input("buf_type", ffi::String(os.str()));
 
     py.Input("gen_new_ranges", IndexMap2GenNewRangesLambda(index_map));
     return py.Str();

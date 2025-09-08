@@ -64,7 +64,7 @@ TVM_STATIC_IR_FUNCTOR(IRDocsifier, vtable)
     .set_dispatch<relax::PrimStructInfo>(
         "", [](relax::PrimStructInfo n, AccessPath n_p, IRDocsifier d) -> Doc {
           Array<ExprDoc, void> args;
-          Array<String> kwargs_keys;
+          Array<ffi::String> kwargs_keys;
           Array<ExprDoc, void> kwargs_values;
 
           if (n->value.defined()) {
@@ -97,7 +97,7 @@ TVM_STATIC_IR_FUNCTOR(IRDocsifier, vtable)
     .set_dispatch<relax::TensorStructInfo>(  //
         "", [](relax::TensorStructInfo n, AccessPath n_p, IRDocsifier d) -> Doc {
           Array<ExprDoc> args;
-          Array<String> kwargs_keys;
+          Array<ffi::String> kwargs_keys;
           Array<ExprDoc> kwargs_values;
           if (n->shape.defined()) {
             // Need to dig into ShapeExpr to preserve the `R.shape` prefix
@@ -156,7 +156,7 @@ TVM_STATIC_IR_FUNCTOR(IRDocsifier, vtable)
           auto purity_doc = LiteralDoc::Boolean(n->purity, n_p->Attr("purity"));
 
           if (n->IsOpaque()) {
-            Array<String> keys;
+            Array<ffi::String> keys;
             Array<ExprDoc, void> values;
 
             if (!n->ret->IsInstance<relax::ObjectStructInfoNode>()) {

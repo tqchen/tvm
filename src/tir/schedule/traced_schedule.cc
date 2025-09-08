@@ -116,7 +116,7 @@ LoopRV TracedScheduleNode::SampleComputeLocation(const BlockRV& block_rv,
 
 /******** Schedule: Get blocks & loops ********/
 
-BlockRV TracedScheduleNode::GetBlock(const String& name, const Optional<String>& func_name) {
+BlockRV TracedScheduleNode::GetBlock(const ffi::String& name, const Optional<ffi::String>& func_name) {
   GlobalVar gv = NullValue<GlobalVar>();
   if (func_name.has_value()) {
     gv = state_->mod->GetGlobalVar(func_name.value());
@@ -332,7 +332,7 @@ void TracedScheduleNode::Vectorize(const LoopRV& loop_rv) {
                                       /*outputs=*/{}));
 }
 
-void TracedScheduleNode::Bind(const LoopRV& loop_rv, const String& thread_axis) {
+void TracedScheduleNode::Bind(const LoopRV& loop_rv, const ffi::String& thread_axis) {
   ConcreteScheduleNode::Bind(loop_rv, thread_axis);
 
   static const InstructionKind& kind = InstructionKind::Get("Bind");
@@ -354,7 +354,7 @@ void TracedScheduleNode::Unroll(const LoopRV& loop_rv) {
 
 /******** Schedule: Insert cache stages ********/
 BlockRV TracedScheduleNode::CacheRead(const BlockRV& block_rv, int read_buffer_index,
-                                      const String& storage_scope,
+                                      const ffi::String& storage_scope,
                                       const Array<BlockRV> consumer_blocks) {
   BlockRV result =
       ConcreteScheduleNode::CacheRead(block_rv, read_buffer_index, storage_scope, consumer_blocks);
@@ -368,7 +368,7 @@ BlockRV TracedScheduleNode::CacheRead(const BlockRV& block_rv, int read_buffer_i
 }
 
 BlockRV TracedScheduleNode::CacheWrite(const BlockRV& block_rv, int write_buffer_index,
-                                       const String& storage_scope,
+                                       const ffi::String& storage_scope,
                                        const Array<BlockRV> consumer_blocks) {
   BlockRV result = ConcreteScheduleNode::CacheWrite(block_rv, write_buffer_index, storage_scope,
                                                     consumer_blocks);
@@ -382,7 +382,7 @@ BlockRV TracedScheduleNode::CacheWrite(const BlockRV& block_rv, int write_buffer
 }
 
 BlockRV TracedScheduleNode::ReindexCacheRead(const BlockRV& block_rv, int read_buffer_index,
-                                             const String& storage_scope,
+                                             const ffi::String& storage_scope,
                                              const IndexMap& index_map) {
   BlockRV result =
       ConcreteScheduleNode::ReindexCacheRead(block_rv, read_buffer_index, storage_scope, index_map);
@@ -398,7 +398,7 @@ BlockRV TracedScheduleNode::ReindexCacheRead(const BlockRV& block_rv, int read_b
 }
 
 BlockRV TracedScheduleNode::ReindexCacheWrite(const BlockRV& block_rv, int write_buffer_index,
-                                              const String& storage_scope,
+                                              const ffi::String& storage_scope,
                                               const IndexMap& index_map) {
   BlockRV result = ConcreteScheduleNode::ReindexCacheWrite(block_rv, write_buffer_index,
                                                            storage_scope, index_map);
@@ -414,7 +414,7 @@ BlockRV TracedScheduleNode::ReindexCacheWrite(const BlockRV& block_rv, int write
 }
 
 Array<BlockRV> TracedScheduleNode::CacheInplace(const BlockRV& block_rv, int read_buffer_index,
-                                                const String& storage_scope) {
+                                                const ffi::String& storage_scope) {
   Array<BlockRV> result =
       ConcreteScheduleNode::CacheInplace(block_rv, read_buffer_index, storage_scope);
   Array<Any> results;
@@ -429,7 +429,7 @@ Array<BlockRV> TracedScheduleNode::CacheInplace(const BlockRV& block_rv, int rea
   return result;
 }
 
-Array<BlockRV> TracedScheduleNode::CacheIndex(const BlockRV& block_rv, const String& storage_scope,
+Array<BlockRV> TracedScheduleNode::CacheIndex(const BlockRV& block_rv, const ffi::String& storage_scope,
                                               int cse_thresh) {
   Array<BlockRV> result = ConcreteScheduleNode::CacheIndex(block_rv, storage_scope, cse_thresh);
   Array<Any> outputs;
@@ -459,7 +459,7 @@ BlockRV TracedScheduleNode::ReIndex(const BlockRV& block_rv, int buffer_index,
 /******** Schedule: Data movement ********/
 
 BlockRV TracedScheduleNode::ReadAt(const LoopRV& loop_rv, const BlockRV& block_rv,
-                                   int read_buffer_index, const String& storage_scope) {
+                                   int read_buffer_index, const ffi::String& storage_scope) {
   BlockRV result =
       ConcreteScheduleNode::ReadAt(loop_rv, block_rv, read_buffer_index, storage_scope);
 
@@ -472,7 +472,7 @@ BlockRV TracedScheduleNode::ReadAt(const LoopRV& loop_rv, const BlockRV& block_r
 }
 
 BlockRV TracedScheduleNode::WriteAt(const LoopRV& loop_rv, const BlockRV& block_rv,
-                                    int write_buffer_index, const String& storage_scope) {
+                                    int write_buffer_index, const ffi::String& storage_scope) {
   BlockRV result =
       ConcreteScheduleNode::WriteAt(loop_rv, block_rv, write_buffer_index, storage_scope);
 
@@ -565,7 +565,7 @@ void TracedScheduleNode::StorageAlign(const BlockRV& block_rv, int buffer_index,
 }
 
 void TracedScheduleNode::SetScope(const BlockRV& block_rv, int buffer_index,
-                                  const String& storage_scope) {
+                                  const ffi::String& storage_scope) {
   ConcreteScheduleNode::SetScope(block_rv, buffer_index, storage_scope);
   static const InstructionKind& kind = InstructionKind::Get("SetScope");
   trace_->Append(/*inst=*/Instruction(
@@ -576,7 +576,7 @@ void TracedScheduleNode::SetScope(const BlockRV& block_rv, int buffer_index,
 }
 
 void TracedScheduleNode::UnsafeSetDType(const BlockRV& block_rv, int buffer_index,
-                                        const String& dtype) {
+                                        const ffi::String& dtype) {
   ConcreteScheduleNode::UnsafeSetDType(block_rv, buffer_index, dtype);
   static const InstructionKind& kind = InstructionKind::Get("UnsafeSetDType");
   trace_->Append(/*inst=*/Instruction(
@@ -610,7 +610,7 @@ BlockRV TracedScheduleNode::Blockize(const Array<BlockRV>& blocks, bool preserve
   return new_block;
 }
 
-void TracedScheduleNode::Tensorize(const LoopRV& loop_rv, const String& intrin,
+void TracedScheduleNode::Tensorize(const LoopRV& loop_rv, const ffi::String& intrin,
                                    bool preserve_unit_iters) {
   ConcreteScheduleNode::Tensorize(loop_rv, intrin, preserve_unit_iters);
   static const InstructionKind& kind = InstructionKind::Get("Tensorize");
@@ -621,7 +621,7 @@ void TracedScheduleNode::Tensorize(const LoopRV& loop_rv, const String& intrin,
       /*outputs=*/{}));
 }
 
-void TracedScheduleNode::Tensorize(const BlockRV& block_rv, const String& intrin,
+void TracedScheduleNode::Tensorize(const BlockRV& block_rv, const ffi::String& intrin,
                                    bool preserve_unit_iters) {
   ConcreteScheduleNode::Tensorize(block_rv, intrin, preserve_unit_iters);
   static const InstructionKind& kind = InstructionKind::Get("Tensorize");
@@ -634,7 +634,7 @@ void TracedScheduleNode::Tensorize(const BlockRV& block_rv, const String& intrin
 
 /******** Schedule: Annotation ********/
 
-void TracedScheduleNode::Annotate(const LoopRV& loop_rv, const String& ann_key,
+void TracedScheduleNode::Annotate(const LoopRV& loop_rv, const ffi::String& ann_key,
                                   const Any& ann_val) {
   ConcreteScheduleNode::Annotate(loop_rv, ann_key, ann_val);
   static const InstructionKind& kind = InstructionKind::Get("Annotate");
@@ -644,7 +644,7 @@ void TracedScheduleNode::Annotate(const LoopRV& loop_rv, const String& ann_key,
                                       /*outputs=*/{}));
 }
 
-void TracedScheduleNode::Annotate(const BlockRV& block_rv, const String& ann_key,
+void TracedScheduleNode::Annotate(const BlockRV& block_rv, const ffi::String& ann_key,
                                   const Any& ann_val) {
   ConcreteScheduleNode::Annotate(block_rv, ann_key, ann_val);
   static const InstructionKind& kind = InstructionKind::Get("Annotate");
@@ -654,7 +654,7 @@ void TracedScheduleNode::Annotate(const BlockRV& block_rv, const String& ann_key
                                       /*outputs=*/{}));
 }
 
-void TracedScheduleNode::Unannotate(const LoopRV& loop_rv, const String& ann_key) {
+void TracedScheduleNode::Unannotate(const LoopRV& loop_rv, const ffi::String& ann_key) {
   ConcreteScheduleNode::Unannotate(loop_rv, ann_key);
   static const InstructionKind& kind = InstructionKind::Get("Unannotate");
   trace_->Append(/*inst=*/Instruction(/*kind=*/kind,
@@ -663,7 +663,7 @@ void TracedScheduleNode::Unannotate(const LoopRV& loop_rv, const String& ann_key
                                       /*outputs=*/{}));
 }
 
-void TracedScheduleNode::Unannotate(const BlockRV& block_rv, const String& ann_key) {
+void TracedScheduleNode::Unannotate(const BlockRV& block_rv, const ffi::String& ann_key) {
   ConcreteScheduleNode::Unannotate(block_rv, ann_key);
   static const InstructionKind& kind = InstructionKind::Get("Unannotate");
   trace_->Append(/*inst=*/Instruction(/*kind=*/kind,
@@ -760,7 +760,7 @@ void TracedScheduleNode::EnterPostproc() {
                                       /*outputs=*/{}));
 }
 
-void TracedScheduleNode::UnsafeHideBufferAccess(const BlockRV& block_rv, const String& buf_type,
+void TracedScheduleNode::UnsafeHideBufferAccess(const BlockRV& block_rv, const ffi::String& buf_type,
                                                 const Array<IntImm>& buf_index_array) {
   ConcreteScheduleNode::UnsafeHideBufferAccess(block_rv, buf_type, buf_index_array);
   static const InstructionKind& kind = InstructionKind::Get("UnsafeHideBufferAccess");

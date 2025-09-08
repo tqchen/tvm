@@ -58,7 +58,7 @@ TVM_STATIC_IR_FUNCTOR(GlobalVarReplacer, vtable)
       // If the function is externally exposed, and is being replaced
       // by a GlobalVar with a new name, then the function's
       // kGlobalSymbol must be updated to match.
-      if (auto opt = new_func->GetAttr<String>(tvm::attr::kGlobalSymbol)) {
+      if (auto opt = new_func->GetAttr<ffi::String>(tvm::attr::kGlobalSymbol)) {
         auto name = opt.value();
         for (const auto& [before, after] : replacements) {
           if (before->name_hint == name) {

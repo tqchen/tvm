@@ -47,7 +47,7 @@ struct GenerateBodyOutput {
   std::string decl;
   std::vector<std::string> buffers;
   std::vector<Output> outputs;
-  Array<String> headers;
+  Array<ffi::String> headers;
 };
 
 // The base class to generate the declaration functions in C.

@@ -49,11 +49,11 @@ namespace tir {
 using IntImmNode = tvm::IntImmNode;
 using FloatImmNode = tvm::FloatImmNode;
 
-/*! \brief String constants, only used in asserts. */
+/*! \brief ffi::String constants, only used in asserts. */
 class StringImmNode : public PrimExprNode {
  public:
   /*! \brief The constant value content. */
-  String value;
+  ffi::String value;
 
   static void RegisterReflection() {
     namespace refl = tvm::ffi::reflection;
@@ -70,7 +70,7 @@ class StringImmNode : public PrimExprNode {
  */
 class StringImm : public PrimExpr {
  public:
-  TVM_DLL StringImm(String value, Span span = Span());
+  TVM_DLL StringImm(ffi::String value, Span span = Span());
   TVM_DEFINE_OBJECT_REF_METHODS(StringImm, PrimExpr, StringImmNode);
   TVM_DEFINE_OBJECT_REF_COW_METHOD(StringImmNode);
 };
@@ -931,8 +931,8 @@ inline constexpr bool use_default_type_traits_v<tvm::tir::StringImm> = false;
 
 template <>
 struct TypeTraits<tvm::tir::StringImm>
-    : public ObjectRefWithFallbackTraitsBase<tvm::tir::StringImm, String> {
-  TVM_FFI_INLINE static tvm::tir::StringImm ConvertFallbackValue(String value) {
+    : public ObjectRefWithFallbackTraitsBase<tvm::tir::StringImm, ffi::String> {
+  TVM_FFI_INLINE static tvm::tir::StringImm ConvertFallbackValue(ffi::String value) {
     return tvm::tir::StringImm(value);
   }
 };

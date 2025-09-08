@@ -225,7 +225,7 @@ class BufferLoadReplacer : public StmtExprMutator {
  * \return a pair. The first is the stmt after transformation.
  *         The second is the SeqStmt that contains 2 stages (one original and another inserted).
  */
-std::pair<Stmt, SeqStmt> InsertCacheStage(Stmt stmt, bool is_write_cache, String storage_scope,
+std::pair<Stmt, SeqStmt> InsertCacheStage(Stmt stmt, bool is_write_cache, ffi::String storage_scope,
                                           Optional<For> compute_location,
                                           const Array<For>& outer_loops, Buffer* alloc_buffer) {
   Stmt body = stmt;
@@ -261,7 +261,7 @@ std::pair<Stmt, SeqStmt> InsertCacheStage(Stmt stmt, bool is_write_cache, String
   }
   for (const For& loop : outer_loops) {
     if (loop->kind == ForKind::kThreadBinding) {
-      const String& thread_tag = loop->thread_binding.value()->thread_tag;
+      const ffi::String& thread_tag = loop->thread_binding.value()->thread_tag;
       if (CanRelaxStorageUnderThread(runtime::StorageScope::Create(storage_scope),
                                      runtime::ThreadScope::Create(thread_tag))) {
         var_range.Set(loop->loop_var, Range::FromMinExtent(loop->min, loop->extent));

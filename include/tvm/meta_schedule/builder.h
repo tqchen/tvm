@@ -41,7 +41,7 @@ class BuilderInputNode : public runtime::Object {
   /*! \brief The target to be built for. */
   Target target;
   /*! \brief Parameters for Relax build module. */
-  Optional<Map<String, runtime::Tensor>> params;
+  Optional<Map<ffi::String, runtime::Tensor>> params;
 
   static void RegisterReflection() {
     namespace refl = tvm::ffi::reflection;
@@ -68,7 +68,7 @@ class BuilderInput : public runtime::ObjectRef {
    * \param params Parameters for Relax build module.
    */
   TVM_DLL explicit BuilderInput(IRModule mod, Target target,
-                                Optional<Map<String, runtime::Tensor>> params = std::nullopt);
+                                Optional<Map<ffi::String, runtime::Tensor>> params = std::nullopt);
   TVM_DEFINE_NOTNULLABLE_OBJECT_REF_METHODS(BuilderInput, runtime::ObjectRef, BuilderInputNode);
 };
 
@@ -76,9 +76,9 @@ class BuilderInput : public runtime::ObjectRef {
 class BuilderResultNode : public runtime::Object {
  public:
   /*! \brief The path to the built artifact. */
-  Optional<String> artifact_path;
+  Optional<ffi::String> artifact_path;
   /*! \brief The error message if any. */
-  Optional<String> error_msg;
+  Optional<ffi::String> error_msg;
 
   static void RegisterReflection() {
     namespace refl = tvm::ffi::reflection;
@@ -102,7 +102,7 @@ class BuilderResult : public runtime::ObjectRef {
    * \param artifact_path The path to the built artifact.
    * \param error_msg The error message if any.
    */
-  TVM_DLL explicit BuilderResult(Optional<String> artifact_path, Optional<String> error_msg);
+  TVM_DLL explicit BuilderResult(Optional<ffi::String> artifact_path, Optional<ffi::String> error_msg);
   TVM_DEFINE_NOTNULLABLE_OBJECT_REF_METHODS(BuilderResult, runtime::ObjectRef, BuilderResultNode);
 };
 

@@ -125,7 +125,7 @@ class CodeGenLLVM : public ExprFunctor<llvm::Value*(const PrimExpr&)>,
    *                       this option influences whether global ctors are used.
    */
   virtual void Init(const std::string& module_name, LLVMTarget* llvm_target,
-                    Optional<String> system_lib_prefix, bool dynamic_lookup, bool target_c_runtime);
+                    Optional<ffi::String> system_lib_prefix, bool dynamic_lookup, bool target_c_runtime);
 
   /*!
    * \brief Turn on fast math flags for floating point operations.
@@ -266,7 +266,7 @@ class CodeGenLLVM : public ExprFunctor<llvm::Value*(const PrimExpr&)>,
   /*!
    * \brief Convert tvm::ffi::String into llvm::StringRef
    */
-  static llvm::StringRef MakeStringRef(const String& string) {
+  static llvm::StringRef MakeStringRef(const ffi::String& string) {
     return llvm::StringRef(string.c_str(), string.size());
   }
   /*!
@@ -293,7 +293,7 @@ class CodeGenLLVM : public ExprFunctor<llvm::Value*(const PrimExpr&)>,
   virtual llvm::Value* CreateIntrinsic(const CallNode* op);
   // create extern function call
   // skip first arg mode used for call extern intrinsic.
-  virtual llvm::Value* CreateCallExtern(Type ret_type, String global_symbol,
+  virtual llvm::Value* CreateCallExtern(Type ret_type, ffi::String global_symbol,
                                         const Array<PrimExpr>& args, bool skip_first_arg);
 
   /*! \brief Insert a printf() call to the generated LLVM

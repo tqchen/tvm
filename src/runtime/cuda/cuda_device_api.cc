@@ -339,7 +339,7 @@ TVM_FFI_STATIC_INIT_BLOCK({
                         [](Device dev) { return Timer(ffi::make_object<CUDATimerNode>()); });
 });
 
-TVM_DLL String GetCudaFreeMemory() {
+TVM_DLL ffi::String GetCudaFreeMemory() {
   size_t free_mem, total_mem;
   CUDA_CALL(cudaMemGetInfo(&free_mem, &total_mem));
   std::stringstream ss;

@@ -158,7 +158,7 @@ class FuncBuilder : public ExprMutator {
     auto output = builder_->Emit(Tuple(outputs));
     auto block = builder_->EndBlock();
     auto body = builder_->Normalize(SeqExpr({block}, output));
-    Map<String, Any> attrs;
+    Map<ffi::String, Any> attrs;
     attrs.Set(relax::attr::kForcePure, true);
     auto func = Function(params, body, Downcast<StructInfo>(output->struct_info_.value()),
                          /*is_pure=*/true, /*attrs=*/DictAttrs(attrs));
@@ -306,10 +306,10 @@ class CUDAGraphRewritePlanner : public ExprVisitor {
    * \brief Extract the name hints of the symbolic variables that are allowed to be captured
    * from the function attributes.
    */
-  std::unordered_set<String> ExtractSymbolicVarHints(const Function& func) {
+  std::unordered_set<ffi::String> ExtractSymbolicVarHints(const Function& func) {
     auto symbolic_var_names =
-        func->attrs.GetAttr<Array<String>>("relax.rewrite_cuda_graph.capture_symbolic_vars")
-            .value_or(Array<String>());
+        func->attrs.GetAttr<Array<ffi::String>>("relax.rewrite_cuda_graph.capture_symbolic_vars")
+            .value_or(Array<ffi::String>());
     return {symbolic_var_names.begin(), symbolic_var_names.end()};
   }
 
@@ -657,7 +657,7 @@ Function MergeAllocationPlans(const std::vector<LiftedFunctionRewritePlan*>& all
     bool operator<(const StorageRecord& other) const { return size < other.size; }
   };
   // Using an (ordered) map to make sure the result is deterministic
-  std::map<String, std::vector<std::vector<StorageRecord>>> storage_records;
+  std::map<ffi::String, std::vector<std::vector<StorageRecord>>> storage_records;
   static const auto& mem_alloc_storage_op = Op::Get("relax.memory.alloc_storage");
 
   // Collect the storage records for each storage scope. Storage records are stored separately
@@ -675,7 +675,7 @@ Function MergeAllocationPlans(const std::vector<LiftedFunctionRewritePlan*>& all
       int64_t virtual_device_id =
           Downcast<IntImm>(Downcast<PrimValue>(alloc_storage->args[1])->value)->value;
       ICHECK_EQ(virtual_device_id, 0);
-      String storage_scope = Downcast<StringImm>(alloc_storage->args[2])->value;
+      ffi::String storage_scope = Downcast<StringImm>(alloc_storage->args[2])->value;
       auto [it, _] = storage_records.try_emplace(storage_scope, alloc_plans.size());
       it->second[plan_id].emplace_back(StorageRecord{size, binding, plan});
     }

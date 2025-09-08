@@ -64,7 +64,7 @@ class DiagnosticNode : public Object {
    */
   ObjectRef loc;
   /*! \brief The diagnostic message. */
-  String message;
+  ffi::String message;
 
   static void RegisterReflection() {
     namespace refl = tvm::ffi::reflection;

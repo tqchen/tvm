@@ -452,7 +452,7 @@ class AutoPadder {
   class IterSpaceAnalyzer : public StmtExprVisitor {
    public:
     IterSpaceAnalyzer(const Map<Var, PrimExpr>& substitute_map, AutoPadder* self, int data_bits,
-                      const Map<String, Integer> warp_thread_extent)
+                      const Map<ffi::String, Integer> warp_thread_extent)
         : substitute_map_(substitute_map),
           self(self),
           data_bits_(data_bits),
@@ -598,7 +598,7 @@ class AutoPadder {
     Map<Var, PrimExpr> substitute_map_;
     AutoPadder* self;
     int data_bits_;
-    Map<String, Integer> warp_thread_extent_;
+    Map<ffi::String, Integer> warp_thread_extent_;
     Map<Var, Range> var_range_;
     int vector_length_ = -1;
     Var vector_var;
@@ -612,10 +612,10 @@ class AutoPadder {
    * \param thread_extent The extents of all thread binding loops
    */
   void AnalyzeSharedMemoryAccess(const Stmt& stmt, const Array<For>& outer_loops, int data_bits,
-                                 const Map<String, Integer>& thread_extent) {
-    Map<String, Integer> warp_thread_extent;
+                                 const Map<ffi::String, Integer>& thread_extent) {
+    Map<ffi::String, Integer> warp_thread_extent;
     Integer prod = 1;
-    Array<String> thread_tags{"threadIdx.x", "threadIdx.y", "threadIdx.z"};
+    Array<ffi::String> thread_tags{"threadIdx.x", "threadIdx.y", "threadIdx.z"};
     arith::Analyzer analyzer;
     for (int i = 0; i < 3; i++) {
       Integer extent = thread_extent.Get(thread_tags[i]).value_or(1);
@@ -651,7 +651,7 @@ class AutoPadder {
 
 class AutoCopyMutator : public StmtExprMutator {
  public:
-  explicit AutoCopyMutator(Map<String, Integer> thread_extent) : thread_extent_(thread_extent) {}
+  explicit AutoCopyMutator(Map<ffi::String, Integer> thread_extent) : thread_extent_(thread_extent) {}
   /**
    * \brief Replace old buffers with padded buffers in the stmt
    * \param stmt The stmt to rewrite
@@ -715,7 +715,7 @@ class AutoCopyMutator : public StmtExprMutator {
   }
 
   /*! \brief Thread extents collected. */
-  Map<String, Integer> thread_extent_;
+  Map<ffi::String, Integer> thread_extent_;
   /*! \brief The outer loops during recursive visit */
   Array<For> outer_loops_;
   /*! \brief Calculating optimal padding size */
@@ -736,7 +736,7 @@ class AutoCopyMutator : public StmtExprMutator {
  */
 class ThreadExtentCollector : public StmtVisitor {
  public:
-  static Map<String, Integer> CollectThreadExtent(const Stmt& stmt) {
+  static Map<ffi::String, Integer> CollectThreadExtent(const Stmt& stmt) {
     ThreadExtentCollector collector;
     collector(stmt);
     return collector.thread_extent_;
@@ -761,7 +761,7 @@ class ThreadExtentCollector : public StmtVisitor {
   }
 
   /*! \brief the map from thread tag to its extent */
-  Map<String, Integer> thread_extent_;
+  Map<ffi::String, Integer> thread_extent_;
 };
 
 namespace transform {

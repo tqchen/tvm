@@ -36,9 +36,9 @@ class HasInitBlock : public ScheduleError {
  public:
   explicit HasInitBlock(IRModule mod, Block block) : mod_(mod), block_(block) {}
 
-  String FastErrorString() const final { return "ScheduleError: The block has init statement"; }
+  ffi::String FastErrorString() const final { return "ScheduleError: The block has init statement"; }
 
-  String DetailRenderTemplate() const final {
+  ffi::String DetailRenderTemplate() const final {
     return "ScheduleError: The block has init statement: {0}";
   }
 
@@ -61,12 +61,12 @@ class NotSingleReadWriteBuffer : public ScheduleError {
   explicit NotSingleReadWriteBuffer(IRModule mod, bool is_read, Block block)
       : mod_(mod), is_read_(is_read), block_(std::move(block)) {}
 
-  String FastErrorString() const final {
+  ffi::String FastErrorString() const final {
     return is_read_ ? "ScheduleError: The block is allowed to read only a single buffer region"
                     : "ScheduleError: The block is allowed to write only a single buffer region";
   }
 
-  String DetailRenderTemplate() const final {
+  ffi::String DetailRenderTemplate() const final {
     if (is_read_) {
       int k = block_->reads.size();
       return "The block is only allowed to read a single buffer region, but it reads " +
@@ -121,12 +121,12 @@ class BodyAnalysisError : public ScheduleError {
   explicit BodyAnalysisError(bool is_reverse, IRModule mod, Block block)
       : is_reverse_(is_reverse), mod_(mod), block_(std::move(block)) {}
 
-  String FastErrorString() const final {
+  ffi::String FastErrorString() const final {
     return "ScheduleError: The block cannot be inlined because its body pattern does not meet the "
            "condition for inlining";
   }
 
-  String DetailRenderTemplate() const final {
+  ffi::String DetailRenderTemplate() const final {
     return is_reverse_ ? kErrBodyReverseInline : kErrBodyInline;
   }
 
@@ -143,13 +143,13 @@ class NonSingleProducerError : public ScheduleError {
   explicit NonSingleProducerError(IRModule mod, Block block)
       : mod_(mod), block_(std::move(block)) {}
 
-  String FastErrorString() const final {
+  ffi::String FastErrorString() const final {
     return "ScheduleError: The consumer block to be inlined is required to have only a single "
            "producer block, and the producer block should be a complete block who has only a "
            "single consumer";
   }
 
-  String DetailRenderTemplate() const final {
+  ffi::String DetailRenderTemplate() const final {
     return "The consumer block {0} to be inlined is required to have only a single "
            "producer block, and the producer block should be a complete block who has only a "
            "single consumer";
@@ -240,12 +240,12 @@ class OpaqueAccessError : public ScheduleError {
     this->scope_root_ = ffi::GetRef<Block>(scope_root);
   }
 
-  String FastErrorString() const final {
+  ffi::String FastErrorString() const final {
     return "ScheduleError: The buffer to be inlined has opaque access (e.g. `B.data`), or its "
            "subregion is matched into other blocks";
   }
 
-  String DetailRenderTemplate() const final {
+  ffi::String DetailRenderTemplate() const final {
     return "The buffer to be inlined has opaque access (e.g. `B.data`), or its "
            "subregion is matched into other blocks: {0}";
   }
@@ -263,11 +263,11 @@ class ProducerHasNonTrivialPredicateError : public ScheduleError {
                                                PrimExpr new_predicate)
       : mod_(mod), producer_(producer), new_predicate_(new_predicate) {}
 
-  String FastErrorString() const final {
+  ffi::String FastErrorString() const final {
     return "ScheduleError: The producer block has a non-trivial predicate.";
   }
 
-  String DetailRenderTemplate() const final {
+  ffi::String DetailRenderTemplate() const final {
     std::ostringstream os;
     os << "ScheduleError: The producer block {0} has a non-trivial predicate "
        << producer_->predicate << " that cannot be implied by the synthesized predicate "
@@ -995,7 +995,7 @@ struct ComputeInlineTraits : public UnpackedInstTraits<ComputeInlineTraits> {
     return sch->ComputeInline(block_rv);
   }
 
-  static String UnpackedAsPython(Array<String> outputs, String block_rv) {
+  static ffi::String UnpackedAsPython(Array<ffi::String> outputs, ffi::String block_rv) {
     PythonAPICall py("compute_inline");
     py.Input("block", block_rv);
     return py.Str();
@@ -1018,7 +1018,7 @@ struct ReverseComputeInlineTraits : public UnpackedInstTraits<ReverseComputeInli
     return sch->ReverseComputeInline(block_rv);
   }
 
-  static String UnpackedAsPython(Array<String> outputs, String block_rv) {
+  static ffi::String UnpackedAsPython(Array<ffi::String> outputs, ffi::String block_rv) {
     PythonAPICall py("reverse_compute_inline");
     py.Input("block", block_rv);
     return py.Str();

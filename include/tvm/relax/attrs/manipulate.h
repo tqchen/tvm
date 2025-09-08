@@ -264,7 +264,7 @@ struct IndexPutAttrs : public AttrsNodeReflAdapter<IndexPutAttrs> {
 
 /*! \brief Attribute used in meshgrid operator */
 struct MeshgridAttrs : public AttrsNodeReflAdapter<MeshgridAttrs> {
-  Optional<String> indexing;
+  Optional<ffi::String> indexing;
 
   static void RegisterReflection() {
     namespace refl = tvm::ffi::reflection;
@@ -279,7 +279,7 @@ struct MeshgridAttrs : public AttrsNodeReflAdapter<MeshgridAttrs> {
 /*! \brief Attributes used in scatter_elements operators */
 struct ScatterElementsAttrs : public AttrsNodeReflAdapter<ScatterElementsAttrs> {
   Integer axis;
-  String reduction;
+  ffi::String reduction;
 
   static void RegisterReflection() {
     namespace refl = tvm::ffi::reflection;
@@ -298,7 +298,7 @@ struct ScatterElementsAttrs : public AttrsNodeReflAdapter<ScatterElementsAttrs> 
 
 /*! \brief Attributes used in scatter_nd operators */
 struct ScatterNDAttrs : public AttrsNodeReflAdapter<ScatterNDAttrs> {
-  String reduction;
+  ffi::String reduction;
 
   static void RegisterReflection() {
     namespace refl = tvm::ffi::reflection;

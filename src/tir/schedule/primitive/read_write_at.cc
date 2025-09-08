@@ -123,8 +123,8 @@ class ReadWriteAtBufferReplacer : public StmtExprMutator {
 struct ReadWriteAtImpl {
   template <bool is_read>
   static StmtSRef Main(ScheduleState self, const StmtSRef& loop_sref, const StmtSRef& block_sref,
-                       int buffer_index, const String& storage_scope,
-                       Map<String, Any> annotations) {
+                       int buffer_index, const ffi::String& storage_scope,
+                       Map<ffi::String, Any> annotations) {
     const BlockNode* block = TVM_SREF_TO_BLOCK(block_sref);
     Buffer src = GetNthAccessBuffer(self, ffi::GetRef<Block>(block), buffer_index,
                                     is_read ? BufferIndexType::kRead : BufferIndexType::kWrite);
@@ -166,7 +166,7 @@ struct ReadWriteAtImpl {
   }
 
   template <bool is_read>
-  std::pair<For, BlockRealize> MakeLoopAndBlock(const String& new_block_name_hint) {
+  std::pair<For, BlockRealize> MakeLoopAndBlock(const ffi::String& new_block_name_hint) {
     Array<Stmt> subtrees = AsArray(loop_->body);
     int n_subtrees = subtrees.size();
     runtime::StorageScope scope = runtime::StorageScope::Create(dst_.scope());
@@ -261,7 +261,7 @@ struct ReadWriteAtImpl {
     return {For(new_loop), realize};
   }
 
-  BlockRealize MakeBlock(const Buffer& copy_from, const Buffer& copy_to, const String& name_hint,
+  BlockRealize MakeBlock(const Buffer& copy_from, const Buffer& copy_to, const ffi::String& name_hint,
                          const Map<Var, Range>& loop_domain, Array<Range> domain) const {
     int n = domain.size();
     std::vector<Var> loop_vars;
@@ -318,7 +318,7 @@ struct ReadWriteAtImpl {
   }
 
   explicit ReadWriteAtImpl(ScheduleState self, const StmtSRef& loop_sref, const Buffer& src,
-                           const Buffer& dst, Map<String, Any> annotations)
+                           const Buffer& dst, Map<ffi::String, Any> annotations)
       : self_(self),
         loop_sref_(loop_sref),
         loop_(nullptr),
@@ -335,19 +335,19 @@ struct ReadWriteAtImpl {
   const ForNode* loop_;
   const Buffer& src_;
   const Buffer& dst_;
-  Map<String, Any> annotations_;
+  Map<ffi::String, Any> annotations_;
   Map<Block, Block> block_sref_reuse_;
   std::unique_ptr<arith::Analyzer> analyzer_;
 };
 
 StmtSRef ReadAt(ScheduleState self, const StmtSRef& loop_sref, const StmtSRef& block_sref,
-                int read_buffer_index, const String& storage_scope) {
+                int read_buffer_index, const ffi::String& storage_scope) {
   return ReadWriteAtImpl::Main<true>(self, loop_sref, block_sref, read_buffer_index, storage_scope,
                                      {{tir::attr::auto_copy, true}});
 }
 
 StmtSRef WriteAt(ScheduleState self, const StmtSRef& loop_sref, const StmtSRef& block_sref,
-                 int write_buffer_index, const String& storage_scope) {
+                 int write_buffer_index, const ffi::String& storage_scope) {
   return ReadWriteAtImpl::Main<false>(self, loop_sref, block_sref, write_buffer_index,
                                       storage_scope, {{tir::attr::auto_copy, true}});
 }
@@ -364,14 +364,14 @@ struct ReadAtTraits : public UnpackedInstTraits<ReadAtTraits> {
   static constexpr size_t kNumDecisions = 0;
 
   StmtSRef ReadAt(ScheduleState self, const StmtSRef& loop_sref, const StmtSRef& block_sref,
-                  int buffer_index, const String& storage_scope);
+                  int buffer_index, const ffi::String& storage_scope);
   static BlockRV UnpackedApplyToSchedule(Schedule sch, LoopRV loop, BlockRV block,
-                                         Integer read_buffer_index, String storage_scope) {
+                                         Integer read_buffer_index, ffi::String storage_scope) {
     return sch->ReadAt(loop, block, read_buffer_index->value, storage_scope);
   }
 
-  static String UnpackedAsPython(Array<String> outputs, String loop, String block,
-                                 Integer read_buffer_index, String storage_scope) {
+  static ffi::String UnpackedAsPython(Array<ffi::String> outputs, ffi::String loop, ffi::String block,
+                                 Integer read_buffer_index, ffi::String storage_scope) {
     PythonAPICall py("read_at");
     py.Input("loop", loop);
     py.Input("block", block);
@@ -395,12 +395,12 @@ struct WriteAtTraits : public UnpackedInstTraits<WriteAtTraits> {
   static constexpr size_t kNumDecisions = 0;
 
   static BlockRV UnpackedApplyToSchedule(Schedule sch, LoopRV loop, BlockRV block,
-                                         Integer write_buffer_index, String storage_scope) {
+                                         Integer write_buffer_index, ffi::String storage_scope) {
     return sch->WriteAt(loop, block, write_buffer_index->value, storage_scope);
   }
 
-  static String UnpackedAsPython(Array<String> outputs, String loop, String block,
-                                 Integer write_buffer_index, String storage_scope) {
+  static ffi::String UnpackedAsPython(Array<ffi::String> outputs, ffi::String loop, ffi::String block,
+                                 Integer write_buffer_index, ffi::String storage_scope) {
     PythonAPICall py("write_at");
     py.Input("loop", loop);
     py.Input("block", block);

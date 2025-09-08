@@ -35,7 +35,7 @@ bool IsAnnotateWithUnroll(const Instruction& inst) {
     return false;
   }
   ICHECK_EQ(inst->attrs.size(), 1);
-  String ann_key = Downcast<String>(inst->attrs[0]);
+  ffi::String ann_key = Downcast<ffi::String>(inst->attrs[0]);
   return ann_key == attr::meta_schedule_unroll_explicit ||
          ann_key == attr::meta_schedule_unroll_implicit;
 }

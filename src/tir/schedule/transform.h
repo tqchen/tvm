@@ -41,7 +41,7 @@ namespace tir {
  * \param attr_value The annotation value to be added
  * \return A new block with the given annotation as its last annotation
  */
-Block WithAnnotation(const BlockNode* block, const String& attr_key, const ObjectRef& attr_value);
+Block WithAnnotation(const BlockNode* block, const ffi::String& attr_key, const ObjectRef& attr_value);
 
 /******** Buffer Related ********/
 
@@ -51,7 +51,7 @@ Block WithAnnotation(const BlockNode* block, const String& attr_key, const Objec
  * \param scope The target storage scope.
  * \return The new buffer with target storage scope.
  */
-Buffer WithScope(const Buffer& buffer, const String& scope);
+Buffer WithScope(const Buffer& buffer, const ffi::String& scope);
 
 /*!
  * \brief Create a new buffer by changint the data type.
@@ -215,7 +215,7 @@ void LeafBlockRemovalPlan(const ScheduleState& self, const StmtSRef& leaf_block_
  * block tiled according to the given intrin, std::nullopt if a valid loop mapping is not found
  */
 Optional<tir::LoopRV> TileWithTensorIntrin(const tir::Schedule& sch, const tir::BlockRV& block_rv,
-                                           const String& intrin_name, bool allow_padding = false);
+                                           const ffi::String& intrin_name, bool allow_padding = false);
 
 /******** Block mutation ********/
 

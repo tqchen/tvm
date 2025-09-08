@@ -60,7 +60,7 @@ class ConcreteScheduleNode : public ScheduleNode {
   ScheduleState state() const final { return state_; }
   Optional<Trace> trace() const override { return std::nullopt; }
   Optional<GlobalVar> func_working_on() const final { return func_working_on_; }
-  void WorkOn(const String& func_name) final;
+  void WorkOn(const ffi::String& func_name) final;
   Schedule Copy() override;
   void Seed(support::LinearCongruentialEngine::TRandState seed) final;
   support::LinearCongruentialEngine::TRandState ForkSeed() final;
@@ -92,7 +92,7 @@ class ConcreteScheduleNode : public ScheduleNode {
   LoopRV SampleComputeLocation(const BlockRV& block_rv,
                                Optional<Integer> decision = std::nullopt) override;
   /******** Schedule: Get blocks & loops ********/
-  BlockRV GetBlock(const String& name, const Optional<String>& func_name) override;
+  BlockRV GetBlock(const ffi::String& name, const Optional<ffi::String>& func_name) override;
   Array<LoopRV> GetLoops(const BlockRV& block_rv) override;
   Array<BlockRV> GetChildBlocks(const BlockRV& block_rv) override;
   Array<BlockRV> GetChildBlocks(const LoopRV& loop_rv) override;
@@ -113,28 +113,28 @@ class ConcreteScheduleNode : public ScheduleNode {
   /******** Schedule: Manipulate ForKind ********/
   void Parallel(const LoopRV& loop_rv) override;
   void Vectorize(const LoopRV& loop_rv) override;
-  void Bind(const LoopRV& loop_rv, const String& thread_axis) override;
+  void Bind(const LoopRV& loop_rv, const ffi::String& thread_axis) override;
   void Unroll(const LoopRV& loop_rv) override;
   /******** Schedule: Insert cache stages ********/
-  BlockRV CacheRead(const BlockRV& block_rv, int read_buffer_index, const String& storage_scope,
+  BlockRV CacheRead(const BlockRV& block_rv, int read_buffer_index, const ffi::String& storage_scope,
                     const Array<BlockRV> consumer_blocks = {}) override;
-  BlockRV CacheWrite(const BlockRV& block_rv, int write_buffer_index, const String& storage_scope,
+  BlockRV CacheWrite(const BlockRV& block_rv, int write_buffer_index, const ffi::String& storage_scope,
                      const Array<BlockRV> consumer_blocks = {}) override;
   BlockRV ReindexCacheRead(const BlockRV& block_rv, int read_buffer_index,
-                           const String& storage_scope, const IndexMap& index_map) override;
+                           const ffi::String& storage_scope, const IndexMap& index_map) override;
   BlockRV ReindexCacheWrite(const BlockRV& block_rv, int write_buffer_index,
-                            const String& storage_scope, const IndexMap& index_map) override;
+                            const ffi::String& storage_scope, const IndexMap& index_map) override;
   Array<BlockRV> CacheInplace(const BlockRV& block_rv, int read_buffer_index,
-                              const String& storage_scope) override;
-  Array<BlockRV> CacheIndex(const BlockRV& block_rv, const String& storage_scope,
+                              const ffi::String& storage_scope) override;
+  Array<BlockRV> CacheIndex(const BlockRV& block_rv, const ffi::String& storage_scope,
                             int cse_thresh) override;
   BlockRV ReIndex(const BlockRV& block_rv, int buffer_index,
                   BufferIndexType buffer_index_type) override;
   /******** Schedule: Data movement ********/
   BlockRV ReadAt(const LoopRV& loop_rv, const BlockRV& block_rv, int read_buffer_index,
-                 const String& storage_scope) override;
+                 const ffi::String& storage_scope) override;
   BlockRV WriteAt(const LoopRV& loop_rv, const BlockRV& block_rv, int write_buffer_index,
-                  const String& storage_scope) override;
+                  const ffi::String& storage_scope) override;
   /******** Schedule: Compute location ********/
   void ComputeAt(const BlockRV& block_rv, const LoopRV& loop_rv, bool preserve_unit_loops,
                  int index = -1) override;
@@ -149,18 +149,18 @@ class ConcreteScheduleNode : public ScheduleNode {
   /******** Schedule: Block annotation ********/
   void StorageAlign(const BlockRV& block_rv, int buffer_index, int axis, int factor,
                     int offset) override;
-  void SetScope(const BlockRV& block_rv, int buffer_index, const String& storage_scope) override;
-  void UnsafeSetDType(const BlockRV& block_rv, int buffer_index, const String& dtype) override;
+  void SetScope(const BlockRV& block_rv, int buffer_index, const ffi::String& storage_scope) override;
+  void UnsafeSetDType(const BlockRV& block_rv, int buffer_index, const ffi::String& dtype) override;
   /******** Schedule: Blockize & Tensorize ********/
   BlockRV Blockize(const LoopRV& loop_rv, bool preserve_unit_iters) override;
   BlockRV Blockize(const Array<BlockRV>& blocks, bool preserve_unit_iters) override;
-  void Tensorize(const BlockRV& block_rv, const String& intrin, bool preserve_unit_iters) override;
-  void Tensorize(const LoopRV& loop_rv, const String& intrin, bool preserve_unit_iters) override;
+  void Tensorize(const BlockRV& block_rv, const ffi::String& intrin, bool preserve_unit_iters) override;
+  void Tensorize(const LoopRV& loop_rv, const ffi::String& intrin, bool preserve_unit_iters) override;
   /******** Schedule: Annotation ********/
-  void Annotate(const LoopRV& loop_rv, const String& ann_key, const Any& ann_val) override;
-  void Unannotate(const LoopRV& loop_rv, const String& ann_key) override;
-  void Annotate(const BlockRV& block_rv, const String& ann_key, const Any& ann_val) override;
-  void Unannotate(const BlockRV& block_rv, const String& ann_key) override;
+  void Annotate(const LoopRV& loop_rv, const ffi::String& ann_key, const Any& ann_val) override;
+  void Unannotate(const LoopRV& loop_rv, const ffi::String& ann_key) override;
+  void Annotate(const BlockRV& block_rv, const ffi::String& ann_key, const Any& ann_val) override;
+  void Unannotate(const BlockRV& block_rv, const ffi::String& ann_key) override;
   /******** Schedule: Layout transformation ********/
   void TransformLayout(const BlockRV& block_rv, int buffer_index, BufferIndexType buffer_index_type,
                        const IndexMap& index_map, const Optional<IndexMap>& pad_value,
@@ -175,7 +175,7 @@ class ConcreteScheduleNode : public ScheduleNode {
   void RollingBuffer(const BlockRV& block_rv, int write_buffer_index) override;
   /******** Schedule: Misc ********/
   void EnterPostproc() override {}
-  void UnsafeHideBufferAccess(const BlockRV& block_rv, const String& buf_type,
+  void UnsafeHideBufferAccess(const BlockRV& block_rv, const ffi::String& buf_type,
                               const Array<IntImm>& buf_index_array) override;
   void AnnotateBufferAccess(const BlockRV& block_rv, int buffer_index,
                             BufferIndexType buffer_index_type, const IndexMap& index_map) override;

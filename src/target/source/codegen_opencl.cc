@@ -635,7 +635,7 @@ void CodeGenOpenCL::SetTextureScope(
 
 ffi::Module BuildOpenCL(IRModule mod, Target target) {
 #if TVM_ENABLE_SPIRV
-  Optional<String> device = target->GetAttr<String>("device");
+  Optional<ffi::String> device = target->GetAttr<ffi::String>("device");
   if (device && device.value() == "spirv") {
     auto [smap, spirv_text] = LowerToSPIRV(mod, target);
     return runtime::OpenCLModuleCreate(smap, spirv_text, ExtractFuncInfo(mod));
@@ -679,12 +679,12 @@ TVM_FFI_STATIC_INIT_BLOCK({
   refl::GlobalDef().def("target.build.opencl", BuildOpenCL);
 });
 
-String DeviceScopeCompatibilityFromTarget(Target target, String memory_scope) {
+ffi::String DeviceScopeCompatibilityFromTarget(Target target, ffi::String memory_scope) {
   auto prototype_keys = target->GetKeys();
   bool is_adreno =
       std::find(prototype_keys.begin(), prototype_keys.end(), "adreno") != prototype_keys.end();
   if (is_adreno) {
-    return String("global");
+    return ffi::String("global");
   }
   return memory_scope;
 }

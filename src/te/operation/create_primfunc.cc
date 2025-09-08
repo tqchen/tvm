@@ -115,7 +115,7 @@ struct CreateFuncInfo {
   /*! \brief The NameSupply to make block name unique. */
   NameSupply name_supply;
 
-  String FreshName(String base_name) { return name_supply->FreshName(base_name); }
+  ffi::String FreshName(ffi::String base_name) { return name_supply->FreshName(base_name); }
 
   explicit CreateFuncInfo(Array<te::Tensor> arg_list)
       : arg_list(std::move(arg_list)), transformer(tensor2buffers) {}
@@ -168,7 +168,7 @@ class LayoutFreePlaceholdersNormalizer : public StmtMutator {
         n->annotations.Set(topi_attr, new_buffers);
       }
     }
-    for (const String& attr : this->blocklist) {
+    for (const ffi::String& attr : this->blocklist) {
       auto it = n->annotations.find(attr);
       if (it != n->annotations.end()) {
         n->annotations.erase(attr);
@@ -179,8 +179,8 @@ class LayoutFreePlaceholdersNormalizer : public StmtMutator {
 
   std::unordered_map<tir::Buffer, int, ObjectPtrHash, ObjectPtrEqual> buffer2index_;
   std::set<int> layout_free_buffer_indices_;
-  String topi_attr = "layout_free_placeholders";
-  std::vector<String> blocklist = {"const_matrix", "auto_scheduler_simplify_const_tensor_indices",
+  ffi::String topi_attr = "layout_free_placeholders";
+  std::vector<ffi::String> blocklist = {"const_matrix", "auto_scheduler_simplify_const_tensor_indices",
                                    "workload"};
 };
 
@@ -296,9 +296,9 @@ Array<Buffer> GenerateOutputBuffers(const te::ComputeOp& compute_op, CreateFuncI
  * \param info Generation context info.
  * \returns The block annotation dict.
  **/
-Map<String, ffi::Any> GenerateBlockAnnotations(const te::ComputeOp& compute_op,
+Map<ffi::String, ffi::Any> GenerateBlockAnnotations(const te::ComputeOp& compute_op,
                                                CreateFuncInfo* info) {
-  Map<String, ffi::Any> annotations;
+  Map<ffi::String, ffi::Any> annotations;
   auto mutate_attr = [&info](const ffi::Any& value) -> ffi::Any {
     if (auto tensor_value = value.try_cast<te::Tensor>()) {
       return info->tensor2buffers.at(tensor_value.value());
@@ -307,7 +307,7 @@ Map<String, ffi::Any> GenerateBlockAnnotations(const te::ComputeOp& compute_op,
     }
   };
   for (const auto& pair : compute_op->attrs) {
-    const String& key = pair.first;
+    const ffi::String& key = pair.first;
     const Any& value = pair.second;
     // TensorIR will not allow Tensor data structure
     if (value.as<ffi::ArrayObj>()) {
@@ -533,7 +533,7 @@ Stmt GenerateStmtFromCompute(const te::ComputeOp& compute_op, CreateFuncInfo* in
   // Step 4. Generate leaf block stmts.
   Array<Stmt> seq_stmt;
   auto leaf = scopes.back();
-  Map<String, ffi::Any> annotations = GenerateBlockAnnotations(compute_op, info);
+  Map<ffi::String, ffi::Any> annotations = GenerateBlockAnnotations(compute_op, info);
   const ReduceNode* reduce = compute_op->body[0].as<ReduceNode>();
   if (reduce) {
     PrimExpr expr_body = compute_op->body[0];
@@ -742,7 +742,7 @@ PrimFunc GenerateAndCompletePrimFunc(const Array<te::Tensor>& arg_list,
                                      /*body=*/SeqStmt::Flatten(root_stmts),
                                      /*ret_type=*/VoidType(),
                                      /*buffer_map=*/std::move(buffer_map)),
-                            {{"global_symbol", String("main")}, {"tir.noalias", true}});
+                            {{"global_symbol", ffi::String("main")}, {"tir.noalias", true}});
   const auto fcomplete = tvm::ffi::Function::GetGlobal("script.Complete");
   ICHECK(fcomplete.has_value());
   func = (*fcomplete)(std::move(func), info->root_alloc).cast<PrimFunc>();
@@ -819,7 +819,7 @@ PrimFunc GenerateAndCompletePrimFunc(const Array<ObjectRef>& arg_tir_var_list,
                                      /*body=*/SeqStmt::Flatten(root_stmts),
                                      /*ret_type=*/VoidType(),
                                      /*buffer_map=*/std::move(buffer_map)),
-                            {{"global_symbol", String("main")}, {"tir.noalias", true}});
+                            {{"global_symbol", ffi::String("main")}, {"tir.noalias", true}});
   const auto fcomplete = tvm::ffi::Function::GetGlobal("script.Complete");
   ICHECK(fcomplete.has_value());
   func = (*fcomplete)(std::move(func), info->root_alloc).cast<PrimFunc>();

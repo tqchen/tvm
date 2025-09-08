@@ -25,7 +25,7 @@ namespace meta_schedule {
 
 class ScheduleFnDatabaseNode : public DatabaseNode {
  public:
-  explicit ScheduleFnDatabaseNode(String mod_eq_name = "structural") : DatabaseNode(mod_eq_name) {}
+  explicit ScheduleFnDatabaseNode(ffi::String mod_eq_name = "structural") : DatabaseNode(mod_eq_name) {}
 
   ffi::TypedFunction<bool(tir::Schedule)> schedule_fn;
 
@@ -40,7 +40,7 @@ class ScheduleFnDatabaseNode : public DatabaseNode {
 
  public:
   Optional<TuningRecord> QueryTuningRecord(const IRModule& mod, const Target& target,
-                                           const String& workload_name) final {
+                                           const ffi::String& workload_name) final {
     if (Optional<tir::Schedule> sch = this->QuerySchedule(mod, target, workload_name)) {
       return TuningRecord(sch.value()->trace().value(),
                           /*workload=*/Workload(mod, 0),  //
@@ -52,7 +52,7 @@ class ScheduleFnDatabaseNode : public DatabaseNode {
   }
 
   Optional<tir::Schedule> QuerySchedule(const IRModule& mod, const Target& target,
-                                        const String& workload_name) final {
+                                        const ffi::String& workload_name) final {
     tir::Schedule sch =
         tir::Schedule::Traced(WithAttr<IRModule>(mod, "task_name", workload_name),
                               /*rand_state=*/-1,
@@ -96,7 +96,7 @@ class ScheduleFnDatabaseNode : public DatabaseNode {
 };
 
 Database Database::ScheduleFnDatabase(ffi::TypedFunction<bool(tir::Schedule)> schedule_fn,
-                                      String mod_eq_name) {
+                                      ffi::String mod_eq_name) {
   ObjectPtr<ScheduleFnDatabaseNode> n = ffi::make_object<ScheduleFnDatabaseNode>(mod_eq_name);
   n->schedule_fn = std::move(schedule_fn);
   return Database(n);

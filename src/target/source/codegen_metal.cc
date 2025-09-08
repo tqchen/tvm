@@ -77,7 +77,7 @@ void CodeGenMetal::AddFunction(const GlobalVar& gvar, const PrimFunc& func) {
   name_supply_->FreshName("v_");
 
   // add to alloc buffer type.
-  auto global_symbol = func->GetAttr<String>(tvm::attr::kGlobalSymbol);
+  auto global_symbol = func->GetAttr<ffi::String>(tvm::attr::kGlobalSymbol);
   ICHECK(global_symbol.has_value())
       << "CodeGenC: Expect PrimFunc to have the global_symbol attribute";
 
@@ -149,7 +149,7 @@ void CodeGenMetal::AddFunction(const GlobalVar& gvar, const PrimFunc& func) {
   ICHECK_EQ(name_supply_->FreshName("threadIdx"), "threadIdx");
   ICHECK_EQ(name_supply_->FreshName("blockIdx"), "blockIdx");
   int work_dim = 0;
-  auto launch_params = func->GetAttr<Array<String>>(tir::attr::kKernelLaunchParams).value();
+  auto launch_params = func->GetAttr<Array<ffi::String>>(tir::attr::kKernelLaunchParams).value();
   for (const auto& tag : launch_params) {
     if (tag != runtime::launch_param::kUseDynamicSharedMemoryTag) {
       runtime::ThreadScope scope = runtime::ThreadScope::Create(tag);
@@ -442,7 +442,7 @@ ffi::Module BuildMetal(IRModule mod, Target target) {
 
   for (auto kv : mod->functions) {
     ICHECK(kv.second->IsInstance<PrimFuncNode>()) << "CodeGenMetal: Can only take PrimFunc";
-    auto global_symbol = kv.second->GetAttr<String>(tvm::attr::kGlobalSymbol);
+    auto global_symbol = kv.second->GetAttr<ffi::String>(tvm::attr::kGlobalSymbol);
     ICHECK(global_symbol.has_value());
     std::string func_name = global_symbol.value();
 

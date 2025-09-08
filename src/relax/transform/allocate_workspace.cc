@@ -52,8 +52,8 @@ class ExternFunctionRewriter : ExprMutator {
   }
 
   Expr VisitExpr_(const FunctionNode* func_node) override {
-    if (!func_node->GetAttr<String>(attr::kCodegen) &&
-        !func_node->GetAttr<String>(attr::kComposite)) {
+    if (!func_node->GetAttr<ffi::String>(attr::kCodegen) &&
+        !func_node->GetAttr<ffi::String>(attr::kComposite)) {
       return ExprMutator::VisitExpr_(func_node);
     }
     if (auto workspace = func_node->GetAttr<Integer>(attr::kWorkspaceSize)) {
@@ -63,7 +63,7 @@ class ExternFunctionRewriter : ExprMutator {
       auto sinfo = TensorStructInfo(ShapeExpr({Integer(max_workspace_size_)}), DataType::UInt(8));
       Var workspace_param(name_sup_->FreshName("workspace"), sinfo);
 
-      if (func_node->GetAttr<String>(attr::kCodegen)) {
+      if (func_node->GetAttr<ffi::String>(attr::kCodegen)) {
         workspace_var_param_ = workspace_param;
       }
 
@@ -81,7 +81,7 @@ class ExternFunctionRewriter : ExprMutator {
     if (auto var = new_op.as<Var>()) {
       if (auto callee = builder_->LookupBinding(var.value());
           callee && callee->IsInstance<FunctionNode>() &&
-          Downcast<Function>(callee.value())->GetAttr<String>(attr::kComposite)) {
+          Downcast<Function>(callee.value())->GetAttr<ffi::String>(attr::kComposite)) {
         // Append the workspace argument to this call. The callee should have been updated to accept
         // a workspace as the last parameter.
         auto new_args = call_node->args;
@@ -132,8 +132,8 @@ class WorkspaceProvider : ExprMutator {
 
     for (const auto& [gvar, f] : mod_->functions) {
       workspace_var_main_ = Var();
-      if (!f->IsInstance<relax::FunctionNode>() || f->GetAttr<String>(attr::kCodegen) ||
-          f->GetAttr<String>(attr::kComposite)) {
+      if (!f->IsInstance<relax::FunctionNode>() || f->GetAttr<ffi::String>(attr::kCodegen) ||
+          f->GetAttr<ffi::String>(attr::kComposite)) {
         continue;
       }
       auto func = Downcast<Function>(mod_->Lookup(gvar));

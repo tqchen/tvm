@@ -30,7 +30,7 @@ std::unique_ptr<PagedPrefillFunc> ConvertPagedPrefillFunc(Array<ffi::Any> args,
   if (args.empty()) {
     return nullptr;
   }
-  String backend_name = args[0].cast<String>();
+  ffi::String backend_name = args[0].cast<ffi::String>();
   if (backend_name == "tir") {
     CHECK_EQ(args.size(), 2);
     ffi::Function attn_func = args[1].cast<ffi::Function>();
@@ -52,7 +52,7 @@ std::unique_ptr<RaggedPrefillFunc> ConvertRaggedPrefillFunc(Array<ffi::Any> args
   if (args.empty()) {
     return nullptr;
   }
-  String backend_name = args[0].cast<String>();
+  ffi::String backend_name = args[0].cast<ffi::String>();
   if (backend_name == "tir") {
     CHECK_EQ(args.size(), 2);
     ffi::Function attn_func = args[1].cast<ffi::Function>();
@@ -73,7 +73,7 @@ std::unique_ptr<PagedDecodeFunc> ConvertPagedDecodeFunc(Array<ffi::Any> args, At
   if (args.empty()) {
     return nullptr;
   }
-  String backend_name = args[0].cast<String>();
+  ffi::String backend_name = args[0].cast<ffi::String>();
   if (backend_name == "tir") {
     CHECK_EQ(args.size(), 2);
     ffi::Function attn_func = args[1].cast<ffi::Function>();
@@ -95,7 +95,7 @@ std::unique_ptr<PagedPrefillTreeMaskFunc> ConvertPagedPrefillTreeMaskFunc(Array<
   if (args.empty()) {
     return nullptr;
   }
-  String backend_name = args[0].cast<String>();
+  ffi::String backend_name = args[0].cast<ffi::String>();
   if (backend_name == "tir") {
     CHECK_EQ(args.size(), 2);
     ffi::Function attn_func = args[1].cast<ffi::Function>();
@@ -110,7 +110,7 @@ std::unique_ptr<RaggedPrefillTreeMaskFunc> ConvertRaggedPrefillTreeMaskFunc(Arra
   if (args.empty()) {
     return nullptr;
   }
-  String backend_name = args[0].cast<String>();
+  ffi::String backend_name = args[0].cast<ffi::String>();
   if (backend_name == "tir") {
     CHECK_EQ(args.size(), 2);
     ffi::Function attn_func = args[1].cast<ffi::Function>();

@@ -387,7 +387,7 @@ Pass LowerIntrin() {
     auto target = f->GetAttr<Target>(tvm::attr::kTarget);
     ICHECK(target.defined()) << "LowerIntrin: Require the target attribute";
     arith::Analyzer analyzer;
-    auto mtriple = target.value()->GetAttr<String>("mtriple", "");
+    auto mtriple = target.value()->GetAttr<ffi::String>("mtriple", "");
     n->body =
         IntrinInjecter(&analyzer, target.value()->kind->name, mtriple.value())(std::move(n->body));
     return f;

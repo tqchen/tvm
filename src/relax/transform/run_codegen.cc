@@ -37,12 +37,12 @@ namespace relax {
 
 class CodeGenRunner : ExprMutator {
  public:
-  using OptionMap = Map<String, ffi::Any>;
+  using OptionMap = Map<ffi::String, ffi::Any>;
 
   explicit CodeGenRunner(IRModule mod) : ExprMutator(mod) {}
 
-  IRModule Run(Optional<Map<String, OptionMap>> target_options,
-               Array<String> entry_function_names) {
+  IRModule Run(Optional<Map<ffi::String, OptionMap>> target_options,
+               Array<ffi::String> entry_function_names) {
     IRModule mod = builder_->GetContextIRModule();
 
     support::OrderedSet<GlobalVar, ObjectPtrHash, ObjectPtrEqual> entry_functions;
@@ -59,7 +59,7 @@ class CodeGenRunner : ExprMutator {
       std::vector<GlobalVar> attr_entry_functions;
       for (const auto& [gv, func] : mod->functions) {
         if (func->GetLinkageType() == LinkageType::kExternal &&
-            !func->GetAttr<String>(attr::kCodegen) && func->IsInstance<relax::FunctionNode>()) {
+            !func->GetAttr<ffi::String>(attr::kCodegen) && func->IsInstance<relax::FunctionNode>()) {
           attr_entry_functions.push_back(gv);
         }
       }
@@ -89,7 +89,7 @@ class CodeGenRunner : ExprMutator {
 
     if (constant_names.size()) {
       // Some backends (e.g. TensorRT) expect constants to be passed when they are instantiated
-      Map<String, runtime::Tensor> constants;
+      Map<ffi::String, runtime::Tensor> constants;
       for (const auto& [constant, name] : constant_names) {
         ICHECK(!constants.count(name)) << "More than one constant with the name " << name;
         constants.Set(name, constant->data);
@@ -149,7 +149,7 @@ class CodeGenRunner : ExprMutator {
 
   Expr VisitExpr_(const FunctionNode* func_node) override {
     Function func = ffi::GetRef<Function>(func_node);
-    auto opt_codegen = func->GetAttr<String>(attr::kCodegen);
+    auto opt_codegen = func->GetAttr<ffi::String>(attr::kCodegen);
     if (opt_codegen) {
       auto ext_symbol = GetExtSymbol(func);
       size_t count = 0;
@@ -168,7 +168,7 @@ class CodeGenRunner : ExprMutator {
   }
 
  private:
-  Array<ffi::Module> InvokeCodegen(IRModule mod, Map<String, OptionMap> target_options) {
+  Array<ffi::Module> InvokeCodegen(IRModule mod, Map<ffi::String, OptionMap> target_options) {
     std::unordered_map<std::string, Array<Function>> target_functions;
 
     for (const auto& entry : mod->functions) {
@@ -178,8 +178,8 @@ class CodeGenRunner : ExprMutator {
       PostOrderVisit(entry.second, [&target_functions](Expr e) {
         if (e->IsInstance<FunctionNode>()) {
           auto f = Downcast<Function>(e);
-          if (auto target_opt = f->GetAttr<String>(attr::kCodegen)) {
-            String target = target_opt.value();
+          if (auto target_opt = f->GetAttr<ffi::String>(attr::kCodegen)) {
+            ffi::String target = target_opt.value();
             target_functions[target].push_back(f);
           }
         }
@@ -192,7 +192,7 @@ class CodeGenRunner : ExprMutator {
       OptionMap options = target_options.Get(target).value_or(OptionMap());
       // Start the codegen process.
       // Get the codegen with its ffi key.
-      String codegen_name = "relax.ext." + target;
+      ffi::String codegen_name = "relax.ext." + target;
       const auto codegen = tvm::ffi::Function::GetGlobal(codegen_name);
       ICHECK(codegen.has_value()) << "Codegen is not found: " << codegen_name << "\n";
 
@@ -205,7 +205,7 @@ class CodeGenRunner : ExprMutator {
   }
 
   /*! \brief The names of all constants in the original module. */
-  Map<Constant, String> constant_names;
+  Map<Constant, ffi::String> constant_names;
   /*! \brief Extern funcs for each global variable.  */
   std::unordered_map<const GlobalVarNode*, Expr> extern_funcs_;
 };
@@ -213,8 +213,8 @@ class CodeGenRunner : ExprMutator {
 }  // namespace relax
 
 namespace transform {
-Pass RunCodegen(Optional<Map<String, Map<String, ffi::Any>>> target_options,
-                Array<String> entry_functions) {
+Pass RunCodegen(Optional<Map<ffi::String, Map<ffi::String, ffi::Any>>> target_options,
+                Array<ffi::String> entry_functions) {
   auto pass_func = [=](IRModule m, PassContext pc) {
     return relax::CodeGenRunner(m).Run(target_options, entry_functions);
   };

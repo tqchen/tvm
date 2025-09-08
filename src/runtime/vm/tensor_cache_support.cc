@@ -77,7 +77,7 @@ TensorCacheMetadata::FileRecord::ParamRecord JSONAsParamRecord(const picojson::o
   TensorCacheMetadata::FileRecord::ParamRecord result;
   std::string dtype = GetValue<std::string>(json, "dtype");
   result.name = GetValue<std::string>(json, "name");
-  result.dtype = DataType(StringToDLDataType(dtype));
+  result.dtype = DataType(ffi::StringToDLDataType(dtype));
   result.format = GetValue<std::string>(json, "format");
   result.nbytes = GetValue<int64_t>(json, "nbytes");
   result.byte_offset = GetValue<int64_t>(json, "byteOffset");
@@ -213,7 +213,7 @@ class TensorCache {
     return inst;
   }
 
-  static void Update(String name, Tensor arr, bool override) {
+  static void Update(ffi::String name, Tensor arr, bool override) {
     TensorCache* pool = Global();
     if (!override) {
       ICHECK_EQ(pool->pool_.count(name), 0) << "Name " << name << " already exists in the cache";
@@ -221,7 +221,7 @@ class TensorCache {
     pool->pool_.Set(name, arr);
   }
 
-  static Optional<Tensor> Get(String name) {
+  static Optional<Tensor> Get(ffi::String name) {
     TensorCache* pool = Global();
     auto it = pool->pool_.find(name);
     if (it != pool->pool_.end()) {
@@ -231,7 +231,7 @@ class TensorCache {
     }
   }
 
-  static void Remove(String name) {
+  static void Remove(ffi::String name) {
     TensorCache* pool = Global();
     pool->pool_.erase(name);
   }
@@ -265,7 +265,7 @@ class TensorCache {
   }
 
  private:
-  Map<String, Tensor> pool_;
+  Map<ffi::String, Tensor> pool_;
 };
 
 TVM_FFI_STATIC_INIT_BLOCK({
@@ -275,7 +275,7 @@ TVM_FFI_STATIC_INIT_BLOCK({
       .def_packed("vm.builtin.tensor_cache.update",
                   [](ffi::PackedArgs args, ffi::Any* rv) {
                     CHECK(args.size() == 2 || args.size() == 3);
-                    String name = args[0].cast<String>();
+                    ffi::String name = args[0].cast<ffi::String>();
                     bool is_override = args.size() == 2 ? false : args[2].cast<bool>();
 
                     Tensor arr;
@@ -307,7 +307,7 @@ class ParamModuleNode : public ffi::ModuleObj {
  public:
   const char* kind() const final { return "param_module"; }
 
-  Optional<ffi::Function> GetFunction(const String& name) final {
+  Optional<ffi::Function> GetFunction(const ffi::String& name) final {
     if (name == "get_params") {
       auto params = params_;
       return ffi::Function([params](ffi::PackedArgs args, ffi::Any* rv) { *rv = params; });
@@ -316,7 +316,7 @@ class ParamModuleNode : public ffi::ModuleObj {
     }
   }
 
-  static Array<Tensor> GetParams(const String& prefix, int num_params) {
+  static Array<Tensor> GetParams(const ffi::String& prefix, int num_params) {
     Array<Tensor> params;
     for (int i = 0; i < num_params || num_params == -1; ++i) {
       std::string name = prefix + "_" + std::to_string(i);
@@ -331,10 +331,10 @@ class ParamModuleNode : public ffi::ModuleObj {
     return params;
   }
 
-  static Array<Tensor> GetParamByName(const Array<String>& names) {
+  static Array<Tensor> GetParamByName(const Array<ffi::String>& names) {
     Array<Tensor> result;
     result.reserve(names.size());
-    for (const String& name : names) {
+    for (const ffi::String& name : names) {
       if (Optional<Tensor> opt = TensorCache::Get(name)) {
         result.push_back(opt.value());
       } else {
@@ -350,7 +350,7 @@ class ParamModuleNode : public ffi::ModuleObj {
     return ffi::Module(n);
   }
 
-  static ffi::Module CreateByName(const Array<String>& names) {
+  static ffi::Module CreateByName(const Array<ffi::String>& names) {
     auto n = ffi::make_object<ParamModuleNode>();
     n->params_ = GetParamByName(names);
     return ffi::Module(n);
@@ -369,14 +369,14 @@ TVM_FFI_STATIC_INIT_BLOCK({
       .def("vm.builtin.param_array_from_cache_by_name", ParamModuleNode::GetParamByName)
       .def_packed("vm.builtin.param_array_from_cache_by_name_unpacked",
                   [](ffi::PackedArgs args, ffi::Any* rv) {
-                    Array<String> names;
+                    Array<ffi::String> names;
                     names.reserve(args.size());
                     for (int i = 0; i < args.size(); ++i) {
-                      if (!args[i].try_cast<String>()) {
+                      if (!args[i].try_cast<ffi::String>()) {
                         LOG(FATAL) << "ValueError: Expect string as input, but get "
                                    << args[i].GetTypeKey() << " at " << i;
                       }
-                      names.push_back(args[i].cast<String>());
+                      names.push_back(args[i].cast<ffi::String>());
                     }
                     *rv = ParamModuleNode::GetParamByName(names);
                   });

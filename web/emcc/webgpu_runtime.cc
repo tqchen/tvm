@@ -165,7 +165,7 @@ class WebGPUModuleNode final : public ffi::ModuleObj {
 
   const char* kind() const final { return "webgpu"; }
 
-  Optional<ffi::Function> GetFunction(const String& name) final {
+  Optional<ffi::Function> GetFunction(const ffi::String& name) final {
     // special function
     if (name == "webgpu.get_fmap") {
       return ffi::Function([this](ffi::PackedArgs args, ffi::Any* rv) {
@@ -211,7 +211,7 @@ class WebGPUModuleNode final : public ffi::ModuleObj {
 
   ffi::Bytes SaveToBytes() const final { LOG(FATAL) << "Not implemented"; }
 
-  String InspectSource(const String& format) const final {
+  ffi::String InspectSource(const ffi::String& format) const final {
     // can only return source code.
     return source_;
   }

@@ -29,18 +29,18 @@ namespace tvm {
 namespace contrib {
 namespace msc {
 
-Var RewriteUtils::ReEmit(BlockBuilder builder, const String& name, const Expr& expr) {
+Var RewriteUtils::ReEmit(BlockBuilder builder, const ffi::String& name, const Expr& expr) {
   expr->span = SpanUtils::SetAttr(expr->span, msc_attr::kName, name);
   return builder->Emit(expr, name);
 }
 
-Var RewriteUtils::MakeCall(BlockBuilder builder, const String& name, Expr op, Array<Expr> args,
+Var RewriteUtils::MakeCall(BlockBuilder builder, const ffi::String& name, Expr op, Array<Expr> args,
                            Attrs attrs) {
   const auto& call = Call(op, args, attrs);
   return ReEmit(builder, name, call);
 }
 
-Expr RewriteUtils::MakeConstant(BlockBuilder builder, const String& name, double value,
+Expr RewriteUtils::MakeConstant(BlockBuilder builder, const ffi::String& name, double value,
                                 const DataType& dtype, size_t ndim) {
   const auto& data = support::FloatImmToTensor(FloatImm(dtype, value));
   Span span = SpanUtils::CreateWithAttr(msc_attr::kName, name);

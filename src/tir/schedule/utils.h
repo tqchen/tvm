@@ -160,7 +160,7 @@ inline bool IsSingleStmt(const Stmt& stmt) {
  * \param iter_var_type The type of the new IterVar
  * \return The newly created IterVar
  */
-inline IterVar IterVarFromLoop(const For& loop, String name, IterVarType iter_var_type) {
+inline IterVar IterVarFromLoop(const For& loop, ffi::String name, IterVarType iter_var_type) {
   return IterVar(Range::FromMinExtent(loop->min, loop->extent),
                  Var(std::move(name), loop->loop_var.dtype()), iter_var_type);
 }
@@ -252,8 +252,8 @@ inline Optional<Var> AnalyzeVarWithShift(const PrimExpr& expr, Optional<IntImm>*
  * \return std::nullopt if not found; otherwise the annotation value
  */
 template <class TObjectRef, class TStmtNode>
-inline Optional<TObjectRef> GetAnn(const TStmtNode* stmt, const String& ann_key) {
-  const Map<String, ffi::Any>* annotations = &stmt->annotations;
+inline Optional<TObjectRef> GetAnn(const TStmtNode* stmt, const ffi::String& ann_key) {
+  const Map<ffi::String, ffi::Any>* annotations = &stmt->annotations;
   for (const auto& ann : *annotations) {
     if (ann.first == ann_key) {
       return Downcast<TObjectRef>(ann.second);
@@ -270,7 +270,7 @@ inline Optional<TObjectRef> GetAnn(const TStmtNode* stmt, const String& ann_key)
  * \return std::nullopt if not found; otherwise the annotation value
  */
 template <class TObjectRef>
-inline Optional<TObjectRef> GetAnn(const StmtSRef& sref, const String& ann_key) {
+inline Optional<TObjectRef> GetAnn(const StmtSRef& sref, const ffi::String& ann_key) {
   if (const auto* loop = sref->StmtAs<ForNode>()) {
     return GetAnn<TObjectRef, ForNode>(loop, ann_key);
   } else if (const auto* block = sref->StmtAs<BlockNode>()) {
@@ -288,8 +288,8 @@ inline Optional<TObjectRef> GetAnn(const StmtSRef& sref, const String& ann_key) 
  * \param ann_val The annotation value to be checked
  * \return Whether a Block/For has a specific pair of annotation key and values
  */
-inline bool HasAnn(const StmtSRef& sref, const String& ann_key, const String& ann_val) {
-  Optional<String> result = GetAnn<String>(sref, ann_key);
+inline bool HasAnn(const StmtSRef& sref, const ffi::String& ann_key, const ffi::String& ann_val) {
+  Optional<ffi::String> result = GetAnn<ffi::String>(sref, ann_key);
   return result.has_value() && result.value() == ann_val;
 }
 
@@ -300,7 +300,7 @@ inline bool HasAnn(const StmtSRef& sref, const String& ann_key, const String& an
  * \param ann_val The boolean annotation value to be checked
  * \return Whether a Block/For has a specific pair of annotation key and values
  */
-inline bool HasAnn(const StmtSRef& sref, const String& ann_key, bool ann_val) {
+inline bool HasAnn(const StmtSRef& sref, const ffi::String& ann_key, bool ann_val) {
   Optional<Bool> result = GetAnn<Bool>(sref, ann_key);
   return result.defined() && result.value() == ann_val;
 }
@@ -366,7 +366,7 @@ inline void ReorderAndFuseReductionLoops(const tir::Schedule& sch, const tir::Bl
  * \param buffer_index_type The BufferIndexType value to convert
  * \return The string representation of BufferIndexType
  */
-inline String BufferIndexType2Str(BufferIndexType buffer_index_type) {
+inline ffi::String BufferIndexType2Str(BufferIndexType buffer_index_type) {
   if (buffer_index_type == BufferIndexType::kRead) {
     return "read";
   } else {

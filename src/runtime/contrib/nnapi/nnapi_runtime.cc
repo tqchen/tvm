@@ -51,7 +51,7 @@ using JSONGraphNode = tvm::runtime::json::JSONGraphNode;
 class NNAPIRuntime : public JSONRuntimeBase {
  public:
   explicit NNAPIRuntime(const std::string& symbol_name, const std::string& graph_json,
-                        const Array<String>& const_names)
+                        const Array<ffi::String>& const_names)
       : JSONRuntimeBase(symbol_name, graph_json, const_names) {}
 
   const char* kind() const final { return "nnapi"; }
@@ -235,8 +235,8 @@ class NNAPIRuntime : public JSONRuntimeBase {
 #endif  // ifdef TVM_GRAPH_EXECUTOR_NNAPI
 };
 
-ffi::Module NNAPIRuntimeCreate(const String& symbol_name, const String& graph_json,
-                               const Array<String>& const_names) {
+ffi::Module NNAPIRuntimeCreate(const ffi::String& symbol_name, const ffi::String& graph_json,
+                               const Array<ffi::String>& const_names) {
   auto n = ffi::make_object<NNAPIRuntime>(symbol_name, graph_json, const_names);
   return ffi::Module(n);
 }

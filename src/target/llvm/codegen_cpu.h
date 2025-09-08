@@ -65,7 +65,7 @@ class CodeGenCPU : public CodeGenLLVM {
   virtual ~CodeGenCPU();
 
   void Init(const std::string& module_name, LLVMTarget* llvm_target,
-            Optional<String> system_lib_prefix, bool dynamic_lookup,
+            Optional<ffi::String> system_lib_prefix, bool dynamic_lookup,
             bool target_c_runtime) override;
   void AddFunction(const GlobalVar& gvar, const PrimFunc& f) override;
   void AddMainFunction(const std::string& entry_func_name) override;
@@ -74,7 +74,7 @@ class CodeGenCPU : public CodeGenLLVM {
   void VisitStmt_(const AttrStmtNode* op) override;
   void VisitStmt_(const ForNode* op) override;
   llvm::Value* CreateIntrinsic(const CallNode* op) override;
-  llvm::Value* CreateCallExtern(Type ret_type, String global_symbol, const Array<PrimExpr>& args,
+  llvm::Value* CreateCallExtern(Type ret_type, ffi::String global_symbol, const Array<PrimExpr>& args,
                                 bool skip_first_arg) override;
 
  protected:
@@ -161,7 +161,7 @@ class CodeGenCPU : public CodeGenLLVM {
   llvm::GlobalVariable* gv_tvm_ffi_set_last_error_c_str_{nullptr};
   llvm::GlobalVariable* gv_tvm_parallel_launch_{nullptr};
   llvm::GlobalVariable* gv_tvm_parallel_barrier_{nullptr};
-  std::unordered_map<String, llvm::GlobalVariable*> gv_func_map_;
+  std::unordered_map<ffi::String, llvm::GlobalVariable*> gv_func_map_;
   // context for direct dynamic lookup
   llvm::Function* f_tvm_ffi_func_call_{nullptr};
   llvm::Function* f_tvm_get_func_from_env_{nullptr};
@@ -181,7 +181,7 @@ class CodeGenCPU : public CodeGenLLVM {
   bool target_c_runtime_;
   // The system lib prefix if it is not nullopt, then we should do
   // system lib registration with the given prefix. The prefix can be ""
-  Optional<String> system_lib_prefix_;
+  Optional<ffi::String> system_lib_prefix_;
 };
 
 }  // namespace codegen

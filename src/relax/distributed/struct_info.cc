@@ -55,7 +55,7 @@ TVM_FFI_STATIC_INIT_BLOCK({
       .def("relax.distributed.Replica", []() { return PlacementSpec::Replica(); });
 });
 
-String PlacementNode::ToString() const {
+ffi::String PlacementNode::ToString() const {
   std::stringstream ss;
   for (size_t i = 0; i < dim_specs.size(); ++i) {
     if (i != 0) {
@@ -76,7 +76,7 @@ Placement::Placement(Array<PlacementSpec> dim_specs) {
   data_ = std::move(n);
 }
 
-Placement Placement::FromText(String text_repr) {
+Placement Placement::FromText(ffi::String text_repr) {
   Array<PlacementSpec> dim_specs;
   std::stringstream ss(text_repr);
   while (true) {

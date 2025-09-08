@@ -43,7 +43,7 @@ struct KernelInfo {
 
   // The externally visible symbol which may refer to the PrimFunc
   // when launching a device kernel.
-  String global_symbol;
+  ffi::String global_symbol;
 
   // The parameters accepted by the PrimFunc.  Used to rewrite
   // `launch_args` to be in terms of the calling scope.
@@ -51,7 +51,7 @@ struct KernelInfo {
 
   // The launch parameters that should annotate the PrimFunc, if the
   // kernel is ever called from the host.
-  Array<String> launch_params;
+  Array<ffi::String> launch_params;
 
   // Additional arguments which must be provided to the host-side
   // ffi::Function.  These may be in terms of the function's parameters
@@ -80,7 +80,7 @@ class DeviceInfoCollector : public StmtVisitor {
     }
 
     collector.info_.global_symbol =
-        func->GetAttr<String>(tvm::attr::kGlobalSymbol).value_or(gvar->name_hint);
+        func->GetAttr<ffi::String>(tvm::attr::kGlobalSymbol).value_or(gvar->name_hint);
 
     collector.info_.launch_args = collector.info_.launch_params.Map(
         [&](const auto& param) { return collector.GetArgument(param); });
@@ -89,7 +89,7 @@ class DeviceInfoCollector : public StmtVisitor {
   }
 
  private:
-  PrimExpr GetArgument(const String& launch_param) const {
+  PrimExpr GetArgument(const ffi::String& launch_param) const {
     if (launch_param == tvm::runtime::launch_param::kUseDynamicSharedMemoryTag) {
       CHECK(dyn_shmem_size.defined())
           << "Compute kernel requires launch parameter \"" << launch_param
@@ -142,7 +142,7 @@ class DeviceInfoCollector : public StmtVisitor {
   // recording what thread axis have been visited.
   std::unordered_set<const IterVarNode*> defined_thread;
   // The extent of each thread
-  Map<String, PrimExpr> thread_extent;
+  Map<ffi::String, PrimExpr> thread_extent;
   // The amount of dynamic shared memory used
   Optional<PrimExpr> dyn_shmem_size{std::nullopt};
 };
@@ -229,7 +229,7 @@ class DeviceKernelMutator : public StmtExprMutator {
                                          {tvm::tir::attr::kKernelLaunchParams, info.launch_params},
                                          {tvm::attr::kGlobalSymbol, info.global_symbol}});
 
-    } else if (is_call_extern && !func->GetAttr<String>(tvm::attr::kGlobalSymbol)) {
+    } else if (is_call_extern && !func->GetAttr<ffi::String>(tvm::attr::kGlobalSymbol)) {
       func = WithAttr(func, tvm::attr::kGlobalSymbol, gvar->name_hint);
     }
 

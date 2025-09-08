@@ -52,7 +52,7 @@ TVM_FFI_STATIC_INIT_BLOCK({
   ExternFuncNode::RegisterReflection();
 });
 
-Id::Id(String name_hint) {
+Id::Id(ffi::String name_hint) {
   ObjectPtr<IdNode> n = ffi::make_object<IdNode>();
   n->name_hint = std::move(name_hint);
   data_ = std::move(n);
@@ -302,7 +302,7 @@ VarNode* Var::CopyOnWrite() {
 TVM_FFI_STATIC_INIT_BLOCK({
   namespace refl = tvm::ffi::reflection;
   refl::GlobalDef()
-      .def("relax.Var", [](String name_hint, Optional<StructInfo> struct_info_annotation,
+      .def("relax.Var", [](ffi::String name_hint, Optional<StructInfo> struct_info_annotation,
                            Span span) { return Var(name_hint, struct_info_annotation, span); })
       .def("relax.VarFromId", [](Id vid, Optional<StructInfo> struct_info_annotation, Span span) {
         return Var(vid, struct_info_annotation, span);
@@ -322,7 +322,7 @@ TVM_FFI_STATIC_INIT_BLOCK({
   namespace refl = tvm::ffi::reflection;
   refl::GlobalDef()
       .def("relax.DataflowVar",
-           [](String name_hint, Optional<StructInfo> struct_info_annotation, Span span) {
+           [](ffi::String name_hint, Optional<StructInfo> struct_info_annotation, Span span) {
              return DataflowVar(name_hint, struct_info_annotation, span);
            })
       .def("relax.DataflowVarFromId",
@@ -378,7 +378,7 @@ TVM_FFI_STATIC_INIT_BLOCK({
                         [](PrimExpr value, Span span) { return PrimValue(value, span); });
 });
 
-StringImm::StringImm(String value, Span span) {
+StringImm::StringImm(ffi::String value, Span span) {
   ObjectPtr<StringImmNode> n = ffi::make_object<StringImmNode>();
   n->value = std::move(value);
   n->span = std::move(span);
@@ -389,7 +389,7 @@ StringImm::StringImm(String value, Span span) {
 TVM_FFI_STATIC_INIT_BLOCK({
   namespace refl = tvm::ffi::reflection;
   refl::GlobalDef().def("relax.StringImm",
-                        [](String value, Span span) { return StringImm(value, span); });
+                        [](ffi::String value, Span span) { return StringImm(value, span); });
 });
 
 DataTypeImm::DataTypeImm(DataType value, Span span) {
@@ -680,10 +680,10 @@ FuncStructInfo GetExternFuncStructInfo() {
   return FuncStructInfo::OpaqueFunc(derive);
 }
 
-ExternFunc::ExternFunc(String global_symbol, Span span)
+ExternFunc::ExternFunc(ffi::String global_symbol, Span span)
     : ExternFunc(global_symbol, GetExternFuncStructInfo(), span) {}
 
-ExternFunc::ExternFunc(String global_symbol, StructInfo struct_info, Span span) {
+ExternFunc::ExternFunc(ffi::String global_symbol, StructInfo struct_info, Span span) {
   CHECK(struct_info.as<FuncStructInfoNode>())
       << "ExternFunc must have FuncStructInfo, "
       << "but declaration of '" << global_symbol << "' received " << struct_info;
@@ -698,7 +698,7 @@ ExternFunc::ExternFunc(String global_symbol, StructInfo struct_info, Span span) 
 TVM_FFI_STATIC_INIT_BLOCK({
   namespace refl = tvm::ffi::reflection;
   refl::GlobalDef().def("relax.ExternFunc",
-                        [](String global_symbol, Optional<StructInfo> struct_info, Span span) {
+                        [](ffi::String global_symbol, Optional<StructInfo> struct_info, Span span) {
                           if (struct_info.defined()) {
                             return ExternFunc(global_symbol, struct_info.value(), span);
                           } else {
@@ -727,20 +727,20 @@ TVM_FFI_STATIC_INIT_BLOCK({
   refl::GlobalDef()
       .def("relax.GetShapeOf", [](const Expr& expr) { return GetShapeOf(expr); })
       .def("relax.FuncWithAttr",
-           [](BaseFunc func, String key, ObjectRef value) -> Optional<Function> {
+           [](BaseFunc func, ffi::String key, ObjectRef value) -> Optional<Function> {
              if (func->IsInstance<relax::FunctionNode>()) {
                return WithAttr(Downcast<relax::Function>(std::move(func)), key, value);
              }
              return std::nullopt;
            })
       .def("relax.FuncWithAttrs",
-           [](BaseFunc func, Map<String, ffi::Any> attr_map) -> Optional<Function> {
+           [](BaseFunc func, Map<ffi::String, ffi::Any> attr_map) -> Optional<Function> {
              if (func->IsInstance<relax::FunctionNode>()) {
                return WithAttrs(Downcast<relax::Function>(std::move(func)), attr_map);
              }
              return std::nullopt;
            })
-      .def("relax.FuncWithoutAttr", [](BaseFunc func, String key) -> Optional<Function> {
+      .def("relax.FuncWithoutAttr", [](BaseFunc func, ffi::String key) -> Optional<Function> {
         if (func->IsInstance<relax::FunctionNode>()) {
           return WithoutAttr(Downcast<relax::Function>(std::move(func)), key);
         }

@@ -33,7 +33,7 @@ template <typename T, typename U>
 using PMap = std::unordered_map<T, U, ObjectPtrHash, ObjectPtrEqual>;
 
 Optional<Function> ExpandParams(Function func) {
-  bool is_exposed = func->attrs.GetAttr<String>(tvm::attr::kGlobalSymbol).has_value();
+  bool is_exposed = func->attrs.GetAttr<ffi::String>(tvm::attr::kGlobalSymbol).has_value();
   if (is_exposed) return std::nullopt;
 
   bool has_tuple_param = std::any_of(

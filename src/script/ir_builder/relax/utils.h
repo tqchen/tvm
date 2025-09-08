@@ -31,7 +31,7 @@ namespace script {
 namespace ir_builder {
 namespace relax {
 
-inline FunctionFrame FindFunctionFrame(const String& method) {
+inline FunctionFrame FindFunctionFrame(const ffi::String& method) {
   if (Optional<FunctionFrame> frame = IRBuilder::Current()->FindFrame<FunctionFrame>()) {
     return frame.value();
   }
@@ -40,7 +40,7 @@ inline FunctionFrame FindFunctionFrame(const String& method) {
   throw;
 }
 
-inline IfFrame FindIfFrame(const String& method) {
+inline IfFrame FindIfFrame(const ffi::String& method) {
   if (Optional<IfFrame> frame = IRBuilder::Current()->GetLastFrame<IfFrame>()) {
     return frame.value();
   } else {

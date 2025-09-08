@@ -61,7 +61,7 @@ class ACLRuntime : public JSONRuntimeBase {
    * \param const_names The names of each constant in the sub-graph.
    */
   explicit ACLRuntime(const std::string& symbol_name, const std::string& graph_json,
-                      const Array<String>& const_names)
+                      const Array<ffi::String>& const_names)
       : JSONRuntimeBase(symbol_name, graph_json, const_names) {}
 
   /*!
@@ -588,8 +588,8 @@ class ACLRuntime : public JSONRuntimeBase {
   }
 #endif
 };
-ffi::Module ACLRuntimeCreate(const String& symbol_name, const String& graph_json,
-                             const Array<String>& const_names) {
+ffi::Module ACLRuntimeCreate(const ffi::String& symbol_name, const ffi::String& graph_json,
+                             const Array<ffi::String>& const_names) {
   auto n = ffi::make_object<ACLRuntime>(symbol_name, graph_json, const_names);
   return ffi::Module(n);
 }

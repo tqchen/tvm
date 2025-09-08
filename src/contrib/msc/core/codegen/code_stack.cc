@@ -34,9 +34,9 @@ const Array<Doc> BaseStack::GetDocs() const {
 
 void BaseStack::Line(const Doc& doc) { PushDoc(doc); }
 
-void BaseStack::Line(const String& line) { Line(IdDoc(line)); }
+void BaseStack::Line(const ffi::String& line) { Line(IdDoc(line)); }
 
-void BaseStack::Comment(const String& comment, bool attach) {
+void BaseStack::Comment(const ffi::String& comment, bool attach) {
   if (attach) {
     const auto& doc = TopDoc();
     ICHECK(doc->IsInstance<StmtDocNode>()) << "Only stmt doc support attach comments";
@@ -47,7 +47,7 @@ void BaseStack::Comment(const String& comment, bool attach) {
   }
 }
 
-void BaseStack::Declare(const String& type, const String& variable, size_t len,
+void BaseStack::Declare(const ffi::String& type, const ffi::String& variable, size_t len,
                         bool use_constructor) {
   PushDoc(DocUtils::ToDeclare(type, variable, len, use_constructor));
 }
@@ -59,7 +59,7 @@ void BaseStack::DeclareArgBase(const ExprDoc& value) {
   PushDoc(DeclareDoc(declare->type, declare->variable, init_args, declare->use_constructor));
 }
 
-void BaseStack::FuncDef(const String& func_name, const String& ret_type) {
+void BaseStack::FuncDef(const ffi::String& func_name, const ffi::String& ret_type) {
   if (ret_type.size() > 0) {
     PushDoc(FunctionDoc(IdDoc(func_name), Array<AssignDoc>(), Array<ExprDoc>(), IdDoc(ret_type),
                         Array<StmtDoc>()));
@@ -69,14 +69,14 @@ void BaseStack::FuncDef(const String& func_name, const String& ret_type) {
   }
 }
 
-void BaseStack::FuncArg(const String& arg, const String& annotation, const String& value) {
+void BaseStack::FuncArg(const ffi::String& arg, const ffi::String& annotation, const ffi::String& value) {
   const auto& func = PopCheckedDoc<FunctionDoc, FunctionDocNode>();
   Array<AssignDoc> args = func->args;
   args.push_back(DocUtils::ToAssign(arg, value, annotation));
   PushDoc(FunctionDoc(func->name, args, func->decorators, func->return_type, func->body));
 }
 
-void BaseStack::FuncDecorator(const String& decorator) {
+void BaseStack::FuncDecorator(const ffi::String& decorator) {
   const auto& func = PopCheckedDoc<FunctionDoc, FunctionDocNode>();
   Array<ExprDoc> decorators = func->decorators;
   decorators.push_back(IdDoc(decorator));
@@ -95,11 +95,11 @@ void BaseStack::FuncEnd() {
   PushDoc(FunctionDoc(func->name, func->args, func->decorators, func->return_type, body));
 }
 
-void BaseStack::ClassDef(const String& class_name) {
+void BaseStack::ClassDef(const ffi::String& class_name) {
   PushDoc(ClassDoc(IdDoc(class_name), Array<ExprDoc>(), Array<StmtDoc>()));
 }
 
-void BaseStack::ClassDecorator(const String& decorator) {
+void BaseStack::ClassDecorator(const ffi::String& decorator) {
   const auto& class_doc = PopCheckedDoc<ClassDoc, ClassDocNode>();
   Array<ExprDoc> decorators = class_doc->decorators;
   decorators.push_back(IdDoc(decorator));
@@ -118,7 +118,7 @@ void BaseStack::ClassEnd() {
   PushDoc(ClassDoc(class_doc->name, class_doc->decorators, body));
 }
 
-void BaseStack::StructStart(const String& struct_name) {
+void BaseStack::StructStart(const ffi::String& struct_name) {
   PushDoc(StructDoc(IdDoc(struct_name), Array<ExprDoc>(), Array<StmtDoc>()));
   BlockStart();
 }
@@ -130,11 +130,11 @@ void BaseStack::StructEnd() {
   PushDoc(StructDoc(struct_doc->name, struct_doc->decorators, body));
 }
 
-void BaseStack::ConstructorDef(const String& constructor_name) {
+void BaseStack::ConstructorDef(const ffi::String& constructor_name) {
   PushDoc(ConstructorDoc(IdDoc(constructor_name), Array<AssignDoc>(), Array<StmtDoc>()));
 }
 
-void BaseStack::ConstructorArg(const String& arg, const String& annotation, const String& value) {
+void BaseStack::ConstructorArg(const ffi::String& arg, const ffi::String& annotation, const ffi::String& value) {
   const auto& func = PopCheckedDoc<ConstructorDoc, ConstructorDocNode>();
   Array<AssignDoc> args = func->args;
   args.push_back(DocUtils::ToAssign(arg, value, annotation));
@@ -153,18 +153,18 @@ void BaseStack::ConstructorEnd() {
   PushDoc(ConstructorDoc(func->name, func->args, body));
 }
 
-void BaseStack::LambdaDef(const String& lambda_name) {
+void BaseStack::LambdaDef(const ffi::String& lambda_name) {
   PushDoc(LambdaDoc(IdDoc(lambda_name), Array<AssignDoc>(), Array<ExprDoc>(), Array<StmtDoc>()));
 }
 
-void BaseStack::LambdaArg(const String& arg, const String& annotation, const String& value) {
+void BaseStack::LambdaArg(const ffi::String& arg, const ffi::String& annotation, const ffi::String& value) {
   const auto& lambda = PopCheckedDoc<LambdaDoc, LambdaDocNode>();
   Array<AssignDoc> args = lambda->args;
   args.push_back(DocUtils::ToAssign(arg, value, annotation));
   PushDoc(LambdaDoc(lambda->name, args, lambda->refs, lambda->body));
 }
 
-void BaseStack::LambdaRef(const String& ref) {
+void BaseStack::LambdaRef(const ffi::String& ref) {
   const auto& lambda = PopCheckedDoc<LambdaDoc, LambdaDocNode>();
   Array<ExprDoc> refs = lambda->refs;
   refs.push_back(IdDoc(ref));
@@ -176,7 +176,7 @@ void BaseStack::LambdaStart() {
   BlockStart();
 }
 
-void BaseStack::LambdaEnd(const String& ret_val) {
+void BaseStack::LambdaEnd(const ffi::String& ret_val) {
   if (ret_val.size() > 0) {
     PushDoc(ReturnDoc(IdDoc(ret_val)));
   }
@@ -191,13 +191,13 @@ void BaseStack::LambdaEnd(const ExprDoc& ret_val) {
   LambdaEnd("");
 }
 
-void BaseStack::FuncCall(const String& callee, Optional<ExprDoc> assign_to,
+void BaseStack::FuncCall(const ffi::String& callee, Optional<ExprDoc> assign_to,
                          Optional<ExprDoc> caller) {
   if (!caller.defined()) {
-    PushDoc(CallDoc(IdDoc(callee), Array<ExprDoc>(), Array<String>(), Array<ExprDoc>()));
+    PushDoc(CallDoc(IdDoc(callee), Array<ExprDoc>(), Array<ffi::String>(), Array<ExprDoc>()));
   } else {
     const auto& new_access = AttrAccessDoc(caller.value(), callee);
-    PushDoc(CallDoc(new_access, Array<ExprDoc>(), Array<String>(), Array<ExprDoc>()));
+    PushDoc(CallDoc(new_access, Array<ExprDoc>(), Array<ffi::String>(), Array<ExprDoc>()));
   }
   if (assign_to.defined()) {
     const auto& last_call = PopCheckedDoc<CallDoc, CallDocNode>();
@@ -211,7 +211,7 @@ void BaseStack::FuncCall(const String& callee, Optional<ExprDoc> assign_to,
   }
 }
 
-void BaseStack::FuncCall(const String& callee, const String& assign_to, const String& caller) {
+void BaseStack::FuncCall(const ffi::String& callee, const ffi::String& assign_to, const ffi::String& caller) {
   Optional<ExprDoc> assign_doc;
   if (assign_to.size() == 0) {
     assign_doc = std::nullopt;
@@ -227,7 +227,7 @@ void BaseStack::FuncCall(const String& callee, const String& assign_to, const St
   FuncCall(callee, assign_doc, caller_doc);
 }
 
-void BaseStack::MethodCall(const String& callee, bool new_line) {
+void BaseStack::MethodCall(const ffi::String& callee, bool new_line) {
   const auto& host = PopDoc();
   if (host->IsInstance<ExprDocNode>()) {
     const auto& v_callee = callee + (new_line ? DocSymbol::NextLine() : "");
@@ -241,12 +241,12 @@ void BaseStack::MethodCall(const String& callee, bool new_line) {
   }
 }
 
-void BaseStack::InplaceStart(const String& callee, Optional<ExprDoc> assign_to,
+void BaseStack::InplaceStart(const ffi::String& callee, Optional<ExprDoc> assign_to,
                              Optional<ExprDoc> caller) {
   FuncCall(callee, assign_to, caller);
 }
 
-void BaseStack::InplaceStart(const String& callee, const String& assign_to, const String& caller) {
+void BaseStack::InplaceStart(const ffi::String& callee, const ffi::String& assign_to, const ffi::String& caller) {
   FuncCall(callee, assign_to, caller);
 }
 
@@ -266,7 +266,7 @@ void BaseStack::InplaceEnd() {
   }
 }
 
-void BaseStack::PopNest(const String& key) {
+void BaseStack::PopNest(const ffi::String& key) {
   const auto& last = PopDoc();
   if (last->IsInstance<CallDocNode>()) {
     CallArgBase(Downcast<CallDoc>(last), key);
@@ -275,10 +275,10 @@ void BaseStack::PopNest(const String& key) {
   }
 }
 
-void BaseStack::CallArgBase(const ExprDoc& value, const String& key) {
+void BaseStack::CallArgBase(const ExprDoc& value, const ffi::String& key) {
   const auto& last = PopDoc();
   Array<ExprDoc> args;
-  Array<String> kwargs_keys;
+  Array<ffi::String> kwargs_keys;
   Array<ExprDoc> kwargs_values;
   // get args and kwargs
   if (const auto* call = last.as<CallDocNode>()) {
@@ -313,7 +313,7 @@ void BaseStack::CallArgBase(const ExprDoc& value, const String& key) {
   }
 }
 
-void BaseStack::ConditionIf(const String& predicate) {
+void BaseStack::ConditionIf(const ffi::String& predicate) {
   Array<StmtDoc> else_branch{ExprStmtDoc(IdDoc("pass"))};
   PushDoc(IfDoc(IdDoc(predicate), Array<StmtDoc>(), else_branch));
   BlockStart();
@@ -344,7 +344,7 @@ void BaseStack::ForEnd() {
   PushDoc(ForDoc(for_doc->lhs, for_doc->rhs, body));
 }
 
-void BaseStack::WhileStart(const String& predicate) {
+void BaseStack::WhileStart(const ffi::String& predicate) {
   PushDoc(WhileDoc(IdDoc(predicate), Array<StmtDoc>()));
   BlockStart();
 }
@@ -356,14 +356,14 @@ void BaseStack::WhileEnd() {
   PushDoc(WhileDoc(while_doc->predicate, body));
 }
 
-void BaseStack::SwitchStart(const String& predicate) {
+void BaseStack::SwitchStart(const ffi::String& predicate) {
   Array<ExprDoc> predicates;
   predicates.push_back(IdDoc(predicate));
   PushDoc(SwitchDoc(predicates, Array<Array<StmtDoc>>(), Array<StmtDoc>()));
   BlockStart();
 }
 
-void BaseStack::SwitchCase(const String& predicate) {
+void BaseStack::SwitchCase(const ffi::String& predicate) {
   const auto& block = PopBlock();
   const auto& switch_doc = PopCheckedDoc<SwitchDoc, SwitchDocNode>();
   auto branchs = switch_doc->branchs;
@@ -407,7 +407,7 @@ void BaseStack::BlockEnd(bool block_docs) {
   }
 }
 
-void BaseStack::ScopeStart(const String& scope_def, const String& scope_ref) {
+void BaseStack::ScopeStart(const ffi::String& scope_def, const ffi::String& scope_ref) {
   if (scope_ref.size() > 0) {
     PushDoc(ScopeDoc(IdDoc(scope_ref), IdDoc(scope_def), Array<StmtDoc>()));
   } else {

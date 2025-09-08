@@ -40,11 +40,11 @@ class NotSingleWriteBlock : public ScheduleError {
     }
   }
 
-  String FastErrorString() const final {
+  ffi::String FastErrorString() const final {
     return "ScheduleError: The buffer is allowed to be written by single block.";
   }
 
-  String DetailRenderTemplate() const final {
+  ffi::String DetailRenderTemplate() const final {
     size_t k = write_blocks_.size();
     return "The buffer " + buffer_->name + " is expected to be written by single block, but got " +
            std::to_string(k) + " blocks who write it.";
@@ -119,16 +119,16 @@ class NotSinglePointAccess : public ScheduleError {
     primitive_name_ = is_cache_read ? "reindex_cache_read" : "reindex_cache_write";
   }
 
-  String FastErrorString() const final {
+  ffi::String FastErrorString() const final {
     return "ScheduleError: The buffer region accessed inside the block is not a single point.";
   }
 
-  String DetailRenderTemplate() const final {
+  ffi::String DetailRenderTemplate() const final {
     std::ostringstream os;
     os << "The buffer region " << cache_region_
        << " accessed inside block {0} is not a single point, which violates"
        << " the prerequisite of " << primitive_name_ << " primitive.";
-    return String(os.str());
+    return ffi::String(os.str());
   }
 
   IRModule mod() const final { return mod_; }
@@ -138,7 +138,7 @@ class NotSinglePointAccess : public ScheduleError {
   IRModule mod_;
   Block block_;
   BufferRegion cache_region_;
-  String primitive_name_;
+  ffi::String primitive_name_;
 };
 
 /*!
@@ -151,7 +151,7 @@ class NotSinglePointAccess : public ScheduleError {
  */
 template <bool is_cache_read>
 Block MakeReindexCacheStage(const BufferRegion& cache_region, ReindexCacheStageInfo* info,
-                            const String& storage_scope) {
+                            const ffi::String& storage_scope) {
   // loop variables
   std::vector<Var> loop_vars;
   // block variables
@@ -237,7 +237,7 @@ Block MakeReindexCacheStage(const BufferRegion& cache_region, ReindexCacheStageI
  * \returns A block indicating the body of the loop nesting.
  */
 Block MakeCacheStage(const BufferRegion& cache_region, CacheStageInfo* info,
-                     const String& storage_scope, bool cache_full_region = true) {
+                     const ffi::String& storage_scope, bool cache_full_region = true) {
   // loop variables
   std::vector<Var> loop_vars;
   // bindings in block realize
@@ -1421,11 +1421,11 @@ Buffer CreateReindexBuffer(const Buffer& buffer, const Array<IterVar>& block_ite
 class NotLeafBlockError : public ScheduleError {
  public:
   NotLeafBlockError(IRModule mod, Block block) : mod_(std::move(mod)), block_(std::move(block)) {}
-  String FastErrorString() const final {
+  ffi::String FastErrorString() const final {
     return "ScheduleError: The target block is not a leaf block.";
   }
 
-  String DetailRenderTemplate() const final { return "The target block {0} is not a leaf block."; }
+  ffi::String DetailRenderTemplate() const final { return "The target block {0} is not a leaf block."; }
 
   IRModule mod() const final { return mod_; }
   Array<ObjectRef> LocationsOfInterest() const final { return {block_}; }
@@ -1444,12 +1444,12 @@ class InvalidBufferAccessError : public ScheduleError {
 
   InvalidBufferAccessError(IRModule mod, Buffer buffer, Block block, ErrorKind kind)
       : mod_(std::move(mod)), buffer_(std::move(buffer)), block_(std::move(block)), kind_(kind) {}
-  String FastErrorString() const final {
+  ffi::String FastErrorString() const final {
     return "ScheduleError: The target buffer should be accessed via BufferLoad or BufferStore. The "
            "indices should be the same if there are multiple accesses to the target buffer.";
   }
 
-  String DetailRenderTemplate() const final {
+  ffi::String DetailRenderTemplate() const final {
     std::ostringstream os;
     os << "The target buffer " << buffer_->name
        << " should be accessed in the leaf block {0} via BufferLoad or BufferStore. The indices "
@@ -1642,10 +1642,10 @@ void CheckRegionCover(const ScheduleState& self, StmtSRef scope_root, Buffer rea
    public:
     explicit NotRegionCoverError(IRModule mod, Block block) : mod_(mod), block_(block) {}
     IRModule mod() const final { return mod_; }
-    String FastErrorString() const final {
+    ffi::String FastErrorString() const final {
       return "ScheduleError: The scope root's region cover is not complete.";
     }
-    String DetailRenderTemplate() const final {
+    ffi::String DetailRenderTemplate() const final {
       return R"(The scope {0} 's region cover is not complete.
 The region cover property require to hold for every of its child blocks
 )";
@@ -1671,7 +1671,7 @@ The region cover property require to hold for every of its child blocks
 /******** Implementation ********/
 
 StmtSRef CacheRead(ScheduleState self, const StmtSRef& block_sref, int read_buffer_index,
-                   const String& storage_scope, const Array<StmtSRef> consumer_blocks) {
+                   const ffi::String& storage_scope, const Array<StmtSRef> consumer_blocks) {
   /*!
    * Check:
    *   - The index is in the array of block reading region
@@ -1764,7 +1764,7 @@ StmtSRef CacheRead(ScheduleState self, const StmtSRef& block_sref, int read_buff
 }
 
 StmtSRef CacheWrite(ScheduleState self, const StmtSRef& block_sref, int write_buffer_index,
-                    const String& storage_scope, const Array<StmtSRef> consumer_blocks) {
+                    const ffi::String& storage_scope, const Array<StmtSRef> consumer_blocks) {
   /*!
    * Check:
    *   - The index is in the array of block reading region
@@ -1870,22 +1870,22 @@ class ReindexCacheReadWriteNotMatchError : public ScheduleError {
       other_indices_ = std::move(old_indices);
     }
   }
-  String FastErrorString() const final {
+  ffi::String FastErrorString() const final {
     return "ScheduleError: the block itervars appeared in lhs and rhs of reindex cache stage do "
            "not match.";
   }
 
-  String DetailRenderTemplate() const final {
+  ffi::String DetailRenderTemplate() const final {
     std::stringstream s;
     s << "Error when applying " << primitive_name_ << " on block {0}, the block itervar " << var_
       << " appears in " << appears_indices_ << ", but not in " << other_indices_ << ".";
-    return String(s.str());
+    return ffi::String(s.str());
   }
 
   IRModule mod() const final { return mod_; }
   Array<ObjectRef> LocationsOfInterest() const final { return {block_}; }
   IRModule mod_;
-  String primitive_name_;
+  ffi::String primitive_name_;
   Block block_;
   Var var_;
   Array<PrimExpr> appears_indices_;
@@ -1908,7 +1908,7 @@ class ReindexCacheReadWriteNotMatchError : public ScheduleError {
 template <bool is_cache_read>
 void CollectReindexCacheStageInfoAndCreateBuffer(
     ReindexCacheStageInfo* info, const IRModule& mod, const StmtSRef& block_sref,
-    const String& storage_scope, const IndexMap& index_map, const Block& block,
+    const ffi::String& storage_scope, const IndexMap& index_map, const Block& block,
     const BlockRealize& realize, const Buffer& old_buffer, const BufferRegion& cache_region) {
   arith::Analyzer analyzer;
   Array<PrimExpr> block_iter_vars, block_shape;
@@ -1992,7 +1992,7 @@ void CheckSinglePoint(ScheduleState self, const Block& block, const BufferRegion
 }
 
 StmtSRef ReindexCacheRead(ScheduleState self, const StmtSRef& block_sref, int read_buffer_index,
-                          const String& storage_scope, const IndexMap& index_map) {
+                          const ffi::String& storage_scope, const IndexMap& index_map) {
   /*!
    * Check:
    *   - The index is in the array of block reading region
@@ -2062,7 +2062,7 @@ StmtSRef ReindexCacheRead(ScheduleState self, const StmtSRef& block_sref, int re
 }
 
 StmtSRef ReindexCacheWrite(ScheduleState self, const StmtSRef& block_sref, int write_buffer_index,
-                           const String& storage_scope, const IndexMap& index_map) {
+                           const ffi::String& storage_scope, const IndexMap& index_map) {
   /*!
    * Check:
    *   - The index is in the array of block reading region
@@ -2130,11 +2130,11 @@ class NotReadWriteError : public ScheduleError {
  public:
   NotReadWriteError(IRModule mod, Block block, Buffer buffer)
       : mod_(std::move(mod)), block_(std::move(block)), buffer_(std::move(buffer)) {}
-  String FastErrorString() const final {
+  ffi::String FastErrorString() const final {
     return "ScheduleError: The target block does not both read & write target buffer.";
   }
 
-  String DetailRenderTemplate() const final {
+  ffi::String DetailRenderTemplate() const final {
     return "The target block {0} does not both read & write target buffer {1}.";
   }
 
@@ -2146,7 +2146,7 @@ class NotReadWriteError : public ScheduleError {
 };
 
 Array<StmtSRef> CacheInplace(ScheduleState self, const StmtSRef& block_sref, int read_buffer_index,
-                             const String& storage_scope) {
+                             const ffi::String& storage_scope) {
   /*!
    * Do cache read then cache write
    */
@@ -2320,12 +2320,12 @@ struct CacheReadTraits : public UnpackedInstTraits<CacheReadTraits> {
 
   static BlockRV UnpackedApplyToSchedule(Schedule sch, BlockRV block,
                                          Array<BlockRV> consumer_blocks, Integer read_buffer_index,
-                                         String storage_scope) {
+                                         ffi::String storage_scope) {
     return sch->CacheRead(block, read_buffer_index->value, storage_scope, consumer_blocks);
   }
 
-  static String UnpackedAsPython(Array<String> outputs, String block, Array<String> consumer_blocks,
-                                 Integer read_buffer_index, String storage_scope) {
+  static ffi::String UnpackedAsPython(Array<ffi::String> outputs, ffi::String block, Array<ffi::String> consumer_blocks,
+                                 Integer read_buffer_index, ffi::String storage_scope) {
     PythonAPICall py("cache_read");
     py.Input("block", block);
     py.Input("read_buffer_index", read_buffer_index->value);
@@ -2353,12 +2353,12 @@ struct CacheWriteTraits : public UnpackedInstTraits<CacheWriteTraits> {
 
   static BlockRV UnpackedApplyToSchedule(Schedule sch, BlockRV block,
                                          Array<BlockRV> consumer_blocks, Integer write_buffer_index,
-                                         String storage_scope) {
+                                         ffi::String storage_scope) {
     return sch->CacheWrite(block, write_buffer_index->value, storage_scope, consumer_blocks);
   }
 
-  static String UnpackedAsPython(Array<String> outputs, String block, Array<String> consumer_blocks,
-                                 Integer write_buffer_index, String storage_scope) {
+  static ffi::String UnpackedAsPython(Array<ffi::String> outputs, ffi::String block, Array<ffi::String> consumer_blocks,
+                                 Integer write_buffer_index, ffi::String storage_scope) {
     PythonAPICall py("cache_write");
     py.Input("block", block);
     py.Input("write_buffer_index", write_buffer_index->value);
@@ -2385,12 +2385,12 @@ struct CacheInplaceTraits : public UnpackedInstTraits<CacheInplaceTraits> {
   static constexpr size_t kNumDecisions = 0;
 
   static Array<BlockRV> UnpackedApplyToSchedule(Schedule sch, BlockRV block,
-                                                Integer read_buffer_index, String storage_scope) {
+                                                Integer read_buffer_index, ffi::String storage_scope) {
     return sch->CacheInplace(block, read_buffer_index->value, storage_scope);
   }
 
-  static String UnpackedAsPython(Array<String> outputs, String block, Integer read_buffer_index,
-                                 String storage_scope) {
+  static ffi::String UnpackedAsPython(Array<ffi::String> outputs, ffi::String block, Integer read_buffer_index,
+                                 ffi::String storage_scope) {
     PythonAPICall py("cache_inplace");
     py.Input("block", block);
     py.Input("read_buffer_index", read_buffer_index->value);
@@ -2418,14 +2418,14 @@ struct ReIndexTraits : public UnpackedInstTraits<ReIndexTraits> {
                         static_cast<BufferIndexType>(buffer_index_type->value));
   }
 
-  static String UnpackedAsPython(Array<String> outputs, String block, Integer buffer_index,
+  static ffi::String UnpackedAsPython(Array<ffi::String> outputs, ffi::String block, Integer buffer_index,
                                  Integer buffer_index_type) {
     PythonAPICall py("reindex");
     py.Input("block", block);
     std::ostringstream os;
     os << "(\"" << BufferIndexType2Str(static_cast<BufferIndexType>(buffer_index_type->value))
        << "\", " << buffer_index << ")";
-    py.Input("buffer", String(os.str()));
+    py.Input("buffer", ffi::String(os.str()));
     py.SingleOutput(outputs);
     return py.Str();
   }
@@ -2444,12 +2444,12 @@ struct ReindexCacheReadTraits : public UnpackedInstTraits<ReindexCacheReadTraits
   static constexpr size_t kNumDecisions = 0;
 
   static BlockRV UnpackedApplyToSchedule(Schedule sch, BlockRV block, IndexMap index_map,
-                                         Integer read_buffer_index, String storage_scope) {
+                                         Integer read_buffer_index, ffi::String storage_scope) {
     return sch->ReindexCacheRead(block, read_buffer_index->value, storage_scope, index_map);
   }
 
-  static String UnpackedAsPython(Array<String> outputs, String block, IndexMap index_map,
-                                 Integer read_buffer_index, String storage_scope) {
+  static ffi::String UnpackedAsPython(Array<ffi::String> outputs, ffi::String block, IndexMap index_map,
+                                 Integer read_buffer_index, ffi::String storage_scope) {
     PythonAPICall py("reindex_cache_read");
     py.Input("block", block);
     py.Input("read_buffer_index", read_buffer_index->value);
@@ -2473,12 +2473,12 @@ struct ReindexCacheWriteTraits : public UnpackedInstTraits<ReindexCacheWriteTrai
   static constexpr size_t kNumDecisions = 0;
 
   static BlockRV UnpackedApplyToSchedule(Schedule sch, BlockRV block, IndexMap index_map,
-                                         Integer write_buffer_index, String storage_scope) {
+                                         Integer write_buffer_index, ffi::String storage_scope) {
     return sch->ReindexCacheWrite(block, write_buffer_index->value, storage_scope, index_map);
   }
 
-  static String UnpackedAsPython(Array<String> outputs, String block, IndexMap index_map,
-                                 Integer write_buffer_index, String storage_scope) {
+  static ffi::String UnpackedAsPython(Array<ffi::String> outputs, ffi::String block, IndexMap index_map,
+                                 Integer write_buffer_index, ffi::String storage_scope) {
     PythonAPICall py("reindex_cache_write");
     py.Input("block", block);
     py.Input("write_buffer_index", write_buffer_index->value);

@@ -39,10 +39,10 @@ class ApplyCustomRuleNode : public ScheduleRuleNode {
   Array<tir::Schedule> Apply(const tir::Schedule& sch, const tir::BlockRV& block_rv) final {
     CHECK(this->target_.defined())
         << "ValueError: ApplyCustomRule is not initialized with TuneContext that has a Target.";
-    Array<String> keys = this->target_.value()->keys;
-    if (Optional<String> ann = tir::GetAnn<String>(sch->GetSRef(block_rv), "schedule_rule")) {
+    Array<ffi::String> keys = this->target_.value()->keys;
+    if (Optional<ffi::String> ann = tir::GetAnn<ffi::String>(sch->GetSRef(block_rv), "schedule_rule")) {
       if (ann.value() != "None") {
-        for (const String& key : keys) {
+        for (const ffi::String& key : keys) {
           if (const auto custom_schedule_fn =
                   tvm::ffi::Function::GetGlobal(GetCustomRuleName(ann.value(), key))) {
             Array<tir::Schedule> result =
@@ -53,7 +53,7 @@ class ApplyCustomRuleNode : public ScheduleRuleNode {
         std::ostringstream os;
         os << "Unknown schedule rule \"" << ann.value() << "\" for target keys \"" << keys
            << "\". Checked ffi::Functions:";
-        for (const String& key : keys) {
+        for (const ffi::String& key : keys) {
           os << "\n  " << GetCustomRuleName(ann.value(), key);
         }
         LOG(WARNING) << os.str();

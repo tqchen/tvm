@@ -111,7 +111,7 @@ std::vector<MutateThreadBindingNode::Candidate> MutateThreadBindingNode::FindCan
     }
     ICHECK_EQ(inst->inputs.size(), 1);
     ICHECK_EQ(inst->attrs.size(), 1);
-    if (Downcast<String>(inst->attrs[0]) != "threadIdx.x") return false;
+    if (Downcast<ffi::String>(inst->attrs[0]) != "threadIdx.x") return false;
 
     return sampled_split_insts.find(Downcast<tir::LoopRV>(inst->inputs[0]).get()) !=
            sampled_split_insts.end();

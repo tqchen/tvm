@@ -115,13 +115,13 @@ Integer Extract(const Target& target, const char* name) {
 class VerifyGPUCodeNode : public PostprocNode {
  public:
   Target target_{nullptr};
-  Map<String, PrimExpr> target_constraints_{nullptr};
+  Map<ffi::String, PrimExpr> target_constraints_{nullptr};
   int thread_warp_size_ = -1;
 
   void InitializeWithTuneContext(const TuneContext& context) final {
     ICHECK(context->target.defined());
     this->target_ = context->target.value();
-    this->target_constraints_ = Map<String, PrimExpr>{
+    this->target_constraints_ = Map<ffi::String, PrimExpr>{
         {"max_shared_memory_per_block", Extract(this->target_, "max_shared_memory_per_block")},
         {"max_threads_per_block", Extract(this->target_, "max_threads_per_block")},
         {"max_vthread", Integer(8)},
@@ -181,7 +181,7 @@ class VerifyGPUCodeNode : public PostprocNode {
           // Convert Function to IRModule
           transform::PassContext pass_ctx = transform::PassContext::Current();
           tir::PrimFunc f =
-              WithAttr(ffi::GetRef<tir::PrimFunc>(prim_func), "global_symbol", String(g_var->name_hint));
+              WithAttr(ffi::GetRef<tir::PrimFunc>(prim_func), "global_symbol", ffi::String(g_var->name_hint));
           f = WithAttr(f, tvm::attr::kTarget, this->target_);  // Required for LowerIntrin
           bool noalias = pass_ctx->GetConfig<bool>("tir.noalias", true).value();
           if (noalias) {

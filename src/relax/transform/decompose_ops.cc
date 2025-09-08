@@ -233,7 +233,7 @@ Pass DecomposeOps() {
                             /*required=*/{});
 }
 
-Pass DecomposeOpsForInference(Optional<String> func_name) {
+Pass DecomposeOpsForInference(Optional<ffi::String> func_name) {
   if (func_name) {
     return ApplyPassToFunction(DecomposeOps(), func_name.value());
   } else {
@@ -241,7 +241,7 @@ Pass DecomposeOpsForInference(Optional<String> func_name) {
   }
 }
 
-Pass DecomposeOpsForTraining(Optional<String> func_name) {
+Pass DecomposeOpsForTraining(Optional<ffi::String> func_name) {
   auto module_pass = tvm::transform::Sequential({MutateOpsForTraining(), DecomposeOps()},
                                                 "DecomposeOpsForTraining");
   if (func_name) {

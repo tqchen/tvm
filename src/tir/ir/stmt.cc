@@ -82,7 +82,7 @@ TVM_FFI_STATIC_INIT_BLOCK({
 });
 
 // AttrStmt
-AttrStmt::AttrStmt(ffi::Any node, String attr_key, PrimExpr value, Stmt body, Span span) {
+AttrStmt::AttrStmt(ffi::Any node, ffi::String attr_key, PrimExpr value, Stmt body, Span span) {
   auto n = ffi::make_object<AttrStmtNode>();
   n->node = node;
   n->attr_key = std::move(attr_key);
@@ -95,7 +95,7 @@ AttrStmt::AttrStmt(ffi::Any node, String attr_key, PrimExpr value, Stmt body, Sp
 TVM_FFI_STATIC_INIT_BLOCK({
   namespace refl = tvm::ffi::reflection;
   refl::GlobalDef().def("tir.AttrStmt",
-                        [](Any node, String attr_key, PrimExpr value, Stmt body, Span span) {
+                        [](Any node, ffi::String attr_key, PrimExpr value, Stmt body, Span span) {
                           // when node is a POD data type like int or bool, first convert to
                           // primexpr.
                           if (node.type_index() < ffi::TypeIndex::kTVMFFISmallStr) {
@@ -132,7 +132,7 @@ TVM_FFI_STATIC_INIT_BLOCK({
 
 // For
 For::For(Var loop_var, PrimExpr min, PrimExpr extent, ForKind kind, Stmt body,
-         Optional<IterVar> thread_binding, Map<String, Any> annotations, Span span) {
+         Optional<IterVar> thread_binding, Map<ffi::String, Any> annotations, Span span) {
   ICHECK(loop_var.defined());
   ICHECK(min.defined());
   ICHECK(extent.defined());
@@ -184,9 +184,9 @@ TVM_FFI_STATIC_INIT_BLOCK({
   namespace refl = tvm::ffi::reflection;
   refl::GlobalDef().def("tir.For", [](Var loop_var, PrimExpr min, PrimExpr extent, int kind,
                                       Stmt body, Optional<IterVar> thread_binding,
-                                      Optional<Map<String, Any>> annotations, Span span) {
+                                      Optional<Map<ffi::String, Any>> annotations, Span span) {
     return For(loop_var, min, extent, static_cast<ForKind>(kind), body, thread_binding,
-               annotations.value_or(Map<String, Any>()), span);
+               annotations.value_or(Map<ffi::String, Any>()), span);
   });
 });
 
@@ -234,7 +234,7 @@ TVM_FFI_STATIC_INIT_BLOCK({
 
 // Allocate
 Allocate::Allocate(Var buffer_var, DataType dtype, Array<PrimExpr> extents, PrimExpr condition,
-                   Stmt body, Map<String, Any> annotations, Span span) {
+                   Stmt body, Map<ffi::String, Any> annotations, Span span) {
   CHECK(IsPointerType(buffer_var->type_annotation, dtype) ||
         (dtype.is_bool() && IsPointerType(buffer_var->type_annotation, DataType::Int(8))))
       << "The allocated data type (" << dtype
@@ -280,7 +280,7 @@ TVM_FFI_STATIC_INIT_BLOCK({
   namespace refl = tvm::ffi::reflection;
   refl::GlobalDef().def(
       "tir.Allocate", [](Var buffer_var, DataType type, Array<PrimExpr> extents, PrimExpr condition,
-                         Stmt body, Map<String, Any> annotations, Span span) {
+                         Stmt body, Map<ffi::String, Any> annotations, Span span) {
         return Allocate(buffer_var, type, extents, condition, body, annotations, span);
       });
 });
@@ -290,7 +290,7 @@ TVM_FFI_STATIC_INIT_BLOCK({
 // depending on the type of ObjectRef, it will either
 // create AllocateConstNode with irmod_storage_idx or data
 AllocateConst::AllocateConst(Var buffer_var, DataType dtype, Array<PrimExpr> extents,
-                             ObjectRef data_or_idx, Stmt body, Map<String, Any> annotations,
+                             ObjectRef data_or_idx, Stmt body, Map<ffi::String, Any> annotations,
                              Span span) {
   ICHECK(IsPointerType(buffer_var->type_annotation, dtype))
       << "The allocated data type (" << dtype
@@ -343,7 +343,7 @@ TVM_FFI_STATIC_INIT_BLOCK({
   refl::GlobalDef().def(
       "tir.AllocateConst",
       [](Var buffer_var, DataType dtype, Array<PrimExpr> extents, ObjectRef data_or_idx, Stmt body,
-         Optional<Map<String, Any>> annotations, Span span) {
+         Optional<Map<ffi::String, Any>> annotations, Span span) {
         return AllocateConst(buffer_var, dtype, extents, data_or_idx, body,
                              annotations.value_or({}), span);
       });
@@ -648,8 +648,8 @@ TVM_FFI_STATIC_INIT_BLOCK({
 
 // Block
 Block::Block(Array<IterVar> iter_vars, Array<BufferRegion> reads, Array<BufferRegion> writes,
-             String name_hint, Stmt body, Optional<Stmt> init, Array<Buffer> alloc_buffers,
-             Array<MatchBufferRegion> match_buffers, Map<String, Any> annotations, Span span) {
+             ffi::String name_hint, Stmt body, Optional<Stmt> init, Array<Buffer> alloc_buffers,
+             Array<MatchBufferRegion> match_buffers, Map<ffi::String, Any> annotations, Span span) {
   ObjectPtr<BlockNode> node = ffi::make_object<BlockNode>();
   node->iter_vars = std::move(iter_vars);
   node->reads = std::move(reads);
@@ -669,8 +669,8 @@ TVM_FFI_STATIC_INIT_BLOCK({
   refl::GlobalDef().def(
       "tir.Block",
       [](Array<IterVar> iter_vars, Array<BufferRegion> reads, Array<BufferRegion> writes,
-         String name_hint, Stmt body, Optional<Stmt> init, Array<Buffer> alloc_buffers,
-         Array<MatchBufferRegion> match_buffers, Map<String, Any> annotations, Span span) {
+         ffi::String name_hint, Stmt body, Optional<Stmt> init, Array<Buffer> alloc_buffers,
+         Array<MatchBufferRegion> match_buffers, Map<ffi::String, Any> annotations, Span span) {
         return Block(iter_vars, reads, writes, name_hint, body, init, alloc_buffers, match_buffers,
                      annotations, span);
       });

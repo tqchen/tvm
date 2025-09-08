@@ -38,7 +38,7 @@ TVM_STATIC_IR_FUNCTOR(IRDocsifier, vtable)
     .set_dispatch<relax::distributed::DTensorStructInfo>(
         "", [](relax::distributed::DTensorStructInfo n, AccessPath n_p, IRDocsifier d) -> Doc {
           Array<ExprDoc> args;
-          Array<String> kwargs_keys;
+          Array<ffi::String> kwargs_keys;
           Array<ExprDoc> kwargs_values;
           bool require_kwargs = false;
           if (n->tensor_sinfo->shape.defined()) {
@@ -116,7 +116,7 @@ TVM_STATIC_IR_FUNCTOR(IRDocsifier, vtable)
                 if (kv.second[i].same_as(n)) {
                   std::stringstream ss;
                   ss << kv.first << "[" << i << "]";
-                  return d->AsDoc<Doc>(String(ss.str()), n_p);
+                  return d->AsDoc<Doc>(ffi::String(ss.str()), n_p);
                 }
               }
             }

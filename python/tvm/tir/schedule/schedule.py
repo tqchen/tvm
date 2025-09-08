@@ -3196,7 +3196,7 @@ class Schedule(Object):
 
         if isinstance(buffer, str):
             possible_buffers = {}
-            # String lookup requires ensuring that the name is unique
+            # ffi::String lookup requires ensuring that the name is unique
             for buffer_index_type, buffer_index, buf in iter_buffers():
                 if buf.name == buffer:
                     possible_buffers[buf] = (buffer_index_type, buffer_index)

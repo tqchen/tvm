@@ -46,10 +46,10 @@ class HexagonDeviceAPITest : public ::testing::Test {
   int64_t shape1d[1]{256};
   int64_t shape2d[2]{256, 256};
   int64_t shape3d[3]{256, 256, 256};
-  Optional<String> default_scope;
-  Optional<String> invalid_scope = String("invalid");
-  Optional<String> global_scope = String("global");
-  Optional<String> global_vtcm_scope = String("global.vtcm");
+  Optional<ffi::String> default_scope;
+  Optional<ffi::String> invalid_scope = ffi::String("invalid");
+  Optional<ffi::String> global_scope = ffi::String("global");
+  Optional<ffi::String> global_vtcm_scope = ffi::String("global.vtcm");
 };
 
 TEST_F(HexagonDeviceAPITest, global) { CHECK(hexapi != nullptr); }

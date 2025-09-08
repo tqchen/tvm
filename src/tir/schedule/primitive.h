@@ -157,7 +157,7 @@ TVM_DLL tir::StmtSRef SampleComputeLocation(
  * \param gvar The function to be retrieved
  * \return A list of blocks with the specific name
  */
-Array<StmtSRef> GetBlocks(const ScheduleState& self, const String& name, const GlobalVar& gv);
+Array<StmtSRef> GetBlocks(const ScheduleState& self, const ffi::String& name, const GlobalVar& gv);
 /*!
  * \brief Gets the parent loops of the block in its scope, from outer to inner
  * \param self The schedule state
@@ -320,7 +320,7 @@ TVM_DLL void Vectorize(ScheduleState self, const StmtSRef& loop_sref);
  * \param loop_sref The sref of the loop to be bound to the thread axis
  * \param thread_axis The thread axis to be bound to the loop
  */
-TVM_DLL void Bind(ScheduleState self, const StmtSRef& loop_sref, const String& thread_axis);
+TVM_DLL void Bind(ScheduleState self, const StmtSRef& loop_sref, const ffi::String& thread_axis);
 /*!
  * \brief Unroll the input loop. It requires nothing
  * \param self The state of the schedule
@@ -340,7 +340,7 @@ TVM_DLL void Unroll(ScheduleState self, const StmtSRef& loop_sref);
  * \return The cache stage block.
  */
 TVM_DLL StmtSRef CacheRead(ScheduleState self, const StmtSRef& block_sref, int read_buffer_index,
-                           const String& storage_scope, const Array<StmtSRef> consumer_blocks = {});
+                           const ffi::String& storage_scope, const Array<StmtSRef> consumer_blocks = {});
 /*!
  * \brief Create a block that writes a buffer region into a write cache. It requires:
  * 1) There is only one block that writes the target buffer.
@@ -353,7 +353,7 @@ TVM_DLL StmtSRef CacheRead(ScheduleState self, const StmtSRef& block_sref, int r
  * \return The cache stage block.
  */
 TVM_DLL StmtSRef CacheWrite(ScheduleState self, const StmtSRef& block_sref, int write_buffer_index,
-                            const String& storage_scope,
+                            const ffi::String& storage_scope,
                             const Array<StmtSRef> consumer_blocks = {});
 /*!
  * \brief Create a block that reads a buffer region into a read cache. It requires:
@@ -369,7 +369,7 @@ TVM_DLL StmtSRef CacheWrite(ScheduleState self, const StmtSRef& block_sref, int 
  * \return The cache stage block.
  */
 TVM_DLL StmtSRef ReindexCacheRead(ScheduleState self, const StmtSRef& block_sref,
-                                  int read_buffer_index, const String& storage_scope,
+                                  int read_buffer_index, const ffi::String& storage_scope,
                                   const IndexMap& index_map);
 /*!
  * \brief Create a block that writes a buffer region into a write cache. It requires:
@@ -385,7 +385,7 @@ TVM_DLL StmtSRef ReindexCacheRead(ScheduleState self, const StmtSRef& block_sref
  * \return The cache stage block.
  */
 TVM_DLL StmtSRef ReindexCacheWrite(ScheduleState self, const StmtSRef& block_sref,
-                                   int write_buffer_index, const String& storage_scope,
+                                   int write_buffer_index, const ffi::String& storage_scope,
                                    const IndexMap& index_map);
 
 /*!
@@ -399,7 +399,7 @@ TVM_DLL StmtSRef ReindexCacheWrite(ScheduleState self, const StmtSRef& block_sre
  * \return The cache stage blocks, cache read block together with cache write block.
  */
 TVM_DLL Array<StmtSRef> CacheInplace(ScheduleState self, const StmtSRef& block_sref,
-                                     int read_buffer_index, const String& storage_scope);
+                                     int read_buffer_index, const ffi::String& storage_scope);
 /*!
  * \brief Create a block to cache precomputed index for later use.
  * if there is no index computation, keep unchanged.
@@ -409,7 +409,7 @@ TVM_DLL Array<StmtSRef> CacheInplace(ScheduleState self, const StmtSRef& block_s
  * \return The cache stage block.
  */
 TVM_DLL Array<StmtSRef> CacheIndex(ScheduleState self, const StmtSRef& block_sref,
-                                   const String& storage_scope, int cse_thresh);
+                                   const ffi::String& storage_scope, int cse_thresh);
 /*!
  *!
  * \brief Create a block that read/write a buffer region into a read/write cache with reindexing.
@@ -429,10 +429,10 @@ TVM_DLL StmtSRef ReIndex(ScheduleState self, const StmtSRef& block_sref, int buf
 /******** Schedule: Data movement ********/
 
 TVM_DLL StmtSRef ReadAt(ScheduleState self, const StmtSRef& loop_sref, const StmtSRef& block_sref,
-                        int read_buffer_index, const String& storage_scope);
+                        int read_buffer_index, const ffi::String& storage_scope);
 
 TVM_DLL StmtSRef WriteAt(ScheduleState self, const StmtSRef& loop_sref, const StmtSRef& block_sref,
-                         int write_buffer_index, const String& storage_scope);
+                         int write_buffer_index, const ffi::String& storage_scope);
 
 /******** Schedule: Compute location ********/
 /*!
@@ -561,7 +561,7 @@ TVM_DLL void StorageAlign(ScheduleState self, const StmtSRef& block_sref, int bu
  * \param storage_scope The storage scope to be set
  */
 TVM_DLL void SetScope(ScheduleState self, const StmtSRef& block_sref, int buffer_index,
-                      const String& storage_scope);
+                      const ffi::String& storage_scope);
 /*!
  * \brief Set the data type of a buffer, where the buffer is specified by a block and a
  * write-index
@@ -573,7 +573,7 @@ TVM_DLL void SetScope(ScheduleState self, const StmtSRef& block_sref, int buffer
  * \param dtype The data type to be set
  */
 TVM_DLL void UnsafeSetDType(ScheduleState self, const StmtSRef& block_sref, int buffer_index,
-                            const String& dtype);
+                            const ffi::String& dtype);
 /*!
  * \brief Set the axis separator of a buffer, where the buffer is specified by a block and a read
  * or write index
@@ -625,7 +625,7 @@ TVM_DLL void Tensorize(ScheduleState self, const StmtSRef& block_or_loop_sref,
  * \param ann_key The annotation key
  * \param ann_val The annotation value
  */
-TVM_DLL void Annotate(ScheduleState self, const StmtSRef& sref, const String& ann_key,
+TVM_DLL void Annotate(ScheduleState self, const StmtSRef& sref, const ffi::String& ann_key,
                       const Any& ann_val);
 /*!
  * \brief Unannotate a block/loop's annotation with key ann_key
@@ -633,7 +633,7 @@ TVM_DLL void Annotate(ScheduleState self, const StmtSRef& sref, const String& an
  * \param sref The block/loop to be unannotated
  * \param ann_key The annotation key
  */
-TVM_DLL void Unannotate(ScheduleState self, const StmtSRef& sref, const String& ann_key);
+TVM_DLL void Unannotate(ScheduleState self, const StmtSRef& sref, const ffi::String& ann_key);
 
 /******** Schedule: Layout transformation ********/
 /*!
@@ -715,7 +715,7 @@ TVM_DLL void RollingBuffer(ScheduleState self, const StmtSRef& block_sref, int w
  * \param buf_index_array The array of buffer indices we hide access.
  */
 TVM_DLL void UnsafeHideBufferAccess(ScheduleState self, const StmtSRef& block_sref,
-                                    const String& buf_type, const Array<IntImm>& buf_index_array);
+                                    const ffi::String& buf_type, const Array<IntImm>& buf_index_array);
 
 /*!
  * \brief Annotate the read or write region of a specific buffer in a block

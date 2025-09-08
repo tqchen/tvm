@@ -61,7 +61,7 @@ inline size_t GetDataAlignment(const DLDataType& dtype) {
 }
 
 Tensor StorageObj::AllocTensorScoped(int64_t offset, ffi::Shape shape, DLDataType dtype,
-                                     String scope) {
+                                     ffi::String scope) {
   if (scope == "global" || scope.empty()) {
     return AllocTensor(offset, shape, dtype);
   }
@@ -71,7 +71,7 @@ Tensor StorageObj::AllocTensorScoped(int64_t offset, ffi::Shape shape, DLDataTyp
    public:
     explicit StorageScopedAlloc(Storage storage) : storage_(storage) {}
 
-    void AllocData(DLTensor* tensor, const ffi::Shape& shape, const String& scope,
+    void AllocData(DLTensor* tensor, const ffi::Shape& shape, const ffi::String& scope,
                    int64_t byte_offset) {
       tensor->data = storage_->allocator->CreateView(storage_->buffer, shape, tensor->dtype, scope);
       tensor->byte_offset = byte_offset;
@@ -214,7 +214,7 @@ void MemoryManager::Clear() {
 }
 
 Tensor Allocator::Empty(ffi::Shape shape, DLDataType dtype, DLDevice dev,
-                        Optional<String> mem_scope) {
+                        Optional<ffi::String> mem_scope) {
   VerifyDataType(dtype);
 
   class BufferAlloc {

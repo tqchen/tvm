@@ -107,12 +107,12 @@ Array<Any> TranslateInputRVs(
   for (const Any& input : inputs) {
     if (input == nullptr) {
       // Case 0. nullptr => None
-      results.push_back(String("None"));
+      results.push_back(ffi::String("None"));
       continue;
     }
     // string => "content"
     if (auto opt_str = input.as<ffi::String>()) {
-      results.push_back(String('"' + (*opt_str).operator std::string() + '"'));
+      results.push_back(ffi::String('"' + (*opt_str).operator std::string() + '"'));
     } else if (input.type_index() < ffi::TypeIndex::kTVMFFISmallStr) {
       // directly put back POD type and not string
       results.push_back(input);
@@ -139,7 +139,7 @@ Array<Any> TranslateInputRVs(
     } else if (input.as<IndexMapNode>()) {
       // // Case 6: IndexMap
       IndexMap index_map = Downcast<IndexMap>(input);
-      index_map = index_map.RenameVariables([&rv_names](const Var& var) -> Optional<String> {
+      index_map = index_map.RenameVariables([&rv_names](const Var& var) -> Optional<ffi::String> {
         if (auto it = rv_names.find(var); it != rv_names.end()) {
           return it->second;
         }
@@ -205,7 +205,7 @@ Array<Any> TranslateInputRVs(const Array<Any>& inputs,
     }
     // Case 2. string
     if (size >= 2 && name[0] == '"' && name[size - 1] == '"') {
-      results.push_back(String(std::string(name + 1, size - 2)));
+      results.push_back(ffi::String(std::string(name + 1, size - 2)));
       continue;
     }
     // Case 0 & 1. None, BlockRV, LoopRV, VarRV
@@ -230,17 +230,17 @@ void TranslateAddOutputRVs(const Array<Any>& old_outputs, const Array<Any>& new_
   }
 }
 
-Array<String> TranslateAddOutputRVs(
+Array<ffi::String> TranslateAddOutputRVs(
     const Array<Any>& outputs,
     std::unordered_map<ObjectRef, String, ObjectPtrHash, ObjectPtrEqual>* rv_names) {
-  Array<String> results;
+  Array<ffi::String> results;
   results.reserve(outputs.size());
   for (const Any& output : outputs) {
     int i = rv_names->size();
     ICHECK(!rv_names->count(output.cast<ObjectRef>()))
         << "ValueError: The random variable has been produced once: "
         << rv_names->at(output.cast<ObjectRef>());
-    String result;
+    ffi::String result;
     if (output == nullptr) {
       result = "_";
     } else if (output.as<BlockRVNode>()) {
@@ -260,12 +260,12 @@ Array<String> TranslateAddOutputRVs(
   return results;
 }
 
-void TranslateAddOutputRVs(const Array<String>& old_outputs, const Array<Any>& new_outputs,
+void TranslateAddOutputRVs(const Array<ffi::String>& old_outputs, const Array<Any>& new_outputs,
                            std::unordered_map<std::string, ObjectRef>* named_rvs) {
   ICHECK_EQ(old_outputs.size(), new_outputs.size());
   int n = old_outputs.size();
   for (int i = 0; i < n; ++i) {
-    named_rvs->emplace(Downcast<String>(old_outputs[i]), new_outputs[i].cast<ObjectRef>());
+    named_rvs->emplace(Downcast<ffi::String>(old_outputs[i]), new_outputs[i].cast<ObjectRef>());
   }
 }
 
@@ -352,9 +352,9 @@ ObjectRef TraceNode::AsJSON(bool remove_postproc) const {
   };
 }
 
-Array<String> TraceNode::AsPython(bool remove_postproc) const {
+Array<ffi::String> TraceNode::AsPython(bool remove_postproc) const {
   std::unordered_map<ObjectRef, String, ObjectPtrHash, ObjectPtrEqual> rv_names;
-  Array<String> py_trace;
+  Array<ffi::String> py_trace;
   py_trace.reserve(this->insts.size());
   for (const Instruction& inst : this->insts) {
     if (remove_postproc && inst->kind->IsPostproc()) {
@@ -364,7 +364,7 @@ Array<String> TraceNode::AsPython(bool remove_postproc) const {
     attrs.reserve(inst->attrs.size());
     for (const Any& obj : inst->attrs) {
       if (auto opt_str = obj.as<ffi::String>()) {
-        attrs.push_back(String('"' + (*opt_str).operator std::string() + '"'));
+        attrs.push_back(ffi::String('"' + (*opt_str).operator std::string() + '"'));
       } else {
         attrs.push_back(obj);
       }
@@ -423,7 +423,7 @@ void Trace::ApplyJSONToSchedule(ObjectRef json, Schedule sch) {
     InstructionKind kind{nullptr};
     Array<Any> inputs{nullptr};
     Array<Any> attrs{nullptr};
-    Array<String> outputs{ObjectPtr<Object>{nullptr}};
+    Array<ffi::String> outputs{ObjectPtr<Object>{nullptr}};
     // Parse the entry
     try {
       const auto* arr = inst_entry.as<ffi::ArrayObj>();
@@ -432,7 +432,7 @@ void Trace::ApplyJSONToSchedule(ObjectRef json, Schedule sch) {
       kind = InstructionKind::Get(arr0);
       inputs = arr->at(1).cast<Array<Any>>();
       attrs = arr->at(2).cast<Array<Any>>();
-      outputs = arr->at(3).cast<Array<String>>();
+      outputs = arr->at(3).cast<Array<ffi::String>>();
     } catch (const tvm::Error& e) {
       LOG(FATAL) << "ValueError: Each entry of a json instruction should be a tuple [inst_name, "
                     "inputs, attrs, outputs], but gets: "
@@ -524,9 +524,9 @@ TVM_STATIC_IR_FUNCTOR(ReprPrinter, vtable)
       ICHECK_NOTNULL(self);
       p->stream << "# from tvm import tir\n";
       p->stream << "def apply_trace(sch: tir.Schedule) -> None:\n";
-      Array<String> repr = self->AsPython(/*remove_postproc=*/false);
+      Array<ffi::String> repr = self->AsPython(/*remove_postproc=*/false);
       bool is_first = true;
-      for (const String& line : repr) {
+      for (const ffi::String& line : repr) {
         if (is_first) {
           is_first = false;
         } else {
@@ -553,7 +553,7 @@ struct EnterPostprocTraits : public UnpackedInstTraits<EnterPostprocTraits> {
 
   static void UnpackedApplyToSchedule(Schedule sch) { return sch->EnterPostproc(); }
 
-  static String UnpackedAsPython(Array<String> outputs) {
+  static ffi::String UnpackedAsPython(Array<ffi::String> outputs) {
     PythonAPICall py("enter_postproc");
     return py.Str();
   }

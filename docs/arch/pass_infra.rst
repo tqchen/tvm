@@ -93,9 +93,9 @@ needs to be executed when running under a user-provided optimization level. The
 .. code:: c++
 
     class PassInfoNode : public Object {
-      String name;
+      ffi::String name;
       int opt_level;
-      Array<String> required;
+      Array<ffi::String> required;
     };
 
 PassContext
@@ -128,7 +128,7 @@ Python APIs to create a compilation pipeline using pass context.
       tvm::Array<tvm::Expr> required_pass;
       tvm::Array<tvm::Expr> disabled_pass;
       mutable Optional<DiagnosticContext> diag_ctx;
-      Map<String, Any> config;
+      Map<ffi::String, Any> config;
       Array<instrument::PassInstrument> instruments;
     };
 
@@ -321,20 +321,20 @@ favorably use Python APIs to create a specific pass object.
     Pass CreateFunctionPass(
         std::function<Function(Function, IRModule, PassContext)> pass_func,
         int opt_level,
-        String name,
-        Array<String> required);
+        ffi::String name,
+        Array<ffi::String> required);
 
     Pass CreatePrimFuncPass(
         std::function<PrimFunc(PrimFunc, IRModule, PassContext)> pass_func,
         int opt_level,
-        String name,
-        Array<String> required);
+        ffi::String name,
+        Array<ffi::String> required);
 
     Pass CreateModulePass(
         std::function<IRModule(IRModule, PassContext)> pass_func,
         int opt_level,
-        String name,
-        Array<String> required);
+        ffi::String name,
+        Array<ffi::String> required);
 
     Pass Sequential(tvm::Array<Pass> passes, PassInfo pass_info);
 
@@ -440,7 +440,7 @@ Multiple ``PassInstrument`` instances can be registed into a single
 
     class PassInstrumentNode : public Object {
      public:
-      String name;
+      ffi::String name;
       virtual void EnterPassContext() const = 0;
       virtual void ExitPassContext() const = 0;
       virtual bool ShouldRun(const IRModule& mod, const transform::PassInfo& info) const = 0;

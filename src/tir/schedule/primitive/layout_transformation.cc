@@ -927,12 +927,12 @@ class BufferIsSubregionError : public ScheduleError {
  public:
   explicit BufferIsSubregionError(IRModule mod, Buffer buffer) : mod_(mod), buffer_(buffer) {}
 
-  String FastErrorString() const final {
+  ffi::String FastErrorString() const final {
     return "ScheduleError: The input buffer is defined in `match_buffer` of a block, it is expected"
            " to be a function parameter or allocated by a block";
   }
 
-  String DetailRenderTemplate() const final {
+  ffi::String DetailRenderTemplate() const final {
     std::ostringstream os;
     os << "ScheduleError: The input buffer " << buffer_->name << " is defined in `match_buffer` of "
        << "a block, it is expected to be a function parameter or allocated by a block.";
@@ -952,14 +952,14 @@ class TransformationPaddingIndexMapError : public ScheduleError {
   TransformationPaddingIndexMapError(IRModule mod, IndexMap pad_value)
       : mod_(mod), pad_value_(pad_value) {}
 
-  String FastErrorString() const final {
+  ffi::String FastErrorString() const final {
     std::ostringstream ss;
     ss << "ScheduleError: The IndexMap specifying pad_value has "
        << pad_value_->final_indices.size() << " outputs, should only have one output";
     return ss.str();
   }
 
-  String DetailRenderTemplate() const final {
+  ffi::String DetailRenderTemplate() const final {
     std::ostringstream ss;
     ss << "ScheduleError: Pad value is specified as " << pad_value_ << " which has "
        << pad_value_->final_indices.size() << " outputs, but should only have one output";
@@ -982,13 +982,13 @@ class TransformationPaddingTypeError : public ScheduleError {
     pad_value_dtype_ = pad_value_->final_indices[0].dtype();
   }
 
-  String FastErrorString() const final {
+  ffi::String FastErrorString() const final {
     std::ostringstream ss;
     ss << "ScheduleError: Type mismatch " << buffer_->dtype << " vs " << pad_value_dtype_;
     return ss.str();
   }
 
-  String DetailRenderTemplate() const final {
+  ffi::String DetailRenderTemplate() const final {
     std::ostringstream ss;
     ss << "ScheduleError: Buffer " << buffer_->name << " has elements of type " << buffer_->dtype
        << ", but the transformation fills padding with " << pad_value_ << ", which is of type "
@@ -1038,13 +1038,13 @@ class TransformationPaddingExpressionError : public ScheduleError {
                                        BufferLoad illegal_load)
       : mod_(mod), buffer_(buffer), pad_value_(pad_value), illegal_load_(illegal_load) {}
 
-  String FastErrorString() const final {
+  ffi::String FastErrorString() const final {
     std::ostringstream ss;
     ss << "ScheduleError: Pad value may not contain load from " << illegal_load_->buffer->name;
     return ss.str();
   }
 
-  String DetailRenderTemplate() const final {
+  ffi::String DetailRenderTemplate() const final {
     std::ostringstream ss;
     ss << "ScheduleError: Pad value may only contain BufferLoad from the transformed buffer "
        << buffer_->name << ", but pad_value " << pad_value_ << " contains expression "
@@ -1070,13 +1070,13 @@ class TransformationIntroducesPaddingError : public ScheduleError {
         index_map_(std::move(index_map)),
         padding_predicate_(std::move(padding_predicate)) {}
 
-  String FastErrorString() const final {
+  ffi::String FastErrorString() const final {
     std::ostringstream ss;
     ss << "ScheduleError: Transformation would introduce padding at " << padding_predicate_ << ".";
     return ss.str();
   }
 
-  String DetailRenderTemplate() const final {
+  ffi::String DetailRenderTemplate() const final {
     arith::Analyzer analyzer;
     auto new_shape = index_map_->MapShape(buffer_->shape, &analyzer);
     std::ostringstream os;
@@ -1266,11 +1266,11 @@ class NotBijectiveAffineIndexMapError : public ScheduleError {
  public:
   NotBijectiveAffineIndexMapError(IRModule mod, IndexMap index_map)
       : mod_(std::move(mod)), index_map_(std::move(index_map)) {}
-  String FastErrorString() const final {
+  ffi::String FastErrorString() const final {
     return "ScheduleError: The index map is not bijective affine.";
   }
 
-  String DetailRenderTemplate() const final {
+  ffi::String DetailRenderTemplate() const final {
     std::ostringstream os;
     os << "The index map " << index_map_->ToPythonString() << " is not bijective affine.";
     return os.str();
@@ -1295,12 +1295,12 @@ class IndexMapNotApplicableToBlockIterError : public ScheduleError {
   explicit IndexMapNotApplicableToBlockIterError(IRModule mod, Block block, IndexMap index_map)
       : mod_(std::move(mod)), block_(std::move(block)), index_map_(std::move(index_map)) {}
 
-  String FastErrorString() const final {
+  ffi::String FastErrorString() const final {
     return "ScheduleError: The index map can't be applied to block iters because the number of "
            "parameters mismatch.";
   }
 
-  String DetailRenderTemplate() const final {
+  ffi::String DetailRenderTemplate() const final {
     std::ostringstream os;
     os << "The index map " << index_map_->ToPythonString()
        << " can't be applied to block iters of {0} because the number of parameters mismatch. "
@@ -1324,12 +1324,12 @@ class OpaqueNewIterTypeError : public ScheduleError {
   explicit OpaqueNewIterTypeError(IRModule mod, Block block, PrimExpr iter_value)
       : mod_(std::move(mod)), block_(std::move(block)), iter_value_(std::move(iter_value)) {}
 
-  String FastErrorString() const final {
+  ffi::String FastErrorString() const final {
     return "ScheduleError: Cannot detect the new block iter type because it contains more than one "
            "type of original iter vars.";
   }
 
-  String DetailRenderTemplate() const final {
+  ffi::String DetailRenderTemplate() const final {
     std::ostringstream os;
     os << "Cannot detect the block iter type for new iter value " << iter_value_
        << " in {0} because it contains more than one type of original iter vars.";
@@ -1573,7 +1573,7 @@ struct TransformLayoutTraits : public UnpackedInstTraits<TransformLayoutTraits> 
                                 pad_value, assume_injective_transform.operator bool());
   }
 
-  static String UnpackedAsPython(Array<String> outputs, String block_rv, IndexMap index_map,
+  static ffi::String UnpackedAsPython(Array<ffi::String> outputs, ffi::String block_rv, IndexMap index_map,
                                  Integer buffer_index, Integer buffer_index_type,
                                  Optional<IndexMap> pad_value, Bool assume_injective_transform) {
     PythonAPICall py("transform_layout");
@@ -1597,7 +1597,7 @@ struct TransformLayoutTraits : public UnpackedInstTraits<TransformLayoutTraits> 
     attrs_record.push_back(attrs[0]);
     attrs_record.push_back(attrs[1]);
     if (attrs[2] != nullptr) {
-      attrs_record.push_back(String(::tvm::SaveJSON(attrs[2])));
+      attrs_record.push_back(ffi::String(::tvm::SaveJSON(attrs[2])));
     } else {
       attrs_record.push_back(attrs[2]);
     }
@@ -1611,7 +1611,7 @@ struct TransformLayoutTraits : public UnpackedInstTraits<TransformLayoutTraits> 
     attrs.push_back(attrs_record[0]);
     attrs.push_back(attrs_record[1]);
     if (attrs_record[2] != nullptr) {
-      attrs.push_back(::tvm::LoadJSON(Downcast<String>(attrs_record[2])));
+      attrs.push_back(::tvm::LoadJSON(Downcast<ffi::String>(attrs_record[2])));
     } else {
       attrs.push_back(attrs_record[2]);
     }
@@ -1636,7 +1636,7 @@ struct TransformBlockLayoutTraits : public UnpackedInstTraits<TransformBlockLayo
     return sch->TransformBlockLayout(block_rv, index_map);
   }
 
-  static String UnpackedAsPython(Array<String> outputs, String block_rv, IndexMap index_map) {
+  static ffi::String UnpackedAsPython(Array<ffi::String> outputs, ffi::String block_rv, IndexMap index_map) {
     PythonAPICall py("transform_block_layout");
     py.Input("block", block_rv);
     py.Input("index_map", index_map->ToPythonString());
@@ -1647,14 +1647,14 @@ struct TransformBlockLayoutTraits : public UnpackedInstTraits<TransformBlockLayo
   static ObjectRef AttrsAsJSON(const Array<Any>& attrs) {
     Array<Any> attrs_record;
     attrs_record.reserve(kNumAttrs);
-    attrs_record.push_back(String(::tvm::SaveJSON(attrs[0])));
+    attrs_record.push_back(ffi::String(::tvm::SaveJSON(attrs[0])));
     return attrs_record;
   }
 
   static Array<Any> AttrsFromJSON(const ObjectRef& attrs_record_) {
     Array<Any> attrs_record = Downcast<Array<Any>>(attrs_record_);
     Array<Any> attrs;
-    attrs.push_back(::tvm::LoadJSON(Downcast<String>(attrs_record[0])));
+    attrs.push_back(::tvm::LoadJSON(Downcast<ffi::String>(attrs_record[0])));
     return attrs;
   }
 
@@ -1678,7 +1678,7 @@ struct SetAxisSeparatorTraits : public UnpackedInstTraits<SetAxisSeparatorTraits
                                  axis_separators);
   }
 
-  static String UnpackedAsPython(Array<String> outputs, String block_rv, Integer buffer_index,
+  static ffi::String UnpackedAsPython(Array<ffi::String> outputs, ffi::String block_rv, Integer buffer_index,
                                  Integer buffer_index_type, Array<IntImm> axis_separators) {
     PythonAPICall py("set_axis_separator");
     py.Input("block", block_rv);

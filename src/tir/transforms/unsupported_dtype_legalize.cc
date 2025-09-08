@@ -79,7 +79,7 @@ class ComputeLegalizePlanner : public StmtExprVisitor {
     // remap all intermediate constant buffer to promote data types (fp16/fp32)
     if (MatchDType(op->dtype) && op->ConstantAllocationSize() != 0) {
       DataType dtype = promote_dtype_.with_lanes(op->dtype.lanes());
-      String storage_scope = "global";
+      ffi::String storage_scope = "global";
       if (auto* ptr_type = op->buffer_var->type_annotation.as<PointerTypeNode>()) {
         storage_scope = ptr_type->storage_scope;
       }
@@ -538,7 +538,7 @@ class StorageLegalizer : public StmtExprMutator {
   Stmt VisitStmt_(const AllocateNode* op) final {
     if (MatchDType(op->dtype)) {
       DataType dtype = GetStorageUIntDType(op->dtype);
-      String storage_scope = "global";
+      ffi::String storage_scope = "global";
       if (auto* ptr_type = op->buffer_var->type_annotation.as<PointerTypeNode>()) {
         storage_scope = ptr_type->storage_scope;
       }
@@ -780,13 +780,13 @@ TVM_FFI_STATIC_INIT_BLOCK({
   refl::GlobalDef().def("tir.transform.BF16StorageLegalize", BF16StorageLegalize);
 });
 
-Pass FP8ComputeLegalize(String promote_dtype_str) {
+Pass FP8ComputeLegalize(ffi::String promote_dtype_str) {
   auto pass_func = [=](PrimFunc f, IRModule m, PassContext ctx) {
     auto target = f->GetAttr<Target>(tvm::attr::kTarget).value();
     if (CheckDataTypeSupport(target, "tvm.contrib.nvcc.supports_fp8")) {
       return f;
     }
-    return FP8ComputeLegalizer(DataType(StringToDLDataType(promote_dtype_str))).Legalize(f);
+    return FP8ComputeLegalizer(DataType(ffi::StringToDLDataType(promote_dtype_str))).Legalize(f);
   };
   return CreatePrimFuncPass(pass_func, 0, "tir.FP8ComputeLegalize", {});
 }

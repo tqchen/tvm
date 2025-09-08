@@ -53,7 +53,7 @@ class IdNode : public Object {
    *  this only acts as a hint to the user,
    *  and is not used for equality.
    */
-  String name_hint;
+  ffi::String name_hint;
 
   static void RegisterReflection() {
     namespace refl = tvm::ffi::reflection;
@@ -73,7 +73,7 @@ class Id : public ObjectRef {
    * \brief The constructor
    * \param name_hint The name of the variable.
    */
-  TVM_DLL explicit Id(String name_hint);
+  TVM_DLL explicit Id(ffi::String name_hint);
 
   TVM_DEFINE_OBJECT_REF_METHODS(Id, ObjectRef, IdNode);
 };
@@ -353,7 +353,7 @@ class VarNode : public LeafExprNode {
   Id vid;
 
   /*! \return The name hint of the variable */
-  const String& name_hint() const { return vid->name_hint; }
+  const ffi::String& name_hint() const { return vid->name_hint; }
 
   static void RegisterReflection() {
     namespace refl = tvm::ffi::reflection;
@@ -386,7 +386,7 @@ class VarNode : public LeafExprNode {
 
 class Var : public LeafExpr {
  public:
-  TVM_DLL explicit Var(String name_hint, Optional<StructInfo> struct_info_annotation,
+  TVM_DLL explicit Var(ffi::String name_hint, Optional<StructInfo> struct_info_annotation,
                        Span span = Span())
       : Var(Id(name_hint), struct_info_annotation, span) {}
 
@@ -413,7 +413,7 @@ class DataflowVarNode : public VarNode {
 
 class DataflowVar : public Var {
  public:
-  TVM_DLL explicit DataflowVar(String name_hint, Optional<StructInfo> struct_info_annotation,
+  TVM_DLL explicit DataflowVar(ffi::String name_hint, Optional<StructInfo> struct_info_annotation,
                                Span span = Span())
       : DataflowVar(Id(name_hint), struct_info_annotation, span) {}
 
@@ -516,7 +516,7 @@ class PrimValue : public LeafExpr {
 class StringImmNode : public LeafExprNode {
  public:
   /*! \brief The data value. */
-  String value;
+  ffi::String value;
 
   static void RegisterReflection() {
     namespace refl = tvm::ffi::reflection;
@@ -538,7 +538,7 @@ class StringImm : public LeafExpr {
    * \param value The value input.
    * \param span The source span of the expression.
    */
-  TVM_DLL explicit StringImm(String value, Span span = Span());
+  TVM_DLL explicit StringImm(ffi::String value, Span span = Span());
 
   TVM_DEFINE_OBJECT_REF_METHODS(StringImm, LeafExpr, StringImmNode);
   TVM_DEFINE_OBJECT_REF_COW_METHOD(StringImmNode);
@@ -932,7 +932,7 @@ constexpr const char* kNumInput = "num_input";
 class ExternFuncNode : public BaseFuncNode {
  public:
   /*! \brief The name of global symbol. */
-  String global_symbol;
+  ffi::String global_symbol;
 
   static void RegisterReflection() {
     namespace refl = tvm::ffi::reflection;
@@ -945,8 +945,8 @@ class ExternFuncNode : public BaseFuncNode {
 
 class ExternFunc : public BaseFunc {
  public:
-  TVM_DLL ExternFunc(String global_symbol, Span span = Span());
-  TVM_DLL ExternFunc(String global_symbol, StructInfo struct_info, Span span = Span());
+  TVM_DLL ExternFunc(ffi::String global_symbol, Span span = Span());
+  TVM_DLL ExternFunc(ffi::String global_symbol, StructInfo struct_info, Span span = Span());
 
   TVM_DEFINE_OBJECT_REF_METHODS(ExternFunc, BaseFunc, ExternFuncNode);
   TVM_DEFINE_OBJECT_REF_COW_METHOD(ExternFuncNode);

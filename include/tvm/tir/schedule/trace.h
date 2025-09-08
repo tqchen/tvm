@@ -118,7 +118,7 @@ class TraceNode : public runtime::Object {
    * \param remove_postproc If postprocessing instructions are removed
    * \return A sequence of python statements
    */
-  Array<String> AsPython(bool remove_postproc) const;
+  Array<ffi::String> AsPython(bool remove_postproc) const;
   /*!
    * \brief Create a new trace with an instruction whose decision is changed,
    * assuming this instruction exists in the resulting trace

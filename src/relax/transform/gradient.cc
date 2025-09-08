@@ -603,7 +603,7 @@ class BackwardBindingGenerator : private ExprVisitor {
 
 class GradientMutator : private ExprMutator {
  public:
-  static IRModule Transform(IRModule mod, String func_name, Optional<Array<Var>> require_grads,
+  static IRModule Transform(IRModule mod, ffi::String func_name, Optional<Array<Var>> require_grads,
                             int target_index) {
     // Step 1. Copy function
     auto* old_func = mod->Lookup(func_name).as<FunctionNode>();
@@ -638,7 +638,7 @@ class GradientMutator : private ExprMutator {
         target_index_(target_index) {}
 
   // Add the adjoint function of func to the IRModule using BlockBuilder
-  IRModule AddAdjointFunction(const Function& func, const String& func_name,
+  IRModule AddAdjointFunction(const Function& func, const ffi::String& func_name,
                               bool remove_all_unused = true) {
     // Step 4.1 forward -> forward + backward
     auto new_func = Downcast<Function>(VisitExpr(func));
@@ -743,7 +743,7 @@ class GradientMutator : private ExprMutator {
   // 2. every var should be a parameter or a intermediate var in the function
   // 3. the type of the input var should be Tensor of floating point dtype, or Tuple of that
   static Array<Var> CheckAndMapRequireGrads(const Array<Var>& require_grads,
-                                            const Map<Var, Var>& var_map, const String& func_name) {
+                                            const Map<Var, Var>& var_map, const ffi::String& func_name) {
     VarIdSet var_set;
     Array<Var> mapped_vars;
     for (const auto& var : require_grads) {
@@ -778,7 +778,7 @@ class GradientMutator : private ExprMutator {
 
 namespace transform {
 
-Pass Gradient(String func_name, Optional<Array<Var>> require_grads, int target_index) {
+Pass Gradient(ffi::String func_name, Optional<Array<Var>> require_grads, int target_index) {
   auto pass_func = [=](IRModule mod, PassContext pc) {
     return relax::GradientMutator::Transform(mod, func_name, require_grads, target_index);
   };

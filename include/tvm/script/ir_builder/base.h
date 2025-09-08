@@ -249,7 +249,7 @@ class IRBuilder : public runtime::ObjectRef {
    * \param obj The object to name.
    */
   template <class TObjectRef>
-  inline static TObjectRef Name(String name, TObjectRef obj);
+  inline static TObjectRef Name(ffi::String name, TObjectRef obj);
 };
 
 ////////////////////////////// Details //////////////////////////////
@@ -260,13 +260,13 @@ class Namer {
  public:
   using FType = NodeFunctor<void(const ObjectRef&, String)>;
   static FType& vtable();
-  static void Name(ObjectRef node, String name);
+  static void Name(ObjectRef node, ffi::String name);
 };
 
 }  // namespace details
 
 template <class TObjectRef>
-inline TObjectRef IRBuilder::Name(String name, TObjectRef obj) {
+inline TObjectRef IRBuilder::Name(ffi::String name, TObjectRef obj) {
   details::Namer::Name(obj, name);
   return Downcast<TObjectRef>(obj);
 }

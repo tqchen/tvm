@@ -190,7 +190,7 @@ class CollectFromCompositeFunctionBody : public ExprVisitor {
 
 class NNAPIJSONSerializer : public JSONSerializer {
  public:
-  explicit NNAPIJSONSerializer(Map<Constant, String> constant_names, Map<Var, Expr> bindings)
+  explicit NNAPIJSONSerializer(Map<Constant, ffi::String> constant_names, Map<Var, Expr> bindings)
       : JSONSerializer(constant_names), bindings_(bindings) {}
   using JSONSerializer::VisitExpr_;
 
@@ -200,7 +200,7 @@ class NNAPIJSONSerializer : public JSONSerializer {
     const auto fn = Downcast<Function>(bindings_[ffi::GetRef<Var>(fn_var)]);
     ICHECK(fn.defined()) << "Expects the callee to be a function.";
 
-    auto composite_opt = fn->GetAttr<String>(attr::kComposite);
+    auto composite_opt = fn->GetAttr<ffi::String>(attr::kComposite);
     ICHECK(composite_opt.has_value()) << "Only composite functions are supported.";
 
     std::string composite_name = composite_opt.value();
@@ -247,8 +247,8 @@ void CollectFromCompositeFunctionBody::VisitExpr_(const CallNode* call_node) {
   ExprVisitor::VisitExpr_(call_node);
 }
 
-Array<ffi::Module> NNAPICompiler(Array<Function> functions, Map<String, ffi::Any> /*unused*/,
-                                 Map<Constant, String> constant_names) {
+Array<ffi::Module> NNAPICompiler(Array<Function> functions, Map<ffi::String, ffi::Any> /*unused*/,
+                                 Map<Constant, ffi::String> constant_names) {
   VLOG(1) << "NNAPI Compiler";
 
   Array<ffi::Module> compiled_functions;

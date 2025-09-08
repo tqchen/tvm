@@ -39,10 +39,10 @@ namespace tvm {
  * Abstract label for an area of memory.
  *
  * Currently uninterpreted and arbitrary. Likely to be replaced by a structured representation
- * of a memory pool in the future. Please try to use this alias instead of String to aid future
+ * of a memory pool in the future. Please try to use this alias instead of ffi::String to aid future
  * code migration.
  */
-using MemoryScope = String;
+using MemoryScope = ffi::String;
 
 // NOTE: cannot use enum as they are out of bound of the original enum
 // and results in an undefined behavior

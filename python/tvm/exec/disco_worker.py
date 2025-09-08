@@ -50,7 +50,7 @@ def _str_func(x: str):
 @register_global_func("tests.disco.str_obj", override=True)
 def _str_obj_func(x: str):
     assert isinstance(x, str)
-    return String(x + "_suffix")
+    return ffi::String(x + "_suffix")
 
 
 @register_global_func("tests.disco.shape_tuple", override=True)

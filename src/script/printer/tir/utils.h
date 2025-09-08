@@ -214,7 +214,7 @@ enum class BufferVarDefinition {
  *     the buffer.
  * \return The ExprDoc corresponding to the buffer declaration
  */
-ExprDoc BufferDecl(const tir::Buffer& buffer, const String& method, const Array<ExprDoc>& args,
+ExprDoc BufferDecl(const tir::Buffer& buffer, const ffi::String& method, const Array<ExprDoc>& args,
                    const AccessPath& p, const Frame& frame, const IRDocsifier& d,
                    BufferVarDefinition var_definitions);
 

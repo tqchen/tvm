@@ -49,7 +49,7 @@ Expr matmul(Expr x1, Expr x2, Optional<DataType> out_dtype);
  * \param subscripts The einsum expression string.
  * \return The computed result.
  */
-Expr einsum(Expr operands, String subscripts);
+Expr einsum(Expr operands, ffi::String subscripts);
 
 /*!
  * \brief Compute the outer product of two input expressions.

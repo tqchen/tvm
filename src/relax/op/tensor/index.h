@@ -41,7 +41,7 @@ namespace relax {
  * \param mode The mode for handling out-of-bounds indices.
  * \return The taken result.
  */
-Expr take(Expr x, Expr indices, Optional<int64_t> axis, String mode = "fast");
+Expr take(Expr x, Expr indices, Optional<int64_t> axis, ffi::String mode = "fast");
 
 /*!
  * \brief Strided slice of a tensor.

@@ -35,9 +35,9 @@ namespace transform {
 
 class MetaScheduleTuner {
  public:
-  explicit MetaScheduleTuner(Target target, String work_dir, Integer max_trials_global,
-                             Integer max_trials_per_task, Optional<Array<String>> op_names,
-                             Map<String, runtime::Tensor> params = {})
+  explicit MetaScheduleTuner(Target target, ffi::String work_dir, Integer max_trials_global,
+                             Integer max_trials_per_task, Optional<Array<ffi::String>> op_names,
+                             Map<ffi::String, runtime::Tensor> params = {})
       : target_(target),
         work_dir_(work_dir),
         max_trials_global_(max_trials_global),
@@ -64,15 +64,15 @@ class MetaScheduleTuner {
 
  private:
   Target target_;
-  String work_dir_;
+  ffi::String work_dir_;
   Integer max_trials_global_;
   Integer max_trials_per_task_;
-  Optional<Array<String>> op_names_;
-  Map<String, runtime::Tensor> params_;
+  Optional<Array<ffi::String>> op_names_;
+  Map<ffi::String, runtime::Tensor> params_;
   tvm::ffi::Function normalize_mod_func_;
 };
 
-Pass MetaScheduleApplyDatabase(Optional<String> work_dir, bool enable_warning = false) {
+Pass MetaScheduleApplyDatabase(Optional<ffi::String> work_dir, bool enable_warning = false) {
   using tvm::meta_schedule::Database;
   Target target = Target::Current(false);
   const std::optional<tvm::ffi::Function> normalize_mod_func_ =
@@ -85,8 +85,8 @@ Pass MetaScheduleApplyDatabase(Optional<String> work_dir, bool enable_warning = 
       database = Database::Current().value();
     } else {
       ICHECK(work_dir.has_value());
-      String path_workload = work_dir.value() + "/database_workload.json";
-      String path_tuning_record = work_dir.value() + "/database_tuning_record.json";
+      ffi::String path_workload = work_dir.value() + "/database_workload.json";
+      ffi::String path_tuning_record = work_dir.value() + "/database_tuning_record.json";
       LOG(WARNING) << "Creating JSONDatabase. Workload at: " << path_workload
                    << ", Tuning records at: " << path_tuning_record;
       database = meta_schedule::Database::JSONDatabase(path_workload, path_tuning_record, true);
@@ -146,10 +146,10 @@ Pass MetaScheduleApplyDatabase(Optional<String> work_dir, bool enable_warning = 
   return CreateModulePass(pass_func, 0, "MetaScheduleApplyDatabase", {});
 }
 
-Pass MetaScheduleTuneIRMod(Map<String, runtime::Tensor> params, String work_dir,
+Pass MetaScheduleTuneIRMod(Map<ffi::String, runtime::Tensor> params, ffi::String work_dir,
                            Integer max_trials_global,
                            Optional<Integer> max_trials_per_task = std::nullopt,
-                           Optional<Array<String>> op_names = std::nullopt) {
+                           Optional<Array<ffi::String>> op_names = std::nullopt) {
   Target target = Target::Current(false);
   auto pass_func = [=](IRModule m, PassContext ctx) {
     auto max_trials_task = max_trials_per_task.value_or(max_trials_global);
@@ -162,7 +162,7 @@ Pass MetaScheduleTuneIRMod(Map<String, runtime::Tensor> params, String work_dir,
                           /*traceable*/ true);
 }
 
-Pass MetaScheduleTuneTIR(String work_dir, Integer max_trials_global) {
+Pass MetaScheduleTuneTIR(ffi::String work_dir, Integer max_trials_global) {
   Target target = Target::Current(false);
   ffi::TypedFunction<tir::PrimFunc(tir::PrimFunc, IRModule, PassContext)> pass_func =
       [=](tir::PrimFunc f, IRModule mod, PassContext ctx) {

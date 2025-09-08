@@ -104,7 +104,7 @@ class BlockBuilderNode : public Object {
    * GlobalVar directly.
    * \return The global var bound to the added function.
    */
-  virtual GlobalVar AddFunction(const BaseFunc& func, String func_name_hint) = 0;
+  virtual GlobalVar AddFunction(const BaseFunc& func, ffi::String func_name_hint) = 0;
 
   /*!
    * \brief Update a Relax function or a TIR PrimFunc in the internal context module.
@@ -204,7 +204,7 @@ class BlockBuilderNode : public Object {
    * \note This Emit function normalizes the \p expr, and
    *       performs shape and type deductions by calling Normalize.
    */
-  virtual Var Emit(Expr expr, String name_hint = "") = 0;
+  virtual Var Emit(Expr expr, ffi::String name_hint = "") = 0;
 
   /*!
    * \brief Emit a MatchCast.
@@ -213,7 +213,7 @@ class BlockBuilderNode : public Object {
    * \param name_hint Name hint for the bound variable.
    * \return The variable bound to the MatchCast.
    */
-  virtual Var EmitMatchCast(Expr value, StructInfo struct_info, String name_hint = "") = 0;
+  virtual Var EmitMatchCast(Expr value, StructInfo struct_info, ffi::String name_hint = "") = 0;
 
   /*!
    * \brief Generate an output for the current dataflow block.
@@ -221,7 +221,7 @@ class BlockBuilderNode : public Object {
    * \param name_hint Name hint for the bound variable.
    * \return The variable bound to \p output.
    */
-  virtual Var EmitOutput(Expr output, String name_hint = "") = 0;
+  virtual Var EmitOutput(Expr output, ffi::String name_hint = "") = 0;
 
   /*!
    * \brief Emit a binding that is already normalized.

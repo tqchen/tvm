@@ -63,7 +63,7 @@ TVM_FFI_STATIC_INIT_BLOCK({
         REPR_LAMBDA(p, node);                                             \
       })
 
-ExternFuncPattern::ExternFuncPattern(String global_symbol) {
+ExternFuncPattern::ExternFuncPattern(ffi::String global_symbol) {
   ObjectPtr<ExternFuncPatternNode> n = ffi::make_object<ExternFuncPatternNode>();
   n->global_symbol_ = std::move(global_symbol);
   data_ = std::move(n);
@@ -71,13 +71,13 @@ ExternFuncPattern::ExternFuncPattern(String global_symbol) {
 TVM_FFI_STATIC_INIT_BLOCK({
   namespace refl = tvm::ffi::reflection;
   refl::GlobalDef().def("relax.dpl.ExternFuncPattern",
-                        [](String global_symbol) { return ExternFuncPattern(global_symbol); });
+                        [](ffi::String global_symbol) { return ExternFuncPattern(global_symbol); });
 });
 RELAX_PATTERN_PRINTER_DEF(ExternFuncPatternNode, [](auto p, auto node) {
   p->stream << "ExternFuncPattern(" << node->global_symbol() << ")";
 });
 
-VarPattern::VarPattern(String name_hint) {
+VarPattern::VarPattern(ffi::String name_hint) {
   ObjectPtr<VarPatternNode> n = ffi::make_object<VarPatternNode>();
   n->name = std::move(name_hint);
   data_ = std::move(n);
@@ -85,7 +85,7 @@ VarPattern::VarPattern(String name_hint) {
 TVM_FFI_STATIC_INIT_BLOCK({
   namespace refl = tvm::ffi::reflection;
   refl::GlobalDef().def("relax.dpl.VarPattern",
-                        [](String name_hint) { return VarPattern(name_hint); });
+                        [](ffi::String name_hint) { return VarPattern(name_hint); });
 });
 RELAX_PATTERN_PRINTER_DEF(VarPatternNode, [](auto p, auto node) {
   p->stream << "VarPattern(" << node->name_hint() << ")";
@@ -94,9 +94,9 @@ RELAX_PATTERN_PRINTER_DEF(VarPatternNode, [](auto p, auto node) {
 TVM_FFI_STATIC_INIT_BLOCK({
   namespace refl = tvm::ffi::reflection;
   refl::GlobalDef().def("relax.dpl.DataflowVarPattern",
-                        [](String name_hint) { return DataflowVarPattern(name_hint); });
+                        [](ffi::String name_hint) { return DataflowVarPattern(name_hint); });
 });
-DataflowVarPattern::DataflowVarPattern(String name_hint) {
+DataflowVarPattern::DataflowVarPattern(ffi::String name_hint) {
   ObjectPtr<DataflowVarPatternNode> n = ffi::make_object<DataflowVarPatternNode>();
   n->name = std::move(name_hint);
   data_ = std::move(n);
@@ -105,7 +105,7 @@ RELAX_PATTERN_PRINTER_DEF(DataflowVarPatternNode, [](auto p, auto node) {
   p->stream << "DataflowVarPattern(" << node->name_hint() << ")";
 });
 
-GlobalVarPattern::GlobalVarPattern(String name_hint) {
+GlobalVarPattern::GlobalVarPattern(ffi::String name_hint) {
   ObjectPtr<GlobalVarPatternNode> n = ffi::make_object<GlobalVarPatternNode>();
   n->name = std::move(name_hint);
   data_ = std::move(n);
@@ -113,7 +113,7 @@ GlobalVarPattern::GlobalVarPattern(String name_hint) {
 TVM_FFI_STATIC_INIT_BLOCK({
   namespace refl = tvm::ffi::reflection;
   refl::GlobalDef().def("relax.dpl.GlobalVarPattern",
-                        [](String name_hint) { return GlobalVarPattern(name_hint); });
+                        [](ffi::String name_hint) { return GlobalVarPattern(name_hint); });
 });
 RELAX_PATTERN_PRINTER_DEF(GlobalVarPatternNode, [](auto p, auto node) {
   p->stream << "GlobalVarPattern(" << node->name_hint() << ")";
@@ -451,7 +451,7 @@ AndPattern DFPattern::operator&(const DFPattern& other) const { return AndPatter
 
 NotPattern DFPattern::operator~() const { return NotPattern(*this); }
 
-AttrPattern DFPattern::HasAttr(const Map<String, Any>& attrs) const {
+AttrPattern DFPattern::HasAttr(const Map<ffi::String, Any>& attrs) const {
   return AttrPattern(*this, DictAttrs(attrs));
 }
 StructInfoPattern DFPattern::HasStructInfo(const StructInfo& struct_info) const {
@@ -627,12 +627,12 @@ PatternSeq OnlyUsedBy(const PatternSeq& lhs, const PatternSeq& rhs, int index) {
 }
 PatternSeq operator>>(const PatternSeq& lhs, const PatternSeq& rhs) { return lhs.OnlyUsedBy(rhs); }
 
-VarPattern IsVar(const String& name) { return VarPattern(name); }
+VarPattern IsVar(const ffi::String& name) { return VarPattern(name); }
 ConstantPattern IsConst() { return ConstantPattern(ffi::make_object<ConstantPatternNode>()); }
 WildcardPattern Wildcard() { return WildcardPattern(ffi::make_object<WildcardPatternNode>()); }
 ExprPattern IsExpr(const Expr& expr) { return ExprPattern(expr); }
-ExprPattern IsOp(const String& op_name) { return IsExpr(Op::Get(op_name)); }
-CallPattern IsCallTIR(const String& name, Optional<TuplePattern> var_args,
+ExprPattern IsOp(const ffi::String& op_name) { return IsExpr(Op::Get(op_name)); }
+CallPattern IsCallTIR(const ffi::String& name, Optional<TuplePattern> var_args,
                       Optional<DFPattern> tir_vars) {
   DFPattern arg_pattern;
   if (!var_args.defined()) {
@@ -647,10 +647,10 @@ CallPattern IsCallTIR(const String& name, Optional<TuplePattern> var_args,
   return IsOp("relax.call_tir")(GlobalVarPattern(name), arg_pattern);
 }
 
-CallPattern IsCallTIR(const String& name, TuplePattern var_args) {
+CallPattern IsCallTIR(const ffi::String& name, TuplePattern var_args) {
   return IsOp("relax.call_tir")(GlobalVarPattern(name), var_args);
 }
-CallPattern IsCallDPSPacked(const String& name, Optional<TuplePattern> var_args) {
+CallPattern IsCallDPSPacked(const ffi::String& name, Optional<TuplePattern> var_args) {
   DFPattern arg_pattern;
   if (!var_args.defined()) {
     arg_pattern = Wildcard();
@@ -661,7 +661,7 @@ CallPattern IsCallDPSPacked(const String& name, Optional<TuplePattern> var_args)
   return IsOp("relax.call_dps_packed")(GlobalVarPattern(name), arg_pattern);
 }
 
-CallPattern IsCallDPSPacked(const String& name, TuplePattern var_args) {
+CallPattern IsCallDPSPacked(const ffi::String& name, TuplePattern var_args) {
   return IsOp("relax.call_dps_packed")(GlobalVarPattern(name), var_args);
 }
 

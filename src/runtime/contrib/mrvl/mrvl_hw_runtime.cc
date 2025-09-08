@@ -212,7 +212,7 @@ class MarvellHardwareModuleNode : public ffi::ModuleObj {
    * \param sptr_to_self The pointer to the module node.
    * \return The packed function.
    */
-  virtual Optional<ffi::Function> GetFunction(const String& name) {
+  virtual Optional<ffi::Function> GetFunction(const ffi::String& name) {
     ObjectPtr<Object> sptr_to_self = ffi::GetObjectPtr<Object>(this);
     if (name == "get_symbol") {
       return ffi::Function(
@@ -227,7 +227,7 @@ class MarvellHardwareModuleNode : public ffi::ModuleObj {
       });
     } else if (name == "get_const_vars") {
       return ffi::Function(
-          [sptr_to_self, this](ffi::PackedArgs args, ffi::Any* rv) { *rv = Array<String>{}; });
+          [sptr_to_self, this](ffi::PackedArgs args, ffi::Any* rv) { *rv = Array<ffi::String>{}; });
     } else if (this->symbol_name_ == name) {
       return ffi::Function([sptr_to_self, this](ffi::PackedArgs args, ffi::Any* rv) {
         RunInference(args);
@@ -285,7 +285,7 @@ class MarvellHardwareModuleNode : public ffi::ModuleObj {
    * \param format the format to return.
    * \return A string of JSON.
    */
-  String InspectSource(const String& format) const override { return nodes_json_; }
+  ffi::String InspectSource(const ffi::String& format) const override { return nodes_json_; }
 
  protected:
   std::string symbol_name_;
@@ -469,8 +469,8 @@ class MarvellHardwareModuleNode : public ffi::ModuleObj {
   }
 };
 
-ffi::Module MarvellHardwareModuleRuntimeCreate(const String& symbol_name, const String& nodes_json,
-                                               const String& bin_code, int num_input,
+ffi::Module MarvellHardwareModuleRuntimeCreate(const ffi::String& symbol_name, const ffi::String& nodes_json,
+                                               const ffi::String& bin_code, int num_input,
                                                int num_output, int batch_size) {
   auto n = ffi::make_object<MarvellHardwareModuleNode>(symbol_name, nodes_json, bin_code, num_input,
                                                   num_output, batch_size);

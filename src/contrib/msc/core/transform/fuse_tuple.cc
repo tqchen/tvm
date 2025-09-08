@@ -41,7 +41,7 @@ using namespace tvm::contrib::msc;
  */
 class TupleFuser : public ExprMutator {
  public:
-  explicit TupleFuser(IRModule ctx_module, const String& target, const String& entry_name)
+  explicit TupleFuser(IRModule ctx_module, const ffi::String& target, const ffi::String& entry_name)
       : ExprMutator(ctx_module) {
     mod_ = ctx_module;
     target_ = target + ".";
@@ -54,7 +54,7 @@ class TupleFuser : public ExprMutator {
       if (gv->name_hint == entry_name_) {
         main_var = gv;
       } else {
-        const auto& name_opt = func->GetAttr<String>(attr::kComposite);
+        const auto& name_opt = func->GetAttr<ffi::String>(attr::kComposite);
         if (name_opt.has_value() && StringUtils::StartsWith(name_opt.value(), target_)) {
           target_funcs_.Set(gv, Downcast<Function>(func));
         }
@@ -74,8 +74,8 @@ class TupleFuser : public ExprMutator {
       for (size_t i = 0; i < val->args.size(); i++) {
         const auto& arg = val->args[i];
         if (arg->IsInstance<TupleNode>()) {
-          String tuple_name;
-          const auto& name_opt = target_funcs_[val->op]->GetAttr<String>(msc_attr::kUnique);
+          ffi::String tuple_name;
+          const auto& name_opt = target_funcs_[val->op]->GetAttr<ffi::String>(msc_attr::kUnique);
           if (name_opt.has_value()) {
             if (val->args.size() == 1) {
               tuple_name = name_opt.value() + "_input";
@@ -129,7 +129,7 @@ class TupleFuser : public ExprMutator {
   }
 
  private:
-  Call AddFunc(const Expr& expr, const String tuple_name = "") {
+  Call AddFunc(const Expr& expr, const ffi::String tuple_name = "") {
     builder_->BeginDataflowBlock();
     Array<Expr> inputs;
     if (const auto* v_node = expr.as<TupleNode>()) {
@@ -149,7 +149,7 @@ class TupleFuser : public ExprMutator {
         continue;
       }
       if (!added_params.count(inputs[i])) {
-        const auto& name = String("param_" + std::to_string(i));
+        const auto& name = ffi::String("param_" + std::to_string(i));
         const auto& var = Var(std::move(name), GetStructInfo(inputs[i]));
         added_params.Set(inputs[i], var);
       }
@@ -159,7 +159,7 @@ class TupleFuser : public ExprMutator {
     }
 
     Expr out_expr;
-    String func_name;
+    ffi::String func_name;
     Span expr_span = expr->span;
     if (!expr_span.defined()) {
       ICHECK(tuple_name.size() > 0) << "Missing tuple for " << expr;
@@ -180,7 +180,7 @@ class TupleFuser : public ExprMutator {
     Expr body = builder_->Normalize(output);
     body = builder_->Normalize(SeqExpr({new_block}, body));
 
-    Map<String, ffi::Any> func_attrs;
+    Map<ffi::String, ffi::Any> func_attrs;
     func_attrs.Set(attr::kPrimitive, true);
     func_attrs.Set(attr::kComposite, target_ + func_name);
     func_attrs.Set(msc_attr::kUnique, SpanUtils::GetAttr(expr_span, msc_attr::kName));
@@ -214,18 +214,18 @@ class TupleFuser : public ExprMutator {
   }
 
   IRModule mod_;
-  String target_;
-  String entry_name_;
+  ffi::String target_;
+  ffi::String entry_name_;
   Map<Expr, Function> target_funcs_;
 };
 
-IRModule FuseTuple(IRModule mod, const String& target, const String& entry_name) {
+IRModule FuseTuple(IRModule mod, const ffi::String& target, const ffi::String& entry_name) {
   return TupleFuser(mod, target, entry_name).Fuse();
 }
 
 namespace transform {
 
-Pass FuseTuple(const String& target, const String& entry_name) {
+Pass FuseTuple(const ffi::String& target, const ffi::String& entry_name) {
   auto pass_func = [=](IRModule m, PassContext pc) {
     return relax::FuseTuple(m, target, entry_name);
   };

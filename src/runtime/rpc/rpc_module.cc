@@ -190,7 +190,7 @@ class RPCModuleNode final : public ffi::ModuleObj {
   /*! \brief Get the property of the runtime module .*/
   int GetPropertyMask() const final { return ffi::Module::ModulePropertyMask::kRunnable; }
 
-  Optional<ffi::Function> GetFunction(const String& name) final {
+  Optional<ffi::Function> GetFunction(const ffi::String& name) final {
     if (name == "CloseRPCConnection") {
       return ffi::Function([this](ffi::PackedArgs, ffi::Any*) { sess_->Shutdown(); });
     }

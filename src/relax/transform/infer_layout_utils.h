@@ -159,7 +159,7 @@ using VarLayoutMap = Map<Var, NLayout>;
  * \param var_layout_map The layout of the variables.
  */
 using FRelaxInferLayout = ffi::TypedFunction<InferLayoutOutput(
-    const Call& call, const Map<String, Array<String>>& desired_layouts,
+    const Call& call, const Map<ffi::String, Array<ffi::String>>& desired_layouts,
     const VarLayoutMap& var_layout_map)>;
 
 /*!
@@ -225,7 +225,7 @@ Layout TransposeLike(const Layout& input, const Layout& src, const Layout& dst);
  * \param dst The destination layout.
  * \return The transposed input str.
  */
-String TransposeStrLike(const String& input, const Layout& src, const Layout& dst);
+ffi::String TransposeStrLike(const ffi::String& input, const Layout& src, const Layout& dst);
 
 /*!
  * \brief Find axis in the dst layout. 0 represents the first axis, 1 represents the second axis,
@@ -258,7 +258,7 @@ NLayout GetNLayout(const VarLayoutMap& var_layout_map, const Expr& arg);
  * \param desired_layouts The desired layouts of the operator.
  * \return True if the op is not in the desired layout.
  */
-bool NoDesiredLayout(const Call& call, const Map<String, Array<String>>& desired_layouts);
+bool NoDesiredLayout(const Call& call, const Map<ffi::String, Array<ffi::String>>& desired_layouts);
 
 /*!
  * \brief Let a tensor with ndim to follow the src layout decision.

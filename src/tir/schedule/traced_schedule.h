@@ -53,7 +53,7 @@ class TracedScheduleNode : public ConcreteScheduleNode {
   LoopRV SampleComputeLocation(const BlockRV& block_rv,
                                Optional<Integer> decision = std::nullopt) final;
   /******** Schedule: Get blocks & loops ********/
-  BlockRV GetBlock(const String& name, const Optional<String>& func_name) final;
+  BlockRV GetBlock(const ffi::String& name, const Optional<ffi::String>& func_name) final;
   Array<LoopRV> GetLoops(const BlockRV& block_rv) final;
   Array<BlockRV> GetChildBlocks(const BlockRV& block_rv) final;
   Array<BlockRV> GetChildBlocks(const LoopRV& loop_rv) final;
@@ -74,28 +74,28 @@ class TracedScheduleNode : public ConcreteScheduleNode {
   /******** Schedule: Manipulate ForKind ********/
   void Parallel(const LoopRV& loop_rv) final;
   void Vectorize(const LoopRV& loop_rv) final;
-  void Bind(const LoopRV& loop_rv, const String& thread_axis) final;
+  void Bind(const LoopRV& loop_rv, const ffi::String& thread_axis) final;
   void Unroll(const LoopRV& loop_rv) final;
   /******** Schedule: Insert cache stages ********/
-  BlockRV CacheRead(const BlockRV& block_rv, int read_buffer_index, const String& storage_scope,
+  BlockRV CacheRead(const BlockRV& block_rv, int read_buffer_index, const ffi::String& storage_scope,
                     const Array<BlockRV> consumer_blocks = {}) final;
-  BlockRV CacheWrite(const BlockRV& block_rv, int write_buffer_index, const String& storage_scope,
+  BlockRV CacheWrite(const BlockRV& block_rv, int write_buffer_index, const ffi::String& storage_scope,
                      const Array<BlockRV> consumer_blocks = {}) final;
   BlockRV ReindexCacheRead(const BlockRV& block_rv, int read_buffer_index,
-                           const String& storage_scope, const IndexMap& index_map) final;
+                           const ffi::String& storage_scope, const IndexMap& index_map) final;
   BlockRV ReindexCacheWrite(const BlockRV& block_rv, int write_buffer_index,
-                            const String& storage_scope, const IndexMap& index_map) final;
+                            const ffi::String& storage_scope, const IndexMap& index_map) final;
   Array<BlockRV> CacheInplace(const BlockRV& block_rv, int read_buffer_index,
-                              const String& storage_scope) final;
+                              const ffi::String& storage_scope) final;
   BlockRV ReIndex(const BlockRV& block_rv, int buffer_index,
                   BufferIndexType buffer_index_type) final;
-  Array<BlockRV> CacheIndex(const BlockRV& block_rv, const String& storage_scope,
+  Array<BlockRV> CacheIndex(const BlockRV& block_rv, const ffi::String& storage_scope,
                             int cse_thresh) final;
   /******** Schedule: Data movement ********/
   BlockRV ReadAt(const LoopRV& loop_rv, const BlockRV& block_rv, int read_buffer_index,
-                 const String& storage_scope) final;
+                 const ffi::String& storage_scope) final;
   BlockRV WriteAt(const LoopRV& loop_rv, const BlockRV& block_rv, int write_buffer_index,
-                  const String& storage_scope) final;
+                  const ffi::String& storage_scope) final;
   /******** Schedule: Compute location ********/
   void ComputeAt(const BlockRV& block_rv, const LoopRV& loop_rv, bool preserve_unit_loops,
                  int index = -1) final;
@@ -109,18 +109,18 @@ class TracedScheduleNode : public ConcreteScheduleNode {
   /******** Schedule: Block annotation ********/
   void StorageAlign(const BlockRV& block_rv, int buffer_index, int axis, int factor,
                     int offset) final;
-  void SetScope(const BlockRV& block_rv, int buffer_index, const String& storage_scope) final;
-  void UnsafeSetDType(const BlockRV& block_rv, int buffer_index, const String& dtype) final;
+  void SetScope(const BlockRV& block_rv, int buffer_index, const ffi::String& storage_scope) final;
+  void UnsafeSetDType(const BlockRV& block_rv, int buffer_index, const ffi::String& dtype) final;
   /******** Schedule: Blockize & Tensorize ********/
   BlockRV Blockize(const LoopRV& loop_rv, bool preserve_unit_iters) final;
   BlockRV Blockize(const Array<BlockRV>& blocks, bool preserve_unit_iters) final;
-  void Tensorize(const BlockRV& block_rv, const String& intrin, bool preserve_unit_iters) final;
-  void Tensorize(const LoopRV& loop_rv, const String& intrin, bool preserve_unit_iters) final;
+  void Tensorize(const BlockRV& block_rv, const ffi::String& intrin, bool preserve_unit_iters) final;
+  void Tensorize(const LoopRV& loop_rv, const ffi::String& intrin, bool preserve_unit_iters) final;
   /******** Schedule: Annotation ********/
-  void Annotate(const LoopRV& loop_rv, const String& ann_key, const Any& ann_val) override;
-  void Unannotate(const LoopRV& loop_rv, const String& ann_key) override;
-  void Annotate(const BlockRV& block_rv, const String& ann_key, const Any& ann_val) override;
-  void Unannotate(const BlockRV& block_rv, const String& ann_key) override;
+  void Annotate(const LoopRV& loop_rv, const ffi::String& ann_key, const Any& ann_val) override;
+  void Unannotate(const LoopRV& loop_rv, const ffi::String& ann_key) override;
+  void Annotate(const BlockRV& block_rv, const ffi::String& ann_key, const Any& ann_val) override;
+  void Unannotate(const BlockRV& block_rv, const ffi::String& ann_key) override;
   /******** Schedule: Layout transformation ********/
   void TransformLayout(const BlockRV& block_rv, int buffer_index, BufferIndexType buffer_index_type,
                        const IndexMap& index_map, const Optional<IndexMap>& pad_value,
@@ -136,7 +136,7 @@ class TracedScheduleNode : public ConcreteScheduleNode {
   void RollingBuffer(const BlockRV& block_rv, int write_buffer_index) final;
   /******** Schedule: Misc ********/
   void EnterPostproc() final;
-  void UnsafeHideBufferAccess(const BlockRV& block_rv, const String& buf_type,
+  void UnsafeHideBufferAccess(const BlockRV& block_rv, const ffi::String& buf_type,
                               const Array<IntImm>& buf_index_array) final;
   void AnnotateBufferAccess(const BlockRV& block_rv, int buffer_index,
                             BufferIndexType buffer_index_type, const IndexMap& index_map) final;

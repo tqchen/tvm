@@ -28,7 +28,7 @@ ExprDoc PrintVarCreation(const tir::Var& var, const AccessPath& var_p, const IRD
   Type type = var->type_annotation;
   AccessPath type_p = var_p->Attr("type_annotation");
   ExprDoc rhs{nullptr};
-  Array<String> kwargs_keys;
+  Array<ffi::String> kwargs_keys;
   Array<ExprDoc> kwargs_values;
 
   if (var->IsInstance<tir::SizeVarNode>()) {
@@ -246,7 +246,7 @@ TVM_STATIC_IR_FUNCTOR(IRDocsifier, vtable)
       ExprDoc prefix{nullptr};
       if (auto optional_op = call->op.as<Op>()) {
         auto op = optional_op.value();
-        String name = op_names.get(op, op->name);
+        ffi::String name = op_names.get(op, op->name);
         if (op_names.count(op) == 0) {
           LOG(WARNING) << "No TScriptPrinterName attribute for " << op->name;
         }
@@ -269,7 +269,7 @@ TVM_STATIC_IR_FUNCTOR(IRDocsifier, vtable)
 
           for (int i = 0; i < n_args; ++i) {
             if ((i == 0) && (f_llvm_lookup_intrinsic_name)) {
-              String name = (*f_llvm_lookup_intrinsic_name)(id).cast<String>();
+              ffi::String name = (*f_llvm_lookup_intrinsic_name)(id).cast<ffi::String>();
               args.push_back(LiteralDoc::Str(name.c_str(), call_p->Attr("args")->ArrayItem(i)));
             } else {
               args.push_back(d->AsDoc<ExprDoc>(call->args[i], call_p->Attr("args")->ArrayItem(i)));

@@ -78,7 +78,7 @@ using tir::Layout;
  */
 class LayoutConvertMutator : public ExprMutator {
  public:
-  explicit LayoutConvertMutator(const Map<String, Array<String>>& desired_layouts)
+  explicit LayoutConvertMutator(const Map<ffi::String, Array<ffi::String>>& desired_layouts)
       : desired_layouts_(desired_layouts) {}
 
  private:
@@ -198,7 +198,7 @@ class LayoutConvertMutator : public ExprMutator {
   }
 
   Optional<InferLayoutOutput> GetInferLayoutInfo(const CallNode* call_node,
-                                                 const Map<String, Array<String>>& desired_layouts,
+                                                 const Map<ffi::String, Array<ffi::String>>& desired_layouts,
                                                  const VarLayoutMap& var_layout_map) {
     const OpNode* op_node = call_node->op.as<OpNode>();
     if (op_node == nullptr) return std::nullopt;
@@ -332,18 +332,18 @@ class LayoutConvertMutator : public ExprMutator {
   }
 
   std::unordered_map<Var, NLayout> var_layout_map_;
-  Map<String, Array<String>> desired_layouts_;
+  Map<ffi::String, Array<ffi::String>> desired_layouts_;
 };  // namespace relax
 
 DataflowBlock ConvertLayoutPass(const DataflowBlock& df_block,
-                                Map<String, Array<String>> desired_layouts) {
+                                Map<ffi::String, Array<ffi::String>> desired_layouts) {
   LayoutConvertMutator mutator(desired_layouts);
   return Downcast<DataflowBlock>(mutator.VisitBindingBlock(df_block));
 }
 
 namespace transform {
 
-Pass ConvertLayout(Map<String, Array<String>> desired_layouts) {
+Pass ConvertLayout(Map<ffi::String, Array<ffi::String>> desired_layouts) {
   ffi::TypedFunction<DataflowBlock(DataflowBlock, IRModule, PassContext)> pass_func =
       [=](DataflowBlock df_block, IRModule m, PassContext pc) {
         return Downcast<DataflowBlock>(ConvertLayoutPass(df_block, desired_layouts));

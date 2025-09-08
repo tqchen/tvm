@@ -173,8 +173,8 @@ class ProcessSessionObj final : public BcastSessionObj {
   TVM_DECLARE_FINAL_OBJECT_INFO(ProcessSessionObj, SessionObj);
 };
 
-Session Session::ProcessSession(int num_workers, int num_group, String process_pool_creator,
-                                String entrypoint) {
+Session Session::ProcessSession(int num_workers, int num_group, ffi::String process_pool_creator,
+                                ffi::String entrypoint) {
   CHECK_EQ(num_workers % num_group, 0)
       << "The number of workers should be divisible by the number of worker group.";
   const auto pf = tvm::ffi::Function::GetGlobal(process_pool_creator);

@@ -326,7 +326,7 @@ StructInfo InferStructInfoConcat(const Call& call, const BlockBuilder& ctx) {
 }
 
 InferLayoutOutput InferLayoutConcat(const Call& call,
-                                    const Map<String, Array<String>>& desired_layouts,
+                                    const Map<ffi::String, Array<ffi::String>>& desired_layouts,
                                     const VarLayoutMap& var_layout_map) {
   ICHECK(NoDesiredLayout(call, desired_layouts));
 
@@ -412,7 +412,7 @@ StructInfo InferStructInfoExpandDims(const Call& call, const BlockBuilder& ctx) 
 }
 
 InferLayoutOutput InferLayoutExpandDims(const Call& call,
-                                        const Map<String, Array<String>>& desired_layouts,
+                                        const Map<ffi::String, Array<ffi::String>>& desired_layouts,
                                         const VarLayoutMap& var_layout_map) {
   ICHECK(NoDesiredLayout(call, desired_layouts));
   const auto* attrs = call->attrs.as<ExpandDimsAttrs>();
@@ -799,7 +799,7 @@ StructInfo InferStructInfoPermuteDims(const Call& call, const BlockBuilder& ctx)
 }
 
 InferLayoutOutput InferLayoutPermuteDims(const Call& call,
-                                         const Map<String, Array<String>>& desired_layouts,
+                                         const Map<ffi::String, Array<ffi::String>>& desired_layouts,
                                          const VarLayoutMap& var_layout_map) {
   ICHECK(NoDesiredLayout(call, desired_layouts));
 
@@ -830,7 +830,7 @@ InferLayoutOutput InferLayoutPermuteDims(const Call& call,
   for (const auto& axis : order) {
     order_str.push_back(axis->value + 'A');
   }
-  String new_axes =
+  ffi::String new_axes =
       TransposeStrLike(InitialLayout(ndim).name(), existing_layout->layout, order_str);
   Array<Integer> new_order;
   for (size_t i = 0; i < new_axes.size(); ++i) {
@@ -1132,7 +1132,7 @@ StructInfo InferStructInfoSplit(const Call& call, const BlockBuilder& ctx) {
 }
 
 InferLayoutOutput InferLayoutSplit(const Call& call,
-                                   const Map<String, Array<String>>& desired_layouts,
+                                   const Map<ffi::String, Array<ffi::String>>& desired_layouts,
                                    const VarLayoutMap& var_layout_map) {
   ICHECK(NoDesiredLayout(call, desired_layouts));
 
@@ -1281,7 +1281,7 @@ StructInfo InferStructInfoSqueeze(const Call& call, const BlockBuilder& ctx) {
 }
 
 InferLayoutOutput InferLayoutSqueeze(const Call& call,
-                                     const Map<String, Array<String>>& desired_layouts,
+                                     const Map<ffi::String, Array<ffi::String>>& desired_layouts,
                                      const VarLayoutMap& var_layout_map) {
   ICHECK(NoDesiredLayout(call, desired_layouts));
 
@@ -1322,7 +1322,7 @@ InferLayoutOutput InferLayoutSqueeze(const Call& call,
   if (existing_layout->layout.ndim() != existing_layout->layout.ndim_primal()) {
     existing_layout = LayoutDecision(InitialLayout(ndim));
   }
-  String new_axis_str = TransposeStrLike(axis_str, InitialLayout(ndim), existing_layout->layout);
+  ffi::String new_axis_str = TransposeStrLike(axis_str, InitialLayout(ndim), existing_layout->layout);
   Array<Integer> new_axis;
   for (size_t i = 0; i < new_axis_str.size(); ++i) {
     if (new_axis_str.at(i) == '1') {
@@ -1559,7 +1559,7 @@ StructInfo InferStructInfoStack(const Call& call, const BlockBuilder& ctx) {
 }
 
 InferLayoutOutput InferLayoutStack(const Call& call,
-                                   const Map<String, Array<String>>& desired_layouts,
+                                   const Map<ffi::String, Array<ffi::String>>& desired_layouts,
                                    const VarLayoutMap& var_layout_map) {
   ICHECK(NoDesiredLayout(call, desired_layouts));
 
@@ -2056,7 +2056,7 @@ StructInfo InferStructInfoIndexPut(const Call& call, const BlockBuilder& ctx) {
   const auto* data_sinfo = GetStructInfoAs<TensorStructInfoNode>(call->args[0]);
   const auto* values_sinfo = GetStructInfoAs<TensorStructInfoNode>(call->args[2]);
 
-  auto diag_def = [&](const TensorStructInfoNode* sinfo, String name, String type_key) {
+  auto diag_def = [&](const TensorStructInfoNode* sinfo, ffi::String name, ffi::String type_key) {
     if (sinfo == nullptr) {
       ctx->ReportFatal(Diagnostic::Error(call)
                        << "IndexPut requires the input " << name
@@ -2123,7 +2123,7 @@ StructInfo InferStructInfoIndexPut(const Call& call, const BlockBuilder& ctx) {
 
   // Check data and values dtype compatibility
   if (data_sinfo->IsUnknownDtype() || values_sinfo->IsUnknownDtype()) {
-    auto diag_dtype = [&](const TensorStructInfoNode* sinfo, String name) {
+    auto diag_dtype = [&](const TensorStructInfoNode* sinfo, ffi::String name) {
       if (sinfo->IsUnknownDtype()) {
         LOG(WARNING) << "Data type of " << name
                      << " has not been specified. Assume it has an integer type.";
@@ -2165,7 +2165,7 @@ TVM_REGISTER_OP("relax.index_put")
 
 /* relax.meshgrid */
 
-Expr meshgrid(Expr tensors, Optional<String> indexing) {
+Expr meshgrid(Expr tensors, Optional<ffi::String> indexing) {
   ObjectPtr<MeshgridAttrs> attrs = ffi::make_object<MeshgridAttrs>();
   attrs->indexing = indexing;
   static const Op& op = Op::Get("relax.meshgrid");
@@ -2270,7 +2270,7 @@ TVM_REGISTER_OP("relax.meshgrid")
 
 /* relax.scatter_elements */
 
-Expr scatter_elements(Expr data, Expr indices, Expr updates, int axis, String reduction) {
+Expr scatter_elements(Expr data, Expr indices, Expr updates, int axis, ffi::String reduction) {
   auto attrs = ffi::make_object<ScatterElementsAttrs>();
   attrs->axis = std::move(axis);
   attrs->reduction = std::move(reduction);
@@ -2289,7 +2289,7 @@ StructInfo InferStructInfoScatterElements(const Call& call, const BlockBuilder& 
   const auto* indices_sinfo = GetStructInfoAs<TensorStructInfoNode>(call->args[1]);
   const auto* updates_sinfo = GetStructInfoAs<TensorStructInfoNode>(call->args[2]);
 
-  auto diag_def = [&](const TensorStructInfoNode* sinfo, String name, String type_key) {
+  auto diag_def = [&](const TensorStructInfoNode* sinfo, ffi::String name, ffi::String type_key) {
     if (sinfo == nullptr) {
       ctx->ReportFatal(Diagnostic::Error(call)
                        << "ScatterElements requires the input " << name
@@ -2325,7 +2325,7 @@ StructInfo InferStructInfoScatterElements(const Call& call, const BlockBuilder& 
   }
 
   if (data_sinfo->IsUnknownDtype() || updates_sinfo->IsUnknownDtype()) {
-    auto diag_dtype = [&](const TensorStructInfoNode* sinfo, String name) {
+    auto diag_dtype = [&](const TensorStructInfoNode* sinfo, ffi::String name) {
       if (sinfo->IsUnknownDtype()) {
         // TODO(tvm-team): Do we have an equivalent of `ctx->ReportFatal` for warning?
         LOG(WARNING) << "Data type of " << name
@@ -2387,7 +2387,7 @@ TVM_REGISTER_OP("relax.scatter_elements")
 
 /* relax.scatter_nd */
 
-Expr scatter_nd(Expr data, Expr indices, Expr updates, String reduction) {
+Expr scatter_nd(Expr data, Expr indices, Expr updates, ffi::String reduction) {
   auto attrs = ffi::make_object<ScatterNDAttrs>();
   attrs->reduction = std::move(reduction);
   static const Op& op = Op::Get("relax.scatter_nd");
@@ -2542,7 +2542,7 @@ StructInfo InferStructInfoSliceScatter(const Call& call, const BlockBuilder& ctx
   auto* attrs = call->attrs.as<SliceScatterAttrs>();
 
   auto diag_tensor_check = [&](const TensorStructInfoNode* sinfo, const Expr& arg_expr,
-                               String name) {
+                               ffi::String name) {
     if (sinfo == nullptr) {
       ctx->ReportFatal(Diagnostic::Error(call) << "SliceScatter requires the input " << name
                                                << " to be a Tensor. However, the given one is "
@@ -2576,7 +2576,7 @@ StructInfo InferStructInfoSliceScatter(const Call& call, const BlockBuilder& ctx
   }
 
   if (data_sinfo->IsUnknownDtype() || src_sinfo->IsUnknownDtype()) {
-    auto diag_dtype_warn = [&](const TensorStructInfoNode* sinfo, String name) {
+    auto diag_dtype_warn = [&](const TensorStructInfoNode* sinfo, ffi::String name) {
       if (sinfo->IsUnknownDtype()) {
         LOG(WARNING) << "SliceScatter: Data type of " << name
                      << " has not been specified for call node " << call

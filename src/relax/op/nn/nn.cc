@@ -134,7 +134,7 @@ StructInfo InferStructInfoPRelu(const Call& call, const BlockBuilder& ctx) {
 }
 
 InferLayoutOutput InferLayoutPRelu(const Call& call,
-                                   const Map<String, Array<String>>& desired_layouts,
+                                   const Map<ffi::String, Array<ffi::String>>& desired_layouts,
                                    const VarLayoutMap& var_layout_map) {
   ICHECK(NoDesiredLayout(call, desired_layouts));
   const auto* attrs = call->attrs.as<PReluAttrs>();
@@ -199,7 +199,7 @@ StructInfo InferStructInfoSoftmax(const Call& call, const BlockBuilder& ctx) {
 }
 
 InferLayoutOutput InferLayoutSoftmax(const Call& call,
-                                     const Map<String, Array<String>>& desired_layouts,
+                                     const Map<ffi::String, Array<ffi::String>>& desired_layouts,
                                      const VarLayoutMap& var_layout_map) {
   ICHECK(NoDesiredLayout(call, desired_layouts));
   const auto* attrs = call->attrs.as<SoftmaxAttrs>();
@@ -251,7 +251,7 @@ TVM_REGISTER_OP("relax.nn.log_softmax")
 
 /* relax.nn.pad */
 
-Expr pad(Expr data, Array<Integer> pad_width, String pad_mode, double pad_value) {
+Expr pad(Expr data, Array<Integer> pad_width, ffi::String pad_mode, double pad_value) {
   auto attrs = ffi::make_object<PadAttrs>();
   attrs->pad_width = std::move(pad_width);
   attrs->pad_mode = std::move(pad_mode);
@@ -479,7 +479,7 @@ StructInfo InferStructInfoBatchNorm(const Call& call, const BlockBuilder& ctx) {
 }
 
 InferLayoutOutput InferLayoutBatchNorm(const Call& call,
-                                       const Map<String, Array<String>>& desired_layouts,
+                                       const Map<ffi::String, Array<ffi::String>>& desired_layouts,
                                        const VarLayoutMap& var_layout_map) {
   ICHECK(NoDesiredLayout(call, desired_layouts));
   std::vector<NLayout> initial_layouts;
@@ -552,7 +552,7 @@ StructInfo InferStructInfoLayerNorm(const Call& call, const BlockBuilder& ctx) {
 }
 
 InferLayoutOutput InferLayoutLayerNorm(const Call& call,
-                                       const Map<String, Array<String>>& desired_layouts,
+                                       const Map<ffi::String, Array<ffi::String>>& desired_layouts,
                                        const VarLayoutMap& var_layout_map) {
   ICHECK(NoDesiredLayout(call, desired_layouts));
   std::vector<NLayout> initial_layouts;
@@ -667,7 +667,7 @@ StructInfo InferStructInfoGroupNorm(const Call& call, const BlockBuilder& ctx) {
 }
 
 InferLayoutOutput InferLayoutGroupNorm(const Call& call,
-                                       const Map<String, Array<String>>& desired_layouts,
+                                       const Map<ffi::String, Array<ffi::String>>& desired_layouts,
                                        const VarLayoutMap& var_layout_map) {
   ICHECK(NoDesiredLayout(call, desired_layouts));
   std::vector<NLayout> initial_layouts;
@@ -770,7 +770,7 @@ StructInfo InferStructInfoInstanceNorm(const Call& call, const BlockBuilder& ctx
 }
 
 InferLayoutOutput InferLayoutInstanceNorm(const Call& call,
-                                          const Map<String, Array<String>>& desired_layouts,
+                                          const Map<ffi::String, Array<ffi::String>>& desired_layouts,
                                           const VarLayoutMap& var_layout_map) {
   ICHECK(NoDesiredLayout(call, desired_layouts));
   std::vector<NLayout> initial_layouts;
@@ -833,7 +833,7 @@ StructInfo InferStructInfoRMSNorm(const Call& call, const BlockBuilder& ctx) {
 }
 
 InferLayoutOutput InferLayoutRMSNorm(const Call& call,
-                                     const Map<String, Array<String>>& desired_layouts,
+                                     const Map<ffi::String, Array<ffi::String>>& desired_layouts,
                                      const VarLayoutMap& var_layout_map) {
   ICHECK(NoDesiredLayout(call, desired_layouts));
   std::vector<NLayout> initial_layouts;
@@ -961,7 +961,7 @@ TVM_REGISTER_OP("relax.nn.cross_entropy_with_logits")
 
 /* relax.nn.nll_loss */
 
-Expr nll_loss(Expr predictions, Expr targets, Optional<Expr> weights, String reduction,
+Expr nll_loss(Expr predictions, Expr targets, Optional<Expr> weights, ffi::String reduction,
               int ignore_index) {
   ObjectPtr<NLLLossAttrs> attrs = ffi::make_object<NLLLossAttrs>();
 
@@ -1166,7 +1166,7 @@ StructInfo InferStructInfoNLLLoss(const Call& call, const BlockBuilder& ctx) {
   }
 
   const auto* attrs = call->attrs.as<NLLLossAttrs>();
-  String reduction = attrs->reduction;
+  ffi::String reduction = attrs->reduction;
 
   if (reduction == "none") {
     // () or (N,) or (N, d1, d2, ..., dk)

@@ -148,8 +148,8 @@ class IndexMapNode : public Object {
    * \param f_name_map Optional function to specify the stringified name of the variables.
    * \return The stringified lambda expression in Python.
    */
-  String ToPythonString(
-      const std::function<Optional<String>(const Var& var)>& f_name_map = nullptr) const;
+  ffi::String ToPythonString(
+      const std::function<Optional<ffi::String>(const Var& var)>& f_name_map = nullptr) const;
 
   static void RegisterReflection() {
     namespace refl = tvm::ffi::reflection;
@@ -206,7 +206,7 @@ class IndexMap : public ObjectRef {
    * \return The renamed index map.
    */
   IndexMap RenameVariables(
-      const std::function<Optional<String>(const Var& var)>& f_name_map = nullptr) const;
+      const std::function<Optional<ffi::String>(const Var& var)>& f_name_map = nullptr) const;
 
   /*! \brief Generate the inverse mapping.
    *

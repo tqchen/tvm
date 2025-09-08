@@ -175,7 +175,7 @@ TVM_REGISTER_OP("relax.matmul")
 
 /* relax.einsum */
 
-Expr einsum(Expr operands, String subscripts) {
+Expr einsum(Expr operands, ffi::String subscripts) {
   ObjectPtr<EinsumAttrs> attrs = ffi::make_object<EinsumAttrs>();
   attrs->subscripts = std::move(subscripts);
 
@@ -219,7 +219,7 @@ StructInfo InferStructInfoEinsum(const Call& call, const BlockBuilder& ctx) {
     }
   }
 
-  String subscripts = attrs->subscripts;
+  ffi::String subscripts = attrs->subscripts;
 
   DataType operand_dtype = operands_tensor_sinfo[0]->dtype;
   std::vector<Array<PrimExpr>> input_shapes;

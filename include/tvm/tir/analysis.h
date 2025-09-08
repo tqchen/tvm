@@ -195,7 +195,7 @@ TVM_DLL bool VerifyMemory(const PrimFunc& func);
  * \return valid Whether it is a valid GPU code
  *
  */
-TVM_DLL bool VerifyGPUCode(const PrimFunc& func, Map<String, PrimExpr> constraints);
+TVM_DLL bool VerifyGPUCode(const PrimFunc& func, Map<ffi::String, PrimExpr> constraints);
 
 /**
  * @brief Utility function to get the list of lowering passes to be applied to calculate the
@@ -298,7 +298,7 @@ TVM_DLL size_t CalculateWorkspaceBytes(const PrimFunc& func,
  * \return Allocated memory size per scope in bytes inside the PrimFunc returned as a Map with
  * key "main" and a Map of allocated sizes as values.
  */
-TVM_DLL tvm::Map<String, tvm::Map<String, Integer>> CalculateAllocatedBytes(const PrimFunc& func);
+TVM_DLL tvm::Map<ffi::String, tvm::Map<ffi::String, Integer>> CalculateAllocatedBytes(const PrimFunc& func);
 
 /*!
  * \brief Calculate the allocated memory per scope in bytes for each function inside the module
@@ -306,7 +306,7 @@ TVM_DLL tvm::Map<String, tvm::Map<String, Integer>> CalculateAllocatedBytes(cons
  * \return Allocated memory size per scope in bytes for each function in the IRModule returned as a
            Map with function names as keys and a Map of allocated sizes as values.
  */
-TVM_DLL tvm::Map<String, tvm::Map<String, Integer>> CalculateAllocatedBytes(const IRModule& mod);
+TVM_DLL tvm::Map<ffi::String, tvm::Map<ffi::String, Integer>> CalculateAllocatedBytes(const IRModule& mod);
 
 /*!
  * \brief Detect the lowest common ancestor(LCA) of buffer access, including both high-level
@@ -410,7 +410,7 @@ TVM_DLL Pass VerifyMemory();
  * \returns The pass.
  * \sa tvm::tir::VerifyGPUCode
  */
-TVM_DLL Pass VerifyGPUCode(Map<String, PrimExpr> constraints);
+TVM_DLL Pass VerifyGPUCode(Map<ffi::String, PrimExpr> constraints);
 
 /*!
  * \brief Pass to checks if the size of the allocated vtcm memory satisfies the limit

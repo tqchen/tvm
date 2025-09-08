@@ -80,10 +80,10 @@ bool IsTransformBijective(const Expr& expr, const IndexMap& transform) {
  */
 class AlterOpImplMutator : public ExprMutator {
  public:
-  AlterOpImplMutator(const IRModule& mod, const Map<String, tir::PrimFunc>& op_impl_map,
-                     const Map<String, Array<IndexMap>>& op_buffer_transforms_,
-                     const Map<String, Optional<Array<Array<IntImm>>>>& axis_separators_,
-                     const Map<String, Optional<Array<Array<IntImm>>>>& input_axis_separators_)
+  AlterOpImplMutator(const IRModule& mod, const Map<ffi::String, tir::PrimFunc>& op_impl_map,
+                     const Map<ffi::String, Array<IndexMap>>& op_buffer_transforms_,
+                     const Map<ffi::String, Optional<Array<Array<IntImm>>>>& axis_separators_,
+                     const Map<ffi::String, Optional<Array<Array<IntImm>>>>& input_axis_separators_)
       : ExprMutator(mod),
         mod_(mod),
         op_impl_map_(op_impl_map),
@@ -119,7 +119,7 @@ class AlterOpImplMutator : public ExprMutator {
     ICHECK(call->args[0]->IsInstance<GlobalVarNode>());
     const tir::PrimFunc& old_func =
         Downcast<tir::PrimFunc>(mod_->Lookup(Downcast<GlobalVar>(call->args[0])));
-    Optional<String> maybe_op_kind = old_func->attrs.GetAttr<String>(kOperatorName);
+    Optional<ffi::String> maybe_op_kind = old_func->attrs.GetAttr<ffi::String>(kOperatorName);
 
     // If the callee does not have kOperatorName attribute or no replacement is requested for
     // it, nothing to do here.
@@ -226,7 +226,7 @@ class AlterOpImplMutator : public ExprMutator {
         },
         "output", topi::kElementWise);
 
-    String op_name = "remove_pad";
+    ffi::String op_name = "remove_pad";
     // Create PrimFunc and add op_name to func.attrs
     PrimFunc remove_pad_with_frozen_layout =
         WithAttr(CreatePrimFunc({placeholder_tensor, output_tensor}), kOperatorName, op_name);
@@ -269,7 +269,7 @@ class AlterOpImplMutator : public ExprMutator {
    * \brief Adds the \p replacement_func to the module if it has not already been added before.
    * \returns The global var associated with the PrimFunc.
    */
-  GlobalVar GetOrCreateGlobalVarForFunc(const PrimFunc& replacement_func, const String& op_kind) {
+  GlobalVar GetOrCreateGlobalVarForFunc(const PrimFunc& replacement_func, const ffi::String& op_kind) {
     if (cache_.count(replacement_func) != 0) {
       return cache_[replacement_func];
     }
@@ -410,13 +410,13 @@ class AlterOpImplMutator : public ExprMutator {
   /*! \brief Map from shape_dim.size to the remove_pad GlobalVar */
   std::unordered_map<int, GlobalVar> remove_pad_map_;
   /*! \brief Map from kOperatorName attribute to the replacement PrimFunc */
-  const Map<String, PrimFunc>& op_impl_map_;
+  const Map<ffi::String, PrimFunc>& op_impl_map_;
   /*! \brief Map from kOperatorName attribute to the layout transforms on i/o buffers */
-  const Map<String, Array<IndexMap>>& op_buffer_transforms__;
+  const Map<ffi::String, Array<IndexMap>>& op_buffer_transforms__;
   /*! \brief Map from kOperatorName attribute to the axis separatos on i/o buffers */
-  const Map<String, Optional<Array<Array<IntImm>>>>& op_buffer_axis_separators__;
+  const Map<ffi::String, Optional<Array<Array<IntImm>>>>& op_buffer_axis_separators__;
   /*! \brief Map from kOperatorName attribute to the input axis separatos */
-  const Map<String, Optional<Array<Array<IntImm>>>>& op_buffer_input_axis_separators__;
+  const Map<ffi::String, Optional<Array<Array<IntImm>>>>& op_buffer_input_axis_separators__;
 
   const Op& call_tir_op_ = Op::Get("relax.call_tir");
   const Op& layout_transform_op_ = Op::Get("relax.layout_transform");
@@ -424,10 +424,10 @@ class AlterOpImplMutator : public ExprMutator {
 
 namespace transform {
 
-Pass AlterOpImpl(const Map<String, tir::PrimFunc>& op_impl_map,
-                 const Map<String, Array<IndexMap>>& op_buffer_transforms_,
-                 const Map<String, Optional<Array<Array<IntImm>>>>& axis_separators_,
-                 const Map<String, Optional<Array<Array<IntImm>>>>& input_axis_separators_) {
+Pass AlterOpImpl(const Map<ffi::String, tir::PrimFunc>& op_impl_map,
+                 const Map<ffi::String, Array<IndexMap>>& op_buffer_transforms_,
+                 const Map<ffi::String, Optional<Array<Array<IntImm>>>>& axis_separators_,
+                 const Map<ffi::String, Optional<Array<Array<IntImm>>>>& input_axis_separators_) {
   auto pass_func = [=](IRModule mod, PassContext pc) {
     return AlterOpImplMutator(mod, op_impl_map, op_buffer_transforms_, axis_separators_,
                               input_axis_separators_)

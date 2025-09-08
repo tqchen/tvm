@@ -575,7 +575,7 @@ class IRTransformer final : public StmtExprMutator {
 };
 
 Stmt IRTransform(Stmt ir_node, const ffi::Function& f_preorder, const ffi::Function& f_postorder,
-                 Optional<Array<String>> only_enable) {
+                 Optional<Array<ffi::String>> only_enable) {
   std::unordered_set<uint32_t> only_type_index;
   if (only_enable.defined()) {
     for (auto s : only_enable.value()) {

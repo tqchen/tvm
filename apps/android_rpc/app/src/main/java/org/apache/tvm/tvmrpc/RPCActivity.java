@@ -47,9 +47,9 @@ public class RPCActivity extends AppCompatActivity {
 
     System.err.println("rpc activity onCreate...");
     Intent intent = getIntent();
-    String host = intent.getStringExtra("host");
+    ffi::String host = intent.getStringExtra("host");
     int port = intent.getIntExtra("port", 9090);
-    String key = intent.getStringExtra("key");
+    ffi::String key = intent.getStringExtra("key");
 
     tvmServerWorker = new RPCProcessor(this);
     tvmServerWorker.setDaemon(true);

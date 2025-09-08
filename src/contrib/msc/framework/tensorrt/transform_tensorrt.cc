@@ -58,7 +58,7 @@ struct TensorRTTransConfig {
   }
 };
 
-const TensorRTTransConfig ParseConfig(const String& config_str) {
+const TensorRTTransConfig ParseConfig(const ffi::String& config_str) {
   TensorRTTransConfig config;
   if (config_str.size() > 0) {
     std::istringstream is(config_str);
@@ -70,7 +70,7 @@ const TensorRTTransConfig ParseConfig(const String& config_str) {
 
 using FRewriteTensorRT =
     ffi::TypedFunction<Expr(BlockBuilder builder, const Var& var, const Call& src_call,
-                            const Map<Expr, Call>& new_calls, const String& config)>;
+                            const Map<Expr, Call>& new_calls, const ffi::String& config)>;
 
 const Array<PrimExpr> BroadcastShape(const Array<PrimExpr>& src_shape,
                                      const Array<PrimExpr>& out_shape) {
@@ -95,7 +95,7 @@ const Array<PrimExpr> BroadcastShape(const Array<PrimExpr>& src_shape,
 }
 
 Expr RewriteElemwise(BlockBuilder builder, const Var& var, const Call& src_call,
-                     const Map<Expr, Call>& new_calls, const String& config) {
+                     const Map<Expr, Call>& new_calls, const ffi::String& config) {
   const auto& call = new_calls.count(src_call) ? new_calls[src_call] : src_call;
   const auto& shape_a = ExprUtils::GetShape(call->args[0]);
   const auto& shape_b = ExprUtils::GetShape(call->args[1]);
@@ -118,7 +118,7 @@ Expr RewriteElemwise(BlockBuilder builder, const Var& var, const Call& src_call,
 }
 
 Expr RewriteAdd(BlockBuilder builder, const Var& var, const Call& src_call,
-                const Map<Expr, Call>& new_calls, const String& config) {
+                const Map<Expr, Call>& new_calls, const ffi::String& config) {
   const auto& call = new_calls.count(src_call) ? new_calls[src_call] : src_call;
   if (new_calls.count(call->args[0]) &&
       new_calls[call->args[0]]->op == Op::Get("relax.nn.conv1d")) {
@@ -155,7 +155,7 @@ Expr RewriteAdd(BlockBuilder builder, const Var& var, const Call& src_call,
 }
 
 Expr RewriteArgmaxmin(BlockBuilder builder, const Var& var, const Call& src_call,
-                      const Map<Expr, Call>& new_calls, const String& config) {
+                      const Map<Expr, Call>& new_calls, const ffi::String& config) {
   const auto& call = new_calls.count(src_call) ? new_calls[src_call] : src_call;
   const auto& out_dtype = ExprUtils::GetDataType(var);
   const auto* src_attrs = src_call->attrs.as<ArgmaxArgminAttrs>();
@@ -187,7 +187,7 @@ Expr RewriteArgmaxmin(BlockBuilder builder, const Var& var, const Call& src_call
 }
 
 Expr RewriteAttention(BlockBuilder builder, const Var& var, const Call& src_call,
-                      const Map<Expr, Call>& new_calls, const String& config) {
+                      const Map<Expr, Call>& new_calls, const ffi::String& config) {
   const auto& call = new_calls.count(src_call) ? new_calls[src_call] : src_call;
   const auto& in_dtype = ExprUtils::GetDataType(call->args[0]);
   const auto* src_attrs = src_call->attrs.as<AttentionAttrs>();
@@ -329,7 +329,7 @@ Expr RewriteAttention(BlockBuilder builder, const Var& var, const Call& src_call
 }
 
 Expr RewriteBatchNorm(BlockBuilder builder, const Var& var, const Call& src_call,
-                      const Map<Expr, Call>& new_calls, const String& config) {
+                      const Map<Expr, Call>& new_calls, const ffi::String& config) {
   const auto& call = new_calls.count(src_call) ? new_calls[src_call] : src_call;
   const auto& input_shape = ExprUtils::GetShape(call->args[0]);
   const auto& in_dtype = ExprUtils::GetDataType(call->args[0]);
@@ -384,7 +384,7 @@ Expr RewriteBatchNorm(BlockBuilder builder, const Var& var, const Call& src_call
 }
 
 Expr RewriteBroadcastTo(BlockBuilder builder, const Var& var, const Call& src_call,
-                        const Map<Expr, Call>& new_calls, const String& config) {
+                        const Map<Expr, Call>& new_calls, const ffi::String& config) {
   const auto& call = new_calls.count(src_call) ? new_calls[src_call] : src_call;
   const auto& input_shape = ExprUtils::GetShape(call->args[0]);
   const auto& output_shape = ExprUtils::GetShape(var);
@@ -406,7 +406,7 @@ Expr RewriteBroadcastTo(BlockBuilder builder, const Var& var, const Call& src_ca
 }
 
 Expr RewriteConv1d(BlockBuilder builder, const Var& var, const Call& src_call,
-                   const Map<Expr, Call>& new_calls, const String& config) {
+                   const Map<Expr, Call>& new_calls, const ffi::String& config) {
   const auto& call = new_calls.count(src_call) ? new_calls[src_call] : src_call;
   const auto* src_attrs = src_call->attrs.as<Conv1DAttrs>();
   const auto& input_shape = ExprUtils::GetShape(call->args[0]);
@@ -448,7 +448,7 @@ Expr RewriteConv1d(BlockBuilder builder, const Var& var, const Call& src_call,
 }
 
 Expr RewriteGelu(BlockBuilder builder, const Var& var, const Call& src_call,
-                 const Map<Expr, Call>& new_calls, const String& config) {
+                 const Map<Expr, Call>& new_calls, const ffi::String& config) {
   // 0.5 * x * (1 + erf(sqrt(0.5) * x))
   const auto& call = new_calls.count(src_call) ? new_calls[src_call] : src_call;
   size_t in_dim = ExprUtils::GetShape(call->args[0]).size();
@@ -476,7 +476,7 @@ Expr RewriteGelu(BlockBuilder builder, const Var& var, const Call& src_call,
 }
 
 Expr RewriteGeluTanh(BlockBuilder builder, const Var& var, const Call& src_call,
-                     const Map<Expr, Call>& new_calls, const String& config) {
+                     const Map<Expr, Call>& new_calls, const ffi::String& config) {
   // 0.5 * x * (1 + tanh(sqrt(2/pi) * (0.044715F * pow(x, 3) + x)))
   const auto& call = new_calls.count(src_call) ? new_calls[src_call] : src_call;
   size_t in_dim = ExprUtils::GetShape(call->args[0]).size();
@@ -517,7 +517,7 @@ Expr RewriteGeluTanh(BlockBuilder builder, const Var& var, const Call& src_call,
 }
 
 Expr RewriteGroupNorm(BlockBuilder builder, const Var& var, const Call& src_call,
-                      const Map<Expr, Call>& new_calls, const String& config) {
+                      const Map<Expr, Call>& new_calls, const ffi::String& config) {
   const auto& call = new_calls.count(src_call) ? new_calls[src_call] : src_call;
   const auto& input_shape = ExprUtils::GetShape(call->args[0]);
   const auto& in_dtype = ExprUtils::GetDataType(call->args[0]);
@@ -599,7 +599,7 @@ Expr RewriteGroupNorm(BlockBuilder builder, const Var& var, const Call& src_call
 }
 
 Expr RewriteLayerNorm(BlockBuilder builder, const Var& var, const Call& src_call,
-                      const Map<Expr, Call>& new_calls, const String& config) {
+                      const Map<Expr, Call>& new_calls, const ffi::String& config) {
   const auto& call = new_calls.count(src_call) ? new_calls[src_call] : src_call;
   const auto& input_shape = ExprUtils::GetShape(call->args[0]);
   const auto& in_dtype = ExprUtils::GetDataType(call->args[0]);
@@ -676,7 +676,7 @@ Expr RewriteLayerNorm(BlockBuilder builder, const Var& var, const Call& src_call
 }
 
 Expr RewriteMatmul(BlockBuilder builder, const Var& var, const Call& src_call,
-                   const Map<Expr, Call>& new_calls, const String& config) {
+                   const Map<Expr, Call>& new_calls, const ffi::String& config) {
   const auto& trt_config = ParseConfig(config);
   const auto& call = new_calls.count(src_call) ? new_calls[src_call] : src_call;
   const auto& shape_a = ExprUtils::GetShape(call->args[0]);
@@ -742,7 +742,7 @@ Expr RewriteMatmul(BlockBuilder builder, const Var& var, const Call& src_call,
 }
 
 Expr RewriteRsqrt(BlockBuilder builder, const Var& var, const Call& src_call,
-                  const Map<Expr, Call>& new_calls, const String& config) {
+                  const Map<Expr, Call>& new_calls, const ffi::String& config) {
   const auto& call = new_calls.count(src_call) ? new_calls[src_call] : src_call;
   const auto& input_shape = ExprUtils::GetShape(call->args[0]);
   const auto& in_dtype = ExprUtils::GetDataType(call->args[0]);
@@ -761,7 +761,7 @@ Expr RewriteRsqrt(BlockBuilder builder, const Var& var, const Call& src_call,
 }
 
 Expr RewriteSilu(BlockBuilder builder, const Var& var, const Call& src_call,
-                 const Map<Expr, Call>& new_calls, const String& config) {
+                 const Map<Expr, Call>& new_calls, const ffi::String& config) {
   const auto& call = new_calls.count(src_call) ? new_calls[src_call] : src_call;
   // create ops
   static const Op& multiply_op = Op::Get("relax.multiply");
@@ -773,7 +773,7 @@ Expr RewriteSilu(BlockBuilder builder, const Var& var, const Call& src_call,
 }
 
 Expr RewriteShapeLike(BlockBuilder builder, const Var& var, const Call& src_call,
-                      const Map<Expr, Call>& new_calls, const String& config) {
+                      const Map<Expr, Call>& new_calls, const ffi::String& config) {
   const auto& call = new_calls.count(src_call) ? new_calls[src_call] : src_call;
   const auto& output_shape = ExprUtils::GetShape(var);
   static const Op& reshape_op = Op::Get("relax.reshape");
@@ -782,7 +782,7 @@ Expr RewriteShapeLike(BlockBuilder builder, const Var& var, const Call& src_call
 }
 
 Expr RewriteSplit(BlockBuilder builder, const Var& var, const Call& src_call,
-                  const Map<Expr, Call>& new_calls, const String& config) {
+                  const Map<Expr, Call>& new_calls, const ffi::String& config) {
   const auto& call = new_calls.count(src_call) ? new_calls[src_call] : src_call;
   const auto& input_shape = ExprUtils::GetShape(call->args[0]);
   const auto* src_attrs = src_call->attrs.as<SplitAttrs>();
@@ -872,7 +872,7 @@ TVM_REGISTER_OP("relax.split").set_attr<FRewriteTensorRT>("FRewriteTensorRT", Re
 
 class TensorRTTransformer : public ExprMutator {
  public:
-  explicit TensorRTTransformer(IRModule ctx_module, const String& config)
+  explicit TensorRTTransformer(IRModule ctx_module, const ffi::String& config)
       : ExprMutator(ctx_module) {
     config_ = config;
   }
@@ -898,16 +898,16 @@ class TensorRTTransformer : public ExprMutator {
 
  private:
   Map<Expr, Call> new_calls_;
-  String config_;
+  ffi::String config_;
 };
 
-Function TransformTensorRT(const Function& func, const IRModule& module, const String& config) {
+Function TransformTensorRT(const Function& func, const IRModule& module, const ffi::String& config) {
   return Downcast<Function>(TensorRTTransformer(module, config).VisitExpr(func));
 }
 
 namespace transform {
 
-Pass TransformTensorRT(const String& config) {
+Pass TransformTensorRT(const ffi::String& config) {
   auto pass_func = [=](Function f, IRModule m, PassContext pc) {
     return relax::TransformTensorRT(f, m, config);
   };

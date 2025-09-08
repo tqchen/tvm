@@ -34,7 +34,7 @@ namespace relax {
 using tvm::script::ir_builder::details::Namer;
 
 TVM_STATIC_IR_FUNCTOR(Namer, vtable)
-    .set_dispatch<tvm::relax::VarNode>([](const ObjectRef& node, String name) -> void {
+    .set_dispatch<tvm::relax::VarNode>([](const ObjectRef& node, ffi::String name) -> void {
       using tvm::relax::VarNode;
       using tvm::relax::IdNode;
       const VarNode* var = node.as<VarNode>();
@@ -43,7 +43,7 @@ TVM_STATIC_IR_FUNCTOR(Namer, vtable)
     });
 
 TVM_STATIC_IR_FUNCTOR(Namer, vtable)
-    .set_dispatch<tvm::relax::DataflowVarNode>([](const ObjectRef& node, String name) -> void {
+    .set_dispatch<tvm::relax::DataflowVarNode>([](const ObjectRef& node, ffi::String name) -> void {
       using tvm::relax::DataflowVarNode;
       using tvm::relax::IdNode;
       const DataflowVarNode* var = node.as<DataflowVarNode>();
@@ -67,7 +67,7 @@ FunctionFrame Function(const Bool& is_pure, const Bool& is_private) {
   return FunctionFrame(n);
 }
 
-tvm::relax::Var Arg(const String& name, const tvm::relax::StructInfo& struct_info) {
+tvm::relax::Var Arg(const ffi::String& name, const tvm::relax::StructInfo& struct_info) {
   FunctionFrame frame = FindFunctionFrame("R.Arg");
   tvm::relax::Var var(name, struct_info);
   frame->params.push_back(var);
@@ -76,7 +76,7 @@ tvm::relax::Var Arg(const String& name, const tvm::relax::StructInfo& struct_inf
   return var;
 }
 
-void FuncName(const String& name) {
+void FuncName(const ffi::String& name) {
   FunctionFrame frame = FindFunctionFrame("R.func_name");
   if (frame->name.has_value()) {
     LOG(FATAL) << "ValueError: Duplicate function name, previous one is: \"" << frame->name.value()
@@ -85,7 +85,7 @@ void FuncName(const String& name) {
   frame->name = name;
 }
 
-void FuncAttrs(Map<String, ffi::Any> attrs) {
+void FuncAttrs(Map<ffi::String, ffi::Any> attrs) {
   FunctionFrame frame = FindFunctionFrame("R.func_attr");
   for (const auto& [key, value] : attrs) {
     if (key == tvm::attr::kGlobalSymbol && frame->is_private.value_or(Bool(false))->value) {

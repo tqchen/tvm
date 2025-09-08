@@ -227,7 +227,7 @@ TVM_STATIC_IR_FUNCTOR(IRDocsifier, vtable)
                                  BufferVarDefinition::DataPointer);
           }
           Array<ExprDoc> args;
-          Array<String> kwargs_keys;
+          Array<ffi::String> kwargs_keys;
           Array<ExprDoc> kwargs_values;
           args.push_back(d->AsDoc<ExprDoc>(stmt->extents, stmt_p->Attr("extents")));
           args.push_back(LiteralDoc::DataType(stmt->dtype, stmt_p->Attr("dtype")));
@@ -280,9 +280,9 @@ TVM_STATIC_IR_FUNCTOR(IRDocsifier, vtable)
     .set_dispatch<tir::AllocateConst>(
         "", [](tir::AllocateConst stmt, AccessPath stmt_p, IRDocsifier d) -> Doc {
           bool concise = AllowConciseScoping(d, stmt);
-          String storage_scope = tir::GetPtrStorageScope(stmt->buffer_var);
+          ffi::String storage_scope = tir::GetPtrStorageScope(stmt->buffer_var);
           Array<ExprDoc> args;
-          Array<String> kwargs_keys;
+          Array<ffi::String> kwargs_keys;
           Array<ExprDoc> kwargs_values;
           ExprDoc data_doc{nullptr};
           if (stmt->dtype.is_int()) {
@@ -349,7 +349,7 @@ ExprDoc DocsifyBufferRealize(const tir::BufferRealizeNode* stmt, Optional<ExprDo
     buffer = buffer[bounds];
   }
   Array<ExprDoc> args{buffer};
-  Array<String> kwargs_keys;
+  Array<ffi::String> kwargs_keys;
   Array<ExprDoc> kwargs_values;
   if (value.defined()) {
     args.push_back(value.value());

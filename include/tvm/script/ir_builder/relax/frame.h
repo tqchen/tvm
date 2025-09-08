@@ -89,7 +89,7 @@ class FunctionFrameNode : public SeqExprFrameNode {
    * \note The name will not be specified in constructor, so it is "Optional",
    *       However, we must specify the name by `R.func_name` before exit this frame.
    */
-  Optional<String> name;
+  Optional<ffi::String> name;
   /*! \brief The function params. */
   Array<tvm::relax::Var> params;
   /*!
@@ -107,7 +107,7 @@ class FunctionFrameNode : public SeqExprFrameNode {
   /*! \brief Whether the function is annotated as private */
   Optional<Bool> is_private;
   /*! \brief The function attributes. */
-  Map<String, Any> attrs;
+  Map<ffi::String, Any> attrs;
   /*! \brief The block builder to create Relax function. */
   tvm::relax::BlockBuilder block_builder;
 
@@ -194,7 +194,7 @@ class IfFrameNode : public RelaxFrameNode {
   /*! \brief The Binding var. */
   tvm::relax::Var var;
   /*! \brief The binding var name. */
-  String var_name;
+  ffi::String var_name;
 
   static void RegisterReflection() {
     namespace refl = tvm::ffi::reflection;

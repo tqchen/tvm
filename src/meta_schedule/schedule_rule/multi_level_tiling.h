@@ -64,7 +64,7 @@ enum class ReuseType : int32_t {
  * \param str The string to be converted.
  * \return The converted ReuseType.
  */
-inline ReuseType Str2ReuseType(const String& str) {
+inline ReuseType Str2ReuseType(const ffi::String& str) {
   if (str == "no") {
     return ReuseType::kNoReuse;
   } else if (str == "may") {
@@ -84,16 +84,16 @@ struct ReuseConfig {
   /*! \brief Which levels are caching stage inserted at */
   std::vector<int> levels;
   /*! \brief The storage scope */
-  String scope;
+  ffi::String scope;
 
   /*! \brief Default constructor: no data reuse */
   ReuseConfig() : req(ReuseType::kNoReuse) {}
 
   /*! \brief Construct from a configuration dictionary */
-  explicit ReuseConfig(const Map<String, ffi::Any>& config)
-      : req(Str2ReuseType(Downcast<String>(config.at("req")))),
+  explicit ReuseConfig(const Map<ffi::String, ffi::Any>& config)
+      : req(Str2ReuseType(Downcast<ffi::String>(config.at("req")))),
         levels(support::AsVector<Integer, int>(Downcast<Array<Integer>>(config.at("levels")))),
-        scope(Downcast<String>(config.at("scope"))) {
+        scope(Downcast<ffi::String>(config.at("scope"))) {
     ICHECK_EQ(config.size(), 3);
   }
 };
@@ -195,9 +195,9 @@ class MultiLevelTilingNode : public ScheduleRuleNode {
    * - 'SSRSRS' on CPU
    * - 'SSSRRSRS' on GPU
    */
-  String structure;
+  ffi::String structure;
   /*! \brief For each level of tiles, which thread axis it is bound to */
-  Array<String> tile_binds;
+  Array<ffi::String> tile_binds;
   /*! \brief The maximum size of the innermost factor */
   int max_innermost_factor;
   /*! \brief The length of vector lane in vectorized cooperative fetching */
@@ -234,11 +234,11 @@ class MultiLevelTilingNode : public ScheduleRuleNode {
 };
 
 template <typename NodeType>
-ObjectPtr<NodeType> MultiLevelTilingInitCommon(String structure, Optional<Array<String>> tile_binds,
+ObjectPtr<NodeType> MultiLevelTilingInitCommon(ffi::String structure, Optional<Array<ffi::String>> tile_binds,
                                                Optional<Integer> max_innermost_factor,
                                                Optional<Array<Integer>> vector_load_lens,
-                                               Optional<Map<String, ffi::Any>> reuse_read,
-                                               Optional<Map<String, ffi::Any>> reuse_write) {
+                                               Optional<Map<ffi::String, ffi::Any>> reuse_read,
+                                               Optional<Map<ffi::String, ffi::Any>> reuse_write) {
   ObjectPtr<NodeType> n = ffi::make_object<NodeType>();
   n->structure = structure;
   n->tile_binds = tile_binds.value_or({});

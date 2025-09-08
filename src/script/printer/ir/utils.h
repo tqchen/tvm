@@ -37,7 +37,7 @@ namespace printer {
 
 class IRFrameNode : public FrameNode {
  public:
-  Map<String, Array<GlobalInfo>>* global_infos = nullptr;
+  Map<ffi::String, Array<GlobalInfo>>* global_infos = nullptr;
 
   static void RegisterReflection() {
     namespace refl = tvm::ffi::reflection;

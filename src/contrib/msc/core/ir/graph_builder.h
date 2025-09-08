@@ -110,10 +110,10 @@ struct MSCRBuildConfig {
 class AttrGetter {
  public:
   /*!
-   * \brief Get the attributes as Map<String, String>
+   * \brief Get the attributes as Map<ffi::String, ffi::String>
    * \param attrs the attributes.
    */
-  explicit AttrGetter(Map<String, String>* attrs) : attrs_(attrs) {}
+  explicit AttrGetter(Map<ffi::String, ffi::String>* attrs) : attrs_(attrs) {}
 
   void operator()(const Attrs& attrs) {
     if (const auto* dict_attrs = attrs.as<DictAttrsNode>()) {
@@ -125,14 +125,14 @@ class AttrGetter {
       if (attrs_tinfo->metadata != nullptr) {
         tvm::ffi::reflection::ForEachFieldInfo(attrs_tinfo, [&](const TVMFFIFieldInfo* field_info) {
           Any field_value = tvm::ffi::reflection::FieldGetter(field_info)(attrs);
-          this->VisitAny(String(field_info->name), field_value);
+          this->VisitAny(ffi::String(field_info->name), field_value);
         });
       }
     }
   }
 
  private:
-  void VisitAny(String key, Any value) {
+  void VisitAny(ffi::String key, Any value) {
     switch (value.type_index()) {
       case kTVMFFINone: {
         attrs_->Set(key, "");
@@ -156,7 +156,7 @@ class AttrGetter {
       }
       case kTVMFFISmallStr:
       case kTVMFFIStr: {
-        attrs_->Set(key, value.cast<String>());
+        attrs_->Set(key, value.cast<ffi::String>());
         break;
       }
       default: {
@@ -171,13 +171,13 @@ class AttrGetter {
   }
 
  private:
-  Map<String, String>* attrs_;
+  Map<ffi::String, ffi::String>* attrs_;
 };
 
 class FuncAttrGetter : public ExprVisitor {
  public:
-  /*! \brief Get the attributes as Map<String, String>*/
-  Map<String, String> GetAttrs(const Expr& expr) {
+  /*! \brief Get the attributes as Map<ffi::String, ffi::String>*/
+  Map<ffi::String, ffi::String> GetAttrs(const Expr& expr) {
     VisitExpr(expr);
     return attrs_;
   }
@@ -187,13 +187,13 @@ class FuncAttrGetter : public ExprVisitor {
   void VisitExpr_(const TupleGetItemNode* op) final;
 
  private:
-  Map<String, String> attrs_;
+  Map<ffi::String, ffi::String> attrs_;
 };
 
 class FuncValueGetter : public ExprVisitor {
  public:
-  /*! \brief Get the attributes from prim value as Map<String, String>*/
-  Array<String> GetValues(const Expr& expr) {
+  /*! \brief Get the attributes from prim value as Map<ffi::String, ffi::String>*/
+  Array<ffi::String> GetValues(const Expr& expr) {
     VisitExpr(expr);
     return values_;
   }
@@ -201,7 +201,7 @@ class FuncValueGetter : public ExprVisitor {
   void VisitExpr_(const CallNode* op) final;
 
  private:
-  Array<String> values_;
+  Array<ffi::String> values_;
 };
 
 class FuncParamsFinder : public ExprVisitor {
@@ -239,7 +239,7 @@ class LayoutsFinder : public ExprVisitor {
   explicit LayoutsFinder(const IRModule& ref_module) : ExprVisitor() { ref_module_ = ref_module; }
 
   /*! \brief Find the layouts form attrs*/
-  Map<String, String> FindLayouts(const Expr& expr) {
+  Map<ffi::String, ffi::String> FindLayouts(const Expr& expr) {
     VisitExpr(expr);
     return layouts_;
   }
@@ -250,7 +250,7 @@ class LayoutsFinder : public ExprVisitor {
 
  private:
   IRModule ref_module_;
-  Map<String, String> layouts_;
+  Map<ffi::String, ffi::String> layouts_;
   Map<Expr, Function> local_funcs_;
 };
 
@@ -262,7 +262,7 @@ class GraphBuilder : public ExprVisitor {
    * \param name the name of the graph.
    * \param options the options of build the graph.
    */
-  explicit GraphBuilder(const IRModule& ref_module, const String& name,
+  explicit GraphBuilder(const IRModule& ref_module, const ffi::String& name,
                         const std::string& options = "")
       : ExprVisitor() {
     ref_module_ = ref_module;
@@ -271,7 +271,7 @@ class GraphBuilder : public ExprVisitor {
       dmlc::JSONReader reader(&is);
       reader.Read(&config_);
     }
-    name_ = config_.graph_name.size() > 0 ? String(config_.graph_name) : name;
+    name_ = config_.graph_name.size() > 0 ? ffi::String(config_.graph_name) : name;
     if (config_.byoc_entry.size() > 0) {
       func_params_ = FuncParamsFinder(ref_module).FindParams(ref_module->Lookup(name));
     }
@@ -286,14 +286,14 @@ class GraphBuilder : public ExprVisitor {
 
   /*! \brief Create and add MSCJoint from expr*/
   const MSCJoint AddNode(const Expr& expr, const Optional<Expr>& binding_var = std::nullopt,
-                         const String& name = "");
+                         const ffi::String& name = "");
 
   /*! \brief Create and add MSCPrim from prim*/
   const MSCPrim AddPrim(const PrimExpr& prim);
 
-  const MSCPrim MatchOrCreatePrim(const PrimExpr& prim, const String& op = "",
+  const MSCPrim MatchOrCreatePrim(const PrimExpr& prim, const ffi::String& op = "",
                                   const Array<BaseJoint>& parents = Array<BaseJoint>(),
-                                  const Map<String, String>& attrs = Map<String, String>());
+                                  const Map<ffi::String, ffi::String>& attrs = Map<ffi::String, ffi::String>());
 
   void VisitBindingBlock(const BindingBlock& block) final;
 
@@ -319,24 +319,24 @@ class GraphBuilder : public ExprVisitor {
 
  private:
   /*! \brief Get the node_name, optype, layout for func*/
-  const std::tuple<String, String, String> ParseFunc(const Function& func);
+  const std::tuple<ffi::String, String, ffi::String> ParseFunc(const Function& func);
 
   /*! \brief Get the plugin inputs*/
   Array<Expr> GetPluginInputs(const Expr& expr);
 
-  String name_;
+  ffi::String name_;
   IRModule ref_module_;
   MSCRBuildConfig config_;
-  Map<String, String> layouts_;
+  Map<ffi::String, ffi::String> layouts_;
   Array<MSCJoint> nodes_;
-  Map<String, MSCTensor> weights_;
-  Map<Expr, Array<String>> expr_tensor_map_;
-  std::unordered_map<String, std::pair<BaseJoint, size_t>> tensor_input_map_;
-  std::set<String> ignore_nodes_;
+  Map<ffi::String, MSCTensor> weights_;
+  Map<Expr, Array<ffi::String>> expr_tensor_map_;
+  std::unordered_map<ffi::String, std::pair<BaseJoint, size_t>> tensor_input_map_;
+  std::set<ffi::String> ignore_nodes_;
   // scope name
-  String scope_name_;
-  std::set<String> setted_blocks_;
-  Array<String> block_stack_;
+  ffi::String scope_name_;
+  std::set<ffi::String> setted_blocks_;
+  Array<ffi::String> block_stack_;
   // BYOC maps
   Map<Expr, Function> target_funcs_;
   Map<Expr, Expr> func_params_;

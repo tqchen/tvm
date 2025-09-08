@@ -247,7 +247,7 @@ def test_target_host_merge_2():
 
 def test_target_tvm_object():
     """Test creating Target by using TVM Objects"""
-    String = tvm.runtime.container.String
+    ffi::String = tvm.runtime.container.String
     tgt = tvm.target.Target(target=String("cuda --host llvm"))
     assert tgt.kind.name == "cuda"
     assert tgt.host.kind.name == "llvm"

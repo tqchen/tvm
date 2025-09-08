@@ -96,7 +96,7 @@ Array<PrimExpr> BaseComputeOpNode::output_shape(size_t idx) const {
 }
 
 Tensor compute(Array<PrimExpr> shape, FCompute fcompute, std::string name, std::string tag,
-               Map<String, ffi::Any> attrs) {
+               Map<ffi::String, ffi::Any> attrs) {
   // compute dimension.
   size_t ndim = shape.size();
   std::vector<IterVar> axis;
@@ -113,7 +113,7 @@ Tensor compute(Array<PrimExpr> shape, FCompute fcompute, std::string name, std::
 }
 
 Array<Tensor> compute(Array<PrimExpr> shape, FBatchCompute fcompute, std::string name,
-                      std::string tag, Map<String, ffi::Any> attrs) {
+                      std::string tag, Map<ffi::String, ffi::Any> attrs) {
   // compute dimension.
   size_t ndim = shape.size();
   std::vector<IterVar> axis;
@@ -134,10 +134,10 @@ Array<Tensor> compute(Array<PrimExpr> shape, FBatchCompute fcompute, std::string
   return outputs;
 }
 
-ComputeOp::ComputeOp(std::string name, std::string tag, Map<String, ffi::Any> attrs,
+ComputeOp::ComputeOp(std::string name, std::string tag, Map<ffi::String, ffi::Any> attrs,
                      Array<IterVar> axis, Array<PrimExpr> body) {
   if (!attrs.defined()) {
-    attrs = Map<String, ffi::Any>();
+    attrs = Map<ffi::String, ffi::Any>();
   }
   auto n = ffi::make_object<ComputeOpNode>();
   n->name = std::move(name);
@@ -156,7 +156,7 @@ ComputeOp::ComputeOp(std::string name, std::string tag, Map<String, ffi::Any> at
 TVM_FFI_STATIC_INIT_BLOCK({
   namespace refl = tvm::ffi::reflection;
   refl::GlobalDef().def("te.ComputeOp",
-                        [](std::string name, std::string tag, Optional<Map<String, ffi::Any>> attrs,
+                        [](std::string name, std::string tag, Optional<Map<ffi::String, ffi::Any>> attrs,
                            Array<IterVar> axis, Array<PrimExpr> body) {
                           return ComputeOp(name, tag, attrs.value_or({}), axis, body);
                         });

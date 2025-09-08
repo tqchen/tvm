@@ -27,8 +27,8 @@ namespace tir {
 
 /******** Annotation ********/
 
-Block WithAnnotation(const BlockNode* block, const String& attr_key, const ObjectRef& attr_value) {
-  Map<String, Any> annotations = block->annotations;
+Block WithAnnotation(const BlockNode* block, const ffi::String& attr_key, const ObjectRef& attr_value) {
+  Map<ffi::String, Any> annotations = block->annotations;
   annotations.Set(attr_key, attr_value);
   ObjectPtr<BlockNode> new_block = ffi::make_object<BlockNode>(*block);
   new_block->annotations = std::move(annotations);
@@ -36,7 +36,7 @@ Block WithAnnotation(const BlockNode* block, const String& attr_key, const Objec
 }
 
 /******** Buffer Related ********/
-Buffer WithScope(const Buffer& buffer, const String& scope) {
+Buffer WithScope(const Buffer& buffer, const ffi::String& scope) {
   ObjectPtr<BufferNode> new_buffer = ffi::make_object<BufferNode>(*buffer.get());
   ObjectPtr<VarNode> new_var = ffi::make_object<VarNode>(*buffer->data.get());
   const auto* ptr_type = TVM_TYPE_AS(buffer->data->type_annotation, PointerTypeNode);
@@ -241,11 +241,11 @@ void LeafBlockRemovalPlan(const ScheduleState& self, const StmtSRef& leaf_block_
     explicit OnlyLeafError(IRModule mod, Block leaf_block, Block scope_root)
         : mod_(mod), leaf_block_(leaf_block), scope_root_(scope_root) {}
 
-    String FastErrorString() const final {
+    ffi::String FastErrorString() const final {
       return "ScheduleError: Cannot remove the only leaf in the scope";
     }
 
-    String DetailRenderTemplate() const final {
+    ffi::String DetailRenderTemplate() const final {
       return "Block {0} is the only leaf in the scope {1}, which cannot be removed; Otherwise the "
              "scope will be empty.";
     }
@@ -321,7 +321,7 @@ void LeafBlockRemovalPlan(const ScheduleState& self, const StmtSRef& leaf_block_
 }
 
 Optional<LoopRV> TileWithTensorIntrin(const tir::Schedule& sch, const tir::BlockRV& block_rv,
-                                      const String& intrin_name, bool allow_padding) {
+                                      const ffi::String& intrin_name, bool allow_padding) {
   Optional<tir::TensorizeInfo> opt_tensorize_info =
       GetTensorizeLoopMapping(sch->state(), sch->GetSRef(block_rv),
                               tir::TensorIntrin::Get(intrin_name).value()->desc, allow_padding);

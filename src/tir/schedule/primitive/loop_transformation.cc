@@ -178,12 +178,12 @@ class BlockPropertyError : public ScheduleError {
 
   explicit BlockPropertyError(IRModule mod, Block block) : mod_(mod), block_(std::move(block)) {}
 
-  String FastErrorString() const final {
+  ffi::String FastErrorString() const final {
     return "ScheduleError: The block under the loops to be reordered have block iter type other "
            "than data-parallel or reduction";
   }
 
-  String DetailRenderTemplate() const final {
+  ffi::String DetailRenderTemplate() const final {
     return "The block {0} under the loops to be reordered have block iter type other than "
            "data-parallel or reduction";
   }
@@ -200,12 +200,12 @@ class HasAnnotationOrThreadBindingError : public ScheduleError {
   explicit HasAnnotationOrThreadBindingError(IRModule mod, For loop)
       : mod_(mod), loop_(std::move(loop)) {}
 
-  String FastErrorString() const final {
+  ffi::String FastErrorString() const final {
     return "ScheduleError: The primitive can't be applied because the loop has annotation or "
            "thread binding";
   }
 
-  String DetailRenderTemplate() const final {
+  ffi::String DetailRenderTemplate() const final {
     return "The primitive can't be applied because the loop {0} has annotation or thread binding";
   }
 
@@ -221,11 +221,11 @@ class OuterNotInnerParent : public ScheduleError {
   explicit OuterNotInnerParent(IRModule mod, For outer, For inner)
       : mod_(mod), outer_(std::move(outer)), inner_(std::move(inner)) {}
 
-  String FastErrorString() const final {
+  ffi::String FastErrorString() const final {
     return "ScheduleError: The outer loop is not the parent of the inner loop";
   }
 
-  String DetailRenderTemplate() const final {
+  ffi::String DetailRenderTemplate() const final {
     return "The loops can't be fused because the outer loop {0} is not the parent of the inner "
            "loop {1}";
   }
@@ -243,11 +243,11 @@ class NotOnlyChildError : public ScheduleError {
   explicit NotOnlyChildError(IRModule mod, For outer, For inner)
       : mod_(mod), outer_(std::move(outer)), inner_(std::move(inner)) {}
 
-  String FastErrorString() const final {
+  ffi::String FastErrorString() const final {
     return "ScheduleError: The inner loop is not the only child of outer loop";
   }
 
-  String DetailRenderTemplate() const final {
+  ffi::String DetailRenderTemplate() const final {
     return "The loops can't be fused because the inner loop {1} is not the only child of outer "
            "loop {0}.";
   }
@@ -264,11 +264,11 @@ class NotSingleInferFactorError : public ScheduleError {
  public:
   explicit NotSingleInferFactorError(IRModule mod) : mod_(mod) {}
 
-  String FastErrorString() const final {
+  ffi::String FastErrorString() const final {
     return "ScheduleError: only one factor can be specified as -1 or none";
   }
 
-  String DetailRenderTemplate() const final {
+  ffi::String DetailRenderTemplate() const final {
     return "Only one factor can be specified as -1 or none";
   }
 
@@ -282,12 +282,12 @@ class WrongFactorProductError : public ScheduleError {
  public:
   explicit WrongFactorProductError(IRModule mod, For loop) : mod_(mod), loop_(std::move(loop)) {}
 
-  String FastErrorString() const final {
+  ffi::String FastErrorString() const final {
     return "ScheduleError: The product of factors is not larger than or equal to the extent of "
            "loop";
   }
 
-  String DetailRenderTemplate() const final {
+  ffi::String DetailRenderTemplate() const final {
     return "The product of factors is not larger than or equal to the extent of loop {0}";
   }
 
@@ -302,11 +302,11 @@ class LoopMultiAppearanceError : public ScheduleError {
  public:
   explicit LoopMultiAppearanceError(IRModule mod, For loop) : mod_(mod), loop_(std::move(loop)) {}
 
-  String FastErrorString() const final {
+  ffi::String FastErrorString() const final {
     return "ScheduleError: Some loop appears in the input array for multiple times.";
   }
 
-  String DetailRenderTemplate() const final {
+  ffi::String DetailRenderTemplate() const final {
     return "Loop {0} appears in the input array for multiple times.";
   }
 
@@ -324,9 +324,9 @@ class LoopsNotAChainError : public ScheduleError {
   explicit LoopsNotAChainError(IRModule mod, Optional<Stmt> problematic_loop, ProblemKind kind)
       : mod_(mod), problematic_loop_(std::move(problematic_loop)), kind_(kind) {}
 
-  String FastErrorString() const final { return "ScheduleError: the loops are not in a chain"; }
+  ffi::String FastErrorString() const final { return "ScheduleError: the loops are not in a chain"; }
 
-  String DetailRenderTemplate() const final {
+  ffi::String DetailRenderTemplate() const final {
     std::stringstream ss;
     ss << "The loops are not in a chain because";
     if (kind_ == ProblemKind::kNotUnderAScope) {
@@ -355,10 +355,10 @@ class LoopsNotAChainError : public ScheduleError {
 class DependentLoopError : public ScheduleError {
  public:
   enum class PrimitiveKind { kFuse, kReorder };
-  explicit DependentLoopError(IRModule mod, For loop, String inner_var, PrimitiveKind kind)
+  explicit DependentLoopError(IRModule mod, For loop, ffi::String inner_var, PrimitiveKind kind)
       : mod_(mod), loop_(std::move(loop)), inner_var_(std::move(inner_var)), kind_(kind) {}
 
-  String FastErrorString() const final {
+  ffi::String FastErrorString() const final {
     if (kind_ == PrimitiveKind::kReorder) {
       return "ScheduleError: An outer loop's `min` or `extent` is dependent on an inner loop "
              "in the new order";
@@ -367,7 +367,7 @@ class DependentLoopError : public ScheduleError {
     }
   }
 
-  String DetailRenderTemplate() const final {
+  ffi::String DetailRenderTemplate() const final {
     if (kind_ == PrimitiveKind::kReorder) {
       return "Outer Loop {0}'s `min` or `extent` is dependent on an inner loop " + inner_var_ +
              " in the new order";
@@ -381,7 +381,7 @@ class DependentLoopError : public ScheduleError {
 
   IRModule mod_;
   For loop_;
-  String inner_var_;
+  ffi::String inner_var_;
   PrimitiveKind kind_;
 };
 
@@ -458,7 +458,7 @@ class BufferIndicesMapExtractor : public StmtExprVisitor {
  public:
   explicit BufferIndicesMapExtractor(Var loop_var) : loop_var_(loop_var) {}
 
-  static Map<String, Array<String>> Extract(Var loop_var, Block& block) {
+  static Map<ffi::String, Array<ffi::String>> Extract(Var loop_var, Block& block) {
     BufferIndicesMapExtractor extractor(loop_var);
     extractor(std::move(block->body));
     return extractor.buffer_indices_map;
@@ -466,7 +466,7 @@ class BufferIndicesMapExtractor : public StmtExprVisitor {
 
  private:
   void VisitStmt_(const BufferStoreNode* store) final {
-    Array<String> indices;
+    Array<ffi::String> indices;
     bool check_ = false;
     for (size_t i = 0; i < store->indices.size(); i++) {
       const VarNode* var_node = store->indices[i].as<VarNode>();
@@ -482,7 +482,7 @@ class BufferIndicesMapExtractor : public StmtExprVisitor {
   }
 
   void VisitExpr_(const BufferLoadNode* load) final {
-    Array<String> indices;
+    Array<ffi::String> indices;
     bool check_ = false;
     for (size_t i = 0; i < load->indices.size(); i++) {
       const VarNode* var_node = load->indices[i].as<VarNode>();
@@ -500,11 +500,11 @@ class BufferIndicesMapExtractor : public StmtExprVisitor {
   void VisitStmt_(const BlockNode* op) final { StmtVisitor::VisitStmt_(op); }
 
   Var loop_var_;
-  Map<String, Array<String>> buffer_indices_map;
+  Map<ffi::String, Array<ffi::String>> buffer_indices_map;
 };
 
-Array<BufferRegion> MutateBufferRegion(Map<String, Array<String>> buffer_indices_map,
-                                       Map<String, Range> index_range_map,
+Array<BufferRegion> MutateBufferRegion(Map<ffi::String, Array<ffi::String>> buffer_indices_map,
+                                       Map<ffi::String, Range> index_range_map,
                                        Array<BufferRegion> region_arr) {
   // Update the region with new Ranges and return new BufferRegion
   Array<BufferRegion> new_region_arr =
@@ -513,7 +513,7 @@ Array<BufferRegion> MutateBufferRegion(Map<String, Array<String>> buffer_indices
         auto it = buffer_indices_map.find(new_region->buffer->name);
         if (it == buffer_indices_map.end()) return new_region;
 
-        Array<String> old_indices = buffer_indices_map[new_region->buffer->name];
+        Array<ffi::String> old_indices = buffer_indices_map[new_region->buffer->name];
         Array<Range> new_ranges;
         for (size_t i = 0; i < old_indices.size(); i++) {
           new_ranges.push_back(index_range_map[old_indices[i]]);
@@ -565,14 +565,14 @@ class BlockMutator : public StmtExprMutator {
     }
 
     // Get the (iter_var, new Range) map
-    Map<String, Range> index_range_map;
+    Map<ffi::String, Range> index_range_map;
     for (size_t i = 0; i < new_block->iter_vars.size(); i++) {
       IterVar iter = new_block->iter_vars[i];
       index_range_map.Set(iter->var->name_hint, iter->dom);
     }
 
     // Get the (Buffer, indices) map
-    Map<String, Array<String>> buffer_indices_map =
+    Map<ffi::String, Array<ffi::String>> buffer_indices_map =
         BufferIndicesMapExtractor::Extract(new_loop_var_, new_block);
     Array<BufferRegion> new_writes =
         MutateBufferRegion(buffer_indices_map, index_range_map, new_block->writes);
@@ -627,7 +627,7 @@ class BlockMutator : public StmtExprMutator {
   int inner_iter_var_index = -1;
 };
 
-const String get_block_name(Stmt loop_body) {
+const ffi::String get_block_name(Stmt loop_body) {
   const BlockRealizeNode* blk_realize = loop_body.as<BlockRealizeNode>();
   if (blk_realize == nullptr) {
     return get_block_name(loop_body.as<ForNode>()->body);
@@ -653,7 +653,7 @@ Array<StmtSRef> LoopPartition(ScheduleState self, const StmtSRef& loop_sref,
     dtype = DataType::Int(bits);
   }
 
-  String block_name = get_block_name(loop->body) + "_" + loop->loop_var->name_hint;
+  ffi::String block_name = get_block_name(loop->body) + "_" + loop->loop_var->name_hint;
   int n = factors.size();
   PrimExpr min_value = loop->min;
   PrimExpr extent_value;
@@ -1192,7 +1192,7 @@ struct SplitTraits : public UnpackedInstTraits<SplitTraits> {
                       disable_predication.operator bool());
   }
 
-  static String UnpackedAsPython(Array<String> outputs, String loop_rv, Array<Any> factors,
+  static ffi::String UnpackedAsPython(Array<ffi::String> outputs, ffi::String loop_rv, Array<Any> factors,
                                  Bool preserve_unit_iters, Bool disable_predication) {
     PythonAPICall py("split");
     py.Input("loop", loop_rv);
@@ -1232,7 +1232,7 @@ struct LoopPartitionTraits : public UnpackedInstTraits<LoopPartitionTraits> {
     return sch->LoopPartition(loop_rv, factors, preserve_unit_iters.operator bool());
   }
 
-  static String UnpackedAsPython(Array<String> outputs, String loop_rv, Array<Any> factors,
+  static ffi::String UnpackedAsPython(Array<ffi::String> outputs, ffi::String loop_rv, Array<Any> factors,
                                  Bool preserve_unit_iters) {
     PythonAPICall py("loop_partition");
     py.Input("loop", loop_rv);
@@ -1264,9 +1264,9 @@ struct MergeTraits : public UnpackedInstTraits<MergeTraits> {
     return sch->Merge(loop_rvs);
   }
 
-  static String UnpackedAsPython(Array<String> outputs, Array<String> loop_rvs) {
+  static ffi::String UnpackedAsPython(Array<ffi::String> outputs, Array<ffi::String> loop_rvs) {
     PythonAPICall py("merge");
-    for (const String& loop_rv : loop_rvs) {
+    for (const ffi::String& loop_rv : loop_rvs) {
       py.Input("", loop_rv);
     }
     py.SingleOutput(outputs);
@@ -1296,10 +1296,10 @@ struct FuseTraits : public UnpackedInstTraits<FuseTraits> {
     return sch->Fuse(loop_rvs, preserve_unit_iters.operator bool());
   }
 
-  static String UnpackedAsPython(Array<String> outputs, Array<String> loop_rvs,
+  static ffi::String UnpackedAsPython(Array<ffi::String> outputs, Array<ffi::String> loop_rvs,
                                  Bool preserve_unit_iters) {
     PythonAPICall py("fuse");
-    for (const String& loop_rv : loop_rvs) {
+    for (const ffi::String& loop_rv : loop_rvs) {
       py.Input("", loop_rv);
     }
     py.Input("preserve_unit_iters", preserve_unit_iters.operator bool());
@@ -1329,9 +1329,9 @@ struct ReorderTraits : public UnpackedInstTraits<ReorderTraits> {
     return sch->Reorder(loop_rvs);
   }
 
-  static String UnpackedAsPython(Array<String> outputs, Array<String> loop_rvs) {
+  static ffi::String UnpackedAsPython(Array<ffi::String> outputs, Array<ffi::String> loop_rvs) {
     PythonAPICall py("reorder");
-    for (const String& loop_rv : loop_rvs) {
+    for (const ffi::String& loop_rv : loop_rvs) {
       py.Input("", loop_rv);
     }
     return py.Str();
@@ -1361,7 +1361,7 @@ struct AddUnitLoopTraits : public UnpackedInstTraits<AddUnitLoopTraits> {
     }
   }
 
-  static String UnpackedAsPython(Array<String> outputs, String rv) {
+  static ffi::String UnpackedAsPython(Array<ffi::String> outputs, ffi::String rv) {
     PythonAPICall py("add_unit_loop");
     py.Input("block_or_loop", rv);
     py.SingleOutput(outputs);

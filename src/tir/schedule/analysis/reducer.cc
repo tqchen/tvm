@@ -310,12 +310,12 @@ void ErrorRFactorCrossThreadReductionNotApplicable(const Optional<ScheduleState>
     explicit RFactorNotApplicableError(IRModule mod, Block block, int violated_cond)
         : mod_(std::move(mod)), block_(std::move(block)), violated_cond_(violated_cond) {}
 
-    String FastErrorString() const final {
+    ffi::String FastErrorString() const final {
       return "ScheduleError: RFactor cannot be applied to the block since the block does not meet "
              "the requirements";
     }
 
-    String DetailRenderTemplate() const final {
+    ffi::String DetailRenderTemplate() const final {
       std::ostringstream os;
       os << "RFactor cannot be applied to block {0}, because the block violates condition #"
          << violated_cond_ << ".\n"
@@ -595,12 +595,12 @@ class NoMatchedReducerError : public ScheduleError {
         identities_(std::move(identities)),
         combiners_(std::move(combiners)) {}
 
-  String FastErrorString() const final {
+  ffi::String FastErrorString() const final {
     return "ScheduleError: No matched reducer for the identity and the combiner of this reduction "
            "block. So rfactor and cross-thread reduction cannot be applied.";
   }
 
-  String DetailRenderTemplate() const final {
+  ffi::String DetailRenderTemplate() const final {
     std::ostringstream os;
     os << "No matched reducer for identity " << identities_ << " and combiner " << combiners_
        << "In this case rfactor cannot be applied. You can check tvm::tir::ReducerRegistry for "

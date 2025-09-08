@@ -48,7 +48,7 @@ PrimExpr::PrimExpr(int32_t value) : PrimExpr(IntImm(DataType::Int(32), value)) {
 
 PrimExpr::PrimExpr(float value) : PrimExpr(FloatImm(DataType::Float(32), value)) {}
 
-PrimExpr PrimExpr::ConvertFallbackValue(String value) { return tir::StringImm(value); }
+PrimExpr PrimExpr::ConvertFallbackValue(ffi::String value) { return tir::StringImm(value); }
 
 IntImm::IntImm(DataType dtype, int64_t value, Span span) {
   ICHECK(dtype.is_scalar()) << "ValueError: IntImm can only take scalar, but " << dtype
@@ -208,7 +208,7 @@ TVM_FFI_STATIC_INIT_BLOCK({
       });
 });
 
-GlobalVar::GlobalVar(String name_hint, Span span) {
+GlobalVar::GlobalVar(ffi::String name_hint, Span span) {
   ObjectPtr<GlobalVarNode> n = ffi::make_object<GlobalVarNode>();
   n->name_hint = std::move(name_hint);
   n->span = std::move(span);
@@ -218,7 +218,7 @@ GlobalVar::GlobalVar(String name_hint, Span span) {
 TVM_FFI_STATIC_INIT_BLOCK({
   namespace refl = tvm::ffi::reflection;
   refl::GlobalDef()
-      .def("ir.GlobalVar", [](String name) { return GlobalVar(name); })
+      .def("ir.GlobalVar", [](ffi::String name) { return GlobalVar(name); })
       .def("ir.DebugPrint", [](ObjectRef ref) {
         std::stringstream ss;
         ss << ref;

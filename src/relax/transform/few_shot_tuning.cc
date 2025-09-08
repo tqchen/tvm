@@ -43,7 +43,7 @@ tir::PrimFunc FewShotTunePrimFunc(const tir::PrimFunc& prim_func, const Target& 
   }
   // create an IRModule
   IRModule mod = IRModule(Map<GlobalVar, BaseFunc>(
-      {{GlobalVar("main"), WithAttr(prim_func, tvm::attr::kGlobalSymbol, String("main"))}}));
+      {{GlobalVar("main"), WithAttr(prim_func, tvm::attr::kGlobalSymbol, ffi::String("main"))}}));
   // fetch the number of physical cores
   static const auto f_cpu_count = tvm::ffi::Function::GetGlobalRequired("meta_schedule.cpu_count");
   int num_threads = f_cpu_count(false).cast<int>();

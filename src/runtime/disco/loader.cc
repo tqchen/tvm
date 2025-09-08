@@ -78,7 +78,7 @@ ShardInfo::TensorInfo LoadTensorInfoFromJSON(const picojson::array& json_tensor_
     shape.push_back(AsType<int64_t>(shape_json[i]));
   }
   std::string dtype = AsType<std::string>(json_tensor_info[1]);
-  return ShardInfo::TensorInfo{ffi::Shape(std::move(shape)), DataType(StringToDLDataType(dtype))};
+  return ShardInfo::TensorInfo{ffi::Shape(std::move(shape)), DataType(ffi::StringToDLDataType(dtype))};
 }
 
 ShardInfo::ShardFunc LoadShardFuncFromJSON(const picojson::array& json_shard_func) {
@@ -178,7 +178,7 @@ ObjectRef ShardLoaderObj::Create(const std::string& path_to_metadata, const std:
                                  std::string shard_info, Optional<ffi::Module> mod) {
   if (shard_info.empty() && mod.has_value()) {
     if (auto get_shard_info = (*mod)->GetFunction("get_shard_info")) {
-      shard_info = (*get_shard_info)().cast<String>();
+      shard_info = (*get_shard_info)().cast<ffi::String>();
     }
   }
   ObjectPtr<ShardLoaderObj> n = ffi::make_object<ShardLoaderObj>();

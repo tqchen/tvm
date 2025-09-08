@@ -317,7 +317,7 @@ class PipelineRewriter : public StmtExprMutator {
       const Array<Buffer> pipeline_allocs, const For& pipeline_loop,
       const PipelineInfo& pipeline_info,
       const std::unordered_map<const VarNode*, FragmentInfo>& fragment_info,
-      const Map<String, ffi::Any> preserved_annotations) {
+      const Map<ffi::String, ffi::Any> preserved_annotations) {
     PipelineRewriter rewriter(buffer_data_to_buffer, double_buffers, pipeline_allocs, pipeline_loop,
                               pipeline_info, fragment_info, preserved_annotations);
     return rewriter.BuildPipeline();
@@ -329,7 +329,7 @@ class PipelineRewriter : public StmtExprMutator {
                    const Array<Buffer>& pipeline_allocs, const For& pipeline_loop,
                    const PipelineInfo& pipeline_info,
                    const std::unordered_map<const VarNode*, FragmentInfo>& fragment_info,
-                   const Map<String, ffi::Any> preserved_annotations)
+                   const Map<ffi::String, ffi::Any> preserved_annotations)
 
       : buffer_data_to_buffer_(std::move(buffer_data_to_buffer)),
         double_buffers_(double_buffers),
@@ -976,7 +976,7 @@ class PipelineRewriter : public StmtExprMutator {
   Map<Buffer, Buffer> buffer_remap_;
   Array<Block> ordered_stmts_;
   std::map<int, AsyncStateGlobal> async_states;
-  Map<String, ffi::Any> preserved_annotations_;
+  Map<ffi::String, ffi::Any> preserved_annotations_;
 };
 
 /*!
@@ -1016,7 +1016,7 @@ void BuildDependencyGraph(
 class PipelineInjector : private StmtExprMutator {
  public:
   static Stmt Inject(const PrimFunc& func) {
-    auto global_symbol = func->GetAttr<String>(tvm::attr::kGlobalSymbol);
+    auto global_symbol = func->GetAttr<ffi::String>(tvm::attr::kGlobalSymbol);
     PipelineInjector injector(global_symbol);
     for (const auto& kv : func->buffer_map) {
       const Buffer& buffer = kv.second;
@@ -1027,7 +1027,7 @@ class PipelineInjector : private StmtExprMutator {
   }
 
  private:
-  explicit PipelineInjector(Optional<String> global_symbol) : global_symbol_(global_symbol) {}
+  explicit PipelineInjector(Optional<ffi::String> global_symbol) : global_symbol_(global_symbol) {}
 
   /*!
    * \brief Check the pipeline satisfies the following conditions:
@@ -1147,9 +1147,9 @@ class PipelineInjector : private StmtExprMutator {
       }
     }
 
-    Map<String, ffi::Any> preserved_annotations;
+    Map<ffi::String, ffi::Any> preserved_annotations;
     for (const auto& kv : op->annotations) {
-      const String& key = kv.first;
+      const ffi::String& key = kv.first;
       if (kv.first != attr::software_pipeline_stage && kv.first != attr::software_pipeline_order &&
           kv.first != attr::software_pipeline_async_stages) {
         preserved_annotations.Set(key, kv.second);
@@ -1239,7 +1239,7 @@ class PipelineInjector : private StmtExprMutator {
   Map<Var, Buffer> buffer_data_to_buffer_;
   std::unordered_map<const VarNode*, FragmentInfo> fragment_info_;
   std::unordered_set<Buffer, ObjectPtrHash, ObjectPtrEqual> double_buffers;
-  Optional<String> global_symbol_;
+  Optional<ffi::String> global_symbol_;
 };
 
 }  // namespace software_pipeline

@@ -37,7 +37,7 @@ public class MainActivity extends AppCompatActivity {
   // wait time before automatic restart of RPC Activity
   public static final int HANDLER_RESTART_DELAY = 5000;
 
-  private void showDialog(String title, String msg) {
+  private void showDialog(String title, ffi::String msg) {
     AlertDialog.Builder builder = new AlertDialog.Builder(this);
     builder.setTitle(title);
     builder.setMessage(msg);
@@ -58,9 +58,9 @@ public class MainActivity extends AppCompatActivity {
     EditText edAppKey = findViewById(R.id.input_key);
     SwitchCompat inputSwitch =  findViewById(R.id.switch_persistent);
 
-    final String proxyHost = edProxyAddress.getText().toString();
+    final ffi::String proxyHost = edProxyAddress.getText().toString();
     final int proxyPort = Integer.parseInt(edProxyPort.getText().toString());
-    final String key = edAppKey.getText().toString();
+    final ffi::String key = edAppKey.getText().toString();
     final boolean isChecked = inputSwitch.isChecked();
 
     SharedPreferences pref = getApplicationContext().getSharedPreferences("RPCProxyPreference", Context.MODE_PRIVATE);
@@ -145,13 +145,13 @@ public class MainActivity extends AppCompatActivity {
 
     if (enable) {
     SharedPreferences pref = getApplicationContext().getSharedPreferences("RPCProxyPreference", Context.MODE_PRIVATE);
-    String inputAddress = pref.getString("input_address", null);
+    ffi::String inputAddress = pref.getString("input_address", null);
     if (null != inputAddress)
         edProxyAddress.setText(inputAddress);
-    String inputPort = pref.getString("input_port", null);
+    ffi::String inputPort = pref.getString("input_port", null);
     if (null != inputPort)
         edProxyPort.setText(inputPort);
-    String inputKey = pref.getString("input_key", null);
+    ffi::String inputKey = pref.getString("input_key", null);
     if (null != inputKey)
         edAppKey.setText(inputKey);
     boolean isChecked = pref.getBoolean("input_switch", false);

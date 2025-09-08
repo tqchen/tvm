@@ -184,7 +184,7 @@ class ScheduleCopier {
   std::unordered_map<const StmtSRefNode*, StmtSRef> old2new_;
 };
 
-void ConcreteScheduleNode::WorkOn(const String& func_name) {
+void ConcreteScheduleNode::WorkOn(const ffi::String& func_name) {
   this->func_working_on_ = this->state_->mod->GetGlobalVar(func_name);
 }
 
@@ -275,10 +275,10 @@ LoopRV ConcreteScheduleNode::SampleComputeLocation(const BlockRV& block_rv,
 
 /******** Schedule: Get blocks & loops ********/
 
-BlockRV ConcreteScheduleNode::GetBlock(const String& name, const Optional<String>& func_name) {
+BlockRV ConcreteScheduleNode::GetBlock(const ffi::String& name, const Optional<ffi::String>& func_name) {
   class NotSingleResult : public ScheduleError {
    public:
-    explicit NotSingleResult(String name, IRModule mod, const Array<StmtSRef>& blocks)
+    explicit NotSingleResult(ffi::String name, IRModule mod, const Array<StmtSRef>& blocks)
         : name_(name), mod_(mod), blocks_{} {
       blocks_.reserve(blocks.size());
       for (const StmtSRef& block_sref : blocks) {
@@ -290,7 +290,7 @@ BlockRV ConcreteScheduleNode::GetBlock(const String& name, const Optional<String
     IRModule mod() const final { return mod_; }
     Array<ObjectRef> LocationsOfInterest() const final { return {blocks_.begin(), blocks_.end()}; }
 
-    String DetailRenderTemplate() const final {
+    ffi::String DetailRenderTemplate() const final {
       if (blocks_.empty()) {
         return "Cannot find a block with the name: " + name_;
       } else {
@@ -298,7 +298,7 @@ BlockRV ConcreteScheduleNode::GetBlock(const String& name, const Optional<String
       }
     }
 
-    String FastErrorString() const final {
+    ffi::String FastErrorString() const final {
       if (blocks_.empty()) {
         return "ScheduleError: Cannot find a block with the specified name";
       } else {
@@ -306,7 +306,7 @@ BlockRV ConcreteScheduleNode::GetBlock(const String& name, const Optional<String
       }
     }
 
-    String name_;
+    ffi::String name_;
     IRModule mod_;
     Array<Block> blocks_;
   };
@@ -400,11 +400,11 @@ class NotSingleInferFactorError : public ScheduleError {
  public:
   explicit NotSingleInferFactorError(IRModule mod) : mod_(mod) {}
 
-  String FastErrorString() const final {
+  ffi::String FastErrorString() const final {
     return "ScheduleError: only one factor can be specified as -1 or none";
   }
 
-  String DetailRenderTemplate() const final {
+  ffi::String DetailRenderTemplate() const final {
     return "Only one factor can be specified as -1 or none";
   }
 
@@ -419,7 +419,7 @@ class WrongFactorError : public ScheduleError {
   explicit WrongFactorError(IRModule mod, For loop, bool product)
       : mod_(mod), loop_(std::move(loop)), product_(product) {}
 
-  String FastErrorString() const final {
+  ffi::String FastErrorString() const final {
     if (product_)
       return "ScheduleError: The product of factors is not larger than or equal to the extent of "
              "loop";
@@ -427,7 +427,7 @@ class WrongFactorError : public ScheduleError {
       return "ScheduleError: The sum of factors is larger than or equal to the extent of loop";
   }
 
-  String DetailRenderTemplate() const final {
+  ffi::String DetailRenderTemplate() const final {
     if (product_)
       return "The product of factors is not larger than or equal to the extent of loop {0}";
     else
@@ -447,11 +447,11 @@ class NonPositiveFactorError : public ScheduleError {
   explicit NonPositiveFactorError(IRModule mod, int64_t factor, size_t idx)
       : mod_(std::move(mod)), factor_(factor), idx_(idx) {}
 
-  String FastErrorString() const final {
+  ffi::String FastErrorString() const final {
     return "ScheduleError: All the constant factors are required to be positive. However, some "
            "constant input factor is zero or negative.";
   }
-  String DetailRenderTemplate() const final {
+  ffi::String DetailRenderTemplate() const final {
     std::ostringstream os;
     os << "All the constant factors are required to be positive. However, the factor at position "
        << idx_ << " is " << factor_;
@@ -517,12 +517,12 @@ Array<LoopRV> ConcreteScheduleNode::LoopPartition(const LoopRV& loop_rv,
    public:
     explicit SymbolicShapeError(IRModule mod, For loop) : mod_(mod), loop_(std::move(loop)) {}
 
-    String FastErrorString() const final {
+    ffi::String FastErrorString() const final {
       return "ScheduleError: The min and extent values of the loop are required to be known at "
              "compile time. However, dynamic shape has been detected.";
     }
 
-    String DetailRenderTemplate() const final {
+    ffi::String DetailRenderTemplate() const final {
       return "Detected dynamic shape in either min or extent of a loop {0}";
     }
 
@@ -634,7 +634,7 @@ void ConcreteScheduleNode::Vectorize(const LoopRV& loop_rv) {
   TVM_TIR_SCHEDULE_END("vectorize", this->error_render_level_);
 }
 
-void ConcreteScheduleNode::Bind(const LoopRV& loop_rv, const String& thread_axis) {
+void ConcreteScheduleNode::Bind(const LoopRV& loop_rv, const ffi::String& thread_axis) {
   if (thread_axis == "vthread") {
     LOG(WARNING) << "`vthread` is legacy behavior and is going to be deprecated. Please use "
                     "`vthread.x`, `vthread.y` and `vthread.z` instead";
@@ -655,7 +655,7 @@ void ConcreteScheduleNode::Unroll(const LoopRV& loop_rv) {
 /******** Schedule: Insert cache stages ********/
 
 BlockRV ConcreteScheduleNode::CacheRead(const BlockRV& block_rv, int read_buffer_index,
-                                        const String& storage_scope,
+                                        const ffi::String& storage_scope,
                                         const Array<BlockRV> consumer_blocks) {
   StmtSRef result{nullptr};
   // Create a new array of SRefs from the consumer block list.
@@ -672,7 +672,7 @@ BlockRV ConcreteScheduleNode::CacheRead(const BlockRV& block_rv, int read_buffer
 }
 
 BlockRV ConcreteScheduleNode::CacheWrite(const BlockRV& block_rv, int write_buffer_index,
-                                         const String& storage_scope,
+                                         const ffi::String& storage_scope,
                                          const Array<BlockRV> consumer_blocks) {
   StmtSRef result{nullptr};
   // Create a new array of SRefs from the consumer block list.
@@ -689,7 +689,7 @@ BlockRV ConcreteScheduleNode::CacheWrite(const BlockRV& block_rv, int write_buff
 }
 
 BlockRV ConcreteScheduleNode::ReindexCacheRead(const BlockRV& block_rv, int read_buffer_index,
-                                               const String& storage_scope,
+                                               const ffi::String& storage_scope,
                                                const IndexMap& index_map) {
   StmtSRef result{nullptr};
   TVM_TIR_SCHEDULE_BEGIN();
@@ -701,7 +701,7 @@ BlockRV ConcreteScheduleNode::ReindexCacheRead(const BlockRV& block_rv, int read
 }
 
 BlockRV ConcreteScheduleNode::ReindexCacheWrite(const BlockRV& block_rv, int write_buffer_index,
-                                                const String& storage_scope,
+                                                const ffi::String& storage_scope,
                                                 const IndexMap& index_map) {
   StmtSRef result{nullptr};
   TVM_TIR_SCHEDULE_BEGIN();
@@ -713,7 +713,7 @@ BlockRV ConcreteScheduleNode::ReindexCacheWrite(const BlockRV& block_rv, int wri
 }
 
 Array<BlockRV> ConcreteScheduleNode::CacheInplace(const BlockRV& block_rv, int write_buffer_index,
-                                                  const String& storage_scope) {
+                                                  const ffi::String& storage_scope) {
   Array<StmtSRef> results;
   TVM_TIR_SCHEDULE_BEGIN();
   results = tir::CacheInplace(state_, this->GetSRef(block_rv), write_buffer_index, storage_scope);
@@ -726,7 +726,7 @@ Array<BlockRV> ConcreteScheduleNode::CacheInplace(const BlockRV& block_rv, int w
 }
 
 Array<BlockRV> ConcreteScheduleNode::CacheIndex(const BlockRV& block_rv,
-                                                const String& storage_scope, int cse_thresh) {
+                                                const ffi::String& storage_scope, int cse_thresh) {
   Array<StmtSRef> result;
   TVM_TIR_SCHEDULE_BEGIN();
   result = tir::CacheIndex(state_, this->GetSRef(block_rv), storage_scope, cse_thresh);
@@ -752,7 +752,7 @@ BlockRV ConcreteScheduleNode::ReIndex(const BlockRV& block_rv, int buffer_index,
 /******** Schedule: Data movement ********/
 
 BlockRV ConcreteScheduleNode::ReadAt(const LoopRV& loop_rv, const BlockRV& block_rv,
-                                     int read_buffer_index, const String& storage_scope) {
+                                     int read_buffer_index, const ffi::String& storage_scope) {
   StmtSRef result{nullptr};
   TVM_TIR_SCHEDULE_BEGIN();
   result = tir::ReadAt(state_, this->GetSRef(loop_rv), this->GetSRef(block_rv), read_buffer_index,
@@ -763,7 +763,7 @@ BlockRV ConcreteScheduleNode::ReadAt(const LoopRV& loop_rv, const BlockRV& block
 }
 
 BlockRV ConcreteScheduleNode::WriteAt(const LoopRV& loop_rv, const BlockRV& block_rv,
-                                      int write_buffer_index, const String& storage_scope) {
+                                      int write_buffer_index, const ffi::String& storage_scope) {
   StmtSRef result{nullptr};
   TVM_TIR_SCHEDULE_BEGIN();
   result = tir::WriteAt(state_, this->GetSRef(loop_rv), this->GetSRef(block_rv), write_buffer_index,
@@ -838,7 +838,7 @@ void ConcreteScheduleNode::StorageAlign(const BlockRV& block_rv, int buffer_inde
 }
 
 void ConcreteScheduleNode::SetScope(const BlockRV& block_rv, int buffer_index,
-                                    const String& storage_scope) {
+                                    const ffi::String& storage_scope) {
   TVM_TIR_SCHEDULE_BEGIN();
   tir::SetScope(state_, this->GetSRef(block_rv), buffer_index, storage_scope);
   TVM_TIR_SCHEDULE_END("set-scope", this->error_render_level_);
@@ -846,7 +846,7 @@ void ConcreteScheduleNode::SetScope(const BlockRV& block_rv, int buffer_index,
 }
 
 void ConcreteScheduleNode::UnsafeSetDType(const BlockRV& block_rv, int buffer_index,
-                                          const String& dtype) {
+                                          const ffi::String& dtype) {
   TVM_TIR_SCHEDULE_BEGIN();
   tir::UnsafeSetDType(state_, this->GetSRef(block_rv), buffer_index, dtype);
   TVM_TIR_SCHEDULE_END("set-dtype", this->error_render_level_);
@@ -892,7 +892,7 @@ BlockRV ConcreteScheduleNode::Blockize(const Array<BlockRV>& blocks, bool preser
   return CreateRV<BlockRV>(result);
 }
 
-void ConcreteScheduleNode::Tensorize(const LoopRV& loop_rv, const String& intrin,
+void ConcreteScheduleNode::Tensorize(const LoopRV& loop_rv, const ffi::String& intrin,
                                      bool preserve_unit_iters) {
   TVM_TIR_SCHEDULE_BEGIN();
   tir::Tensorize(state_, this->GetSRef(loop_rv), tir::TensorIntrin::Get(intrin).value(),
@@ -901,7 +901,7 @@ void ConcreteScheduleNode::Tensorize(const LoopRV& loop_rv, const String& intrin
   TVM_TIR_SCHEDULE_END("tensorize", this->error_render_level_);
 }
 
-void ConcreteScheduleNode::Tensorize(const BlockRV& block_rv, const String& intrin,
+void ConcreteScheduleNode::Tensorize(const BlockRV& block_rv, const ffi::String& intrin,
                                      bool preserve_unit_iters) {
   TVM_TIR_SCHEDULE_BEGIN();
   tir::Tensorize(state_, this->GetSRef(block_rv), tir::TensorIntrin::Get(intrin).value(),
@@ -929,7 +929,7 @@ Any ConcreteScheduleNode::CheckAndGetAnnotationValue(const ffi::Any& ann_val) {
 
   if (const auto* expr = ann_val.as<PrimExprNode>()) {
     ICHECK(!expr->IsInstance<StringImmNode>())
-        << "TypeError: String is expected, but gets StringImm";
+        << "TypeError: ffi::String is expected, but gets StringImm";
     auto res_expr = this->Get(ffi::GetRef<PrimExpr>(expr));
     // prefer to return int/float literals for annotations
     if (auto opt_intimm = res_expr.as<IntImm>()) {
@@ -949,7 +949,7 @@ Any ConcreteScheduleNode::CheckAndGetAnnotationValue(const ffi::Any& ann_val) {
     return result;
   }
   if (const auto* dict = ann_val.as<ffi::MapObj>()) {
-    Map<String, ffi::Any> result;
+    Map<ffi::String, ffi::Any> result;
     for (auto it = dict->begin(); it != dict->end(); ++it) {
       const auto& key = it->first;
       auto value = CheckAndGetAnnotationValue(it->second);
@@ -958,7 +958,7 @@ Any ConcreteScheduleNode::CheckAndGetAnnotationValue(const ffi::Any& ann_val) {
       } else if (auto opt_str = key.try_cast<ffi::String>()) {
         result.Set(opt_str.value(), value);
       } else {
-        LOG(FATAL) << "TypeError: annotation dict key expect to be String or StringImm";
+        LOG(FATAL) << "TypeError: annotation dict key expect to be ffi::String or StringImm";
       }
     }
     return result;
@@ -969,7 +969,7 @@ Any ConcreteScheduleNode::CheckAndGetAnnotationValue(const ffi::Any& ann_val) {
   TVM_FFI_UNREACHABLE();
 }
 
-void ConcreteScheduleNode::Annotate(const LoopRV& loop_rv, const String& ann_key,
+void ConcreteScheduleNode::Annotate(const LoopRV& loop_rv, const ffi::String& ann_key,
                                     const Any& ann_val) {
   TVM_TIR_SCHEDULE_BEGIN();
   tir::Annotate(state_, this->GetSRef(loop_rv), ann_key, this->CheckAndGetAnnotationValue(ann_val));
@@ -977,14 +977,14 @@ void ConcreteScheduleNode::Annotate(const LoopRV& loop_rv, const String& ann_key
   TVM_TIR_SCHEDULE_END("annotate", this->error_render_level_);
 }
 
-void ConcreteScheduleNode::Unannotate(const LoopRV& loop_rv, const String& ann_key) {
+void ConcreteScheduleNode::Unannotate(const LoopRV& loop_rv, const ffi::String& ann_key) {
   TVM_TIR_SCHEDULE_BEGIN();
   tir::Unannotate(state_, this->GetSRef(loop_rv), ann_key);
   this->state_->DebugVerify();
   TVM_TIR_SCHEDULE_END("unannotate", this->error_render_level_);
 }
 
-void ConcreteScheduleNode::Annotate(const BlockRV& block_rv, const String& ann_key,
+void ConcreteScheduleNode::Annotate(const BlockRV& block_rv, const ffi::String& ann_key,
                                     const Any& ann_val) {
   TVM_TIR_SCHEDULE_BEGIN();
   tir::Annotate(state_, this->GetSRef(block_rv), ann_key,
@@ -993,7 +993,7 @@ void ConcreteScheduleNode::Annotate(const BlockRV& block_rv, const String& ann_k
   TVM_TIR_SCHEDULE_END("annotate", this->error_render_level_);
 }
 
-void ConcreteScheduleNode::Unannotate(const BlockRV& block_rv, const String& ann_key) {
+void ConcreteScheduleNode::Unannotate(const BlockRV& block_rv, const ffi::String& ann_key) {
   TVM_TIR_SCHEDULE_BEGIN();
   tir::Unannotate(state_, this->GetSRef(block_rv), ann_key);
   this->state_->DebugVerify();
@@ -1068,7 +1068,7 @@ void ConcreteScheduleNode::RollingBuffer(const BlockRV& block_rv, int write_buff
 
 /******** Schedule: Misc ********/
 
-void ConcreteScheduleNode::UnsafeHideBufferAccess(const BlockRV& block_rv, const String& buf_type,
+void ConcreteScheduleNode::UnsafeHideBufferAccess(const BlockRV& block_rv, const ffi::String& buf_type,
                                                   const Array<IntImm>& buf_index_array) {
   TVM_TIR_SCHEDULE_BEGIN();
   tir::UnsafeHideBufferAccess(state_, this->GetSRef(block_rv), buf_type, buf_index_array);

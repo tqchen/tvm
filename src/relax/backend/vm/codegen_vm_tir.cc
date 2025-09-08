@@ -54,7 +54,7 @@ class CodeGenVMTIR : public ExprFunctor<Optional<PrimExpr>(const Expr&)> {
  public:
   explicit CodeGenVMTIR(relax::ExecBuilder builder, IRModule ctx_mod)
       : builder_(builder), ctx_mod_(ctx_mod) {
-    system_lib_prefix_ = ctx_mod_->GetAttr<String>(tvm::attr::kSystemLibPrefix);
+    system_lib_prefix_ = ctx_mod_->GetAttr<ffi::String>(tvm::attr::kSystemLibPrefix);
   }
 
   static IRModule Run(relax::ExecBuilder builder, IRModule mod) {
@@ -67,7 +67,7 @@ class CodeGenVMTIR : public ExprFunctor<Optional<PrimExpr>(const Expr&)> {
     for (auto& p : mod->functions) {
       if (auto* func = p.second.as<FunctionNode>()) {
         auto tir_func = codegen.Codegen(ffi::GetRef<Function>(func));
-        auto gsymbol = tir_func->GetAttr<String>(tvm::attr::kGlobalSymbol);
+        auto gsymbol = tir_func->GetAttr<ffi::String>(tvm::attr::kGlobalSymbol);
         res_mod->Add(GlobalVar(gsymbol.value()), tir_func);
         res_mod->Remove(p.first);
       }
@@ -105,7 +105,7 @@ class CodeGenVMTIR : public ExprFunctor<Optional<PrimExpr>(const Expr&)> {
     stmt_stack_.back().emplace_back(stmt);
   }
 
-  void EmitCallPacked(String name, const Array<PrimExpr>& args, int64_t dst_anylist_slot = -1) {
+  void EmitCallPacked(ffi::String name, const Array<PrimExpr>& args, int64_t dst_anylist_slot = -1) {
     Array<PrimExpr> all_args;
     // negative index indicate return value can be discarded, emit call_packed
     if (dst_anylist_slot >= 0) {
@@ -126,7 +126,7 @@ class CodeGenVMTIR : public ExprFunctor<Optional<PrimExpr>(const Expr&)> {
 
   void EmitCallCPacked(const tir::PrimFunc& prim_func, const Array<PrimExpr>& args,
                        int64_t dst_anylist_slot = -1) {
-    Optional<String> gsymbol = prim_func->GetAttr<String>(tvm::attr::kGlobalSymbol);
+    Optional<ffi::String> gsymbol = prim_func->GetAttr<ffi::String>(tvm::attr::kGlobalSymbol);
     ICHECK(gsymbol.has_value()) << "All functions must have global symbol at this phase";
     Array<PrimExpr> all_args;
     // negative index indicate return value can be discarded, emit call_packed
@@ -147,7 +147,7 @@ class CodeGenVMTIR : public ExprFunctor<Optional<PrimExpr>(const Expr&)> {
   }
 
   tir::PrimFunc Codegen(const Function& func) {
-    Optional<String> gsymbol = func->GetAttr<String>(tvm::attr::kGlobalSymbol);
+    Optional<ffi::String> gsymbol = func->GetAttr<ffi::String>(tvm::attr::kGlobalSymbol);
     ICHECK(gsymbol.has_value()) << "there should be no local functions in Relax VM codegen phase. "
                                    "Did you forget to apply LambdaLift or AttachGlobalSymbol Pass?";
     // initialize the state
@@ -159,7 +159,7 @@ class CodeGenVMTIR : public ExprFunctor<Optional<PrimExpr>(const Expr&)> {
     func_anylist_handle_ = tir::Var("f", DataType::Handle());
     const_anylist_handle_ = tir::Var("c", DataType::Handle());
 
-    Array<String> param_names;
+    Array<ffi::String> param_names;
     for (Var param : func->params) {
       param_names.push_back(param->name_hint());
     }
@@ -188,7 +188,7 @@ class CodeGenVMTIR : public ExprFunctor<Optional<PrimExpr>(const Expr&)> {
     Type ret_type = VoidType();
     Array<tir::Var> tir_params = {ctx_ptr_, reg_anylist_handle_, const_anylist_handle_,
                                   func_anylist_handle_};
-    String tir_func_name = system_lib_prefix_.value_or("") + "__vmtir__" + gsymbol.value();
+    ffi::String tir_func_name = system_lib_prefix_.value_or("") + "__vmtir__" + gsymbol.value();
     tir::PrimFunc tir_func(tir_params, body, ret_type, {});
     tir_func = WithAttr(tir_func, "global_symbol", tir_func_name);
     registers_num_ = 0;
@@ -328,7 +328,7 @@ class CodeGenVMTIR : public ExprFunctor<Optional<PrimExpr>(const Expr&)> {
   }
 
   // Lookup the function and see if it matches
-  Optional<String> LookupFunction(const Expr& expr, VMFuncInfo::FuncKind* kind) {
+  Optional<ffi::String> LookupFunction(const Expr& expr, VMFuncInfo::FuncKind* kind) {
     if (auto* ext_func = expr.as<ExternFuncNode>()) {
       *kind = VMFuncInfo::FuncKind::kPackedFunc;
       return ext_func->global_symbol;
@@ -362,7 +362,7 @@ class CodeGenVMTIR : public ExprFunctor<Optional<PrimExpr>(const Expr&)> {
   }
   // Lookup PrimFunc in the same module
   // We can do direct PrimFunc call in such cases
-  Optional<tir::PrimFunc> LookupPrimFunc(const String& name) {
+  Optional<tir::PrimFunc> LookupPrimFunc(const ffi::String& name) {
     if (!ctx_mod_->ContainGlobalVar(name)) return std::nullopt;
 
     GlobalVar gvar = ctx_mod_->GetGlobalVar(name);
@@ -510,7 +510,7 @@ class CodeGenVMTIR : public ExprFunctor<Optional<PrimExpr>(const Expr&)> {
   /*! \brief the context module. */
   IRModule ctx_mod_;
   /*! \brief system lib prefix */
-  Optional<String> system_lib_prefix_;
+  Optional<ffi::String> system_lib_prefix_;
   /*! \brief Cache ops that need to be frequently used later to reduce lookup overhead. */
   const Op& alloc_storage_op_ = Op::Get("relax.vm.alloc_storage");
   const Op& alloc_tensor_op_ = Op::Get("relax.vm.alloc_tensor");

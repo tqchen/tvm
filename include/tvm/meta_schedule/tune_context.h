@@ -56,7 +56,7 @@ class TuneContextNode : public runtime::Object {
   /*! \brief The search strategy. */
   Optional<SearchStrategy> search_strategy;
   /*! \brief The name of the tuning task. */
-  Optional<String> task_name;
+  Optional<ffi::String> task_name;
   /*! \brief The number of threads to be used. */
   int num_threads;
   /*! \brief The random state. */
@@ -111,7 +111,7 @@ class TuneContext : public runtime::ObjectRef {
    */
   TVM_DLL explicit TuneContext(Optional<IRModule> mod, Optional<Target> target,
                                Optional<SpaceGenerator> space_generator,
-                               Optional<SearchStrategy> search_strategy, Optional<String> task_name,
+                               Optional<SearchStrategy> search_strategy, Optional<ffi::String> task_name,
                                int num_threads, TRandState rand_state, ffi::Function logger);
   TVM_DEFINE_MUTABLE_NOTNULLABLE_OBJECT_REF_METHODS(TuneContext, ObjectRef, TuneContextNode);
 };

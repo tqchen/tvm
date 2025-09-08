@@ -24,7 +24,7 @@
 namespace tvm {
 namespace meta_schedule {
 
-String GetRuleKindFromTarget(const Target& target) {
+ffi::String GetRuleKindFromTarget(const Target& target) {
   if (target->kind->name == "llvm") {
     static auto target_has_feature_fn_ptr =
         tvm::ffi::Function::GetGlobalRequired("target.target_has_feature");
@@ -59,7 +59,7 @@ String GetRuleKindFromTarget(const Target& target) {
     return "hexagon";
   }
   if (target->kind->name == "cuda") {
-    if (Optional<String> opt_sm = target->GetAttr<String>("arch")) {
+    if (Optional<ffi::String> opt_sm = target->GetAttr<ffi::String>("arch")) {
       std::string sm = opt_sm.value();
       if (support::StartsWith(sm, "sm_")) {
         sm = sm.substr(3);
@@ -92,7 +92,7 @@ void SpaceGeneratorNode::InitializeWithTuneContext(const TuneContext& context) {
       !(sch_rules.defined() &&      //
         postprocs.defined() &&      //
         mutator_probs.defined())) {
-    String kind = GetRuleKindFromTarget(context->target.value());
+    ffi::String kind = GetRuleKindFromTarget(context->target.value());
     Array<ScheduleRule> default_sch_rules;
     Array<Postproc> default_postprocs;
     Map<Mutator, FloatImm> default_mutator_probs;

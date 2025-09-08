@@ -98,7 +98,7 @@ std::tuple<Map<Var, Expr>, Map<tir::Var, PrimExpr>> NormalizeBindings(
   Map<relax::Var, relax::Expr> relax_var_remap;
 
   auto normalize_key = [&](ffi::Any obj) -> relax::Var {
-    if (auto opt_str = obj.as<String>()) {
+    if (auto opt_str = obj.as<ffi::String>()) {
       std::string str = opt_str.value();
       auto it = string_lookup.find(str);
       CHECK(it != string_lookup.end())
@@ -172,14 +172,14 @@ Function FunctionBindParams(Function func, const Map<Any, ObjectRef>& untyped_pa
  * \param param The param dict
  * \return The module after binding params.
  */
-IRModule BindParam(IRModule m, String func_name, Map<Any, ObjectRef> bind_params) {
+IRModule BindParam(IRModule m, ffi::String func_name, Map<Any, ObjectRef> bind_params) {
   IRModuleNode* new_module = m.CopyOnWrite();
   Map<GlobalVar, BaseFunc> functions = m->functions;
   for (const auto& func_pr : functions) {
     if (const auto* relax_f = func_pr.second.as<FunctionNode>()) {
       if (relax_f->GetLinkageType() == LinkageType::kExternal) {
         // Use global_symbol if it's external linkage
-        Optional<String> gsymbol = relax_f->GetAttr<String>(tvm::attr::kGlobalSymbol);
+        Optional<ffi::String> gsymbol = relax_f->GetAttr<ffi::String>(tvm::attr::kGlobalSymbol);
         if (gsymbol.has_value() && gsymbol.value() == func_name) {
           Function f_after_bind = FunctionBindParams(ffi::GetRef<Function>(relax_f), bind_params);
           new_module->Update(func_pr.first, f_after_bind);
@@ -203,7 +203,7 @@ TVM_FFI_STATIC_INIT_BLOCK({
 
 namespace transform {
 
-Pass BindParams(String func_name, Map<Any, ObjectRef> params) {
+Pass BindParams(ffi::String func_name, Map<Any, ObjectRef> params) {
   auto pass_func = [=](IRModule mod, PassContext pc) {
     return BindParam(std::move(mod), func_name, params);
   };

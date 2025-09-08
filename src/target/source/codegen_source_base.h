@@ -150,9 +150,9 @@ ffi::Module SourceModuleCreate(std::string code, std::string fmt);
  * \param const_vars. The constant variables that the c source module needs.
  * \return The created module.
  */
-ffi::Module CSourceModuleCreate(const String& code, const String& fmt,
-                                const Array<String>& func_names,
-                                const Array<String>& const_vars = {});
+ffi::Module CSourceModuleCreate(const ffi::String& code, const ffi::String& fmt,
+                                const Array<ffi::String>& func_names,
+                                const Array<ffi::String>& const_vars = {});
 
 /*!
  * \brief Wrap the submodules in a metadata module.

@@ -60,7 +60,7 @@ bool KnowAllShapeValues(const StructInfo& sinfo) {
 
 class LegalizeMutator : public ExprMutator {
  public:
-  explicit LegalizeMutator(const IRModule& mod, const Optional<Map<String, ffi::Function>>& cmap,
+  explicit LegalizeMutator(const IRModule& mod, const Optional<Map<ffi::String, ffi::Function>>& cmap,
                            bool enable_warning)
       : ExprMutator(mod), mod_(std::move(mod)), enable_warning_(enable_warning) {
     if (cmap) {
@@ -312,7 +312,7 @@ class LegalizeMutator : public ExprMutator {
       legalization_func = legalize_map[op];
     } else if (call_packed_map.count(op)) {
       // Third choice, use an explicit FCallPacked replacement.  This does not require the shape
-      String packed_func_name = call_packed_map[op];
+      ffi::String packed_func_name = call_packed_map[op];
       legalization_func = [packed_func_name](const BlockBuilder& bb, const Call& call) -> Expr {
         return Call(ExternFunc(packed_func_name), call->args, Attrs(), {GetStructInfo(call)});
       };
@@ -378,7 +378,7 @@ class LegalizeMutator : public ExprMutator {
   /*! \brief The context IRModule. */
   IRModule mod_;
   /*! \brief The customized legalization function map. */
-  Map<String, ffi::Function> cmap_;
+  Map<ffi::String, ffi::Function> cmap_;
   /*! \brief If VDevice annotations produced at least one PrimFunc with a Target attr*/
   bool generated_tir_with_target_attr_{false};
   /*!
@@ -390,7 +390,7 @@ class LegalizeMutator : public ExprMutator {
 
 namespace transform {
 
-Pass LegalizeOps(Optional<Map<String, ffi::Function>> cmap, bool enable_warning) {
+Pass LegalizeOps(Optional<Map<ffi::String, ffi::Function>> cmap, bool enable_warning) {
   auto pass_func = [=](IRModule mod, PassContext pc) {
     bool apply_legalize_ops =
         pc->GetConfig<Bool>("relax.transform.apply_legalize_ops").value_or(Bool(true))->value;

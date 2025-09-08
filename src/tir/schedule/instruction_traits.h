@@ -51,11 +51,11 @@ namespace tir {
  *      const Optional<ObjectRef>& decision);
  *
  *   // Convertible to `InstructionKindNode::FInstructionAsPython`
- *   static String AsPython(
- *      const Array<String>& inputs,
+ *   static ffi::String AsPython(
+ *      const Array<ffi::String>& inputs,
  *      const Array<ObjectRef>& attrs,
  *      const Optional<ObjectRef>& decision,
- *      const Array<String>& outputs);
+ *      const Array<ffi::String>& outputs);
  *
  *   // Convertible to `InstructionKindNode::FInstructionAttrsAsJSON`
  *   static ObjectRef AttrsAsJSON(
@@ -123,9 +123,9 @@ namespace tir {
  *   // - The next `kNumInputs` arguments are names of input random variables
  *   // - The next `kNumAttrs` arguments are attributes
  *   // - The next argument is decision, if `kNumDecisions == 1`
- *   static String UnpackedAsPython(
- *      Array<String> outputs,
- *      String loop_rv,
+ *   static ffi::String UnpackedAsPython(
+ *      Array<ffi::String> outputs,
+ *      ffi::String loop_rv,
  *      Integer n,
  *      Integer max_innermost_factor,
  *      Optional<Array<Integer>> decision) {
@@ -160,8 +160,8 @@ struct UnpackedInstTraits {
    * `TTraits::UnpackedAsPython`
    * \sa InstructionKindNode::f_as_python
    */
-  static String AsPython(const Array<Any>& inputs, const Array<Any>& attrs, const Any& decision,
-                         const Array<String>& outputs);
+  static ffi::String AsPython(const Array<Any>& inputs, const Array<Any>& attrs, const Any& decision,
+                         const Array<ffi::String>& outputs);
 
   /*! \brief No customized serializer by default */
   static constexpr std::nullptr_t AttrsAsJSON = nullptr;
@@ -190,32 +190,32 @@ class PythonAPICall {
    * \brief Constructor
    * \param method_name The name of the schedule API to be called
    */
-  explicit PythonAPICall(String method_name) : method_name_(method_name), output_(std::nullopt) {}
+  explicit PythonAPICall(ffi::String method_name) : method_name_(method_name), output_(std::nullopt) {}
   /*! \brief Add an integer input */
-  inline void Input(String arg_name, int arg);
+  inline void Input(ffi::String arg_name, int arg);
   /*! \brief Add an integer input */
-  inline void Input(String arg_name, int64_t arg);
+  inline void Input(ffi::String arg_name, int64_t arg);
   /*! \brief Add a bool input */
-  inline void Input(String arg_name, bool arg);
+  inline void Input(ffi::String arg_name, bool arg);
   /*! \brief Add a double input */
-  inline void Input(String arg_name, double arg);
+  inline void Input(ffi::String arg_name, double arg);
   /*! \brief Add an input random variable */
-  inline void Input(String arg_name, String arg);
+  inline void Input(ffi::String arg_name, ffi::String arg);
   /*! \brief Add an input random variable */
-  inline void Input(String arg_name, std::string arg);
+  inline void Input(ffi::String arg_name, std::string arg);
   /*! \brief Add an input, dispatched to different implementations according to the object's type */
-  inline void Input(String arg_name, Any arg);
+  inline void Input(ffi::String arg_name, Any arg);
   /*! \brief Add the decision */
   inline void Decision(Any decision);
   /*!
    * \brief Add a single output random variable
    * \param unit_array An array containing only one element
    */
-  inline void SingleOutput(Array<String> unit_array);
+  inline void SingleOutput(Array<ffi::String> unit_array);
   /*! \brief Add a list of output random variables */
-  inline void OutputList(Array<String> outputs);
+  inline void OutputList(Array<ffi::String> outputs);
   /*! \returns The schedule API call in python syntax */
-  inline String Str() const;
+  inline ffi::String Str() const;
 
  private:
   /*! \brief Converts a TVM object to python string and print to the output stream */
@@ -223,13 +223,13 @@ class PythonAPICall {
 
  private:
   /*! \brief The name of the API to call */
-  String method_name_;
+  ffi::String method_name_;
   /*! \brief The output of the instruction */
-  Optional<String> output_;
+  Optional<ffi::String> output_;
   /*! \brief The names of input arguments */
-  std::vector<String> arg_names_;
+  std::vector<ffi::String> arg_names_;
   /*! \brief The values of input arguments */
-  std::vector<String> args_;
+  std::vector<ffi::String> args_;
 };
 
 /********** implementation details **********/
@@ -329,8 +329,8 @@ Array<Any> UnpackedInstTraits<TTraits>::ApplyToSchedule(const Schedule& sch,
 }
 
 template <class TTraits>
-String UnpackedInstTraits<TTraits>::AsPython(const Array<Any>& inputs, const Array<Any>& attrs,
-                                             const Any& decision, const Array<String>& outputs) {
+ffi::String UnpackedInstTraits<TTraits>::AsPython(const Array<Any>& inputs, const Array<Any>& attrs,
+                                             const Any& decision, const Array<ffi::String>& outputs) {
   using method_type = decltype(TTraits::UnpackedAsPython);
   using return_type = details::ReturnType<method_type>;
   // static_assert(details::ArgumentAreAllObjects<method_type>,
@@ -355,7 +355,7 @@ String UnpackedInstTraits<TTraits>::AsPython(const Array<Any>& inputs, const Arr
   });
   ffi::Any rv;
   pf.CallPacked(ffi::PackedArgs(packed_args, kNumArgs), &rv);
-  return rv.cast<String>();
+  return rv.cast<ffi::String>();
 }
 
 template <class TTraits>
@@ -466,17 +466,17 @@ inline void PythonAPICall::AsPythonString(const Any& obj, std::ostream& os) {
   }
 }
 
-void PythonAPICall::Input(String arg_name, int arg) {
+void PythonAPICall::Input(ffi::String arg_name, int arg) {
   arg_names_.emplace_back(std::move(arg_name));
   args_.push_back(std::to_string(arg));
 }
 
-void PythonAPICall::Input(String arg_name, int64_t arg) {
+void PythonAPICall::Input(ffi::String arg_name, int64_t arg) {
   arg_names_.emplace_back(std::move(arg_name));
   args_.push_back(std::to_string(arg));
 }
 
-void PythonAPICall::Input(String arg_name, bool arg) {
+void PythonAPICall::Input(ffi::String arg_name, bool arg) {
   static const char* true_str = "True";
   static const char* false_str = "False";
   arg_names_.emplace_back(std::move(arg_name));
@@ -487,7 +487,7 @@ void PythonAPICall::Input(String arg_name, bool arg) {
   }
 }
 
-void PythonAPICall::Input(String arg_name, double arg) {
+void PythonAPICall::Input(ffi::String arg_name, double arg) {
   arg_names_.emplace_back(std::move(arg_name));
   std::ostringstream os;
   os.precision(17);
@@ -495,17 +495,17 @@ void PythonAPICall::Input(String arg_name, double arg) {
   args_.push_back(os.str());
 }
 
-void PythonAPICall::Input(String arg_name, String arg) {
+void PythonAPICall::Input(ffi::String arg_name, ffi::String arg) {
   arg_names_.emplace_back(std::move(arg_name));
   args_.emplace_back(std::move(arg));
 }
 
-void PythonAPICall::Input(String arg_name, std::string arg) {
+void PythonAPICall::Input(ffi::String arg_name, std::string arg) {
   arg_names_.emplace_back(std::move(arg_name));
   args_.emplace_back(std::move(arg));
 }
 
-void PythonAPICall::Input(String arg_name, Any arg) {
+void PythonAPICall::Input(ffi::String arg_name, Any arg) {
   arg_names_.emplace_back(std::move(arg_name));
   std::ostringstream os;
   AsPythonString(arg, os);
@@ -518,12 +518,12 @@ void PythonAPICall::Decision(Any decision) {
   }
 }
 
-void PythonAPICall::SingleOutput(Array<String> unit_array) {
+void PythonAPICall::SingleOutput(Array<ffi::String> unit_array) {
   ICHECK_EQ(unit_array.size(), 1);
   this->output_ = unit_array[0];
 }
 
-void PythonAPICall::OutputList(Array<String> outputs) {
+void PythonAPICall::OutputList(Array<ffi::String> outputs) {
   if (outputs.empty()) {
     return;
   }
@@ -539,7 +539,7 @@ void PythonAPICall::OutputList(Array<String> outputs) {
   this->output_ = os.str();
 }
 
-String PythonAPICall::Str() const {
+ffi::String PythonAPICall::Str() const {
   std::ostringstream os;
   if (output_.has_value()) {
     os << output_.value() << " = ";

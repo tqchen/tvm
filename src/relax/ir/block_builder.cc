@@ -74,13 +74,13 @@ class BlockBuilderImpl : public BlockBuilderNode {
 
   IRModule Finalize() final { return transform::NormalizeGlobalVar()(context_mod_); }
 
-  GlobalVar AddFunction(const BaseFunc& func, String func_name_hint) final {
+  GlobalVar AddFunction(const BaseFunc& func, ffi::String func_name_hint) final {
     LazyInitCtxFuncDedupMap();
     auto it = ctx_func_dedup_map_->find(func);
     if (it == ctx_func_dedup_map_->end()) {
       context_mod_.CopyOnWrite();
 
-      String func_name = GetUniqueName(func_name_hint);
+      ffi::String func_name = GetUniqueName(func_name_hint);
       while (context_mod_->ContainGlobalVar(func_name)) {
         func_name = GetUniqueName(func_name_hint);
       }
@@ -239,11 +239,11 @@ class BlockBuilderImpl : public BlockBuilderNode {
 
   bool CurrentBlockIsDataFlow() final { return CurrentBlockFrame()->is_dataflow; }
 
-  Var Emit(Expr expr, String name_hint) final {
+  Var Emit(Expr expr, ffi::String name_hint) final {
     return this->Emit(expr, CurrentBlockFrame()->is_dataflow, name_hint);
   }
 
-  Var EmitMatchCast(Expr value, StructInfo struct_info, String name_hint) final {
+  Var EmitMatchCast(Expr value, StructInfo struct_info, ffi::String name_hint) final {
     value = this->Normalize(value);
 
     CHECK(StructInfoBaseCheck(GetStructInfo(value), struct_info) != BaseCheckResult::kFailL0)
@@ -265,7 +265,7 @@ class BlockBuilderImpl : public BlockBuilderNode {
     return var;
   }
 
-  Var EmitOutput(Expr output, String name_hint) final {
+  Var EmitOutput(Expr output, ffi::String name_hint) final {
     BlockFrame* cur_frame = CurrentBlockFrame();
 
     ICHECK(cur_frame->is_dataflow) << "EmitOutput has to be called inside dataflow block.";
@@ -391,7 +391,7 @@ class BlockBuilderImpl : public BlockBuilderNode {
    *       and performs shape/type deductions by calling Normalize.
    * \return The new variable that \p expr is bound to.
    */
-  Var Emit(Expr expr, bool is_dataflow, String name_hint) {
+  Var Emit(Expr expr, bool is_dataflow, ffi::String name_hint) {
     expr = this->Normalize(expr);
 
     Var var = CreateVar(is_dataflow, name_hint);
@@ -413,7 +413,7 @@ class BlockBuilderImpl : public BlockBuilderNode {
    * \param name_hint Name hint for the bound variable.
    * \return The created var.
    */
-  Var CreateVar(bool is_dataflow, String name_hint) {
+  Var CreateVar(bool is_dataflow, ffi::String name_hint) {
     if (name_hint.empty()) {
       name_hint = is_dataflow ? "lv" : "gv";
     }
@@ -1062,21 +1062,21 @@ TVM_FFI_STATIC_INIT_BLOCK({
       .def_method("relax.BlockBuilderEndBlock", &BlockBuilderNode::EndBlock)
       .def_method("relax.BlockBuilderNormalize", &BlockBuilderNode::Normalize)
       .def("relax.BlockBuilderEmit",
-           [](BlockBuilder builder, Expr expr, String name_hint) {
+           [](BlockBuilder builder, Expr expr, ffi::String name_hint) {
              return builder->Emit(expr, name_hint);
            })
       .def("relax.BlockBuilderEmitMatchCast",
-           [](BlockBuilder builder, Expr value, StructInfo struct_info, String name_hint) {
+           [](BlockBuilder builder, Expr value, StructInfo struct_info, ffi::String name_hint) {
              return builder->EmitMatchCast(value, struct_info, name_hint);
            })
       .def("relax.BlockBuilderEmitOutput",
-           [](BlockBuilder builder, const Expr& output, String name_hint) {
+           [](BlockBuilder builder, const Expr& output, ffi::String name_hint) {
              return builder->EmitOutput(output, name_hint);
            })
       .def("relax.BlockBuilderEmitNormalized",
            [](BlockBuilder builder, Binding binding) { return builder->EmitNormalized(binding); })
       .def("relax.BlockBuilderGetUniqueName",
-           [](BlockBuilder builder, String name_hint) {
+           [](BlockBuilder builder, ffi::String name_hint) {
              return builder->name_supply()->FreshName(name_hint, /*add_prefix*/ false,
                                                       /*add_underscore*/ false);
            })

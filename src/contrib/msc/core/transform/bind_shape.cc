@@ -37,7 +37,7 @@ namespace relax {
  */
 class ShapeBinder : public ExprMutator {
  public:
-  explicit ShapeBinder(IRModule ctx_module, const String& entry_name) : ExprMutator(ctx_module) {
+  explicit ShapeBinder(IRModule ctx_module, const ffi::String& entry_name) : ExprMutator(ctx_module) {
     mod_ = ctx_module;
     entry_name_ = entry_name;
   }
@@ -119,16 +119,16 @@ class ShapeBinder : public ExprMutator {
 
  private:
   IRModule mod_;
-  String entry_name_;
+  ffi::String entry_name_;
 };
 
-IRModule BindShape(IRModule mod, const String& entry_name) {
+IRModule BindShape(IRModule mod, const ffi::String& entry_name) {
   return ShapeBinder(mod, entry_name).Bind();
 }
 
 namespace transform {
 
-Pass BindShape(const String& entry_name) {
+Pass BindShape(const ffi::String& entry_name) {
   auto pass_func = [=](IRModule m, PassContext pc) { return relax::BindShape(m, entry_name); };
   return CreateModulePass(pass_func, 0, "BindShape", {});
 }

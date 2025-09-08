@@ -121,10 +121,10 @@ std::tuple<std::vector<size_t>, std::vector<size_t>> InferReshapeAxes(
 
 // Forward and Backward infer
 InferLayoutOutput MSCInferLayoutConv(const Call& call,
-                                     const Map<String, Array<String>>& desired_layouts,
+                                     const Map<ffi::String, Array<ffi::String>>& desired_layouts,
                                      const VarLayoutMap& var_layout_map) {
   LayoutDecision data_layout, kernel_layout, out_layout;
-  const String& op_name = Downcast<Op>(call->op)->name;
+  const ffi::String& op_name = Downcast<Op>(call->op)->name;
   if (op_name == "relax.nn.conv1d") {
     const auto* attrs = call->attrs.as<Conv1DAttrs>();
     data_layout = LayoutDecision(attrs->data_layout);
@@ -145,10 +145,10 @@ InferLayoutOutput MSCInferLayoutConv(const Call& call,
 }
 
 InferLayoutOutput MSCInferLayoutPool2d(const Call& call,
-                                       const Map<String, Array<String>>& desired_layouts,
+                                       const Map<ffi::String, Array<ffi::String>>& desired_layouts,
                                        const VarLayoutMap& var_layout_map) {
   LayoutDecision layout, out_layout;
-  const String& op_name = Downcast<Op>(call->op)->name;
+  const ffi::String& op_name = Downcast<Op>(call->op)->name;
   if (op_name == "relax.nn.adaptive_avg_pool2d") {
     const auto* attrs = call->attrs.as<AdaptivePool2DAttrs>();
     layout = LayoutDecision(attrs->layout);
@@ -162,7 +162,7 @@ InferLayoutOutput MSCInferLayoutPool2d(const Call& call,
 }
 
 InferLayoutOutput MSCInferLayoutResize2d(const Call& call,
-                                         const Map<String, Array<String>>& desired_layouts,
+                                         const Map<ffi::String, Array<ffi::String>>& desired_layouts,
                                          const VarLayoutMap& var_layout_map) {
   const auto* attrs = call->attrs.as<Resize2DAttrs>();
   const auto& data_layout = LayoutDecision(attrs->layout);
@@ -172,7 +172,7 @@ InferLayoutOutput MSCInferLayoutResize2d(const Call& call,
 
 // Forward Infer
 InferLayoutOutput ForwardInferLayoutCommon(const Call& call,
-                                           const Map<String, Array<String>>& desired_layouts,
+                                           const Map<ffi::String, Array<ffi::String>>& desired_layouts,
                                            const VarLayoutMap& var_layout_map) {
   Array<NLayout> input_layouts;
   LayoutDecision layout_hint;
@@ -201,7 +201,7 @@ InferLayoutOutput ForwardInferLayoutCommon(const Call& call,
 }
 
 InferLayoutOutput ForwardInferLayoutBroadcast(const Call& call,
-                                              const Map<String, Array<String>>& desired_layouts,
+                                              const Map<ffi::String, Array<ffi::String>>& desired_layouts,
                                               const VarLayoutMap& var_layout_map) {
   Array<NLayout> input_layouts;
   LayoutDecision layout_hint;
@@ -225,13 +225,13 @@ InferLayoutOutput ForwardInferLayoutBroadcast(const Call& call,
 }
 
 InferLayoutOutput ForwardInferLayoutInplace(const Call& call,
-                                            const Map<String, Array<String>>& desired_layouts,
+                                            const Map<ffi::String, Array<ffi::String>>& desired_layouts,
                                             const VarLayoutMap& var_layout_map) {
   return ForwardInferLayoutCommon(call, desired_layouts, var_layout_map);
 }
 
 InferLayoutOutput ForwardInferLayoutBinary(const Call& call,
-                                           const Map<String, Array<String>>& desired_layouts,
+                                           const Map<ffi::String, Array<ffi::String>>& desired_layouts,
                                            const VarLayoutMap& var_layout_map) {
   const auto& output = ForwardInferLayoutCommon(call, desired_layouts, var_layout_map);
   if (!output.defined()) {
@@ -257,7 +257,7 @@ InferLayoutOutput ForwardInferLayoutBinary(const Call& call,
 }
 
 InferLayoutOutput ForwardInferLayoutArgMaxMin(const Call& call,
-                                              const Map<String, Array<String>>& desired_layouts,
+                                              const Map<ffi::String, Array<ffi::String>>& desired_layouts,
                                               const VarLayoutMap& var_layout_map) {
   LayoutDecision input_layout = LayoutUtils::InferLayoutDecision(call->args[0], var_layout_map);
   if (!input_layout->layout.defined()) {
@@ -281,7 +281,7 @@ InferLayoutOutput ForwardInferLayoutArgMaxMin(const Call& call,
 }
 
 InferLayoutOutput ForwardInferLayoutBatchNorm(const Call& call,
-                                              const Map<String, Array<String>>& desired_layouts,
+                                              const Map<ffi::String, Array<ffi::String>>& desired_layouts,
                                               const VarLayoutMap& var_layout_map) {
   const auto& input_shape = ExprUtils::GetShape(call->args[0]);
   if (input_shape.size() == 0) {
@@ -301,7 +301,7 @@ InferLayoutOutput ForwardInferLayoutBatchNorm(const Call& call,
 }
 
 InferLayoutOutput ForkwardInferLayoutExpandDims(const Call& call,
-                                                const Map<String, Array<String>>& desired_layouts,
+                                                const Map<ffi::String, Array<ffi::String>>& desired_layouts,
                                                 const VarLayoutMap& var_layout_map) {
   LayoutDecision input_layout = LayoutUtils::InferLayoutDecision(call->args[0], var_layout_map);
   if (!input_layout->layout.defined()) {
@@ -321,7 +321,7 @@ InferLayoutOutput ForkwardInferLayoutExpandDims(const Call& call,
 }
 
 InferLayoutOutput ForwardInferLayoutNormalize(const Call& call,
-                                              const Map<String, Array<String>>& desired_layouts,
+                                              const Map<ffi::String, Array<ffi::String>>& desired_layouts,
                                               const VarLayoutMap& var_layout_map) {
   const auto& input_shape = ExprUtils::GetShape(call->args[0]);
   if (input_shape.size() == 0) {
@@ -340,7 +340,7 @@ InferLayoutOutput ForwardInferLayoutNormalize(const Call& call,
 }
 
 InferLayoutOutput ForwardInferLayoutMatmul(const Call& call,
-                                           const Map<String, Array<String>>& desired_layouts,
+                                           const Map<ffi::String, Array<ffi::String>>& desired_layouts,
                                            const VarLayoutMap& var_layout_map) {
   const auto& a_shape = ExprUtils::GetShape(call->args[0]);
   const auto& b_shape = ExprUtils::GetShape(call->args[1]);
@@ -358,7 +358,7 @@ InferLayoutOutput ForwardInferLayoutMatmul(const Call& call,
     }
   }
   size_t start = a_layout->layout.ndim() - b_shape.size();
-  String pre_layout;
+  ffi::String pre_layout;
   for (size_t i = start; i < a_layout->layout.ndim() - 2; i++) {
     pre_layout = pre_layout + a_layout->layout[i].name();
   }
@@ -367,7 +367,7 @@ InferLayoutOutput ForwardInferLayoutMatmul(const Call& call,
 }
 
 InferLayoutOutput ForwardInferLayoutPermute(const Call& call,
-                                            const Map<String, Array<String>>& desired_layouts,
+                                            const Map<ffi::String, Array<ffi::String>>& desired_layouts,
                                             const VarLayoutMap& var_layout_map) {
   LayoutDecision input_layout = LayoutUtils::InferLayoutDecision(call->args[0], var_layout_map);
   if (!input_layout->layout.defined()) {
@@ -389,7 +389,7 @@ InferLayoutOutput ForwardInferLayoutPermute(const Call& call,
 }
 
 InferLayoutOutput ForwardInferLayoutReduceAxis(const Call& call,
-                                               const Map<String, Array<String>>& desired_layouts,
+                                               const Map<ffi::String, Array<ffi::String>>& desired_layouts,
                                                const VarLayoutMap& var_layout_map) {
   LayoutDecision input_layout = LayoutUtils::InferLayoutDecision(call->args[0], var_layout_map);
   if (!input_layout->layout.defined()) {
@@ -415,7 +415,7 @@ InferLayoutOutput ForwardInferLayoutReduceAxis(const Call& call,
 }
 
 InferLayoutOutput ForwardInferLayoutReshape(const Call& call,
-                                            const Map<String, Array<String>>& desired_layouts,
+                                            const Map<ffi::String, Array<ffi::String>>& desired_layouts,
                                             const VarLayoutMap& var_layout_map) {
   LayoutDecision input_layout = LayoutUtils::InferLayoutDecision(call->args[0], var_layout_map);
   if (!input_layout->layout.defined()) {
@@ -445,7 +445,7 @@ InferLayoutOutput ForwardInferLayoutReshape(const Call& call,
 }
 
 InferLayoutOutput ForwardInferLayoutSqueeze(const Call& call,
-                                            const Map<String, Array<String>>& desired_layouts,
+                                            const Map<ffi::String, Array<ffi::String>>& desired_layouts,
                                             const VarLayoutMap& var_layout_map) {
   LayoutDecision input_layout = LayoutUtils::InferLayoutDecision(call->args[0], var_layout_map);
   if (!input_layout->layout.defined()) {
@@ -476,7 +476,7 @@ InferLayoutOutput ForwardInferLayoutSqueeze(const Call& call,
 }
 
 InferLayoutOutput ForwardInferLayoutTake(const Call& call,
-                                         const Map<String, Array<String>>& desired_layouts,
+                                         const Map<ffi::String, Array<ffi::String>>& desired_layouts,
                                          const VarLayoutMap& var_layout_map) {
   LayoutDecision input_layout = LayoutUtils::InferLayoutDecision(call->args[0], var_layout_map);
   LayoutDecision indices_layout = LayoutUtils::InferLayoutDecision(call->args[1], var_layout_map);
@@ -509,7 +509,7 @@ InferLayoutOutput ForwardInferLayoutTake(const Call& call,
 }
 
 InferLayoutOutput ForwardInferLayoutPlugin(const Call& call,
-                                           const Map<String, Array<String>>& desired_layouts,
+                                           const Map<ffi::String, Array<ffi::String>>& desired_layouts,
                                            const VarLayoutMap& var_layout_map) {
   if (!call->args[0]->IsInstance<ExternFuncNode>()) {
     return InferLayoutOutput();
@@ -627,7 +627,7 @@ TVM_REGISTER_OP("relax.call_dps_packed")
 
 // Backward Infer
 InferLayoutOutput BackwardInferLayoutCommon(const Call& call,
-                                            const Map<String, Array<String>>& desired_layouts,
+                                            const Map<ffi::String, Array<ffi::String>>& desired_layouts,
                                             const VarLayoutMap& var_layout_map) {
   NLayout output_layout = LayoutUtils::InferNLayout(call, var_layout_map);
   LayoutDecision layout_hint;
@@ -656,7 +656,7 @@ InferLayoutOutput BackwardInferLayoutCommon(const Call& call,
 }
 
 InferLayoutOutput BackwardInferLayoutBinary(const Call& call,
-                                            const Map<String, Array<String>>& desired_layouts,
+                                            const Map<ffi::String, Array<ffi::String>>& desired_layouts,
                                             const VarLayoutMap& var_layout_map) {
   const auto& output = BackwardInferLayoutCommon(call, desired_layouts, var_layout_map);
   if (!output.defined()) {
@@ -682,13 +682,13 @@ InferLayoutOutput BackwardInferLayoutBinary(const Call& call,
 }
 
 InferLayoutOutput BackwardInferLayoutInplace(const Call& call,
-                                             const Map<String, Array<String>>& desired_layouts,
+                                             const Map<ffi::String, Array<ffi::String>>& desired_layouts,
                                              const VarLayoutMap& var_layout_map) {
   return BackwardInferLayoutCommon(call, desired_layouts, var_layout_map);
 }
 
 InferLayoutOutput BackwardInferLayoutArgMaxMin(const Call& call,
-                                               const Map<String, Array<String>>& desired_layouts,
+                                               const Map<ffi::String, Array<ffi::String>>& desired_layouts,
                                                const VarLayoutMap& var_layout_map) {
   LayoutDecision output_layout = LayoutUtils::InferLayoutDecision(call, var_layout_map);
   if (!output_layout->layout.defined()) {
@@ -709,7 +709,7 @@ InferLayoutOutput BackwardInferLayoutArgMaxMin(const Call& call,
 }
 
 InferLayoutOutput BackwardInferLayoutBatchNorm(const Call& call,
-                                               const Map<String, Array<String>>& desired_layouts,
+                                               const Map<ffi::String, Array<ffi::String>>& desired_layouts,
                                                const VarLayoutMap& var_layout_map) {
   LayoutDecision output_layout = LayoutUtils::InferLayoutDecisionAt(call, var_layout_map, 0);
   if (!output_layout->layout.defined()) {
@@ -721,7 +721,7 @@ InferLayoutOutput BackwardInferLayoutBatchNorm(const Call& call,
 }
 
 InferLayoutOutput BackwardInferLayoutExpandDims(const Call& call,
-                                                const Map<String, Array<String>>& desired_layouts,
+                                                const Map<ffi::String, Array<ffi::String>>& desired_layouts,
                                                 const VarLayoutMap& var_layout_map) {
   LayoutDecision output_layout = LayoutUtils::InferLayoutDecision(call, var_layout_map);
   if (!output_layout->layout.defined()) {
@@ -741,7 +741,7 @@ InferLayoutOutput BackwardInferLayoutExpandDims(const Call& call,
 }
 
 InferLayoutOutput BackwardInferLayoutNormalize(const Call& call,
-                                               const Map<String, Array<String>>& desired_layouts,
+                                               const Map<ffi::String, Array<ffi::String>>& desired_layouts,
                                                const VarLayoutMap& var_layout_map) {
   LayoutDecision output_layout = LayoutUtils::InferLayoutDecisionAt(call, var_layout_map, 0);
   if (!output_layout->layout.defined()) {
@@ -752,7 +752,7 @@ InferLayoutOutput BackwardInferLayoutNormalize(const Call& call,
 }
 
 InferLayoutOutput BackwardInferLayoutMatmul(const Call& call,
-                                            const Map<String, Array<String>>& desired_layouts,
+                                            const Map<ffi::String, Array<ffi::String>>& desired_layouts,
                                             const VarLayoutMap& var_layout_map) {
   LayoutDecision output_layout = LayoutUtils::InferLayoutDecision(call, var_layout_map);
   if (!output_layout->layout.defined()) {
@@ -763,7 +763,7 @@ InferLayoutOutput BackwardInferLayoutMatmul(const Call& call,
     return InferLayoutOutput();
   }
   size_t start = output_layout->layout.ndim() - b_shape.size();
-  String pre_layout;
+  ffi::String pre_layout;
   for (size_t i = start; i < output_layout->layout.ndim() - 2; i++) {
     pre_layout = pre_layout + output_layout->layout[i].name();
   }
@@ -772,7 +772,7 @@ InferLayoutOutput BackwardInferLayoutMatmul(const Call& call,
 }
 
 InferLayoutOutput BackwardInferLayoutPermute(const Call& call,
-                                             const Map<String, Array<String>>& desired_layouts,
+                                             const Map<ffi::String, Array<ffi::String>>& desired_layouts,
                                              const VarLayoutMap& var_layout_map) {
   LayoutDecision output_layout = LayoutUtils::InferLayoutDecision(call, var_layout_map);
   if (!output_layout->layout.defined()) {
@@ -803,7 +803,7 @@ InferLayoutOutput BackwardInferLayoutPermute(const Call& call,
 }
 
 InferLayoutOutput BackwardInferLayoutReduceAxis(const Call& call,
-                                                const Map<String, Array<String>>& desired_layouts,
+                                                const Map<ffi::String, Array<ffi::String>>& desired_layouts,
                                                 const VarLayoutMap& var_layout_map) {
   LayoutDecision output_layout = LayoutUtils::InferLayoutDecision(call, var_layout_map);
   if (!output_layout->layout.defined()) {
@@ -826,7 +826,7 @@ InferLayoutOutput BackwardInferLayoutReduceAxis(const Call& call,
 }
 
 InferLayoutOutput BackwardInferLayoutReshape(const Call& call,
-                                             const Map<String, Array<String>>& desired_layouts,
+                                             const Map<ffi::String, Array<ffi::String>>& desired_layouts,
                                              const VarLayoutMap& var_layout_map) {
   LayoutDecision output_layout = LayoutUtils::InferLayoutDecision(call, var_layout_map);
   if (!output_layout->layout.defined()) {
@@ -856,7 +856,7 @@ InferLayoutOutput BackwardInferLayoutReshape(const Call& call,
 }
 
 InferLayoutOutput BackwardInferLayoutSqueeze(const Call& call,
-                                             const Map<String, Array<String>>& desired_layouts,
+                                             const Map<ffi::String, Array<ffi::String>>& desired_layouts,
                                              const VarLayoutMap& var_layout_map) {
   LayoutDecision output_layout = LayoutUtils::InferLayoutDecision(call, var_layout_map);
   if (!output_layout->layout.defined()) {
@@ -887,7 +887,7 @@ InferLayoutOutput BackwardInferLayoutSqueeze(const Call& call,
 }
 
 InferLayoutOutput BackwardInferLayoutTake(const Call& call,
-                                          const Map<String, Array<String>>& desired_layouts,
+                                          const Map<ffi::String, Array<ffi::String>>& desired_layouts,
                                           const VarLayoutMap& var_layout_map) {
   LayoutDecision output_layout = LayoutUtils::InferLayoutDecision(call, var_layout_map);
   LayoutDecision input_layout = LayoutUtils::InferLayoutDecision(call->args[0], var_layout_map);
@@ -913,7 +913,7 @@ InferLayoutOutput BackwardInferLayoutTake(const Call& call,
 }
 
 InferLayoutOutput BackwardInferLayoutTupleInputs(const Call& call,
-                                                 const Map<String, Array<String>>& desired_layouts,
+                                                 const Map<ffi::String, Array<ffi::String>>& desired_layouts,
                                                  const VarLayoutMap& var_layout_map) {
   LayoutDecision output_layout = LayoutUtils::InferLayoutDecision(call, var_layout_map);
   if (!output_layout->layout.defined()) {
@@ -1097,10 +1097,10 @@ class LayoutInfer : public ExprVisitor {
       try {
         if (msc_infer_map.count(op)) {
           FRelaxInferLayout f = msc_infer_map[op];
-          infered_layout = f(call, Map<String, Array<String>>(), var_layout_map_);
+          infered_layout = f(call, Map<ffi::String, Array<ffi::String>>(), var_layout_map_);
         } else {
           infered_layout =
-              BackwardInferLayoutCommon(call, Map<String, Array<String>>(), var_layout_map_);
+              BackwardInferLayoutCommon(call, Map<ffi::String, Array<ffi::String>>(), var_layout_map_);
         }
       } catch (runtime::InternalError& err) {
         LOG(WARNING) << "Failed to backward infer layout " << expr << " : " << err.what();
@@ -1151,14 +1151,14 @@ class LayoutInfer : public ExprVisitor {
         try {
           if (msc_infer_map.count(op)) {
             FRelaxInferLayout f = msc_infer_map[op];
-            infered_layout = f(call, Map<String, Array<String>>(), var_layout_map_);
+            infered_layout = f(call, Map<ffi::String, Array<ffi::String>>(), var_layout_map_);
           } else if (!relax_infer_map.count(op)) {
             infered_layout =
-                ForwardInferLayoutCommon(call, Map<String, Array<String>>(), var_layout_map_);
+                ForwardInferLayoutCommon(call, Map<ffi::String, Array<ffi::String>>(), var_layout_map_);
           }
           if (relax_infer_map.count(op) && !infered_layout.defined()) {
             FRelaxInferLayout f = relax_infer_map[op];
-            infered_layout = f(call, Map<String, Array<String>>(), var_layout_map_);
+            infered_layout = f(call, Map<ffi::String, Array<ffi::String>>(), var_layout_map_);
             set_inputs = false;
           }
         } catch (runtime::InternalError& err) {
@@ -1352,7 +1352,7 @@ void SetExprLayout(const IRModule& ref_module, const Expr& func, bool allow_miss
 
 namespace transform {
 
-Pass SetExprLayout(bool allow_missing, const String& entry_name) {
+Pass SetExprLayout(bool allow_missing, const ffi::String& entry_name) {
   auto pass_func = [=](IRModule m, PassContext pc) {
     relax::SetExprLayout(m, m->Lookup(entry_name), allow_missing);
     return m;

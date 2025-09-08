@@ -199,7 +199,7 @@ class DatabaseNode : public runtime::Object {
    *                      or in case no anchor block is found.
    *                      For the definition of the anchor block, see tvm/tir/analysis.h.
    */
-  explicit DatabaseNode(String mod_eq_name = "structural");
+  explicit DatabaseNode(ffi::String mod_eq_name = "structural");
 
   /*! \brief Default destructor */
   virtual ~DatabaseNode();
@@ -245,7 +245,7 @@ class DatabaseNode : public runtime::Object {
    * \return The best record of the given workload; std::nullopt if not found.
    */
   virtual Optional<TuningRecord> QueryTuningRecord(const IRModule& mod, const Target& target,
-                                                   const String& workload_name);
+                                                   const ffi::String& workload_name);
   /*!
    * \brief Query the best schedule of the given workload from the database.
    * \param mod The IRModule to be searched for.
@@ -254,7 +254,7 @@ class DatabaseNode : public runtime::Object {
    * \return The schedule in the best schedule of the given workload; std::nullopt if not found.
    */
   virtual Optional<tir::Schedule> QuerySchedule(const IRModule& mod, const Target& target,
-                                                const String& workload_name);
+                                                const ffi::String& workload_name);
   /*!
    * \brief Query the best IRModule of the given workload from the database.
    * \param mod The IRModule to be searched for.
@@ -263,7 +263,7 @@ class DatabaseNode : public runtime::Object {
    * \return The IRModule in the best IRModule of the given workload; std::nullopt if not found.
    */
   virtual Optional<IRModule> QueryIRModule(const IRModule& mod, const Target& target,
-                                           const String& workload_name);
+                                           const ffi::String& workload_name);
   /*!
    * \brief Prune the database and dump it a given database.
    * \param destination The destination database to be dumped to.
@@ -298,7 +298,7 @@ class PyDatabaseNode : public DatabaseNode {
    *                      or in case no anchor block is found.
    *                      For the definition of the anchor block, see tvm/tir/analysis.h.
    */
-  explicit PyDatabaseNode(String mod_eq_name = "structural");
+  explicit PyDatabaseNode(ffi::String mod_eq_name = "structural");
 
   /*!
    * \brief The function type of `HasWorkload` method.
@@ -337,7 +337,7 @@ class PyDatabaseNode : public DatabaseNode {
    * \return The best record of the given workload; std::nullopt if not found.
    */
   using FQueryTuningRecord =
-      ffi::TypedFunction<Optional<TuningRecord>(const IRModule&, const Target&, const String&)>;
+      ffi::TypedFunction<Optional<TuningRecord>(const IRModule&, const Target&, const ffi::String&)>;
   /*!
    * \brief The function type of `QuerySchedule` method.
    * \param mod The IRModule to be searched for.
@@ -346,7 +346,7 @@ class PyDatabaseNode : public DatabaseNode {
    * \return The schedule in the best schedule of the given workload; std::nullopt if not found.
    */
   using FQuerySchedule =
-      ffi::TypedFunction<Optional<tir::Schedule>(const IRModule&, const Target&, const String&)>;
+      ffi::TypedFunction<Optional<tir::Schedule>(const IRModule&, const Target&, const ffi::String&)>;
   /*!
    * \brief The function type of `QueryIRModule` method.
    * \param mod The IRModule to be searched for.
@@ -355,7 +355,7 @@ class PyDatabaseNode : public DatabaseNode {
    * \return The IRModule in the best IRModule of the given workload; std::nullopt if not found.
    */
   using FQueryIRModule =
-      ffi::TypedFunction<Optional<IRModule>(const IRModule&, const Target&, const String&)>;
+      ffi::TypedFunction<Optional<IRModule>(const IRModule&, const Target&, const ffi::String&)>;
   /*!
    * \brief The function type of `Size` method.
    * \return The size of the database.
@@ -424,7 +424,7 @@ class PyDatabaseNode : public DatabaseNode {
   }
 
   Optional<TuningRecord> QueryTuningRecord(const IRModule& mod, const Target& target,
-                                           const String& workload_name) final {
+                                           const ffi::String& workload_name) final {
     if (f_query_tuning_record == nullptr) {
       return DatabaseNode::QueryTuningRecord(mod, target, workload_name);
     } else {
@@ -433,7 +433,7 @@ class PyDatabaseNode : public DatabaseNode {
   }
 
   Optional<tir::Schedule> QuerySchedule(const IRModule& mod, const Target& target,
-                                        const String& workload_name) final {
+                                        const ffi::String& workload_name) final {
     if (f_query_schedule == nullptr) {
       return DatabaseNode::QuerySchedule(mod, target, workload_name);
     } else {
@@ -442,7 +442,7 @@ class PyDatabaseNode : public DatabaseNode {
   }
 
   Optional<IRModule> QueryIRModule(const IRModule& mod, const Target& target,
-                                   const String& workload_name) final {
+                                   const ffi::String& workload_name) final {
     if (f_query_ir_module == nullptr) {
       return DatabaseNode::QueryIRModule(mod, target, workload_name);
     } else {
@@ -469,7 +469,7 @@ class Database : public runtime::ObjectRef {
    * \brief An in-memory database.
    * \param mod_eq_name A string to specify the module equality testing and hashing method.
    */
-  TVM_DLL static Database MemoryDatabase(String mod_eq_name = "structural");
+  TVM_DLL static Database MemoryDatabase(ffi::String mod_eq_name = "structural");
   /*!
    * \brief A database for injecting handcrafted schedule functions.
    * \param schedule_fn The function to do scheduling, which takes a TIR schedule,
@@ -477,7 +477,7 @@ class Database : public runtime::ObjectRef {
    * \param mod_eq_name A string to specify the module equality testing and hashing method.
    */
   TVM_DLL static Database ScheduleFnDatabase(ffi::TypedFunction<bool(tir::Schedule)> schedule_fn,
-                                             String mod_eq_name = "structural");
+                                             ffi::String mod_eq_name = "structural");
   /*!
    * \brief Create a default database that uses JSON file for tuning records.
    * \param path_workload The path to the workload table.
@@ -485,8 +485,8 @@ class Database : public runtime::ObjectRef {
    * \param allow_missing Whether to create new file when the given path is not found.
    * \param mod_eq_name A string to specify the module equality testing and hashing method.
    */
-  TVM_DLL static Database JSONDatabase(String path_workload, String path_tuning_record,
-                                       bool allow_missing, String mod_eq_name = "structural");
+  TVM_DLL static Database JSONDatabase(ffi::String path_workload, ffi::String path_tuning_record,
+                                       bool allow_missing, ffi::String mod_eq_name = "structural");
   /*!
    * \brief A database composed of multiple databases, allowing users to guide IR rewriting using
    * combined knowledge of those databases. To each query, it returns the best record among all the
@@ -526,7 +526,7 @@ class Database : public runtime::ObjectRef {
                                      PyDatabaseNode::FQuerySchedule f_query_schedule,
                                      PyDatabaseNode::FQueryIRModule f_query_ir_module,
                                      PyDatabaseNode::FSize f_size,
-                                     String mod_eq_name = "structural");
+                                     ffi::String mod_eq_name = "structural");
   /*! \return The current Database in the scope. */
   static Optional<Database> Current();
   /*! \brief Entering the scope of the context manager */

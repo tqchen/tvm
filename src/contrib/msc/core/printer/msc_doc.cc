@@ -46,7 +46,7 @@ StrictListDoc::StrictListDoc(ListDoc list, bool allow_empty) {
   this->data_ = std::move(n);
 }
 
-PointerDoc::PointerDoc(String name) {
+PointerDoc::PointerDoc(ffi::String name) {
   ObjectPtr<PointerDocNode> n = ffi::make_object<PointerDocNode>();
   n->name = name;
   this->data_ = std::move(n);

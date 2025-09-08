@@ -238,7 +238,7 @@ Expr index_put(Expr data, Expr indices, Expr values, bool accumulate = false);
  * \param indexing Indexing mode, either "ij" (matrix indexing) or "xy" (Cartesian indexing).
  * \return A tuple of tensors representing the coordinate grids.
  */
-Expr meshgrid(Expr tensors, Optional<String> indexing = String("ij"));
+Expr meshgrid(Expr tensors, Optional<ffi::String> indexing = ffi::String("ij"));
 
 /*!
  * \brief Scatter updates into an array according to indices.
@@ -250,7 +250,7 @@ Expr meshgrid(Expr tensors, Optional<String> indexing = String("ij"));
  * either "update", "add", "mul", "mean", "max" or "min".
  * \return The computed result.
  */
-Expr scatter_elements(Expr data, Expr indices, Expr updates, int axis, String reduction);
+Expr scatter_elements(Expr data, Expr indices, Expr updates, int axis, ffi::String reduction);
 
 /*!
  * \brief Scatter updates into an array according to indices.
@@ -271,7 +271,7 @@ Expr scatter_elements(Expr data, Expr indices, Expr updates, int axis, String re
  *       The shape of `updates` must match the shape of `indices` except for the last dimension,
  *       which must match the slice shape at each index.
  */
-Expr scatter_nd(Expr data, Expr indices, Expr updates, String reduction);
+Expr scatter_nd(Expr data, Expr indices, Expr updates, ffi::String reduction);
 
 /*!
  * \brief Embeds the values of the src tensor into input at the given dimension.

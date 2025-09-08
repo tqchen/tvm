@@ -39,7 +39,6 @@
 
 namespace tvm {
 
-using tvm::String;
 
 // Forward-declare VirtualDevice to avoid circular imports.
 class VirtualDevice;
@@ -148,7 +147,7 @@ class PrimExpr : public BaseExpr {
    * \brief construct from string to form a StringImm.
    * \param value The value to be constructed.
    */
-  TVM_DLL static PrimExpr ConvertFallbackValue(String value);  // NOLINT(*)
+  TVM_DLL static PrimExpr ConvertFallbackValue(ffi::String value);  // NOLINT(*)
 };
 
 /*!
@@ -175,7 +174,7 @@ class PrimExprConvertible : public ObjectRef {
 };
 
 namespace ffi {
-// define automatic conversion from bool, int64_t, double, String to PrimExpr
+// define automatic conversion from bool, int64_t, double, ffi::String to PrimExpr
 // These functions are declared early to avoid circular dependency
 template <>
 inline constexpr bool use_default_type_traits_v<PrimExpr> = false;
@@ -187,7 +186,7 @@ struct TypeTraits<PrimExpr>
   TVM_FFI_INLINE static PrimExpr ConvertFallbackValue(StrictBool value);
   TVM_FFI_INLINE static PrimExpr ConvertFallbackValue(int64_t value);
   TVM_FFI_INLINE static PrimExpr ConvertFallbackValue(double value);
-  TVM_FFI_INLINE static PrimExpr ConvertFallbackValue(String value) {
+  TVM_FFI_INLINE static PrimExpr ConvertFallbackValue(ffi::String value) {
     return PrimExpr::ConvertFallbackValue(value);
   }
   TVM_FFI_INLINE static PrimExpr ConvertFallbackValue(PrimExprConvertible value) {
@@ -460,7 +459,7 @@ class GlobalVar;
 class GlobalVarNode : public RelaxExprNode {
  public:
   /*! \brief The name of the variable, this only acts as a hint. */
-  String name_hint;
+  ffi::String name_hint;
 
   static void RegisterReflection() {
     namespace refl = tvm::ffi::reflection;
@@ -488,7 +487,7 @@ class GlobalVarNode : public RelaxExprNode {
  */
 class GlobalVar : public RelaxExpr {
  public:
-  TVM_DLL explicit GlobalVar(String name_hint, Span span = {});
+  TVM_DLL explicit GlobalVar(ffi::String name_hint, Span span = {});
 
   TVM_DEFINE_OBJECT_REF_METHODS(GlobalVar, RelaxExpr, GlobalVarNode);
   TVM_DEFINE_OBJECT_REF_COW_METHOD(GlobalVarNode);

@@ -138,7 +138,7 @@ std::unique_ptr<CodeGenLLVM> CodeGenLLVM::Create(LLVMTarget* llvm_target) {
 }
 
 void CodeGenLLVM::Init(const std::string& module_name, LLVMTarget* llvm_target,
-                       Optional<String> system_lib_prefix, bool dynamic_lookup,
+                       Optional<ffi::String> system_lib_prefix, bool dynamic_lookup,
                        bool target_c_runtime) {
   llvm_target_ = llvm_target;
   llvm::LLVMContext* ctx = llvm_target_->GetContext();
@@ -240,7 +240,7 @@ void CodeGenLLVM::InitFuncState() {
 
 std::tuple<std::string, llvm::Function::LinkageTypes> CodeGenLLVM::GetLinkage(
     const GlobalVar& gvar, const PrimFunc& func) {
-  if (auto global_symbol = func->GetAttr<String>(tvm::attr::kGlobalSymbol)) {
+  if (auto global_symbol = func->GetAttr<ffi::String>(tvm::attr::kGlobalSymbol)) {
     return {global_symbol.value(), llvm::Function::ExternalLinkage};
   }
 
@@ -1060,7 +1060,7 @@ llvm::Value* CodeGenLLVM::CreateLookupReturnAddress(unsigned int level) {
   return call;
 }
 
-llvm::Value* CodeGenLLVM::CreateCallExtern(Type ret_type, String global_symbol,
+llvm::Value* CodeGenLLVM::CreateCallExtern(Type ret_type, ffi::String global_symbol,
                                            const Array<PrimExpr>& args, bool skip_first_arg) {
   std::vector<llvm::Value*> arg_value;
   std::vector<llvm::Type*> arg_type;
@@ -2355,9 +2355,9 @@ static void CodegenLLVMRegisterReflection() {
            []() -> std::string { return llvm::sys::getProcessTriple(); })
       .def("tvm.codegen.llvm.GetHostCPUName",
            []() -> std::string { return llvm::sys::getHostCPUName().str(); })
-      .def("tvm.codegen.llvm.GetHostCPUFeatures", []() -> Map<String, IntImm> {
+      .def("tvm.codegen.llvm.GetHostCPUFeatures", []() -> Map<ffi::String, IntImm> {
 #if TVM_LLVM_VERSION >= 190
-        Map<String, IntImm> ret;
+        Map<ffi::String, IntImm> ret;
         auto features = llvm::sys::getHostCPUFeatures();
         for (auto it = features.begin(); it != features.end(); ++it) {
           std::string name = it->getKey().str();
@@ -2368,7 +2368,7 @@ static void CodegenLLVMRegisterReflection() {
 #else
       llvm::StringMap<bool> features;
       if (llvm::sys::getHostCPUFeatures(features)) {
-        Map<String, IntImm> ret;
+        Map<ffi::String, IntImm> ret;
         for (auto it = features.begin(); it != features.end(); ++it) {
           std::string name = it->getKey().str();
           bool value = it->getValue();

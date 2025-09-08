@@ -88,7 +88,7 @@ ThreadingConfig getDefaultThreadingConfig() {
 class BNNSJSONRuntime : public JSONRuntimeBase {
  public:
   BNNSJSONRuntime(const std::string& symbol_name, const std::string& graph_json,
-                  const Array<String> const_names)
+                  const Array<ffi::String> const_names)
       : JSONRuntimeBase(symbol_name, graph_json, const_names) {}
 
   const char* kind() const override { return "bnns_json"; }
@@ -557,8 +557,8 @@ class BNNSJSONRuntime : public JSONRuntimeBase {
   std::vector<TensorPtr> tensors_eid_;
 };
 
-ffi::Module BNNSJSONRuntimeCreate(String symbol_name, String graph_json,
-                                  const Array<String>& const_names) {
+ffi::Module BNNSJSONRuntimeCreate(ffi::String symbol_name, ffi::String graph_json,
+                                  const Array<ffi::String>& const_names) {
   auto n = ffi::make_object<BNNSJSONRuntime>(symbol_name, graph_json, const_names);
   return ffi::Module(n);
 }

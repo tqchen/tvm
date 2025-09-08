@@ -211,7 +211,7 @@ class BaseFuncNode : public RelaxExprNode {
    */
 
   LinkageType GetLinkageType() const {
-    if (GetAttr<String>(attr::kGlobalSymbol))
+    if (GetAttr<ffi::String>(attr::kGlobalSymbol))
       return LinkageType::kExternal;
     else
       return LinkageType::kInternal;

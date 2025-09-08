@@ -38,7 +38,7 @@ class OrderedUnionDatabaseNode : public DatabaseNode {
 
  public:
   Optional<TuningRecord> QueryTuningRecord(const IRModule& mod, const Target& target,
-                                           const String& task_name) final {
+                                           const ffi::String& task_name) final {
     for (const Database& db : databases) {
       if (Optional<TuningRecord> record = db->QueryTuningRecord(mod, target, task_name)) {
         return record;

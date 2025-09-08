@@ -95,7 +95,7 @@ Namer::FType& Namer::vtable() {
   return inst;
 }
 
-void Namer::Name(ObjectRef node, String name) {
+void Namer::Name(ObjectRef node, ffi::String name) {
   static const FType& f = vtable();
   CHECK(node.defined()) << "ValueError: Cannot name nullptr with: " << name;
   CHECK(f.can_dispatch(node)) << "ValueError: Do not know how to name type \""

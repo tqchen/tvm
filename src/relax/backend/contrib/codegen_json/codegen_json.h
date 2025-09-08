@@ -119,7 +119,7 @@ class OpAttrExtractor {
           attr.push_back(std::to_string(im->value));
         } else if (const auto* fm = (*an)[i].as<FloatImmNode>()) {
           attr.push_back(Fp2String(fm->value));
-        } else if (auto opt_str = (*an)[i].as<String>()) {
+        } else if (auto opt_str = (*an)[i].as<ffi::String>()) {
           attr.push_back(*opt_str);
         } else {
           LOG(FATAL) << "Not supported type: " << (*an)[i].GetTypeKey();
@@ -201,7 +201,7 @@ class JSONSerializer : public relax::MemoizedExprTranslator<NodeEntries> {
    * \brief Constructor
    * \param constant_names The names of all constants in the original module.
    */
-  explicit JSONSerializer(const Map<Constant, String>& constant_names)
+  explicit JSONSerializer(const Map<Constant, ffi::String>& constant_names)
       : constant_names_(constant_names) {}
 
   void serialize(Function func) {
@@ -214,7 +214,7 @@ class JSONSerializer : public relax::MemoizedExprTranslator<NodeEntries> {
   }
 
   /*!\brief Return the required constants. */
-  Array<String> GetConstantNames() const { return constants_used_; }
+  Array<ffi::String> GetConstantNames() const { return constants_used_; }
 
   /*!\brief Return the generated json. */
   std::string GetJSON() {
@@ -284,7 +284,7 @@ class JSONSerializer : public relax::MemoizedExprTranslator<NodeEntries> {
       extractor.Extract(const_cast<Object*>(call_attr));
     } else if (const auto* fn = cn->op.as<FunctionNode>()) {
       ICHECK(false);
-      auto pattern = fn->GetAttr<String>(attr::kPartitionedFromPattern);
+      auto pattern = fn->GetAttr<ffi::String>(attr::kPartitionedFromPattern);
       ICHECK(pattern.has_value());
       std::vector<std::string> values;
       values.push_back(pattern.value());
@@ -384,7 +384,7 @@ class JSONSerializer : public relax::MemoizedExprTranslator<NodeEntries> {
     if (const auto* op_node = cn->op.as<OpNode>()) {
       name = op_node->name;
     } else if (const auto* fn = cn->op.as<FunctionNode>()) {
-      auto comp = fn->GetAttr<String>(attr::kComposite);
+      auto comp = fn->GetAttr<ffi::String>(attr::kComposite);
       ICHECK(comp.has_value()) << "JSON runtime only supports composite functions.";
       name = comp.value();
     } else {
@@ -413,7 +413,7 @@ class JSONSerializer : public relax::MemoizedExprTranslator<NodeEntries> {
   }
 
   NodeEntries VisitExpr_(const FunctionNode* fn) {
-    ICHECK(fn->GetAttr<String>(attr::kComposite).has_value())
+    ICHECK(fn->GetAttr<ffi::String>(attr::kComposite).has_value())
         << "JSON runtime only supports composite functions";
 
     // FunctionNode should be handled by the caller.
@@ -453,9 +453,9 @@ class JSONSerializer : public relax::MemoizedExprTranslator<NodeEntries> {
   /*! \brief Output of the JSON graph. */
   NodeEntries heads_;
   /*! \brief The list of required constants, ordered. */
-  Array<String> constants_used_;
+  Array<ffi::String> constants_used_;
   /*! \brief The names of all constants in the original module. */
-  const Map<Constant, String>& constant_names_;
+  const Map<Constant, ffi::String>& constant_names_;
 };
 
 }  // namespace contrib

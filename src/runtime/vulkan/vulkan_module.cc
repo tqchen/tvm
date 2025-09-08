@@ -37,7 +37,7 @@ ffi::Module VulkanModuleCreate(std::unordered_map<std::string, SPIRVShader> smap
   return ffi::Module(n);
 }
 
-ffi::Module VulkanModuleLoadFile(const std::string& file_name, const String& format) {
+ffi::Module VulkanModuleLoadFile(const std::string& file_name, const ffi::String& format) {
   std::string data;
   std::unordered_map<std::string, SPIRVShader> smap;
   std::unordered_map<std::string, FunctionInfo> fmap;

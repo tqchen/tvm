@@ -56,17 +56,17 @@ TVM_FFI_STATIC_INIT_BLOCK({
   DocStringDocNode::RegisterReflection();
 });
 
-ExprDoc ExprDocNode::Attr(String attr) const { return AttrAccessDoc(ffi::GetRef<ExprDoc>(this), attr); }
+ExprDoc ExprDocNode::Attr(ffi::String attr) const { return AttrAccessDoc(ffi::GetRef<ExprDoc>(this), attr); }
 
 ExprDoc ExprDocNode::operator[](Array<Doc> indices) const {
   return IndexDoc(ffi::GetRef<ExprDoc>(this), indices);
 }
 
 ExprDoc ExprDocNode::Call(Array<ExprDoc, void> args) const {
-  return CallDoc(ffi::GetRef<ExprDoc>(this), args, Array<String>(), Array<ExprDoc>());
+  return CallDoc(ffi::GetRef<ExprDoc>(this), args, Array<ffi::String>(), Array<ExprDoc>());
 }
 
-ExprDoc ExprDocNode::Call(Array<ExprDoc, void> args, Array<String, void> kwargs_keys,
+ExprDoc ExprDocNode::Call(Array<ExprDoc, void> args, Array<ffi::String, void> kwargs_keys,
                           Array<ExprDoc, void> kwargs_values) const {
   return CallDoc(ffi::GetRef<ExprDoc>(this), args, kwargs_keys, kwargs_values);
 }
@@ -88,13 +88,13 @@ LiteralDoc::LiteralDoc(ffi::Any value, const Optional<AccessPath>& object_path) 
   this->data_ = std::move(n);
 }
 
-IdDoc::IdDoc(String name) {
+IdDoc::IdDoc(ffi::String name) {
   ObjectPtr<IdDocNode> n = ffi::make_object<IdDocNode>();
   n->name = name;
   this->data_ = std::move(n);
 }
 
-AttrAccessDoc::AttrAccessDoc(ExprDoc value, String name) {
+AttrAccessDoc::AttrAccessDoc(ExprDoc value, ffi::String name) {
   ObjectPtr<AttrAccessDocNode> n = ffi::make_object<AttrAccessDocNode>();
   n->value = value;
   n->name = name;
@@ -108,7 +108,7 @@ IndexDoc::IndexDoc(ExprDoc value, Array<Doc> indices) {
   this->data_ = std::move(n);
 }
 
-CallDoc::CallDoc(ExprDoc callee, Array<ExprDoc> args, Array<String> kwargs_keys,
+CallDoc::CallDoc(ExprDoc callee, Array<ExprDoc> args, Array<ffi::String> kwargs_keys,
                  Array<ExprDoc> kwargs_values) {
   ObjectPtr<CallDocNode> n = ffi::make_object<CallDocNode>();
   n->callee = callee;
@@ -252,13 +252,13 @@ ClassDoc::ClassDoc(IdDoc name, Array<ExprDoc> decorators, Array<StmtDoc> body) {
   this->data_ = std::move(n);
 }
 
-CommentDoc::CommentDoc(String comment) {
+CommentDoc::CommentDoc(ffi::String comment) {
   ObjectPtr<CommentDocNode> n = ffi::make_object<CommentDocNode>();
   n->comment = comment;
   this->data_ = std::move(n);
 }
 
-DocStringDoc::DocStringDoc(String docs) {
+DocStringDoc::DocStringDoc(ffi::String docs) {
   ObjectPtr<DocStringDocNode> n = ffi::make_object<DocStringDocNode>();
   n->comment = docs;
   this->data_ = std::move(n);
@@ -278,14 +278,14 @@ TVM_FFI_STATIC_INIT_BLOCK({
       .def_method("script.printer.ExprDocIndex", &ExprDocNode::operator[])
       .def_method(
           "script.printer.ExprDocCall",
-          [](ExprDoc doc, Array<ExprDoc> args, Array<String> kwargs_keys,
+          [](ExprDoc doc, Array<ExprDoc> args, Array<ffi::String> kwargs_keys,
              Array<ExprDoc> kwargs_values) { return doc->Call(args, kwargs_keys, kwargs_values); });
 });
 
 TVM_FFI_STATIC_INIT_BLOCK({
   namespace refl = tvm::ffi::reflection;
   refl::GlobalDef().def("script.printer.StmtDocSetComment",
-                        [](StmtDoc doc, Optional<String> comment) { doc->comment = comment; });
+                        [](StmtDoc doc, Optional<ffi::String> comment) { doc->comment = comment; });
 });
 
 TVM_FFI_STATIC_INIT_BLOCK({
@@ -306,13 +306,13 @@ TVM_FFI_STATIC_INIT_BLOCK({
 
 TVM_FFI_STATIC_INIT_BLOCK({
   namespace refl = tvm::ffi::reflection;
-  refl::GlobalDef().def("script.printer.IdDoc", [](String name) { return IdDoc(name); });
+  refl::GlobalDef().def("script.printer.IdDoc", [](ffi::String name) { return IdDoc(name); });
 });
 
 TVM_FFI_STATIC_INIT_BLOCK({
   namespace refl = tvm::ffi::reflection;
   refl::GlobalDef().def("script.printer.AttrAccessDoc",
-                        [](ExprDoc value, String attr) { return AttrAccessDoc(value, attr); });
+                        [](ExprDoc value, ffi::String attr) { return AttrAccessDoc(value, attr); });
 });
 
 TVM_FFI_STATIC_INIT_BLOCK({
@@ -325,7 +325,7 @@ TVM_FFI_STATIC_INIT_BLOCK({
   namespace refl = tvm::ffi::reflection;
   refl::GlobalDef().def("script.printer.CallDoc", [](ExprDoc callee,             //
                                                      Array<ExprDoc> args,        //
-                                                     Array<String> kwargs_keys,  //
+                                                     Array<ffi::String> kwargs_keys,  //
                                                      Array<ExprDoc> kwargs_values) {
     return CallDoc(callee, args, kwargs_keys, kwargs_values);
   });
@@ -446,13 +446,13 @@ TVM_FFI_STATIC_INIT_BLOCK({
 TVM_FFI_STATIC_INIT_BLOCK({
   namespace refl = tvm::ffi::reflection;
   refl::GlobalDef().def("script.printer.CommentDoc",
-                        [](String comment) { return CommentDoc(comment); });
+                        [](ffi::String comment) { return CommentDoc(comment); });
 });
 
 TVM_FFI_STATIC_INIT_BLOCK({
   namespace refl = tvm::ffi::reflection;
   refl::GlobalDef().def("script.printer.DocStringDoc",
-                        [](String docs) { return DocStringDoc(docs); });
+                        [](ffi::String docs) { return DocStringDoc(docs); });
 });
 
 }  // namespace printer

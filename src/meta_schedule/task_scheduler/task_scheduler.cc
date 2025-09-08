@@ -112,7 +112,7 @@ void TaskCleanUp(TaskRecordNode* self, int task_id, const Array<RunnerResult>& r
     const BuilderResult& builder_result = self->builder_results.value()[i];
     const MeasureCandidate& candidate = self->measure_candidates.value()[i];
     const RunnerResult& runner_result = results[i];
-    Optional<String> error_msg = std::nullopt;
+    Optional<ffi::String> error_msg = std::nullopt;
     int trials = self->latency_ms.size() + 1;
     double run_ms = 1e9;
     if ((error_msg = builder_result->error_msg)) {

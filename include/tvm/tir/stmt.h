@@ -117,7 +117,7 @@ class AttrStmtNode : public StmtNode {
   /*! \brief this is attribute about certain node */
   ffi::Any node;
   /*! \brief the type key of the attribute */
-  String attr_key;
+  ffi::String attr_key;
   /*! \brief The attribute value, value is well defined at current scope. */
   PrimExpr value;
   /*! \brief The body statement to be executed */
@@ -142,7 +142,7 @@ class AttrStmtNode : public StmtNode {
  */
 class AttrStmt : public Stmt {
  public:
-  TVM_DLL AttrStmt(ffi::Any node, String attr_key, PrimExpr value, Stmt body, Span span = Span());
+  TVM_DLL AttrStmt(ffi::Any node, ffi::String attr_key, PrimExpr value, Stmt body, Span span = Span());
 
   TVM_DEFINE_OBJECT_REF_METHODS(AttrStmt, Stmt, AttrStmtNode);
   TVM_DEFINE_OBJECT_REF_COW_METHOD(AttrStmtNode);
@@ -308,7 +308,7 @@ class AllocateNode : public StmtNode {
    *  These annotations can be used as auxiliary hint
    *  to future transformations.
    */
-  Map<String, ffi::Any> annotations;
+  Map<ffi::String, ffi::Any> annotations;
 
   static void RegisterReflection() {
     namespace refl = tvm::ffi::reflection;
@@ -347,7 +347,7 @@ class AllocateNode : public StmtNode {
 class Allocate : public Stmt {
  public:
   TVM_DLL Allocate(Var buffer_var, DataType dtype, Array<PrimExpr> extents, PrimExpr condition,
-                   Stmt body, Map<String, ffi::Any> annotations = Map<String, ffi::Any>(),
+                   Stmt body, Map<ffi::String, ffi::Any> annotations = Map<ffi::String, ffi::Any>(),
                    Span span = Span());
 
   TVM_DEFINE_OBJECT_REF_METHODS(Allocate, Stmt, AllocateNode);
@@ -381,7 +381,7 @@ class AllocateConstNode : public StmtNode {
    *  These annotations can be used as auxiliary hint
    *  to future transformations.
    */
-  Map<String, ffi::Any> annotations;
+  Map<ffi::String, ffi::Any> annotations;
 
   static void RegisterReflection() {
     namespace refl = tvm::ffi::reflection;
@@ -425,7 +425,7 @@ class AllocateConst : public Stmt {
    */
   TVM_DLL AllocateConst(Var buffer_var, DataType dtype, Array<PrimExpr> extents,
                         ObjectRef data_or_idx, Stmt body,
-                        Map<String, ffi::Any> annotations = Map<String, ffi::Any>(),
+                        Map<ffi::String, ffi::Any> annotations = Map<ffi::String, ffi::Any>(),
                         Span span = Span());
   TVM_DEFINE_OBJECT_REF_METHODS(AllocateConst, Stmt, AllocateConstNode);
   TVM_DEFINE_OBJECT_REF_COW_METHOD(AllocateConstNode);
@@ -768,7 +768,7 @@ class ForNode : public StmtNode {
    *  not change the control flow semantics of the loop
    *  and can be ignored in most passes.
    */
-  Map<String, ffi::Any> annotations;
+  Map<ffi::String, ffi::Any> annotations;
 
   static void RegisterReflection() {
     namespace refl = tvm::ffi::reflection;
@@ -794,7 +794,7 @@ class For : public Stmt {
  public:
   TVM_DLL For(Var loop_var, PrimExpr min, PrimExpr extent, ForKind kind, Stmt body,
               Optional<IterVar> thread_binding = std::nullopt,
-              Map<String, ffi::Any> annotations = Map<String, ffi::Any>(), Span span = Span());
+              Map<ffi::String, ffi::Any> annotations = Map<ffi::String, ffi::Any>(), Span span = Span());
 
   TVM_DEFINE_OBJECT_REF_METHODS(For, Stmt, ForNode);
   TVM_DEFINE_OBJECT_REF_COW_METHOD(ForNode);
@@ -961,13 +961,13 @@ class BlockNode : public StmtNode {
   /*! \brief The write buffer regions of the block. */
   Array<BufferRegion> writes;
   /*! \brief The name_hint of the block. */
-  String name_hint;
+  ffi::String name_hint;
   /*! \brief The buffer allocated in the block. */
   Array<Buffer> alloc_buffers;
   /*! \brief The match buffer regions. */
   Array<MatchBufferRegion> match_buffers;
   /*! \brief The annotation of the block. */
-  Map<String, ffi::Any> annotations;
+  Map<ffi::String, ffi::Any> annotations;
   /*!
    * \brief The init statement is executed during the first iteration of reduction loops in a
    *  reduction block. The optional init field allows us to represent initialization and
@@ -1004,11 +1004,11 @@ class BlockNode : public StmtNode {
 class Block : public Stmt {
  public:
   TVM_DLL explicit Block(Array<IterVar> iter_vars, Array<BufferRegion> reads,
-                         Array<BufferRegion> writes, String name_hint, Stmt body,
+                         Array<BufferRegion> writes, ffi::String name_hint, Stmt body,
                          Optional<Stmt> init = std::nullopt,
                          Array<Buffer> alloc_buffers = Array<Buffer>(),
                          Array<MatchBufferRegion> match_buffers = Array<MatchBufferRegion>(),
-                         Map<String, ffi::Any> annotations = Map<String, ffi::Any>(),
+                         Map<ffi::String, ffi::Any> annotations = Map<ffi::String, ffi::Any>(),
                          Span span = Span());
 
   TVM_DEFINE_OBJECT_REF_METHODS(Block, Stmt, BlockNode);

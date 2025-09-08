@@ -58,7 +58,7 @@ class GlobalVarSupplyNode : public Object {
    * \param add_prefix If set to true, then the prefix of the contained NameSupply will be prepended
    * to the name. \return A unique GlobalVar.
    */
-  GlobalVar FreshGlobal(String name, bool add_prefix = true);
+  GlobalVar FreshGlobal(ffi::String name, bool add_prefix = true);
 
   /*!
    * \brief Looks up for a GlobalVar with the given name in this supply.
@@ -67,7 +67,7 @@ class GlobalVarSupplyNode : public Object {
    * \param add_prefix If set to true, the prefix of the contained NameSupply will be prepended to
    * the name before performing the search. \return A cached GlobalVar.
    */
-  GlobalVar UniqueGlobalFor(const String& name, bool add_prefix = true);
+  GlobalVar UniqueGlobalFor(const ffi::String& name, bool add_prefix = true);
 
   /*!
    * \brief Reserves an existing GlobalVar with this supply.

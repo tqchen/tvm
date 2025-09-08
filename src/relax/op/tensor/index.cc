@@ -44,7 +44,7 @@ TVM_FFI_STATIC_INIT_BLOCK({
 
 /* relax.take */
 
-Expr take(Expr x, Expr indices, Optional<int64_t> axis, String mode) {
+Expr take(Expr x, Expr indices, Optional<int64_t> axis, ffi::String mode) {
   ObjectPtr<TakeAttrs> attrs = ffi::make_object<TakeAttrs>();
   attrs->axis = std::move(axis);
   attrs->mode = std::move(mode);
@@ -437,7 +437,7 @@ StructInfo InferStructInfoStridedSlice(const Call& call, const BlockBuilder& ctx
 }
 
 InferLayoutOutput InferLayoutStridedSlice(const Call& call,
-                                          const Map<String, Array<String>>& desired_layouts,
+                                          const Map<ffi::String, Array<ffi::String>>& desired_layouts,
                                           const VarLayoutMap& var_layout_map) {
   ICHECK(NoDesiredLayout(call, desired_layouts));
 
@@ -515,7 +515,7 @@ StructInfo InferStructInfoDynStridedSlice(const Call& call, const BlockBuilder& 
   }
 
   int n_axis = data_sinfo->ndim;
-  auto diag_def = [&](const TensorStructInfoNode* sinfo, String name) {
+  auto diag_def = [&](const TensorStructInfoNode* sinfo, ffi::String name) {
     ICHECK(sinfo) << "Dynamic strided slice requires the input " << name
                   << " to be have the struct info. Please try normalizing the inputs.";
     CHECK_EQ(sinfo->ndim, 1) << "Dynamic strided slice requires " << name

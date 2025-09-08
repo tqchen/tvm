@@ -115,7 +115,7 @@ class MemoizedExprTranslator : public ::tvm::relax::ExprFunctor<OutputType(const
  * \param entry_functions list of entry functions
  * \return The updated module.
  */
-TVM_DLL IRModule DeadCodeElimination(const IRModule& mod, Array<String> entry_funcs);
+TVM_DLL IRModule DeadCodeElimination(const IRModule& mod, Array<ffi::String> entry_funcs);
 
 /*!
  * \brief Get the external symbol of the Relax function name.
@@ -124,7 +124,7 @@ TVM_DLL IRModule DeadCodeElimination(const IRModule& mod, Array<String> entry_fu
  * \return An external symbol.
  */
 inline std::string GetExtSymbol(const Function& func) {
-  const auto name_node = func->GetAttr<String>(tvm::attr::kGlobalSymbol);
+  const auto name_node = func->GetAttr<ffi::String>(tvm::attr::kGlobalSymbol);
   ICHECK(name_node.has_value()) << "Fail to retrieve external symbol.";
   return std::string(name_node.value());
 }
@@ -142,7 +142,7 @@ inline std::string GetExtSymbol(const Function& func) {
  */
 IRModule MakeGroupedFunctions(
     IRModule mod, const std::unordered_map<const Object*, GraphPartitioner::Group*>& partition,
-    bool lift_constants = true, const Array<String>& entry_function_names = {});
+    bool lift_constants = true, const Array<ffi::String>& entry_function_names = {});
 
 /*!
  * \brief Check if the given StructInfo is a scalar tensor. The sinfo should be an instance of
@@ -376,7 +376,7 @@ inline Array<Integer> GetOrderedPositiveAxes(const Array<Integer>& axes, int ndi
   return support::AsArray<int64_t, Integer>(ret);
 }
 
-inline String GetCodegenName(const std::string& composite_name) {
+inline ffi::String GetCodegenName(const std::string& composite_name) {
   auto delim_pos = composite_name.find(".");
   ICHECK(delim_pos != std::string::npos) << "The pattern name for a composite function should "
                                             "start with a compiler name followed by period.";
@@ -434,7 +434,7 @@ Expr CanonicalizeBindings(Expr expr);
  *
  * \ret The updated function.
  */
-Function BundleModelParams(const Function& func, Optional<String> param_tuple_name = std::nullopt);
+Function BundleModelParams(const Function& func, Optional<ffi::String> param_tuple_name = std::nullopt);
 
 /*! \brief Compose two functions
  *

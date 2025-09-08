@@ -330,7 +330,7 @@ void SyncWorker() {
 TVM_FFI_STATIC_INIT_BLOCK({
   namespace refl = tvm::ffi::reflection;
   refl::GlobalDef()
-      .def("runtime.disco.compiled_ccl", []() -> String { return TVM_DISCO_CCL_NAME; })
+      .def("runtime.disco.compiled_ccl", []() -> ffi::String { return TVM_DISCO_CCL_NAME; })
       .def("runtime.disco." TVM_DISCO_CCL_NAME ".init_ccl", InitCCL)
       .def("runtime.disco." TVM_DISCO_CCL_NAME ".init_ccl_per_worker", InitCCLPerWorker)
       .def("runtime.disco." TVM_DISCO_CCL_NAME ".allreduce",

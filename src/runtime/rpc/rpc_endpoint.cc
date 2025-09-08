@@ -433,7 +433,7 @@ class RPCEndpoint::EventHandler : public dmlc::Stream {
     if (code == RPCCode::kException) {
       // switch to the state before sending exception.
       this->SwitchToState(kRecvPacketNumBytes);
-      String msg = args[0].cast<String>();
+      ffi::String msg = args[0].cast<ffi::String>();
       if (!support::StartsWith(msg, "RPCSessionTimeoutError: ")) {
         msg = "RPCError: Error caught from RPC call:\n" + msg;
       }
@@ -962,7 +962,7 @@ void RPCDevAllocDataWithScope(RPCSession* handler, ffi::PackedArgs args, ffi::An
   int ndim = arr->ndim;
   int64_t* shape = arr->shape;
   DLDataType dtype = arr->dtype;
-  auto mem_scope = args[1].cast<Optional<String>>();
+  auto mem_scope = args[1].cast<Optional<ffi::String>>();
   void* data = handler->GetDeviceAPI(dev)->AllocDataSpace(dev, ndim, shape, dtype, mem_scope);
   *rv = data;
 }
@@ -1154,7 +1154,7 @@ class RPCClientSession : public RPCSession, public DeviceAPI {
   }
 
   void* AllocDataSpace(Device dev, int ndim, const int64_t* shape, DLDataType dtype,
-                       Optional<String> mem_scope) final {
+                       Optional<ffi::String> mem_scope) final {
     DLTensor temp;
     temp.data = nullptr;
     temp.device = dev;

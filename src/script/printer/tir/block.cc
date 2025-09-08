@@ -201,7 +201,7 @@ Doc PrintBlock(IRDocsifier d, tir::Block block, AccessPath block_p,  //
   }
   // Step 8. Handle block body
   AsDocBody(block->body, block_p->Attr("body"), frame->get(), d);
-  Array<String> kwargs_keys;
+  Array<ffi::String> kwargs_keys;
   Array<ExprDoc> kwargs_values;
   if (!realize) {
     kwargs_keys.push_back("no_realize");

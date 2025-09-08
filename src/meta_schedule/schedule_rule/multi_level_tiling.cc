@@ -81,7 +81,7 @@ void MultiLevelTilingNode::InitializeWithTuneContext(const TuneContext& context)
       TVM_PY_LOG(INFO, context->logger) << "'thread_warp_size' is not defined in the target";
     }
   }
-  if (Optional<String> opt_sm = context->target.value()->GetAttr<String>("arch")) {
+  if (Optional<ffi::String> opt_sm = context->target.value()->GetAttr<ffi::String>("arch")) {
     std::string sm = opt_sm.value();
     if (support::StartsWith(sm, "sm_")) {
       sm = sm.substr(3);
@@ -393,11 +393,11 @@ void MultiLevelTilingNode::AnnotateCooperativeFetching(Schedule* sch,
 
 // Constructor
 
-ScheduleRule ScheduleRule::MultiLevelTiling(String structure, Optional<Array<String>> tile_binds,
+ScheduleRule ScheduleRule::MultiLevelTiling(ffi::String structure, Optional<Array<ffi::String>> tile_binds,
                                             Optional<Integer> max_innermost_factor,
                                             Optional<Array<Integer>> vector_load_lens,
-                                            Optional<Map<String, ffi::Any>> reuse_read,
-                                            Optional<Map<String, ffi::Any>> reuse_write,
+                                            Optional<Map<ffi::String, ffi::Any>> reuse_read,
+                                            Optional<Map<ffi::String, ffi::Any>> reuse_write,
                                             Optional<ffi::Function> filter_fn) {
   auto node = MultiLevelTilingInitCommon<MultiLevelTilingNode>(
       structure, tile_binds, max_innermost_factor, vector_load_lens, reuse_read, reuse_write);

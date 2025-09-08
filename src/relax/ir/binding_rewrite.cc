@@ -190,7 +190,7 @@ TVM_FFI_STATIC_INIT_BLOCK({
       .def("relax.dfb_rewrite_add_binding",
            [](DataflowBlockRewrite rwt, Binding vb) { rwt->Add(vb); })
       .def("relax.dfb_rewrite_add",
-           [](DataflowBlockRewrite rwt, Expr expr, Optional<String> name, bool is_dfvar) {
+           [](DataflowBlockRewrite rwt, Expr expr, Optional<ffi::String> name, bool is_dfvar) {
              if (name.has_value()) {
                rwt->Add(name.value(), expr, is_dfvar);
              } else {

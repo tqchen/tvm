@@ -467,7 +467,7 @@ struct SampleCategoricalTraits : public UnpackedInstTraits<SampleCategoricalTrai
     return sch->SampleCategorical(candidates, probs, decision);
   }
 
-  static String UnpackedAsPython(Array<String> outputs,      //
+  static ffi::String UnpackedAsPython(Array<ffi::String> outputs,      //
                                  Array<Integer> candidates,  //
                                  Array<FloatImm> probs,      //
                                  Optional<Integer> decision) {
@@ -498,7 +498,7 @@ struct SamplePerfectTileTraits : public UnpackedInstTraits<SamplePerfectTileTrai
     return sch->SamplePerfectTile(loop_rv, n->value, max_innermost_factor->value, decision);
   }
 
-  static String UnpackedAsPython(Array<String> outputs, String loop_rv, Integer n,
+  static ffi::String UnpackedAsPython(Array<ffi::String> outputs, ffi::String loop_rv, Integer n,
                                  Integer max_innermost_factor, Optional<Array<Integer>> decision) {
     PythonAPICall py("sample_perfect_tile");
     py.Input("loop", loop_rv);
@@ -529,7 +529,7 @@ struct SamplePartitionedTileTraits : public UnpackedInstTraits<SamplePartitioned
                                       innerpart_factor->value, decision);
   }
 
-  static String UnpackedAsPython(Array<String> outputs, String loop_rv, Integer n,
+  static ffi::String UnpackedAsPython(Array<ffi::String> outputs, ffi::String loop_rv, Integer n,
                                  Integer partition_pos, Integer innerpart_factor,
                                  Optional<Array<Integer>> decision) {
     PythonAPICall py("sample_partitioned_tile");
@@ -561,8 +561,8 @@ struct SampleComputeLocationTraits : public UnpackedInstTraits<SampleComputeLoca
     return sch->SampleComputeLocation(block_rv, decision);
   }
 
-  static String UnpackedAsPython(Array<String> outputs,  //
-                                 String block_rv,        //
+  static ffi::String UnpackedAsPython(Array<ffi::String> outputs,  //
+                                 ffi::String block_rv,        //
                                  Optional<Integer> decision) {
     PythonAPICall py("sample_compute_location");
     py.Input("block", block_rv);

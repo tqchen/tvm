@@ -137,7 +137,7 @@ runtime::FunctionInfo CodeGenWebGPU::AddFunction(const PrimFunc& f, bool skip_re
   ICHECK_EQ(name_supply_->FreshName("gridDim"), "gridDim");
 
   // add to alloc buffer type.
-  auto global_symbol = f->GetAttr<String>(tvm::attr::kGlobalSymbol);
+  auto global_symbol = f->GetAttr<ffi::String>(tvm::attr::kGlobalSymbol);
   ICHECK(global_symbol.has_value())
       << "CodeGenWebGPU: Expect PrimFunc to have the global_symbol attribute";
 
@@ -233,7 +233,7 @@ runtime::FunctionInfo CodeGenWebGPU::AddFunction(const PrimFunc& f, bool skip_re
                     << "var<uniform> " << val_pod_args << " : " << type_pod_args << ";\n\n";
 
   // setup thread tags and param access in launch param tags;
-  if (auto opt = f->GetAttr<Array<String>>(tir::attr::kKernelLaunchParams)) {
+  if (auto opt = f->GetAttr<Array<ffi::String>>(tir::attr::kKernelLaunchParams)) {
     for (const auto& thread_tag : opt.value()) {
       func_info.launch_param_tags.push_back(thread_tag);
     }
@@ -716,7 +716,7 @@ class WebGPUSourceModuleNode final : public ffi::ModuleObj {
   /*! \brief Get the property of the runtime module .*/
   int GetPropertyMask() const final { return ffi::Module::kBinarySerializable; }
 
-  Optional<ffi::Function> GetFunction(const String& name) final {
+  Optional<ffi::Function> GetFunction(const ffi::String& name) final {
     LOG(FATAL) << "WebGPUSourceModule is not directly runnable, export and run through tvmjs";
   }
 
@@ -729,7 +729,7 @@ class WebGPUSourceModuleNode final : public ffi::ModuleObj {
     return ffi::Bytes(buffer);
   }
 
-  String InspectSource(const String& format) const final {
+  ffi::String InspectSource(const ffi::String& format) const final {
     if (format == "func_info") {
       std::ostringstream stream;
       dmlc::JSONWriter(&stream).Write(fmap_);
@@ -770,7 +770,7 @@ ffi::Module BuildWebGPU(IRModule mod, Target target) {
     auto calling_conv = f->GetAttr<Integer>(tvm::attr::kCallingConv);
     ICHECK(calling_conv == CallingConv::kDeviceKernelLaunch)
         << "CodeGenWebGPU: expect calling_conv equals CallingConv::kDeviceKernelLaunch";
-    auto global_symbol = f->GetAttr<String>(tvm::attr::kGlobalSymbol);
+    auto global_symbol = f->GetAttr<ffi::String>(tvm::attr::kGlobalSymbol);
     ICHECK(global_symbol.has_value())
         << "CodeGenWebGPU: Expect PrimFunc to have the global_symbol attribute";
     std::string f_name = global_symbol.value();

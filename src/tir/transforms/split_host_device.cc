@@ -144,7 +144,7 @@ Pass SplitHostDevice() {
       if (auto opt = base_func.as<PrimFunc>()) {
         PrimFunc func = opt.value();
 
-        auto global_symbol = func->GetAttr<String>(tvm::attr::kGlobalSymbol);
+        auto global_symbol = func->GetAttr<ffi::String>(tvm::attr::kGlobalSymbol);
         auto name_prefix = global_symbol.value_or(gvar->name_hint);
         auto kernel_name = name_prefix + "_kernel";
         auto var_supply = [&global_var_supply, &kernel_name]() -> GlobalVar {

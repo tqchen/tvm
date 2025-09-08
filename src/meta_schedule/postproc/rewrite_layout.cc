@@ -182,14 +182,14 @@ std::vector<std::string> GetCacheReadChain(const Buffer& buf, const PrimFuncNode
 }
 
 bool RewriteLayout(const Schedule& sch) {
-  std::vector<std::pair<StmtSRef, String>> results;
+  std::vector<std::pair<StmtSRef, ffi::String>> results;
   auto add_layout_rewrite_block = [&sch](BlockRV consumer_block_rv, int buffer_index) {
     BlockRV rewrite_block_rv = sch->CacheRead(consumer_block_rv, buffer_index, "global");
     sch->Annotate(rewrite_block_rv, attr::meta_schedule_layout_rewrite_preproc, true);
   };
 
   for (const auto& [g_var, base_func] : sch->mod()->functions) {
-    const String& func_name = g_var->name_hint;
+    const ffi::String& func_name = g_var->name_hint;
     const auto* prim_func = base_func.as<PrimFuncNode>();
     // Only consider PrimFunc
     if (prim_func == nullptr) {

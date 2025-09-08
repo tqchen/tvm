@@ -141,7 +141,7 @@ IRModule PrimFuncPassNode::operator()(IRModule mod, const PassContext& pass_ctx)
 }
 
 Pass CreatePrimFuncPass(std::function<PrimFunc(PrimFunc, IRModule, PassContext)> pass_func,
-                        int opt_level, String name, tvm::Array<String> required, bool traceable) {
+                        int opt_level, ffi::String name, tvm::Array<ffi::String> required, bool traceable) {
   PassInfo pass_info = PassInfo(opt_level, name, required, traceable);
   return PrimFuncPass(std::move(pass_func), pass_info);
 }

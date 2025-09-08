@@ -128,7 +128,7 @@ class CollectFromCompositeFunctionBody : public ExprVisitor {
  */
 class TensorRTJSONSerializer : public JSONSerializer {
  public:
-  explicit TensorRTJSONSerializer(Map<Constant, String> constant_names, Map<Var, Expr> bindings)
+  explicit TensorRTJSONSerializer(Map<Constant, ffi::String> constant_names, Map<Var, Expr> bindings)
       : JSONSerializer(constant_names), bindings_(bindings) {}
 
   using JSONSerializer::VisitExpr_;
@@ -139,7 +139,7 @@ class TensorRTJSONSerializer : public JSONSerializer {
     ICHECK(fn_var);
     const auto fn = Downcast<Function>(bindings_[ffi::GetRef<Var>(fn_var)]);
 
-    auto opt_composite = fn->GetAttr<String>(attr::kComposite);
+    auto opt_composite = fn->GetAttr<ffi::String>(attr::kComposite);
     ICHECK(opt_composite.has_value());
     std::string name = opt_composite.value();
 
@@ -225,8 +225,8 @@ void CollectFromCompositeFunctionBody::VisitExpr_(const CallNode* call_node) {
  * \param functions The extern functions to be compiled via TensorRT
  * \return Runtime modules.
  */
-Array<ffi::Module> TensorRTCompiler(Array<Function> functions, Map<String, ffi::Any> /*unused*/,
-                                    Map<Constant, String> constant_names) {
+Array<ffi::Module> TensorRTCompiler(Array<Function> functions, Map<ffi::String, ffi::Any> /*unused*/,
+                                    Map<Constant, ffi::String> constant_names) {
   Array<ffi::Module> compiled_functions;
   for (const auto& func : functions) {
     VLOG(1) << "TensorRT partition:" << std::endl << func;

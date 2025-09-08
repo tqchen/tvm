@@ -40,7 +40,7 @@ using namespace tvm::contrib::msc;
  */
 class ParamsInliner : public ExprMutator {
  public:
-  explicit ParamsInliner(IRModule ctx_module, const String& entry_name) : ExprMutator(ctx_module) {
+  explicit ParamsInliner(IRModule ctx_module, const ffi::String& entry_name) : ExprMutator(ctx_module) {
     mod_ = ctx_module;
     entry_name_ = entry_name;
   }
@@ -55,14 +55,14 @@ class ParamsInliner : public ExprMutator {
       }
       if (func->IsInstance<FunctionNode>()) {
         Array<Var> new_params;
-        Array<String> attrs;
+        Array<ffi::String> attrs;
         for (const auto& p : Downcast<Function>(func)->params) {
           auto struct_info = GetStructInfo(p);
           if (struct_info->IsInstance<ShapeStructInfoNode>()) {
             continue;
           }
           if (struct_info->IsInstance<FuncStructInfoNode>()) {
-            const auto& optype_opt = func->GetAttr<String>(msc_attr::kOptype);
+            const auto& optype_opt = func->GetAttr<ffi::String>(msc_attr::kOptype);
             ICHECK(optype_opt.has_value())
                 << "Can not find attr " << msc_attr::kOptype << " form extern func";
             extern_types_.Set(p, optype_opt.value());
@@ -88,7 +88,7 @@ class ParamsInliner : public ExprMutator {
           continue;
         }
         const auto& new_func = Downcast<Function>(VisitExpr(func));
-        Map<String, ffi::Any> func_attrs = new_func->attrs->dict;
+        Map<ffi::String, ffi::Any> func_attrs = new_func->attrs->dict;
         if (attrs.size() > 0) {
           func_attrs.Set(msc_attr::kOpattrs, attrs);
         }
@@ -170,17 +170,17 @@ class ParamsInliner : public ExprMutator {
 
  private:
   IRModule mod_;
-  String entry_name_;
-  Map<Expr, String> extern_types_;
+  ffi::String entry_name_;
+  Map<Expr, ffi::String> extern_types_;
 };
 
-IRModule InlineParams(IRModule mod, const String& entry_name) {
+IRModule InlineParams(IRModule mod, const ffi::String& entry_name) {
   return ParamsInliner(mod, entry_name).Bind();
 }
 
 namespace transform {
 
-Pass InlineParams(const String& entry_name) {
+Pass InlineParams(const ffi::String& entry_name) {
   auto pass_func = [=](IRModule m, PassContext pc) { return relax::InlineParams(m, entry_name); };
   return CreateModulePass(pass_func, 0, "InlineParams", {});
 }

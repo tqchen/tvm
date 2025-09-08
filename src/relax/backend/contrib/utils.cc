@@ -31,8 +31,8 @@ namespace tvm {
 namespace relax {
 namespace backend {
 
-Map<String, IntImm> ExtractArgIdx(String pattern_name, Function f) {
-  Map<String, IntImm> arg_idx;
+Map<ffi::String, IntImm> ExtractArgIdx(ffi::String pattern_name, Function f) {
+  Map<ffi::String, IntImm> arg_idx;
   auto pattern = backend::GetPattern(pattern_name);
   ICHECK(pattern) << "Unsupported op_type " << pattern_name;
 

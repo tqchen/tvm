@@ -108,7 +108,7 @@ FuncType PrimFuncNode::func_type_annotation() const {
 
 class TensorIntrinManager {
  public:
-  Map<String, tir::TensorIntrin> reg;
+  Map<ffi::String, tir::TensorIntrin> reg;
 
   static TensorIntrinManager* Global() {
     static TensorIntrinManager* inst = new TensorIntrinManager();
@@ -135,7 +135,7 @@ TensorIntrin::TensorIntrin(PrimFunc desc, PrimFunc impl) {
   data_ = std::move(n);
 }
 
-void TensorIntrin::Register(String name, TensorIntrin intrin, bool override) {
+void TensorIntrin::Register(ffi::String name, TensorIntrin intrin, bool override) {
   TensorIntrinManager* manager = TensorIntrinManager::Global();
   if (!override) {
     CHECK_EQ(manager->reg.count(name), 0)
@@ -144,7 +144,7 @@ void TensorIntrin::Register(String name, TensorIntrin intrin, bool override) {
   manager->reg.Set(name, intrin);
 }
 
-Optional<TensorIntrin> TensorIntrin::Get(String name, bool allow_missing) {
+Optional<TensorIntrin> TensorIntrin::Get(ffi::String name, bool allow_missing) {
   const TensorIntrinManager* manager = TensorIntrinManager::Global();
   auto it = manager->reg.find(name);
   if (it == manager->reg.end()) {

@@ -45,7 +45,7 @@ Instruction::Instruction(InstructionKind kind, Array<Any> inputs, Array<Any> att
 
 using InstructionKindRegistry = AttrRegistry<InstructionKindRegEntry, InstructionKind>;
 
-InstructionKind InstructionKind::Get(const String& name) {
+InstructionKind InstructionKind::Get(const ffi::String& name) {
   const InstructionKindRegEntry* reg = InstructionKindRegistry::Global()->Get(name);
   ICHECK(reg != nullptr) << "AttributeError: Instruction kind " << name << " is not registered";
   return reg->inst_kind_;
@@ -55,7 +55,7 @@ InstructionKindRegEntry::InstructionKindRegEntry(uint32_t reg_index) {
   this->inst_kind_ = InstructionKind(ffi::make_object<InstructionKindNode>());
 }
 
-InstructionKindRegEntry& InstructionKindRegEntry::RegisterOrGet(const String& name) {
+InstructionKindRegEntry& InstructionKindRegEntry::RegisterOrGet(const ffi::String& name) {
   return InstructionKindRegistry::Global()->RegisterOrGet(name);
 }
 
@@ -69,11 +69,11 @@ TVM_STATIC_IR_FUNCTOR(ReprPrinter, vtable)
       inputs.reserve(self->inputs.size());
       for (const Any& obj : self->inputs) {
         if (obj == nullptr) {
-          inputs.push_back(String("None"));
+          inputs.push_back(ffi::String("None"));
         } else if (auto opt_str = obj.as<ffi::String>()) {
-          inputs.push_back(String('"' + (*opt_str).operator std::string() + '"'));
+          inputs.push_back(ffi::String('"' + (*opt_str).operator std::string() + '"'));
         } else if (obj.as<BlockRVNode>() || obj.as<LoopRVNode>()) {
-          inputs.push_back(String("_"));
+          inputs.push_back(ffi::String("_"));
         } else if (obj.type_index() < ffi::TypeIndex::kTVMFFISmallStr) {
           inputs.push_back(obj);
         } else if (obj.as<IntImmNode>() || obj.as<FloatImmNode>()) {
@@ -87,7 +87,7 @@ TVM_STATIC_IR_FUNCTOR(ReprPrinter, vtable)
               });
           std::ostringstream os;
           os << new_expr;
-          inputs.push_back(String(os.str()));
+          inputs.push_back(ffi::String(os.str()));
         } else if (obj.as<IndexMapNode>()) {
           inputs.push_back(obj);
         } else {
@@ -99,7 +99,7 @@ TVM_STATIC_IR_FUNCTOR(ReprPrinter, vtable)
           /*inputs=*/inputs,
           /*attrs=*/self->attrs,
           /*decision=*/Any(nullptr),
-          /*outputs=*/Array<String>(self->outputs.size(), String("_")));
+          /*outputs=*/Array<ffi::String>(self->outputs.size(), ffi::String("_")));
     });
 
 /**************** FFI ****************/

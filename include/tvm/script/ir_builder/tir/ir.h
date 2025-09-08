@@ -47,9 +47,9 @@ using tvm::tir::Var;
  * \param axis_separators The separators between input axes when generating flattened output axes.
  * \return The declared buffer.
  */
-Buffer BufferDecl(Array<PrimExpr> shape, DataType dtype, String buffer_name, Optional<Var> data,
+Buffer BufferDecl(Array<PrimExpr> shape, DataType dtype, ffi::String buffer_name, Optional<Var> data,
                   Optional<Array<PrimExpr>> strides, Optional<PrimExpr> elem_offset,
-                  String storage_scope, int align, int offset_factor, String buffer_type,
+                  ffi::String storage_scope, int align, int offset_factor, ffi::String buffer_type,
                   Optional<Array<IntImm>> axis_separators);
 
 /*!
@@ -64,7 +64,7 @@ PrimFuncFrame PrimFunc(bool is_private);
  * \param var The variable argument.
  * \return The variable.
  */
-Var Arg(String name, Var var);
+Var Arg(ffi::String name, Var var);
 
 /*!
  * \brief The PrimFunc buffer arguments adding function.
@@ -72,19 +72,19 @@ Var Arg(String name, Var var);
  * \param buffer The buffer argument.
  * \return The buffer.
  */
-Buffer Arg(String name, Buffer buffer);
+Buffer Arg(ffi::String name, Buffer buffer);
 
 /*!
  * \brief The PrimFunc naming statement.
  * \param name The name of the PrimFunc.
  */
-void FuncName(String name);
+void FuncName(ffi::String name);
 
 /*!
  * \brief The PrimFunc annotation statement.
  * \param attrs The annotations of the PrimFunc.
  */
-void FuncAttrs(Map<String, ffi::Any> attrs);
+void FuncAttrs(Map<ffi::String, ffi::Any> attrs);
 
 /*!
  * \brief The PrimFunc return type statement.
@@ -110,8 +110,8 @@ Type FuncRet(Type ret_type);
  */
 Buffer MatchBuffer(ObjectRef param, Array<PrimExpr> shape, DataType dtype = DataType::Float(32),
                    Optional<Var> data = std::nullopt, Array<PrimExpr> strides = {},
-                   PrimExpr elem_offset = PrimExpr(), String storage_scope = "global",
-                   int align = -1, int offset_factor = 0, String buffer_type = "default",
+                   PrimExpr elem_offset = PrimExpr(), ffi::String storage_scope = "global",
+                   int align = -1, int offset_factor = 0, ffi::String buffer_type = "default",
                    Optional<Array<IntImm>> axis_separators = std::nullopt);
 
 /*!
@@ -120,7 +120,7 @@ Buffer MatchBuffer(ObjectRef param, Array<PrimExpr> shape, DataType dtype = Data
  * \param no_realize The flag whether to construct BlockRealize or Block.
  * \return The BlockFrame.
  */
-BlockFrame Block(String name, bool no_realize = false);
+BlockFrame Block(ffi::String name, bool no_realize = false);
 
 /*!
  * \brief The block initialization statement.
@@ -150,7 +150,7 @@ void Writes(Array<ObjectRef> buffer_slices);
  * \brief The block annotation statement.
  * \param attrs The annotation of the block.
  */
-void BlockAttrs(Map<String, ffi::Any> attrs);
+void BlockAttrs(Map<ffi::String, ffi::Any> attrs);
 
 /*!
  * \brief The buffer allocation function.
@@ -168,8 +168,8 @@ void BlockAttrs(Map<String, ffi::Any> attrs);
  */
 Buffer AllocBuffer(Array<PrimExpr> shape, DataType dtype = DataType::Float(32),
                    Optional<Var> data = std::nullopt, Array<PrimExpr> strides = {},
-                   PrimExpr elem_offset = PrimExpr(), String storage_scope = "", int align = -1,
-                   int offset_factor = 0, String buffer_type = "default",
+                   PrimExpr elem_offset = PrimExpr(), ffi::String storage_scope = "", int align = -1,
+                   int offset_factor = 0, ffi::String buffer_type = "default",
                    Optional<Array<IntImm>> axis_separators = std::nullopt);
 namespace axis {
 
@@ -216,7 +216,7 @@ Var Opaque(Range dom, PrimExpr binding, DataType dtype = DataType::Int(32));
  * \param dtype The data types of the iteration variables.
  * \return The iteration variables.
  */
-Array<Var> Remap(String kinds, Array<PrimExpr> bindings, DataType dtype = DataType::Int(32));
+Array<Var> Remap(ffi::String kinds, Array<PrimExpr> bindings, DataType dtype = DataType::Int(32));
 
 }  // namespace axis
 
@@ -228,7 +228,7 @@ Array<Var> Remap(String kinds, Array<PrimExpr> bindings, DataType dtype = DataTy
  * \return The ForFrame.
  */
 ForFrame Serial(PrimExpr start, PrimExpr stop,
-                Optional<Map<String, Any>> annotations = std::nullopt);
+                Optional<Map<ffi::String, Any>> annotations = std::nullopt);
 /*!
  * \brief The parallel For statement.
  * \param start The minimum value of iteration.
@@ -237,7 +237,7 @@ ForFrame Serial(PrimExpr start, PrimExpr stop,
  * \return The ForFrame.
  */
 ForFrame Parallel(PrimExpr start, PrimExpr stop,
-                  Optional<Map<String, Any>> annotations = std::nullopt);
+                  Optional<Map<ffi::String, Any>> annotations = std::nullopt);
 /*!
  * \brief The vectorized For statement.
  * \param start The minimum value of iteration.
@@ -246,7 +246,7 @@ ForFrame Parallel(PrimExpr start, PrimExpr stop,
  * \return The ForFrame.
  */
 ForFrame Vectorized(PrimExpr start, PrimExpr stop,
-                    Optional<Map<String, Any>> annotations = std::nullopt);
+                    Optional<Map<ffi::String, Any>> annotations = std::nullopt);
 /*!
  * \brief The unrolled For statement.
  * \param start The minimum value of iteration.
@@ -255,7 +255,7 @@ ForFrame Vectorized(PrimExpr start, PrimExpr stop,
  * \return The ForFrame.
  */
 ForFrame Unroll(PrimExpr start, PrimExpr stop,
-                Optional<Map<String, Any>> annotations = std::nullopt);
+                Optional<Map<ffi::String, Any>> annotations = std::nullopt);
 /*!
  * \brief The thread-binding For statement.
  * \param start The minimum value of iteration.
@@ -264,8 +264,8 @@ ForFrame Unroll(PrimExpr start, PrimExpr stop,
  * \param annotations The optional annotations of the For statement.
  * \return The ForFrame.
  */
-ForFrame ThreadBinding(PrimExpr start, PrimExpr stop, String thread,
-                       Optional<Map<String, Any>> annotations = std::nullopt);
+ForFrame ThreadBinding(PrimExpr start, PrimExpr stop, ffi::String thread,
+                       Optional<Map<ffi::String, Any>> annotations = std::nullopt);
 /*!
  * \brief The grid For statement.
  * \param extents The extents of the iteration.
@@ -279,7 +279,7 @@ ForFrame Grid(Array<PrimExpr> extents);
  * \param message The error message when the assertion fails.
  * \return The AssertFrame.
  */
-AssertFrame Assert(PrimExpr condition, String message);
+AssertFrame Assert(PrimExpr condition, ffi::String message);
 
 /*!
  * \brief The let binding.
@@ -300,7 +300,7 @@ LetFrame LetStmt(PrimExpr value, Optional<Type> type_annotation = std::nullopt,
  * \param condition The condition expression.
  * \return The result RealizeFrame.
  */
-RealizeFrame Realize(tvm::tir::BufferRegion buffer_slice, String storage_scope, PrimExpr condition);
+RealizeFrame Realize(tvm::tir::BufferRegion buffer_slice, ffi::String storage_scope, PrimExpr condition);
 
 /*!
  * \brief The allocate node.
@@ -311,9 +311,9 @@ RealizeFrame Realize(tvm::tir::BufferRegion buffer_slice, String storage_scope, 
  * \param annotations Additional annotation hints.
  * \return The created AllocateFrame.
  */
-AllocateFrame Allocate(Array<PrimExpr> extents, DataType dtype, String storage_scope = "",
+AllocateFrame Allocate(Array<PrimExpr> extents, DataType dtype, ffi::String storage_scope = "",
                        Optional<PrimExpr> condition = std::nullopt,
-                       Optional<Map<String, Any>> annotations = std::nullopt);
+                       Optional<Map<ffi::String, Any>> annotations = std::nullopt);
 
 /*!
  * \brief The allocate constant node.
@@ -324,7 +324,7 @@ AllocateFrame Allocate(Array<PrimExpr> extents, DataType dtype, String storage_s
  * \return The created AllocateConstFrame.
  */
 AllocateConstFrame AllocateConst(Tensor data, DataType dtype, Array<PrimExpr> extents,
-                                 Optional<Map<String, Any>> annotations = std::nullopt);
+                                 Optional<Map<ffi::String, Any>> annotations = std::nullopt);
 
 /*!
  * \brief Create an attribute.
@@ -333,7 +333,7 @@ AllocateConstFrame AllocateConst(Tensor data, DataType dtype, Array<PrimExpr> ex
  * \param value The value of the attribute.
  * \return The result AttrFrame.
  */
-AttrFrame Attr(ffi::Any node, String attr_key, PrimExpr value);
+AttrFrame Attr(ffi::Any node, ffi::String attr_key, PrimExpr value);
 
 /*!
  * \brief Create a while loop.
@@ -376,10 +376,10 @@ ElseFrame Else();
  * \param axis_separators The separators between input axes when generating flattened output axes.
  * \return The declared buffer.
  */
-DeclBufferFrame DeclBuffer(Array<PrimExpr> shape, DataType dtype, String buffer_name,
+DeclBufferFrame DeclBuffer(Array<PrimExpr> shape, DataType dtype, ffi::String buffer_name,
                            Optional<Var> data, Optional<Array<PrimExpr>> strides,
-                           Optional<PrimExpr> elem_offset, String storage_scope, int align,
-                           int offset_factor, String buffer_type,
+                           Optional<PrimExpr> elem_offset, ffi::String storage_scope, int align,
+                           int offset_factor, ffi::String buffer_type,
                            Optional<Array<IntImm>> axis_separators);
 
 /*!
@@ -396,7 +396,7 @@ LaunchThreadFrame LaunchThread(Var var, PrimExpr extent);
  * \param extent The extent of environment thread.
  * \return The result LaunchThreadFrame.
  */
-LaunchThreadFrame LaunchThread(String thread_tag, PrimExpr extent);
+LaunchThreadFrame LaunchThread(ffi::String thread_tag, PrimExpr extent);
 
 /*!
  * \brief Bind a var to thread env.
@@ -404,7 +404,7 @@ LaunchThreadFrame LaunchThread(String thread_tag, PrimExpr extent);
  * \param dtype The data type of the variable.
  * \return The result variable which gets bound to the thread env.
  */
-Var EnvThread(String thread_tag, DataType dtype = DataType::Int(32));
+Var EnvThread(ffi::String thread_tag, DataType dtype = DataType::Int(32));
 
 /*!
  * \brief Store data in a buffer.
@@ -441,7 +441,7 @@ void Evaluate(PrimExpr value);
  * \return The pointer.
  */
 inline Var Handle(runtime::DataType dtype = runtime::DataType::Void(),
-                  String storage_scope = "global", bool is_size_var = false,
+                  ffi::String storage_scope = "global", bool is_size_var = false,
                   bool is_unknown_type = false) {
   Type type_annotation{nullptr};
   if (is_unknown_type && storage_scope == "global") {

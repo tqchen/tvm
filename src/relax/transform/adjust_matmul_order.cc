@@ -73,15 +73,15 @@ std::tuple<DFPattern, ffi::TypedFunction<Expr(Expr, Map<DFPattern, Expr>)>> Crea
              pat_permuted_matmul_on_rhs;
 
   PrimExpr symbolic_var_constraints = Bool(true);
-  if (auto upper_bounds = func->GetAttr<Map<String, Any>>("tir_var_upper_bound")) {
-    Map<String, tir::Var> name_lookup;
+  if (auto upper_bounds = func->GetAttr<Map<ffi::String, Any>>("tir_var_upper_bound")) {
+    Map<ffi::String, tir::Var> name_lookup;
     for (const auto& tir_var : TIRVarsInStructInfo(GetStructInfo(func))) {
       name_lookup.Set(tir_var->name_hint, tir_var);
       symbolic_var_constraints = symbolic_var_constraints && (0 <= tir_var);
     }
 
     for (const auto& [key, obj_bound] : upper_bounds.value()) {
-      auto tir_var_name = Downcast<String>(key);
+      auto tir_var_name = Downcast<ffi::String>(key);
       if (auto opt_var = name_lookup.Get(tir_var_name)) {
         auto var = opt_var.value();
         auto expr_bound = Downcast<PrimExpr>(obj_bound);

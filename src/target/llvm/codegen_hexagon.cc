@@ -71,7 +71,7 @@ namespace codegen {
 class CodeGenHexagon final : public CodeGenCPU {
  public:
   void Init(const std::string& module_name, LLVMTarget* llvm_target,
-            Optional<String> system_lib_prefix, bool dynamic_lookup,
+            Optional<ffi::String> system_lib_prefix, bool dynamic_lookup,
             bool target_c_runtime) override;
   void InitTarget() final;
 
@@ -79,9 +79,9 @@ class CodeGenHexagon final : public CodeGenCPU {
   llvm::Value* VisitExpr_(const BufferLoadNode* op) override;
   llvm::Value* CreateIntrinsic(const CallNode* op) override;
 
-  llvm::Value* CreateCallExtern(Type ret_type, String global_symbol, const Array<PrimExpr>& args,
+  llvm::Value* CreateCallExtern(Type ret_type, ffi::String global_symbol, const Array<PrimExpr>& args,
                                 bool skip_first_arg) override;
-  llvm::Value* CreateCallExternQHL(Type ret_type, String global_symbol, const Array<PrimExpr>& args,
+  llvm::Value* CreateCallExternQHL(Type ret_type, ffi::String global_symbol, const Array<PrimExpr>& args,
                                    bool skip_first_arg);
 
   llvm::Module* GetModulePtr() const { return module_.get(); }
@@ -116,7 +116,7 @@ class CodeGenHexagon final : public CodeGenCPU {
 };
 
 void CodeGenHexagon::Init(const std::string& module_name, LLVMTarget* llvm_target,
-                          Optional<String> system_lib_prefix, bool dynamic_lookup,
+                          Optional<ffi::String> system_lib_prefix, bool dynamic_lookup,
                           bool target_c_runtime) {
   CodeGenCPU::Init(module_name, llvm_target, system_lib_prefix, dynamic_lookup, target_c_runtime);
 }
@@ -149,7 +149,7 @@ void CodeGenHexagon::InitTarget() {
   CodeGenCPU::InitTarget();
 }
 
-llvm::Value* CodeGenHexagon::CreateCallExternQHL(Type ret_type, String global_symbol,
+llvm::Value* CodeGenHexagon::CreateCallExternQHL(Type ret_type, ffi::String global_symbol,
                                                  const Array<PrimExpr>& args, bool skip_first_arg) {
   int num_lanes = args[1].dtype().lanes();
   int vector_length = native_vector_bits_ / args[1].dtype().bits();
@@ -184,7 +184,7 @@ bool CodeGenHexagon::IsQHLFunction(const std::string& func) {
   return std::find(fqhl_list_.begin(), fqhl_list_.end(), func) != fqhl_list_.end();
 }
 
-llvm::Value* CodeGenHexagon::CreateCallExtern(Type ret_type, String global_symbol,
+llvm::Value* CodeGenHexagon::CreateCallExtern(Type ret_type, ffi::String global_symbol,
                                               const Array<PrimExpr>& args, bool skip_first_arg) {
   int num_lanes = args[1].dtype().lanes();
   int vector_length = native_vector_bits_ / args[1].dtype().bits();
@@ -453,8 +453,8 @@ ffi::Module BuildHexagon(IRModule mod, Target target) {
     return vec;
   };
   std::string llvm_options_str = "llvm";
-  if (const auto& llvm_options = target->GetAttr<Array<String>>("llvm-options")) {
-    for (const String& s : llvm_options.value()) llvm_options_str += "," + s;
+  if (const auto& llvm_options = target->GetAttr<Array<ffi::String>>("llvm-options")) {
+    for (const ffi::String& s : llvm_options.value()) llvm_options_str += "," + s;
   }
   // Postprocess the LLVM options string: replace '@' with '=', and ',' with ' '.
   for (int i = 0, e = llvm_options_str.size(); i != e; ++i) {
@@ -494,7 +494,7 @@ ffi::Module BuildHexagon(IRModule mod, Target target) {
     }
     auto f = Downcast<PrimFunc>(kv.second);
     if (f->HasNonzeroAttr(tir::attr::kIsEntryFunc)) {
-      auto global_symbol = f->GetAttr<String>(tvm::attr::kGlobalSymbol);
+      auto global_symbol = f->GetAttr<ffi::String>(tvm::attr::kGlobalSymbol);
       ICHECK(global_symbol.has_value());
       entry_func = global_symbol.value();
     }
@@ -573,9 +573,9 @@ ffi::Module BuildHexagon(IRModule mod, Target target) {
                            "do import tvm.contrib.hexagon";
 
   Array<PrimExpr> o_names = {StringImm(o_name)};
-  Map<String, String> extra_args;
+  Map<ffi::String, ffi::String> extra_args;
   if (target->attrs.count("mcpu")) {
-    std::string mcpu = Downcast<String>(target->attrs.at("mcpu"));
+    std::string mcpu = Downcast<ffi::String>(target->attrs.at("mcpu"));
 #if TVM_LLVM_VERSION >= 180
     ICHECK(llvm::StringRef(mcpu).starts_with("hexagon"))
 #else

@@ -113,7 +113,7 @@ class DFPattern : public ObjectRef {
   /*! \brief Syntatic Sugar for creating a NotPattern */
   TVM_DLL NotPattern operator~() const;
   /*! \brief Syntatic Sugar for creating an AttrPattern */
-  TVM_DLL AttrPattern HasAttr(const Map<String, Any>& attrs) const;
+  TVM_DLL AttrPattern HasAttr(const Map<ffi::String, Any>& attrs) const;
   /*! \brief Syntatic Sugar for creating a StructInfoPattern */
   TVM_DLL StructInfoPattern HasStructInfo(const StructInfo& struct_info) const;
   /*! \brief Syntatic Sugar for creating a DataTypePattern with a DataType */
@@ -374,8 +374,8 @@ class ExprPattern : public DFPattern {
  */
 class VarPatternNode : public DFPatternNode {
  public:
-  String name;
-  const String& name_hint() const { return name; }
+  ffi::String name;
+  const ffi::String& name_hint() const { return name; }
 
   static void RegisterReflection() {
     namespace refl = tvm::ffi::reflection;
@@ -398,7 +398,7 @@ class VarPattern : public DFPattern {
    *
    * \param name_hint Variable name to match. Any if empty ("").
    */
-  TVM_DLL VarPattern(String name_hint);
+  TVM_DLL VarPattern(ffi::String name_hint);
   TVM_DEFINE_OBJECT_REF_METHODS(VarPattern, DFPattern, VarPatternNode);
 };
 
@@ -424,7 +424,7 @@ class DataflowVarPatternNode : public VarPatternNode {
 class DataflowVarPattern : public DFPattern {
  public:
   /*! \sa VarPattern::VarPattern */
-  TVM_DLL DataflowVarPattern(String name_hint);
+  TVM_DLL DataflowVarPattern(ffi::String name_hint);
   TVM_DEFINE_OBJECT_REF_METHODS(DataflowVarPattern, DFPattern, DataflowVarPatternNode);
 };
 
@@ -444,7 +444,7 @@ class GlobalVarPatternNode : public VarPatternNode {
  */
 class GlobalVarPattern : public DFPattern {
  public:
-  TVM_DLL GlobalVarPattern(String name_hint);
+  TVM_DLL GlobalVarPattern(ffi::String name_hint);
   TVM_DEFINE_OBJECT_REF_METHODS(GlobalVarPattern, DFPattern, GlobalVarPatternNode);
 };
 
@@ -942,10 +942,10 @@ class AttrPattern : public DFPattern {
  */
 class ExternFuncPatternNode : public DFPatternNode {
  public:
-  String global_symbol_; /*!< The global symbol name of the external function */
+  ffi::String global_symbol_; /*!< The global symbol name of the external function */
 
   /*! \brief The external function name */
-  const String& global_symbol() const { return global_symbol_; }
+  const ffi::String& global_symbol() const { return global_symbol_; }
 
   static void RegisterReflection() {
     namespace refl = tvm::ffi::reflection;
@@ -963,12 +963,12 @@ class ExternFuncPatternNode : public DFPatternNode {
  */
 class ExternFuncPattern : public DFPattern {
  public:
-  TVM_DLL ExternFuncPattern(String global_symbol);
+  TVM_DLL ExternFuncPattern(ffi::String global_symbol);
   TVM_DEFINE_OBJECT_REF_METHODS(ExternFuncPattern, DFPattern, ExternFuncPatternNode);
 };
 
 /*! \brief Syntatic Sugar for creating a VarPattern with a name */
-VarPattern IsVar(const String& name);
+VarPattern IsVar(const ffi::String& name);
 /*! \brief Syntatic Sugar for creating a ConstantPattern */
 ConstantPattern IsConst();
 /*! \brief Syntatic Sugar for creating a WildcardPattern */
@@ -976,16 +976,16 @@ WildcardPattern Wildcard();
 /*! \brief Syntatic Sugar for creating a ExprPattern */
 ExprPattern IsExpr(const Expr& expr);
 /*! \brief Syntatic Sugar for creating a ExprPattern base on an Op */
-ExprPattern IsOp(const String& op_name);
+ExprPattern IsOp(const ffi::String& op_name);
 /*! \brief Syntatic Sugar for call_tir (return a tensor) */
 // Todo(relax-team): Dataflow pattern for StructInfo, and match out_sinfo
-CallPattern IsCallTIR(const String& name, Optional<TuplePattern> args = std::nullopt);
+CallPattern IsCallTIR(const ffi::String& name, Optional<TuplePattern> args = std::nullopt);
 /*! \brief Syntatic Sugar for call_tir (return a tuple of tensor) */
-CallPattern IsCallTIR(const String& name, TuplePattern var_args);
+CallPattern IsCallTIR(const ffi::String& name, TuplePattern var_args);
 /*! \brief Syntatic Sugar for call_dps_packed (return a tensor) */
-CallPattern IsCallDPSPacked(const String& name, Optional<TuplePattern> args = std::nullopt);
+CallPattern IsCallDPSPacked(const ffi::String& name, Optional<TuplePattern> args = std::nullopt);
 /*! \brief Syntatic Sugar for call_dps_packed (return a tuple of tensor) */
-CallPattern IsCallDPSPacked(const String& name, TuplePattern var_args);
+CallPattern IsCallDPSPacked(const ffi::String& name, TuplePattern var_args);
 /*! \brief Syntatic Sugar for creating TuplePattern or UnorderedTuplePattern (unordered=true) */
 DFPattern IsTuple(const Array<DFPattern>& fields, bool unordered = false);
 /*! \brief Syntatic Sugar for creating a TupleGetItemPattern */

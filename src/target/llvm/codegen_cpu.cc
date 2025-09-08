@@ -71,7 +71,7 @@ CodeGenCPU::CodeGenCPU() = default;
 CodeGenCPU::~CodeGenCPU() = default;
 
 void CodeGenCPU::Init(const std::string& module_name, LLVMTarget* llvm_target,
-                      Optional<String> system_lib_prefix, bool dynamic_lookup,
+                      Optional<ffi::String> system_lib_prefix, bool dynamic_lookup,
                       bool target_c_runtime) {
   CodeGenLLVM::Init(module_name, llvm_target, system_lib_prefix, dynamic_lookup, target_c_runtime);
   system_lib_prefix_ = system_lib_prefix;
@@ -211,7 +211,7 @@ llvm::DISubprogram* CodeGenCPU::CreateDebugFunction(llvm::StringRef name,
 }
 
 llvm::DISubprogram* CodeGenCPU::CreateDebugFunction(const GlobalVar& gvar, const PrimFunc& func) {
-  std::string name = func->GetAttr<String>(tvm::attr::kGlobalSymbol).value_or(gvar->name_hint);
+  std::string name = func->GetAttr<ffi::String>(tvm::attr::kGlobalSymbol).value_or(gvar->name_hint);
   return CreateDebugFunction(name, func->params.Map(GetType), func->ret_type);
 }
 
@@ -220,7 +220,7 @@ void CodeGenCPU::AddFunction(const GlobalVar& gvar, const PrimFunc& func) {
   EmitDebugLocation(func->span);
   CodeGenLLVM::AddFunction(gvar, func);
   if (f_tvm_register_system_symbol_ != nullptr) {
-    if (auto global_symbol = func->GetAttr<String>(tvm::attr::kGlobalSymbol)) {
+    if (auto global_symbol = func->GetAttr<ffi::String>(tvm::attr::kGlobalSymbol)) {
       export_system_symbols_.emplace_back(
           std::make_pair(global_symbol.value().operator std::string(), function_));
     }
@@ -390,7 +390,7 @@ CodeGenLLVM::TypedPointer CodeGenCPU::CreateStructRefPtr(DataType t, llvm::Value
   }
 }
 
-llvm::Value* CodeGenCPU::CreateCallExtern(Type ret_type, String global_symbol,
+llvm::Value* CodeGenCPU::CreateCallExtern(Type ret_type, ffi::String global_symbol,
                                           const Array<PrimExpr>& args, bool skip_first_arg) {
   std::vector<llvm::Value*> arg_values;
   for (size_t i = static_cast<size_t>(skip_first_arg); i < args.size(); ++i) {

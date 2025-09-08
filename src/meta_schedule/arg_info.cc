@@ -69,11 +69,11 @@ ArgInfo ArgInfo::FromJSON(const ObjectRef& json_obj) {
   // The JSON object is always an array whose first element is a tag. For example:
   // `['TENSOR', 'float32', [1, 224, 224, 3]]
   // Step 1. Extract the tag
-  Optional<String> tag{std::nullopt};
+  Optional<ffi::String> tag{std::nullopt};
   try {
     const ffi::ArrayObj* json_array = json_obj.as<ffi::ArrayObj>();
     CHECK(json_array && json_array->size() >= 1);
-    tag = json_array->at(0).cast<String>();
+    tag = json_array->at(0).cast<ffi::String>();
   } catch (const std::runtime_error& e) {  // includes tvm::Error and dmlc::Error
     LOG(FATAL) << "ValueError: Unable to parse the JSON object: " << json_obj
                << "\nThe error is: " << e.what();
@@ -121,8 +121,8 @@ TensorInfo::TensorInfo(runtime::DataType dtype, ffi::Shape shape) {
 }
 
 ObjectRef TensorInfoNode::AsJSON() const {
-  static String tag = "TENSOR";
-  String dtype = DLDataTypeToString(this->dtype);
+  static ffi::String tag = "TENSOR";
+  ffi::String dtype = DLDataTypeToString(this->dtype);
   Array<Integer> shape = support::AsArray(this->shape);
   return Array<ffi::Any>{tag, dtype, shape};
 }
@@ -135,7 +135,7 @@ TensorInfo TensorInfo::FromJSON(const ObjectRef& json_obj) {
     CHECK(json_array && json_array->size() == 3);
     // Load json[1] => dtype
     {
-      String dtype_str = json_array->at(1).cast<String>();
+      ffi::String dtype_str = json_array->at(1).cast<ffi::String>();
       dtype = StringToDLDataType(dtype_str);
     }
     // Load json[2] => shape

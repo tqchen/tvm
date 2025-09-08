@@ -285,7 +285,7 @@ class PythonDocPrinter : public DocPrinter {
     }
   }
 
-  void PrintDocString(const String& comment) {
+  void PrintDocString(const ffi::String& comment) {
     size_t start_pos = output_.tellp();
     output_ << "\"\"\"";
 
@@ -304,7 +304,7 @@ class PythonDocPrinter : public DocPrinter {
     underlines_exempted_.push_back({start_pos, end_pos});
   }
 
-  void PrintBlockComment(const String& comment) {
+  void PrintBlockComment(const ffi::String& comment) {
     IncreaseIndent();
     NewLine();
     PrintDocString(comment);
@@ -484,7 +484,7 @@ void PythonDocPrinter::PrintTypedDoc(const CallDoc& doc) {
     } else {
       output_ << ", ";
     }
-    const String& keyword = doc->kwargs_keys[i];
+    const ffi::String& keyword = doc->kwargs_keys[i];
     output_ << keyword;
     output_ << "=";
     PrintDoc(doc->kwargs_values[i]);
@@ -714,7 +714,7 @@ void PythonDocPrinter::PrintTypedDoc(const DocStringDoc& doc) {
   }
 }
 
-String DocToPythonScript(Doc doc, const PrinterConfig& cfg) {
+ffi::String DocToPythonScript(Doc doc, const PrinterConfig& cfg) {
   if (cfg->num_context_lines < 0) {
     cfg->num_context_lines = std::numeric_limits<int32_t>::max();
   }

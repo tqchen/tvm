@@ -46,11 +46,11 @@ DataType ExternOpNode::output_dtype(size_t i) const { return output_placeholders
 
 Array<PrimExpr> ExternOpNode::output_shape(size_t i) const { return output_placeholders[i]->shape; }
 
-ExternOp::ExternOp(std::string name, std::string tag, Map<String, ffi::Any> attrs,
+ExternOp::ExternOp(std::string name, std::string tag, Map<ffi::String, ffi::Any> attrs,
                    Array<Tensor> inputs, Array<Buffer> input_placeholders,
                    Array<Buffer> output_placeholders, Stmt body) {
   if (!attrs.defined()) {
-    attrs = Map<String, ffi::Any>();
+    attrs = Map<ffi::String, ffi::Any>();
   }
   auto n = ffi::make_object<ExternOpNode>();
   n->name = std::move(name);
@@ -75,7 +75,7 @@ ExternOp::ExternOp(std::string name, std::string tag, Map<String, ffi::Any> attr
 TVM_FFI_STATIC_INIT_BLOCK({
   namespace refl = tvm::ffi::reflection;
   refl::GlobalDef().def("te.ExternOp",
-                        [](std::string name, std::string tag, Optional<Map<String, ffi::Any>> attrs,
+                        [](std::string name, std::string tag, Optional<Map<ffi::String, ffi::Any>> attrs,
                            Array<Tensor> inputs, Array<Buffer> input_placeholders,
                            Array<Buffer> output_placeholders, Stmt body) {
                           return ExternOp(name, tag, attrs.value_or({}), inputs, input_placeholders,

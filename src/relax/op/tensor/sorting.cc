@@ -100,7 +100,7 @@ TVM_REGISTER_OP("relax.argsort")
 
 /* relax.topk */
 
-Expr topk(Expr data, int k, int axis, String ret_type, bool largest, DataType dtype) {
+Expr topk(Expr data, int k, int axis, ffi::String ret_type, bool largest, DataType dtype) {
   auto attrs = ffi::make_object<TopKAttrs>();
   attrs->k = std::move(k);
   attrs->axis = std::move(axis);
@@ -124,7 +124,7 @@ StructInfo InferStructInfoTopK(const Call& call, const BlockBuilder& ctx) {
   DataType indices_type = attrs->dtype.is_void() ? data_sinfo->dtype : attrs->dtype;
   int ndim = data_sinfo->ndim;
   int k = attrs->k;
-  String ret_type = attrs->ret_type;
+  ffi::String ret_type = attrs->ret_type;
   int axis = attrs->axis;
   if (axis < 0 && ndim > 0) {
     axis += ndim;

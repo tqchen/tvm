@@ -152,7 +152,7 @@ Tensor TFLiteRuntime::GetOutput(int index) const {
   return ret;
 }
 
-ffi::Optional<ffi::Function> TFLiteRuntime::GetFunction(const String& name) {
+ffi::Optional<ffi::Function> TFLiteRuntime::GetFunction(const ffi::String& name) {
   ObjectPtr<Object> sptr_to_self = ffi::GetObjectPtr<Object>(this);
   // Return member functions during query.
   if (name == "set_input") {

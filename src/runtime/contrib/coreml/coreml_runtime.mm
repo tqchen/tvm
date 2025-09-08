@@ -129,7 +129,7 @@ void CoreMLRuntime::Init(const std::string& symbol, const std::string& _model_pa
   model_ = std::unique_ptr<CoreMLModel>(new CoreMLModel(url));
 }
 
-Optional<ffi::Function> CoreMLRuntime::GetFunction(const String& name) {
+Optional<ffi::Function> CoreMLRuntime::GetFunction(const ffi::String& name) {
   // Return member functions during query.
   if (name == "invoke" || name == "run") {
     return ffi::Function([this](ffi::PackedArgs args, ffi::Any* rv) { model_->Invoke(); });

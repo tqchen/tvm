@@ -55,7 +55,7 @@ using FInstructionApply = ffi::TypedFunction<Array<Any>(
  */
 using FInstructionAsPython =
     ffi::TypedFunction<String(const Array<Any>& inputs, const Array<Any>& attrs,
-                              const Any& decision, const Array<String>& outputs)>;
+                              const Any& decision, const Array<ffi::String>& outputs)>;
 
 /*!
  * \brief Type of the functor that serialize its attributes to JSON
@@ -88,7 +88,7 @@ using FInstructionAttrsFromJSON = ffi::TypedFunction<Array<Any>(ObjectRef json_a
 class InstructionKindNode : public runtime::Object {
  public:
   /*! \brief The name of a kind of instructions */
-  String name;
+  ffi::String name;
   /*!
    * \brief Indicates if the instruction is pure, i.e. removing it alone doesn't mutate the schedule
    * state. For example, the instruction `GetBlock` is pure because it changes
@@ -136,7 +136,7 @@ class InstructionKind : public runtime::ObjectRef {
    * \param name The registered name of the InstructionKind
    * \return The InstructionKind retrieved
    */
-  static InstructionKind Get(const String& name);
+  static InstructionKind Get(const ffi::String& name);
   TVM_DEFINE_OBJECT_REF_METHODS(InstructionKind, runtime::ObjectRef, InstructionKindNode);
 };
 
@@ -235,7 +235,7 @@ class Instruction : public runtime::ObjectRef {
 /*! \brief An entry in the registry of InstructionKind */
 class InstructionKindRegEntry {
  public:
-  static InstructionKindRegEntry& RegisterOrGet(const String& name);
+  static InstructionKindRegEntry& RegisterOrGet(const ffi::String& name);
 
   InstructionKindRegEntry& set_name() {
     get_mutable()->name = this->name;
@@ -276,7 +276,7 @@ class InstructionKindRegEntry {
   }
 
   /*! \brief The name of the registry entry */
-  String name;
+  ffi::String name;
   /*! \brief The instruction kind */
   InstructionKind inst_kind_;
   template <typename, typename>

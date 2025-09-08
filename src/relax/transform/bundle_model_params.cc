@@ -36,7 +36,7 @@ namespace relax {
 
 class ModelParamBundler : public ExprMutator {
  public:
-  explicit ModelParamBundler(Optional<String> param_tuple_name)
+  explicit ModelParamBundler(Optional<ffi::String> param_tuple_name)
       : param_tuple_name_(param_tuple_name) {}
 
   Expr VisitExpr_(const FunctionNode* op) override {
@@ -83,17 +83,17 @@ class ModelParamBundler : public ExprMutator {
   }
 
  private:
-  Optional<String> param_tuple_name_;
+  Optional<ffi::String> param_tuple_name_;
   Map<Var, Expr> var_to_expr_;
 };
 
-Function BundleModelParams(const Function& func, Optional<String> param_tuple_name) {
+Function BundleModelParams(const Function& func, Optional<ffi::String> param_tuple_name) {
   ModelParamBundler mutator(param_tuple_name);
   return Downcast<Function>(mutator(func));
 }
 
 namespace transform {
-Pass BundleModelParams(Optional<String> param_tuple_name) {
+Pass BundleModelParams(Optional<ffi::String> param_tuple_name) {
   auto pass_func = [=](IRModule mod, PassContext pc) {
     IRModule updates;
 

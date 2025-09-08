@@ -42,12 +42,12 @@ class NotAllRequiredBlocksAreVisitedError : public ScheduleError {
     }
   }
 
-  String FastErrorString() const final {
+  ffi::String FastErrorString() const final {
     return "ScheduleError: Not all required blocks are under the loop scope";
   }
 
-  String DetailRenderTemplate() const final {
-    String relation = is_consumer ? "consumer(s)" : "producer(s)";
+  ffi::String DetailRenderTemplate() const final {
+    ffi::String relation = is_consumer ? "consumer(s)" : "producer(s)";
     std::ostringstream os;
     os << "The primitive requires all the " << relation
        << " of the given block to be present under the target loop. However, there are "
@@ -96,11 +96,11 @@ class NotInSameScopeError : public ScheduleError {
     }
   }
 
-  String FastErrorString() const final {
+  ffi::String FastErrorString() const final {
     return "ScheduleError: Expected the block and loop to be under the same block scope, and loop "
            "not to be the ancestor of block";
   }
-  String DetailRenderTemplate() const final {
+  ffi::String DetailRenderTemplate() const final {
     return "ScheduleError: Expected the block {0} and loop {1} to be under the same block scope, "
            "and loop not to be the ancestor of block";
   }
@@ -813,7 +813,7 @@ struct ComputeAtTraits : public UnpackedInstTraits<ComputeAtTraits> {
     return sch->ComputeAt(block_rv, loop_rv, preserve_unit_loops.operator bool(), index->value);
   }
 
-  static String UnpackedAsPython(Array<String> outputs, String block_rv, String loop_rv,
+  static ffi::String UnpackedAsPython(Array<ffi::String> outputs, ffi::String block_rv, ffi::String loop_rv,
                                  Bool preserve_unit_loops, IntImm index) {
     PythonAPICall py("compute_at");
     py.Input("block", block_rv);
@@ -842,7 +842,7 @@ struct ReverseComputeAtTraits : public UnpackedInstTraits<ReverseComputeAtTraits
                                  index->value);
   }
 
-  static String UnpackedAsPython(Array<String> outputs, String block_rv, String loop_rv,
+  static ffi::String UnpackedAsPython(Array<ffi::String> outputs, ffi::String block_rv, ffi::String loop_rv,
                                  Bool preserve_unit_loops, IntImm index) {
     PythonAPICall py("reverse_compute_at");
     py.Input("block", block_rv);

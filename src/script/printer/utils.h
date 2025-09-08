@@ -72,7 +72,7 @@ inline std::string Docsify(const ObjectRef& obj, const IRDocsifier& d, const Fra
     if (d->cfg->show_meta) {
       os << "metadata = tvm.ir.load_json(\"\"\""
          << support::StrEscape(
-                SaveJSON(Map<String, ffi::Any>(d->metadata.begin(), d->metadata.end())), false,
+                SaveJSON(Map<ffi::String, ffi::Any>(d->metadata.begin(), d->metadata.end())), false,
                 false)
          << "\"\"\")\n";
     } else {
@@ -91,19 +91,19 @@ inline std::string Docsify(const ObjectRef& obj, const IRDocsifier& d, const Fra
 }
 
 /*! \brief Creates the IR common prefix, which is by default `I` */
-inline ExprDoc IR(const IRDocsifier& d, const String& attr) {
+inline ExprDoc IR(const IRDocsifier& d, const ffi::String& attr) {
   d->ir_usage.insert("ir");
   return IdDoc(d->cfg->ir_prefix)->Attr(attr);
 }
 
 /*! \brief Creates the TIR common prefix, which is by default `T` */
-inline ExprDoc TIR(const IRDocsifier& d, const String& attr) {
+inline ExprDoc TIR(const IRDocsifier& d, const ffi::String& attr) {
   d->ir_usage.insert("tir");
   return IdDoc(d->cfg->tir_prefix)->Attr(attr);
 }
 
 /*! \brief Creates the Relax common prefix, which is by default `R` */
-inline ExprDoc Relax(const IRDocsifier& d, const String& attr) {
+inline ExprDoc Relax(const IRDocsifier& d, const ffi::String& attr) {
   d->ir_usage.insert("relax");
   return IdDoc(d->cfg->relax_prefix)->Attr(attr);
 }
@@ -137,23 +137,23 @@ inline bool HasMultipleLines(const std::string& str) {
   return str.find_first_of('\n') != std::string::npos;
 }
 
-inline Optional<String> GetBindingName(const IRDocsifier& d) {
-  return d->cfg->binding_names.empty() ? Optional<String>(std::nullopt)
+inline Optional<ffi::String> GetBindingName(const IRDocsifier& d) {
+  return d->cfg->binding_names.empty() ? Optional<ffi::String>(std::nullopt)
                                        : d->cfg->binding_names.back();
 }
 
-inline Optional<String> FindFunctionName(const IRDocsifier& d, const BaseFunc& f) {
-  if (Optional<String> name = GetBindingName(d)) {
+inline Optional<ffi::String> FindFunctionName(const IRDocsifier& d, const BaseFunc& f) {
+  if (Optional<ffi::String> name = GetBindingName(d)) {
     return name.value();
   }
-  if (Optional<String> sym = f->GetAttr<String>(tvm::attr::kGlobalSymbol)) {
+  if (Optional<ffi::String> sym = f->GetAttr<ffi::String>(tvm::attr::kGlobalSymbol)) {
     return sym.value();
   }
   return std::nullopt;
 }
 
-inline String GenerateUniqueName(std::string name_hint,
-                                 const std::unordered_set<String>& defined_names) {
+inline ffi::String GenerateUniqueName(std::string name_hint,
+                                 const std::unordered_set<ffi::String>& defined_names) {
   for (char& c : name_hint) {
     if (c != '_' && !std::isalnum(c)) {
       c = '_';

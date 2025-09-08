@@ -113,7 +113,7 @@ class CollectCLMLFromCompositeFunctionBody : public ExprVisitor {
  */
 class OpenCLMLJSONSerializer : public JSONSerializer {
  public:
-  explicit OpenCLMLJSONSerializer(Map<Constant, String> constant_names, Map<Var, Expr> bindings)
+  explicit OpenCLMLJSONSerializer(Map<Constant, ffi::String> constant_names, Map<Var, Expr> bindings)
       : JSONSerializer(constant_names), bindings_(bindings) {}
 
   /*!
@@ -137,7 +137,7 @@ class OpenCLMLJSONSerializer : public JSONSerializer {
     ICHECK(fn_var);
     const auto fn = Downcast<Function>(bindings_[ffi::GetRef<Var>(fn_var)]);
 
-    auto opt_composite = fn->GetAttr<String>(attr::kComposite);
+    auto opt_composite = fn->GetAttr<ffi::String>(attr::kComposite);
     ICHECK(opt_composite.has_value());
     std::string name = opt_composite.value();
 
@@ -192,7 +192,7 @@ class OpenCLMLJSONSerializer : public JSONSerializer {
     const auto* fn_var = cn->op.as<VarNode>();
     ICHECK(fn_var);
     const auto fn = Downcast<Function>(bindings_[ffi::GetRef<Var>(fn_var)]);
-    auto opt_composite = fn->GetAttr<String>(attr::kComposite);
+    auto opt_composite = fn->GetAttr<ffi::String>(attr::kComposite);
     ICHECK(opt_composite.has_value());
 
     nodes.pad = backend::TryGetOpInFunction(fn, "relax.nn.pad");
@@ -221,7 +221,7 @@ class OpenCLMLJSONSerializer : public JSONSerializer {
     const auto* fn_var = cn->op.as<VarNode>();
     ICHECK(fn_var);
     const auto fn = Downcast<Function>(bindings_[ffi::GetRef<Var>(fn_var)]);
-    auto opt_composite = fn->GetAttr<String>(attr::kComposite);
+    auto opt_composite = fn->GetAttr<ffi::String>(attr::kComposite);
     ICHECK(opt_composite.has_value());
     std::string name = opt_composite.value();
 
@@ -311,8 +311,8 @@ void CollectCLMLFromCompositeFunctionBody::VisitExpr_(const CallNode* call_node)
  * \param functions The extern functions to be compiled via OpenCLML
  * \return Runtime modules.
  */
-Array<ffi::Module> OpenCLMLCompiler(Array<Function> functions, Map<String, Any> /*unused*/,
-                                    Map<Constant, String> constant_names) {
+Array<ffi::Module> OpenCLMLCompiler(Array<Function> functions, Map<ffi::String, Any> /*unused*/,
+                                    Map<Constant, ffi::String> constant_names) {
   Array<ffi::Module> compiled_functions;
   for (const auto& func : functions) {
     VLOG(1) << "OpenCLML partition:" << std::endl << func;

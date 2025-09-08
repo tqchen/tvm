@@ -52,11 +52,11 @@ class SubspaceNotDivisibleError : public ScheduleError {
         scope_loop_(std::move(scope_loop)),
         inner_block_(std::move(inner_block)) {}
 
-  String FastErrorString() const final {
+  ffi::String FastErrorString() const final {
     return "ScheduleError: The bindings of the inner block can not be blockized.";
   }
 
-  String DetailRenderTemplate() const final {
+  ffi::String DetailRenderTemplate() const final {
     return "ScheduleError: The bindings of the inner block {0} can not be blockized by the loops "
            "starting at {1}.";
   }
@@ -308,7 +308,7 @@ BlockRealize GenerateInner(bool is_write_reduction,
  * \return The subtree of the init block and its outer loops.
  */
 Stmt GenerateOuterInit(const Stmt& block_init, const BlockRealize& inner_realize,
-                       const std::vector<const ForNode*>& loops, String block_name) {
+                       const std::vector<const ForNode*>& loops, ffi::String block_name) {
   const Block& inner_block = inner_realize->block;
   Map<Var, Var> subst_map;
   // Step 1: Create new block vars for the block inside the init stmt of outer block
@@ -873,7 +873,7 @@ struct BlockizeTraits : public UnpackedInstTraits<BlockizeTraits> {
     LOG(FATAL) << "TypeError: expect Loop or list of Blocks, but gets:" << target->GetTypeKey();
   }
 
-  static String UnpackedAsPython(Array<String> outputs, ObjectRef target,
+  static ffi::String UnpackedAsPython(Array<ffi::String> outputs, ObjectRef target,
                                  Bool preserve_unit_iters) {
     PythonAPICall py("blockize");
     py.Input("target", target);
@@ -895,7 +895,7 @@ struct TensorizeTraits : public UnpackedInstTraits<TensorizeTraits> {
   static constexpr size_t kNumAttrs = 2;
   static constexpr size_t kNumDecisions = 0;
 
-  static void UnpackedApplyToSchedule(Schedule sch, ObjectRef block_or_loop_rv, String intrin,
+  static void UnpackedApplyToSchedule(Schedule sch, ObjectRef block_or_loop_rv, ffi::String intrin,
                                       Bool preserve_unit_iters) {
     if (auto block = block_or_loop_rv.as<BlockRV>()) {
       sch->Tensorize(block.value(), intrin, preserve_unit_iters.operator bool());
@@ -907,7 +907,7 @@ struct TensorizeTraits : public UnpackedInstTraits<TensorizeTraits> {
     }
   }
 
-  static String UnpackedAsPython(Array<String> outputs, String block_or_loop_rv, String intrin,
+  static ffi::String UnpackedAsPython(Array<ffi::String> outputs, ffi::String block_or_loop_rv, ffi::String intrin,
                                  Bool preserve_unit_iters) {
     PythonAPICall py("tensorize");
     py.Input("block_or_loop", block_or_loop_rv);

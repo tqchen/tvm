@@ -36,11 +36,11 @@ using tir::LoopRV;
 using tir::Schedule;
 
 struct TensorCoreIntrinGroup {
-  String init_intrin;
-  String load_a_intrin;
-  String load_b_intrin;
-  String compute_intrin;
-  String store_intrin;
+  ffi::String init_intrin;
+  ffi::String load_a_intrin;
+  ffi::String load_b_intrin;
+  ffi::String compute_intrin;
+  ffi::String store_intrin;
 
   /*! \brief Create TensorCoreIntrinGroup from config in a map. The map should contains the
    * following keys:
@@ -52,11 +52,11 @@ struct TensorCoreIntrinGroup {
    * The values of the keys should be the names of the corresponding intrinsics and should be
    * registered via TensorIntrin.Register beforehand.
    */
-  static TensorCoreIntrinGroup FromConfig(const Map<String, String>& config);
+  static TensorCoreIntrinGroup FromConfig(const Map<ffi::String, ffi::String>& config);
 };
 
-TensorCoreIntrinGroup TensorCoreIntrinGroup::FromConfig(const Map<String, String>& config) {
-  auto f_initialize_intrin = [&config](String key_name, String* intrin_name) {
+TensorCoreIntrinGroup TensorCoreIntrinGroup::FromConfig(const Map<ffi::String, ffi::String>& config) {
+  auto f_initialize_intrin = [&config](ffi::String key_name, String* intrin_name) {
     CHECK(config.count(key_name)) << "ValueError: " << key_name << " is not set.";
     *intrin_name = config.at(key_name);
     // Check the existence of the intrin
@@ -175,15 +175,15 @@ class MultiLevelTilingTensorCoreNode : public MultiLevelTilingNode {
    * \return The loop to be tensorized. std::nullopt if the workload can't be tensorized.
    */
   Optional<LoopRV> TransformWithTensorIntrin(TensorCoreStateNode* state,
-                                             const String& intrin_name) const;
+                                             const ffi::String& intrin_name) const;
 
   /*!
    * \brief Tile, blockize and annotate for tensorization with the given intrin
    * \param block_rv The block to be tensorized
    * \param intrin_name The name of the tensor intrin
    */
-  void TileAndAnnotateTensorize(Schedule* sch, const BlockRV& block_rv, const String& intrin_name,
-                                const String& permuted_layout_annotate_value) const;
+  void TileAndAnnotateTensorize(Schedule* sch, const BlockRV& block_rv, const ffi::String& intrin_name,
+                                const ffi::String& permuted_layout_annotate_value) const;
 
  public:
   /*! \brief The candidate tensor core intrin groups to apply */
@@ -273,8 +273,8 @@ std::vector<State> MultiLevelTilingTensorCoreNode::ApplySubRules(std::vector<Sta
 }
 
 void MultiLevelTilingTensorCoreNode::TileAndAnnotateTensorize(
-    Schedule* sch, const BlockRV& block_rv, const String& intrin_name,
-    const String& permuted_layout_annotate_value) const {
+    Schedule* sch, const BlockRV& block_rv, const ffi::String& intrin_name,
+    const ffi::String& permuted_layout_annotate_value) const {
   Optional<LoopRV> loop = TileWithTensorIntrin(*sch, block_rv, intrin_name).value();
   ICHECK(loop.defined());
   BlockRV blockized_outer = (*sch)->Blockize(loop.value());
@@ -309,7 +309,7 @@ std::vector<State> MultiLevelTilingTensorCoreNode::MMAAddReadReuse(TensorCoreSta
       new_state->read_reuse.emplace(i, cache_read_block);
       if (state->is_mma) {
         new_state->sch->Annotate(cache_read_block, "permuted_layout",
-                                 String(std::string("g2s_") + std::string(i == 0 ? "A" : "B")));
+                                 ffi::String(std::string("g2s_") + std::string(i == 0 ? "A" : "B")));
       }
     }
     results.push_back(std::move(new_state));
@@ -585,10 +585,10 @@ std::vector<State> MultiLevelTilingTensorCoreNode::AddReadReuseTensorCore(
   Schedule& sch = state->sch;
   ICHECK(!r_tiles.empty()) << "ValueError: Cannot find the suitable reduction loop in the block";
 
-  auto f_tensorize_load = [&](int read_index, String scope, String intrin_name) {
+  auto f_tensorize_load = [&](int read_index, ffi::String scope, ffi::String intrin_name) {
     auto cache_read = sch->CacheRead(state->block_rv, read_index, scope);
     state->sch->ComputeAt(cache_read, r_tiles.back(), true);
-    String permuted_layout_annotate_value =
+    ffi::String permuted_layout_annotate_value =
         state->is_mma ? std::string("s2l_") + std::string(read_index == 0 ? "A" : "B") : "";
     TileAndAnnotateTensorize(&sch, cache_read, intrin_name, permuted_layout_annotate_value);
   };
@@ -747,7 +747,7 @@ std::vector<State> MultiLevelTilingTensorCoreNode::AddSoftwarePipeline(
 }
 
 Optional<LoopRV> MultiLevelTilingTensorCoreNode::TransformWithTensorIntrin(
-    TensorCoreStateNode* state, const String& intrin_name) const {
+    TensorCoreStateNode* state, const ffi::String& intrin_name) const {
   BlockRV block_rv = state->block_rv;
   const tir::AutoTensorizeMappingInfo& mapping_info = state->mapping_info;
   tir::StmtSRef block_sref = state->sch->GetSRef(state->block_rv);
@@ -888,12 +888,12 @@ inline std::vector<State> MultiLevelTilingTensorCoreNode::TransformForTensorizat
 }
 
 ScheduleRule ScheduleRule::MultiLevelTilingTensorCore(
-    Array<Map<String, String>> intrin_groups, String structure, Optional<Array<String>> tile_binds,
+    Array<Map<ffi::String, ffi::String>> intrin_groups, ffi::String structure, Optional<Array<ffi::String>> tile_binds,
     Optional<Integer> max_innermost_factor, Optional<Array<Integer>> vector_load_lens,
-    Optional<Map<String, ffi::Any>> reuse_read, Optional<Map<String, ffi::Any>> reuse_write,
+    Optional<Map<ffi::String, ffi::Any>> reuse_read, Optional<Map<ffi::String, ffi::Any>> reuse_write,
     bool use_software_pipeline) {
   if (tile_binds.defined()) {
-    for (const String& tile_bind : tile_binds.value()) {
+    for (const ffi::String& tile_bind : tile_binds.value()) {
       CHECK_NE(tile_bind, "threadIdx.x") << "Cannot bind to threadIdx.x when using tensor core.";
     }
   }

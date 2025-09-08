@@ -191,7 +191,7 @@ inline void DiscoProtocol<SubClassType>::ReadFFIAny(TVMFFIAny* out) {
     self->template Read<uint64_t>(&size);
     std::string data(size, '\0');
     self->template ReadArray<char>(data.data(), size);
-    result = String(std::move(data));
+    result = ffi::String(std::move(data));
   } else if (type_index == ffi::TypeIndex::kTVMFFIBytes) {
     uint64_t size = 0;
     self->template Read<uint64_t>(&size);

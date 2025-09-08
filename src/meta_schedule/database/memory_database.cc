@@ -26,7 +26,7 @@ namespace meta_schedule {
 
 class MemoryDatabaseNode : public DatabaseNode {
  public:
-  explicit MemoryDatabaseNode(String mod_eq_name = "structural") : DatabaseNode(mod_eq_name) {}
+  explicit MemoryDatabaseNode(ffi::String mod_eq_name = "structural") : DatabaseNode(mod_eq_name) {}
 
   Array<TuningRecord> records;
   Array<Workload> workloads;
@@ -93,7 +93,7 @@ class MemoryDatabaseNode : public DatabaseNode {
   int64_t Size() final { return records.size(); }
 };
 
-Database Database::MemoryDatabase(String mod_eq_name) {
+Database Database::MemoryDatabase(ffi::String mod_eq_name) {
   ObjectPtr<MemoryDatabaseNode> n = ffi::make_object<MemoryDatabaseNode>(mod_eq_name);
   n->records.clear();
   n->workloads.clear();

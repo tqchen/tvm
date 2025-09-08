@@ -573,7 +573,7 @@ std::pair<PrimFunc, Optional<PrimFunc>> SplitFunctions(PrimFunc func,
   }
   Array<ffi::Any> codegen_result = f_codegen(match_results);
   ICHECK(codegen_result.size() == 3);
-  String library_code = Downcast<String>(codegen_result[0]);
+  ffi::String library_code = Downcast<ffi::String>(codegen_result[0]);
   int num_matched_ops = Downcast<Integer>(codegen_result[1])->value;
   Array<Buffer> func1_args = Downcast<Array<Buffer>>(codegen_result[2]);
   if (num_matched_ops == 0) {
@@ -659,18 +659,18 @@ void StringReplace(std::string* subject, const std::string& search, const std::s
   }
 }
 
-tvm::BaseFunc CodegenWithLibrary(const tir::PrimFuncNode* pf, String global_symbol) {
+tvm::BaseFunc CodegenWithLibrary(const tir::PrimFuncNode* pf, ffi::String global_symbol) {
   using namespace tvm::tir;
-  Optional<String> library_code = pf->attrs.GetAttr<String>(kLibraryKernel);
+  Optional<ffi::String> library_code = pf->attrs.GetAttr<ffi::String>(kLibraryKernel);
   if (!library_code.has_value()) {
     return ffi::GetRef<tir::PrimFunc>(pf);
   }
   std::string source = library_code.value();
   StringReplace(&source, "{global_symbol}", global_symbol);
   ExternFunc ret(global_symbol);
-  ret = WithAttrs(std::move(ret), Map<String, ffi::Any>{
-                                      {String(kCSource), String(source)},
-                                      {String(kCSourceFmt), String(kCSourceFmtCuda)},
+  ret = WithAttrs(std::move(ret), Map<ffi::String, ffi::Any>{
+                                      {ffi::String(kCSource), ffi::String(source)},
+                                      {ffi::String(kCSourceFmt), ffi::String(kCSourceFmtCuda)},
                                   });
   return ret;
 }

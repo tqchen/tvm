@@ -30,14 +30,14 @@ namespace tir {
  * \param axis The axis name expected
  * \return std::nullopt if parsing fails; Otherwise, the extent of thread axis
  */
-Optional<Integer> ParseThreadBinding(const Schedule& sch, const Instruction& inst, String axis) {
+Optional<Integer> ParseThreadBinding(const Schedule& sch, const Instruction& inst, ffi::String axis) {
   static InstructionKind inst_kind_bind = InstructionKind::Get("Bind");
   if (!inst->kind.same_as(inst_kind_bind)) {
     return std::nullopt;
   }
   ICHECK_EQ(inst->inputs.size(), 1);
   ICHECK_EQ(inst->attrs.size(), 1);
-  String thread_axis = Downcast<String>(inst->attrs[0]);
+  ffi::String thread_axis = Downcast<ffi::String>(inst->attrs[0]);
   if (thread_axis != axis) {
     return std::nullopt;
   }
@@ -59,7 +59,7 @@ Optional<BlockRV> ParseAnnotate(const Schedule& sch, const Instruction& inst,
   }
   ICHECK_EQ(inst->inputs.size(), 2);
   ICHECK_EQ(inst->attrs.size(), 1);
-  String ann_key = Downcast<String>(inst->attrs[0]);
+  ffi::String ann_key = Downcast<ffi::String>(inst->attrs[0]);
   if (ann_key != attr::meta_schedule_cooperative_fetch) {
     return std::nullopt;
   }
@@ -80,7 +80,7 @@ bool ParseWarpExecutionAnn(const Schedule& sch, const Instruction& inst) {
   }
   ICHECK_EQ(inst->inputs.size(), 2);
   ICHECK_EQ(inst->attrs.size(), 1);
-  String ann_key = Downcast<String>(inst->attrs[0]);
+  ffi::String ann_key = Downcast<ffi::String>(inst->attrs[0]);
   return ann_key == attr::warp_execution;
 }
 

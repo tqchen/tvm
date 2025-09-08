@@ -150,8 +150,8 @@ Var CommonSubexpressionEliminator::GenerateNewVar(DataType type_annotation) {
   // Builds the variable name, which is cse_vi where i will go up from 1
   std::string prefix = "cse_v";
   std::string name = prefix.append(std::to_string(num_last_try_));
-  // Builds a String using the std::string
-  String string_name(name);
+  // Builds a ffi::String using the std::string
+  ffi::String string_name(name);
 
   // Check that the name that we want to use for the new variable isn't already being used
   // (names don't really have to be unique as they are just hints, and having the same name

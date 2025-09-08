@@ -37,7 +37,7 @@ class UnionDatabaseNode : public DatabaseNode {
 
  public:
   Optional<TuningRecord> QueryTuningRecord(const IRModule& mod, const Target& target,
-                                           const String& task_name) final {
+                                           const ffi::String& task_name) final {
     std::vector<TuningRecord> results;
     results.reserve(databases.size());
     for (const Database& db : databases) {

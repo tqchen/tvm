@@ -37,7 +37,7 @@ namespace tvm {
 // Attrs used to python API
 struct TestAttrs : public AttrsNodeReflAdapter<TestAttrs> {
   int axis;
-  String name;
+  ffi::String name;
   Array<PrimExpr> padding;
   TypedEnvFunc<int(int)> func;
 
@@ -129,7 +129,7 @@ class FrontendTestModuleNode : public ffi::ModuleObj {
 
   static constexpr const char* kAddFunctionName = "__add_function";
 
-  virtual ffi::Optional<ffi::Function> GetFunction(const String& name);
+  virtual ffi::Optional<ffi::Function> GetFunction(const ffi::String& name);
 
  private:
   std::unordered_map<std::string, ffi::Function> functions_;
@@ -137,7 +137,7 @@ class FrontendTestModuleNode : public ffi::ModuleObj {
 
 constexpr const char* FrontendTestModuleNode::kAddFunctionName;
 
-ffi::Optional<ffi::Function> FrontendTestModuleNode::GetFunction(const String& name) {
+ffi::Optional<ffi::Function> FrontendTestModuleNode::GetFunction(const ffi::String& name) {
   ffi::Module self_strong_ref = ffi::GetRef<ffi::Module>(this);
   if (name == kAddFunctionName) {
     return ffi::Function::FromTyped(
@@ -172,16 +172,16 @@ TVM_FFI_STATIC_INIT_BLOCK({
             std::this_thread::sleep_for(duration);
           })
       .def("testing.ReturnsVariant",
-           [](int x) -> Variant<String, IntImm> {
+           [](int x) -> Variant<ffi::String, IntImm> {
              if (x % 2 == 0) {
                return IntImm(DataType::Int(64), x / 2);
              } else {
-               return String("argument was odd");
+               return ffi::String("argument was odd");
              }
            })
       .def("testing.AcceptsVariant",
-           [](Variant<String, Integer> arg) -> String {
-             if (auto opt_str = arg.as<String>()) {
+           [](Variant<ffi::String, Integer> arg) -> ffi::String {
+             if (auto opt_str = arg.as<ffi::String>()) {
                return ffi::StaticTypeKey::kTVMFFIStr;
              } else {
                return arg.get<Integer>().GetTypeKey();
@@ -226,7 +226,7 @@ TVM_FFI_STATIC_INIT_BLOCK({
 class TestingEventLogger {
  public:
   struct Entry {
-    String event;
+    ffi::String event;
     double time_us;
   };
 
@@ -235,7 +235,7 @@ class TestingEventLogger {
     start_ = std::chrono::high_resolution_clock::now();
   }
 
-  void Record(String event) {
+  void Record(ffi::String event) {
     auto tend = std::chrono::high_resolution_clock::now();
     double time_us = static_cast<double>((tend - start_).count()) / 1e3;
     entries_.emplace_back(Entry{event, time_us});
@@ -264,8 +264,8 @@ TVM_FFI_STATIC_INIT_BLOCK({
   refl::GlobalDef()
       .def_packed("testing.record_event",
                   [](ffi::PackedArgs args, ffi::Any* rv) {
-                    if (args.size() != 0 && args[0].try_cast<String>()) {
-                      TestingEventLogger::ThreadLocal()->Record(args[0].cast<String>());
+                    if (args.size() != 0 && args[0].try_cast<ffi::String>()) {
+                      TestingEventLogger::ThreadLocal()->Record(args[0].cast<ffi::String>());
                     } else {
                       TestingEventLogger::ThreadLocal()->Record("X");
                     }

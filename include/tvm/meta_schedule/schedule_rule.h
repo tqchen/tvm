@@ -125,7 +125,7 @@ class ScheduleRule : public runtime::ObjectRef {
                                          bool disallow_if_then_else,  //
                                          bool require_injective,      //
                                          bool require_ordered,        //
-                                         Optional<Array<String>> disallow_op);
+                                         Optional<Array<ffi::String>> disallow_op);
 
   /*!
    * \brief Inline blocks that produce a constant scalar. Such blocks get in the way of
@@ -155,12 +155,12 @@ class ScheduleRule : public runtime::ObjectRef {
    * ignored  by default. This function should return True for a block that should be tiled.
    * \return The schedule rule created
    */
-  TVM_DLL static ScheduleRule MultiLevelTiling(String structure,                            //
-                                               Optional<Array<String>> tile_binds,          //
+  TVM_DLL static ScheduleRule MultiLevelTiling(ffi::String structure,                            //
+                                               Optional<Array<ffi::String>> tile_binds,          //
                                                Optional<Integer> max_innermost_factor,      //
                                                Optional<Array<Integer>> vector_load_lens,   //
-                                               Optional<Map<String, ffi::Any>> reuse_read,  //
-                                               Optional<Map<String, ffi::Any>> reuse_write,
+                                               Optional<Map<ffi::String, ffi::Any>> reuse_read,  //
+                                               Optional<Map<ffi::String, ffi::Any>> reuse_write,
                                                Optional<ffi::Function> filter_fn = std::nullopt);
 
   /*!
@@ -181,9 +181,9 @@ class ScheduleRule : public runtime::ObjectRef {
    * \return The schedule rule created
    */
   TVM_DLL static ScheduleRule MultiLevelTilingWithIntrin(
-      String intrin_name, String structure, Optional<Array<String>> tile_binds,
+      ffi::String intrin_name, ffi::String structure, Optional<Array<ffi::String>> tile_binds,
       Optional<Integer> max_innermost_factor, Optional<Array<Integer>> vector_load_lens,
-      Optional<Map<String, ffi::Any>> reuse_read, Optional<Map<String, ffi::Any>> reuse_write);
+      Optional<Map<ffi::String, ffi::Any>> reuse_read, Optional<Map<ffi::String, ffi::Any>> reuse_write);
 
   /*!
    * \brief Extension of MultiLevelTiling for auto-tensorization with multiple groups of candidate
@@ -206,10 +206,10 @@ class ScheduleRule : public runtime::ObjectRef {
    * \return The schedule rule created
    */
   TVM_DLL static ScheduleRule MultiLevelTilingTensorCore(
-      Array<Map<String, String>> intrin_groups, String structure,
-      Optional<Array<String>> tile_binds, Optional<Integer> max_innermost_factor,
-      Optional<Array<Integer>> vector_load_lens, Optional<Map<String, ffi::Any>> reuse_read,
-      Optional<Map<String, ffi::Any>> reuse_write, bool use_software_pipeline);
+      Array<Map<ffi::String, ffi::String>> intrin_groups, ffi::String structure,
+      Optional<Array<ffi::String>> tile_binds, Optional<Integer> max_innermost_factor,
+      Optional<Array<Integer>> vector_load_lens, Optional<Map<ffi::String, ffi::Any>> reuse_read,
+      Optional<Map<ffi::String, ffi::Any>> reuse_write, bool use_software_pipeline);
 
   /*!
    * \brief Extension of MultiLevelTiling for backends with wide vectors.
@@ -223,8 +223,8 @@ class ScheduleRule : public runtime::ObjectRef {
    * \return The schedule rule created
    */
   TVM_DLL static ScheduleRule MultiLevelTilingWideVector(
-      String structure, Integer vector_length_in_bits, Optional<Integer> max_innermost_factor,
-      Optional<Map<String, ffi::Any>> reuse_read, Optional<Map<String, ffi::Any>> reuse_write);
+      ffi::String structure, Integer vector_length_in_bits, Optional<Integer> max_innermost_factor,
+      Optional<Map<ffi::String, ffi::Any>> reuse_read, Optional<Map<ffi::String, ffi::Any>> reuse_write);
 
   /*!
    * \brief Create a rule: add-rfactor to some blocks if needed
@@ -292,7 +292,7 @@ class ScheduleRule : public runtime::ObjectRef {
   /*! \brief Create default schedule rules for LLVM */
   TVM_DLL static Array<ScheduleRule, void> DefaultLLVM();
   /*! \brief Create default schedule rules for x86 (AVX512 and VNNI) */
-  TVM_DLL static Array<ScheduleRule, void> DefaultX86(const String& type);
+  TVM_DLL static Array<ScheduleRule, void> DefaultX86(const ffi::String& type);
   /*! \brief Create default schedule rules for CUDA */
   TVM_DLL static Array<ScheduleRule, void> DefaultCUDA();
   /*! \brief Create default postprocessors for CUDA with TensorCore */
@@ -300,7 +300,7 @@ class ScheduleRule : public runtime::ObjectRef {
   /*! \brief Create default schedule rules for Hexagon */
   TVM_DLL static Array<ScheduleRule, void> DefaultHexagon();
   /*! \brief Create default schedule rules for ARM CPU (NEON and DOTPROD) */
-  TVM_DLL static Array<ScheduleRule, void> DefaultARM(const String& type);
+  TVM_DLL static Array<ScheduleRule, void> DefaultARM(const ffi::String& type);
   /*! \brief Create default schedule rules for RISCV CPU (RVV) */
   TVM_DLL static Array<ScheduleRule, void> DefaultRISCV(int vlen);
 

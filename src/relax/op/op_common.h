@@ -258,7 +258,7 @@ StructInfo InferStructInfoUnaryArith(const Call& call, const BlockBuilder& ctx) 
  * \return The inferred layout result.
  */
 InferLayoutOutput InferLayoutUnaryEwise(const Call& call,
-                                        const Map<String, Array<String>>& desired_layouts,
+                                        const Map<ffi::String, Array<ffi::String>>& desired_layouts,
                                         const VarLayoutMap& var_layout_map);
 
 /*!
@@ -516,9 +516,9 @@ inline Array<IntImm> GetCompletePadding3D(Array<IntImm> padding) {
  */
 inline std::pair<tir::Layout, tir::BijectiveLayout> CheckTensorLayout(const Call& call,
                                                                       const BlockBuilder& ctx,
-                                                                      const String& tensor_layout,
-                                                                      const String& tgt_layout,
-                                                                      const String& tensor_name) {
+                                                                      const ffi::String& tensor_layout,
+                                                                      const ffi::String& tgt_layout,
+                                                                      const ffi::String& tensor_name) {
   tir::Layout _tensor_layout(tensor_layout, DataType::Int(64));
   tir::BijectiveLayout tensor2tgt(_tensor_layout, tir::Layout(tgt_layout, DataType::Int(64)));
   if (!tensor2tgt.defined()) {

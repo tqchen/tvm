@@ -40,7 +40,7 @@ using backend::contrib::NodeEntries;
 
 class DNNLJSONSerializer : public JSONSerializer {
  public:
-  DNNLJSONSerializer(Map<Constant, String> constant_names, Map<Var, Expr> bindings)
+  DNNLJSONSerializer(Map<Constant, ffi::String> constant_names, Map<Var, Expr> bindings)
       : JSONSerializer(constant_names), bindings_(bindings) {}
 
   using JSONSerializer::VisitExpr_;
@@ -51,7 +51,7 @@ class DNNLJSONSerializer : public JSONSerializer {
     const auto fn = Downcast<Function>(bindings_[ffi::GetRef<Var>(fn_var)]);
     ICHECK(fn.defined()) << "Expects the callee to be a function.";
 
-    auto composite_opt = fn->GetAttr<String>(attr::kComposite);
+    auto composite_opt = fn->GetAttr<ffi::String>(attr::kComposite);
     ICHECK(composite_opt.has_value()) << "Only composite functions are supported.";
 
     std::string composite_name = composite_opt.value();
@@ -81,8 +81,8 @@ class DNNLJSONSerializer : public JSONSerializer {
   Map<Var, Expr> bindings_;
 };
 
-Array<ffi::Module> DNNLCompiler(Array<Function> functions, Map<String, ffi::Any> /*unused*/,
-                                Map<Constant, String> constant_names) {
+Array<ffi::Module> DNNLCompiler(Array<Function> functions, Map<ffi::String, ffi::Any> /*unused*/,
+                                Map<Constant, ffi::String> constant_names) {
   Array<ffi::Module> compiled_functions;
 
   for (const auto& func : functions) {

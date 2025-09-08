@@ -27,7 +27,7 @@ namespace meta_schedule {
 
 TuneContext::TuneContext(Optional<IRModule> mod, Optional<Target> target,
                          Optional<SpaceGenerator> space_generator,
-                         Optional<SearchStrategy> search_strategy, Optional<String> task_name,
+                         Optional<SearchStrategy> search_strategy, Optional<ffi::String> task_name,
                          int num_threads, TRandState rand_state, ffi::Function logger) {
   CHECK(rand_state == -1 || rand_state >= 0) << "ValueError: Invalid random state: " << rand_state;
   ObjectPtr<TuneContextNode> n = ffi::make_object<TuneContextNode>();
@@ -72,7 +72,7 @@ TVM_FFI_STATIC_INIT_BLOCK({
       .def("meta_schedule.TuneContext",
            [](Optional<IRModule> mod, Optional<Target> target,
               Optional<SpaceGenerator> space_generator, Optional<SearchStrategy> search_strategy,
-              Optional<String> task_name, int num_threads, TRandState rand_state,
+              Optional<ffi::String> task_name, int num_threads, TRandState rand_state,
               ffi::Function logger) -> TuneContext {
              return TuneContext(mod, target, space_generator, search_strategy, task_name,
                                 num_threads, rand_state, logger);

@@ -99,7 +99,7 @@ TVM_STATIC_IR_FUNCTOR(IRDocsifier, vtable)
         LOG(FATAL) << "ValueError: Unknown ForKind: " << tir::ForKind2String(loop->kind);
       }
       Array<ExprDoc> args;
-      Array<String> kwargs_keys;
+      Array<ffi::String> kwargs_keys;
       Array<ExprDoc> kwargs_values;
       if (min.defined()) {
         args.push_back(min.value());

@@ -94,7 +94,7 @@ inline std::ostream& operator<<(std::ostream& os, const AccessStep& step) {
   namespace refl = ffi::reflection;
   switch (step->kind) {
     case refl::AccessKind::kAttr: {
-      os << '.' << step->key.cast<String>();
+      os << '.' << step->key.cast<ffi::String>();
       return os;
     }
     case refl::AccessKind::kArrayItem: {
@@ -106,7 +106,7 @@ inline std::ostream& operator<<(std::ostream& os, const AccessStep& step) {
       return os;
     }
     case refl::AccessKind::kAttrMissing: {
-      os << ".<missing attr " << step->key.cast<String>() << "`>";
+      os << ".<missing attr " << step->key.cast<ffi::String>() << "`>";
       return os;
     }
     case refl::AccessKind::kArrayItemMissing: {
