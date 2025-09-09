@@ -41,7 +41,7 @@ import torch
 import numpy as np
 import tvm_ffi
 import time
-
+import hack_dlpack
 
 def print_speed(name, speed):
     print(f"{name:<60} {speed} sec/call")
@@ -237,9 +237,10 @@ def bench_tvm_ffi_nop_autodlpack(name, x, y, z, repeat):
     """
     nop = tvm_ffi.get_global_func("testing.nop")
     nop(x, y, z)
+    eps = 1e-6
     start = time.time()
     for i in range(repeat):
-        nop(x, y, z)
+        nop(x, y, z, eps)
     end = time.time()
     speed = (end - start) / repeat
     print_speed(name, speed)

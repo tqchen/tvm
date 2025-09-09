@@ -28,6 +28,7 @@ if os.environ.get("TVM_FFI_BUILD_DOCS", "0") == "0":
 else:
     torch = None
 
+_torch_to_dlpack_as_intptr = None
 
 cdef inline object make_ret_small_str(TVMFFIAny result):
     """convert small string to return value."""
@@ -109,7 +110,11 @@ cdef inline int make_args(tuple py_args, TVMFFIAny* out, list temp_args,
             out[i].v_ptr = (<Object>arg).chandle
         elif torch is not None and isinstance(arg, torch.Tensor):
             is_cuda = arg.is_cuda
-            arg = from_dlpack(torch.utils.dlpack.to_dlpack(arg))
+            if _torch_to_dlpack_as_intptr is not None:
+                temp_ptr = _torch_to_dlpack_as_intptr(arg)
+                arg = _from_dlpack_intptr(<void*>temp_ptr)
+            else:
+                arg = from_dlpack(torch.utils.dlpack.to_dlpack(arg))
             out[i].type_index = kTVMFFITensor
             out[i].v_ptr = (<Tensor>arg).chandle
             temp_dltensor = TVMFFITensorGetDLTensorPtr((<Tensor>arg).chandle)

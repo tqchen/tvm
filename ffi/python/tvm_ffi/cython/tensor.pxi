@@ -43,6 +43,21 @@ cdef void _c_dlpack_versioned_deleter(object pycaps):
         dltensor.deleter(dltensor)
 
 
+cdef inline object _from_dlpack_intptr(
+    void* dlpack
+):
+    cdef TVMFFIObjectHandle chandle
+    cdef DLManagedTensor* ptr = <DLManagedTensor*>dlpack
+    cdef int c_api_ret_code
+    cdef int c_req_alignment = 0
+    cdef int c_req_contiguous = 0
+    with nogil:
+        c_api_ret_code = TVMFFITensorFromDLPack(
+            ptr, c_req_alignment, c_req_contiguous, &chandle)
+    CHECK_CALL(c_api_ret_code)
+    return make_tensor_from_chandle(chandle)
+
+
 cdef inline int _from_dlpack(
     object dltensor, int require_alignment,
     int require_contiguous, TVMFFIObjectHandle* out
