@@ -41,7 +41,7 @@ import torch
 import numpy as np
 import tvm_ffi
 import time
-import hack_dlpack
+# import hack_dlpack
 
 def print_speed(name, speed):
     print(f"{name:<60} {speed} sec/call")

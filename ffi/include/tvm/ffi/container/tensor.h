@@ -123,19 +123,26 @@ class TensorObj : public Object, public DLTensor {
   static constexpr const uint32_t _type_index = TypeIndex::kTVMFFITensor;
   TVM_FFI_DECLARE_OBJECT_INFO_STATIC(StaticTypeKey::kTVMFFITensor, TensorObj, Object);
   /// \endcond
-
+  ~TensorObj() {
+    if (embedded_dl_managed_tensor_ != nullptr) {
+      delete embedded_dl_managed_tensor_;
+    }
+  }
   /*!
    * \brief Move a Tensor to a DLPack managed tensor.
    * \return The converted DLPack managed tensor.
    */
   DLManagedTensor* ToDLPack() const {
-    DLManagedTensor* ret = new DLManagedTensor();
-    TensorObj* from = const_cast<TensorObj*>(this);
-    ret->dl_tensor = *static_cast<DLTensor*>(from);
-    ret->manager_ctx = from;
-    ret->deleter = DLManagedTensorDeleter;
-    details::ObjectUnsafe::IncRefObjectHandle(from);
-    return ret;
+    TensorObj* self = const_cast<TensorObj*>(this);
+    if (embedded_dl_managed_tensor_ == nullptr) {
+      DLManagedTensor* ret = new DLManagedTensor();
+      ret->dl_tensor = *static_cast<DLTensor*>(self);
+      ret->manager_ctx = self;
+      ret->deleter = EmbeddedDLManagedTensorDeleter;
+      embedded_dl_managed_tensor_ = ret;
+    }
+    details::ObjectUnsafe::IncRefObjectHandle(self);
+    return embedded_dl_managed_tensor_;
   }
 
   /*!
@@ -156,6 +163,7 @@ class TensorObj : public Object, public DLTensor {
   }
 
  protected:
+  mutable DLManagedTensor* embedded_dl_managed_tensor_ = nullptr;
   /*! \brief Internal data to back returning shape. */
   Optional<Shape> shape_data_;
   /*! \brief Internal data to back returning strides. */
@@ -169,6 +177,15 @@ class TensorObj : public Object, public DLTensor {
     TensorObj* obj = static_cast<TensorObj*>(tensor->manager_ctx);
     details::ObjectUnsafe::DecRefObjectHandle(obj);
     delete tensor;
+  }
+
+  /*!
+   * \brief Deleter for DLManagedTensor.
+   * \param tensor The DLManagedTensor to be deleted.
+   */
+  static void EmbeddedDLManagedTensorDeleter(DLManagedTensor* tensor) {
+    TensorObj* obj = static_cast<TensorObj*>(tensor->manager_ctx);
+    details::ObjectUnsafe::DecRefObjectHandle(obj);
   }
 
   /*!

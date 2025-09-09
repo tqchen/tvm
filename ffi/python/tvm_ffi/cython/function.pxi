@@ -86,10 +86,13 @@ cdef inline object make_ret(TVMFFIAny result):
 
 
 cdef inline int make_args(tuple py_args, TVMFFIAny* out, list temp_args,
-                          int* ctx_dev_type, int* ctx_dev_id, TVMFFIStreamHandle* ctx_stream) except -1:
+                          int64_t* bitmask_temp_args,
+                          int* ctx_dev_type, int* ctx_dev_id,
+                          TVMFFIStreamHandle* ctx_stream) except -1:
     """Pack arguments into c args tvm call accept"""
     cdef unsigned long long temp_ptr
     cdef DLTensor* temp_dltensor
+    cdef TVMFFIObjectHandle temp_chandle
     cdef int is_cuda = 0
 
     for i, arg in enumerate(py_args):
@@ -127,11 +130,11 @@ cdef inline int make_args(tuple py_args, TVMFFIAny* out, list temp_args,
                 ctx_stream[0] = <TVMFFIStreamHandle>temp_ptr
             temp_args.append(arg)
         elif hasattr(arg, "__dlpack__"):
-            ffi_arg = from_dlpack(arg)
+            _from_dlpack_universal(arg, 0, 0, &temp_chandle)
             out[i].type_index = kTVMFFITensor
-            out[i].v_ptr = (<Tensor>ffi_arg).chandle
+            out[i].v_ptr = temp_chandle
             # record the stream from the source framework context when possible
-            temp_dltensor = TVMFFITensorGetDLTensorPtr((<Tensor>ffi_arg).chandle)
+            temp_dltensor = TVMFFITensorGetDLTensorPtr(temp_chandle)
             if (temp_dltensor.device.device_type != kDLCPU and
                 ctx_dev_type != NULL and
                 ctx_dev_type[0] == -1):
@@ -145,7 +148,7 @@ cdef inline int make_args(tuple py_args, TVMFFIAny* out, list temp_args,
                     ctx_dev_id[0] = temp_dltensor.device.device_id
                     temp_ptr= arg.__tvm_ffi_env_stream__()
                     ctx_stream[0] = <TVMFFIStreamHandle>temp_ptr
-            temp_args.append(ffi_arg)
+            bitmask_temp_args[0] |= 1 << i
         elif isinstance(arg, PyNativeObject) and arg.__tvm_ffi_object__ is not None:
             arg = arg.__tvm_ffi_object__
             out[i].type_index = TVMFFIObjectGetTypeIndex((<Object>arg).chandle)
@@ -223,10 +226,11 @@ cdef inline int FuncCall3(void* chandle,
     cdef int nargs = len(args)
     cdef int ctx_dev_type = -1
     cdef int ctx_dev_id = 0
+    cdef int64_t bitmask_temp_args = 0
     cdef TVMFFIStreamHandle ctx_stream = NULL
     cdef TVMFFIStreamHandle prev_stream = NULL
     temp_args = []
-    make_args(args, &packed_args[0], temp_args, &ctx_dev_type, &ctx_dev_id, &ctx_stream)
+    make_args(args, &packed_args[0], temp_args, &bitmask_temp_args, &ctx_dev_type, &ctx_dev_id, &ctx_stream)
     with nogil:
         if ctx_dev_type != -1:
             # set the stream based on ctx stream
@@ -242,6 +246,7 @@ cdef inline int FuncCall3(void* chandle,
             c_api_ret_code[0] = TVMFFIEnvSetCurrentStream(ctx_dev_type, ctx_dev_id, prev_stream, NULL)
             if c_api_ret_code[0] != 0:
                 return 0
+    TVMFFICyRecycleTempArgs(&packed_args[0], nargs, bitmask_temp_args)
     return 0
 
 
@@ -254,6 +259,7 @@ cdef inline int FuncCall(void* chandle,
     cdef int ctx_dev_id = 0
     cdef TVMFFIStreamHandle ctx_stream = NULL
     cdef TVMFFIStreamHandle prev_stream = NULL
+    cdef int64_t bitmask_temp_args = 0
 
     if nargs <= 3:
         FuncCall3(chandle, args, result, c_api_ret_code)
@@ -263,7 +269,7 @@ cdef inline int FuncCall(void* chandle,
     packed_args.resize(nargs)
 
     temp_args = []
-    make_args(args, &packed_args[0], temp_args, &ctx_dev_type, &ctx_dev_id, &ctx_stream)
+    make_args(args, &packed_args[0], temp_args, &bitmask_temp_args, &ctx_dev_type, &ctx_dev_id, &ctx_stream)
 
     with nogil:
         if ctx_dev_type != -1:
@@ -345,9 +351,11 @@ cdef class FieldSetter:
         cdef int c_api_ret_code
         cdef void* field_ptr = (<char*>(<Object>obj).chandle) + self.offset
         cdef int nargs = 1
+        cdef int64_t bitmask_temp_args = 0
         temp_args = []
-        make_args((value,), &packed_args[0], temp_args, NULL, NULL, NULL)
+        make_args((value,), &packed_args[0], temp_args, &bitmask_temp_args, NULL, NULL, NULL)
         c_api_ret_code = self.setter(field_ptr, &packed_args[0])
+        TVMFFICyRecycleTempArgs(&packed_args[0], nargs, bitmask_temp_args)
         # NOTE: logic is same as check_call
         # directly inline here to simplify traceback
         if c_api_ret_code == 0:
@@ -471,6 +479,7 @@ cdef int tvm_ffi_callback(void* context,
                           TVMFFIAny* result) noexcept with gil:
     cdef list pyargs
     cdef TVMFFIAny temp_result
+    cdef int64_t bitmask_temp_args = 0
     local_pyfunc = <object>(context)
     pyargs = []
     for i in range(num_args):
@@ -484,7 +493,8 @@ cdef int tvm_ffi_callback(void* context,
         return -1
 
     temp_args = []
-    make_args((rv,), &temp_result, temp_args, NULL, NULL, NULL)
+    make_args((rv,), &temp_result, temp_args, &bitmask_temp_args, NULL, NULL, NULL)
+    TVMFFICyRecycleTempArgs(&temp_result, num_args, bitmask_temp_args)
     CHECK_CALL(TVMFFIAnyViewToOwnedAny(&temp_result, result))
 
     return 0

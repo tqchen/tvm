@@ -243,6 +243,10 @@ cdef extern from "tvm/ffi/extra/c_env_api.h":
                                   TVMFFIStreamHandle* opt_out_original_stream) nogil
 
 
+cdef extern from "tvm_ffi_cython_helpers.h":
+    void TVMFFICyRecycleTempArgs(TVMFFIAny* args, int32_t num_args, int64_t bitmask_temp_args) nogil
+
+
 cdef class ByteArrayArg:
     cdef TVMFFIByteArray cdata
     cdef object py_data

@@ -101,6 +101,56 @@ cdef inline int _from_dlpack_versioned(
     raise ValueError("Expect a dltensor_versioned field, PyCapsule can only be consumed once")
 
 
+cdef inline int _from_dlpack_universal(
+    object ext_tensor, int require_alignment,
+    int require_contiguous, TVMFFIObjectHandle* out
+) except -1:
+    # as of most frameworks do not yet support v1.1
+    # move to false as most frameworks get upgraded.
+    cdef int favor_legacy_dlpack = True
+
+    if hasattr(ext_tensor, '__dlpack__'):
+        if favor_legacy_dlpack:
+            _from_dlpack(
+                ext_tensor.__dlpack__(),
+                require_alignment,
+                require_contiguous,
+                out
+            )
+        else:
+            try:
+                _from_dlpack_versioned(
+                    ext_tensor.__dlpack__(max_version=__dlpack_version__),
+                    require_alignment,
+                    require_contiguous,
+                    out
+                )
+            except TypeError:
+                _from_dlpack(
+                    ext_tensor.__dlpack__(),
+                    require_alignment,
+                    require_contiguous,
+                    out
+                )
+    else:
+        if pycapsule.PyCapsule_IsValid(ext_tensor, _c_str_dltensor_versioned):
+            _from_dlpack_versioned(
+                ext_tensor,
+                require_alignment,
+                require_contiguous,
+                out
+            )
+        elif pycapsule.PyCapsule_IsValid(ext_tensor, _c_str_dltensor):
+            _from_dlpack(
+                ext_tensor,
+                require_alignment,
+                require_contiguous,
+                out
+            )
+        else:
+            raise TypeError("Expect from_dlpack to take either a compatible tensor or PyCapsule")
+
+
 def from_dlpack(ext_tensor, *, require_alignment=0, require_contiguous=False):
     """
     Convert an external tensor to an Tensor.
@@ -122,50 +172,7 @@ def from_dlpack(ext_tensor, *, require_alignment=0, require_contiguous=False):
         The converted tensor.
     """
     cdef TVMFFIObjectHandle chandle
-    # as of most frameworks do not yet support v1.1
-    # move to false as most frameworks get upgraded.
-    cdef int favor_legacy_dlpack = True
-
-    if hasattr(ext_tensor, '__dlpack__'):
-        if favor_legacy_dlpack:
-            _from_dlpack(
-                    ext_tensor.__dlpack__(),
-                require_alignment,
-                require_contiguous,
-                &chandle
-            )
-        else:
-            try:
-                _from_dlpack_versioned(
-                    ext_tensor.__dlpack__(max_version=__dlpack_version__),
-                    require_alignment,
-                    require_contiguous,
-                    &chandle
-                )
-            except TypeError:
-                _from_dlpack(
-                    ext_tensor.__dlpack__(),
-                    require_alignment,
-                    require_contiguous,
-                    &chandle
-                )
-    else:
-        if pycapsule.PyCapsule_IsValid(ext_tensor, _c_str_dltensor_versioned):
-            _from_dlpack_versioned(
-                ext_tensor,
-                require_alignment,
-                require_contiguous,
-                &chandle
-            )
-        elif pycapsule.PyCapsule_IsValid(ext_tensor, _c_str_dltensor):
-            _from_dlpack(
-                ext_tensor,
-                require_alignment,
-                require_contiguous,
-                &chandle
-            )
-        else:
-            raise TypeError("Expect from_dlpack to take either a compatible tensor or PyCapsule")
+    _from_dlpack_universal(ext_tensor, require_alignment, require_contiguous, &chandle)
     return make_tensor_from_chandle(chandle)
 
 
