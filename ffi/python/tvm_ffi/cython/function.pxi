@@ -105,7 +105,6 @@ cdef int arg_setter_float(void* handle, TVMFFICyCallContext* ctx,  PyObject* arg
 
 
 cdef int arg_setter_object(void* handle, TVMFFICyCallContext* ctx,  PyObject* arg, TVMFFIAny* out) except -1:
-    print("arg_setter_object")
     out.type_index = TVMFFIObjectGetTypeIndex((<Object>arg).chandle)
     out.v_ptr = (<Object>arg).chandle
     return 0
