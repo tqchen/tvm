@@ -105,6 +105,15 @@ cdef int arg_setter_float(void* handle, TVMFFICyCallContext* ctx,  PyObject* arg
     out.v_float64 = (<object>arg)
     return 0
 
+cdef int arg_setter_bool(void* handle, TVMFFICyCallContext* ctx,  PyObject* arg, TVMFFIAny* out) except -1:
+    out.type_index = kTVMFFIBool
+    out.v_int64 = (<object>arg)
+    return 0
+
+cdef int arg_setter_int(void* handle, TVMFFICyCallContext* ctx,  PyObject* arg, TVMFFIAny* out) except -1:
+    out.type_index = kTVMFFIInt
+    out.v_int64 = (<object>arg)
+    return 0
 
 cdef int arg_setter_object(void* handle, TVMFFICyCallContext* ctx,  PyObject* arg, TVMFFIAny* out) except -1:
     out.type_index = TVMFFIObjectGetTypeIndex((<Object>arg).chandle)
@@ -184,14 +193,6 @@ cdef int arg_setter_fallback(void* handle, TVMFFICyCallContext* ctx,  PyObject* 
         arg = arg.__tvm_ffi_object__
         out.type_index = TVMFFIObjectGetTypeIndex((<Object>arg).chandle)
         out.v_ptr = (<Object>arg).chandle
-    elif isinstance(arg, bool):
-        # A python `bool` is a subclass of `int`, so this check
-        # must occur before `Integral`.
-        out.type_index = kTVMFFIBool
-        out.v_int64 = arg
-    elif isinstance(arg, Integral):
-        out.type_index = kTVMFFIInt
-        out.v_int64 = arg
     elif isinstance(arg, _CLASS_DTYPE):
         # dtype is a subclass of str, so this check occur before str
         arg = arg.__tvm_ffi_dtype__
@@ -259,6 +260,14 @@ cdef int arg_setter_factory(PyObject* value, TVMFFICyArgSetter* out) except -1:
         return 0
     if isinstance(arg, float):
         out.func = arg_setter_float
+        return 0
+    if isinstance(arg, bool):
+        # A python `bool` is a subclass of `int`, so this check
+        # must occur before `Integral`.
+        out.func = arg_setter_bool
+        return 0
+    if isinstance(arg, Integral):
+        out.func = arg_setter_int
         return 0
     if hasattr(arg, "__dlpack_c_converter__"):
         out.func = arg_setter_dlpack_c_converter
