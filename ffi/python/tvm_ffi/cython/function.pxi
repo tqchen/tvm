@@ -85,14 +85,97 @@ cdef inline object make_ret(TVMFFIAny result):
     raise ValueError("Unhandled type index %d" % type_index)
 
 
+##--------------------------------------------------------------------
+## C++ dispatcher based logic
+##--------------------------------------------------------------------
+cdef int arg_setter_tensor(void* handle, TVMFFICyCallContext* ctx,  PyObject* arg, TVMFFIAny* out) except -1:
+    if (<Object>arg).chandle != NULL:
+        out.type_index = kTVMFFITensor
+        out.v_ptr = (<Tensor>arg).chandle
+    else:
+        out.type_index = kTVMFFIDLTensorPtr
+        out.v_ptr = (<Tensor>arg).cdltensor
+    return 0
 
 
+cdef int arg_setter_float(void* handle, TVMFFICyCallContext* ctx,  PyObject* arg, TVMFFIAny* out) except -1:
+    out.type_index = kTVMFFIFloat
+    out.v_float64 = (<object>arg)
+    return 0
 
 
+cdef int arg_setter_object(void* handle, TVMFFICyCallContext* ctx,  PyObject* arg, TVMFFIAny* out) except -1:
+    out.type_index = TVMFFIObjectGetTypeIndex((<Object>arg).chandle)
+    out.v_ptr = (<Object>arg).chandle
+    return 0
 
 
+cdef int arg_setter_dlpack_c_converter(void* handle, TVMFFICyCallContext* ctx,  PyObject* arg, TVMFFIAny* out) except -1:
+    cdef DLManagedTensor* temp_managed_tensor
+    cdef TVMFFIObjectHandle temp_chandle
+    cdef TVMFFICyArgSetter* this = <TVMFFICyArgSetter*>handle
+    if (this.tensor_converter)(arg, &temp_managed_tensor) != 0:
+        return -1
+    if TVMFFITensorFromDLPack(temp_managed_tensor, 0, 0, &temp_chandle) != 0:
+        raise BufferError("Failed to convert DLManagedTensor to TVMTensor")
+    out.type_index = kTVMFFITensor
+    out.v_ptr = temp_chandle
+    TVMFFICyPushTempArg(ctx, temp_chandle)
+    return 0
 
 
+cdef int arg_setter_opaque_object(void* handle, TVMFFICyCallContext* ctx,  PyObject* arg, TVMFFIAny* out) except -1:
+    cdef Object opaque_arg = _convert_to_opaque_object(<object>arg)
+    out.type_index = kTVMFFIOpaquePyObject
+    out.v_ptr = opaque_arg.chandle
+    # push to temp and set original opaque arg ptr to null
+    TVMFFICyPushTempArg(ctx, opaque_arg.chandle)
+    opaque_arg.chandle = NULL
+    return 0
+
+cdef int arg_setter_factory(PyObject* value, TVMFFICyArgSetter* out) except -1:
+    cdef object arg = <object>value
+    if isinstance(arg, Tensor):
+        out.func = arg_setter_tensor
+        return 0
+    if isinstance(arg, Object):
+        out.func = arg_setter_object
+        return 0
+    if isinstance(arg, float):
+        out.func = arg_setter_float
+        return 0
+    if hasattr(arg, "__dlpack_c_converter__"):
+        out.func = arg_setter_dlpack_c_converter
+        return 0
+    # default to opaque object
+    out.func = arg_setter_opaque_object
+    return 0
+
+
+cdef inline int CyFuncCall(void* chandle,
+                            tuple args,
+                            TVMFFIAny* result,
+                            int* c_api_ret_code) except -1:
+    cdef TVMFFIAny[4] workspace_packed_args
+    cdef TVMFFIObjectHandle[4] workspace_temp_args
+    cdef int nargs = len(args)
+
+    if nargs <= 4:
+        return TVMFFICyFuncCall(arg_setter_factory, chandle, <PyObject*>args,
+                                &workspace_packed_args[0], &workspace_temp_args[0],
+                                nargs, result, c_api_ret_code)
+
+    cdef vector[TVMFFIAny] big_ws_packed_args
+    cdef vector[TVMFFIObjectHandle] big_ws_temp_args
+    big_ws_packed_args.resize(nargs)
+    big_ws_temp_args.resize(nargs)
+    return TVMFFICyFuncCall(arg_setter_factory, chandle, <PyObject*>args,
+                            &big_ws_packed_args[0], &big_ws_temp_args[0],
+                            nargs, result, c_api_ret_code)
+
+##--------------------------------------------------------------------
+## make_args
+##--------------------------------------------------------------------
 cdef inline int make_args(tuple py_args, TVMFFIAny* out, list temp_args,
                           int64_t* bitmask_temp_args,
                           int* ctx_dev_type, int* ctx_dev_id,

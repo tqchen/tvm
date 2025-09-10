@@ -245,8 +245,6 @@ cdef extern from "tvm/ffi/extra/c_env_api.h":
 
 
 cdef extern from "tvm_ffi_cython_helpers.h":
-    void TVMFFICyRecycleTempArgs(TVMFFIAny* args, int32_t num_args, int64_t bitmask_temp_args) nogil
-    void TVMFFICySetBitMaskTempArgs(int64_t* bitmask_temp_args, int32_t index) noexcept
     ctypedef int (*TVMFFICyTensorToDLPackCallType)(void* py_obj, DLManagedTensor** out) noexcept
 
     ctypedef struct TVMFFICyCallContext:
@@ -256,20 +254,24 @@ cdef extern from "tvm_ffi_cython_helpers.h":
         TVMFFIObjectHandle* temp_args
         int num_temp_args
 
+
+
     ctypedef int (*TVMFFICyTensorConverter)(PyObject* py_obj, DLManagedTensor** out) noexcept
     ctypedef struct TVMFFICyArgSetter:
-        int (*func)(void* self, TVMFFICyCallContext* ctx,  PyObject* py_arg, TVMFFIAny* arg) noexcept
+        int (*func)(void* handle, TVMFFICyCallContext* ctx,  PyObject* py_arg, TVMFFIAny* out) except -1
         TVMFFICyTensorConverter tensor_converter
-    ctypedef int (*TVMFFICyArgSetterFactory)(PyObject* value, TVMFFICyArgSetter* out) noexcept
-    ctypedef int (*TVMFFICyFuncCall)(TVMFFICyArgSetterFactory setter_factory,
-                                     void* chandle,
-                                     PyObject* py_arg_tuple,
-                                     TVMFFIAny* workspace_packed_args,
-                                     TVMFFIObjectHandle* workspace_temp_args,
-                                     int num_args,
-                                     TVMFFIAny* result,
-                                     int* c_api_ret_code) noexcept
-
+    ctypedef int (*TVMFFICyArgSetterFactory)(PyObject* value, TVMFFICyArgSetter* out) except -1
+    int TVMFFICyFuncCall(TVMFFICyArgSetterFactory setter_factory,
+                         void* chandle,
+                         PyObject* py_arg_tuple,
+                         TVMFFIAny* workspace_packed_args,
+                         TVMFFIObjectHandle* workspace_temp_args,
+                         int num_args,
+                         TVMFFIAny* result,
+                         int* c_api_ret_code) except -1
+    void TVMFFICyRecycleTempArgs(TVMFFIAny* args, int32_t num_args, int64_t bitmask_temp_args) nogil
+    void TVMFFICySetBitMaskTempArgs(int64_t* bitmask_temp_args, int32_t index) noexcept
+    void TVMFFICyPushTempArg(TVMFFICyCallContext* ctx, TVMFFIObjectHandle arg) noexcept
 
 
 cdef class ByteArrayArg:
