@@ -251,9 +251,10 @@ cdef extern from "tvm_ffi_cython_helpers.h":
         int ctx_device_type
         int ctx_device_id
         void* ctx_stream
-        TVMFFIObjectHandle* temp_args
-        int num_temp_args
-
+        void** temp_ffi_objects
+        int num_temp_ffi_objects
+        void** temp_py_objects
+        int num_temp_py_objects
 
 
     ctypedef int (*TVMFFICyTensorConverter)(PyObject* py_obj, DLManagedTensor** out) noexcept
@@ -265,13 +266,15 @@ cdef extern from "tvm_ffi_cython_helpers.h":
                          void* chandle,
                          PyObject* py_arg_tuple,
                          TVMFFIAny* workspace_packed_args,
-                         TVMFFIObjectHandle* workspace_temp_args,
+                         void** workspace_temp_ffi_objects,
+                         void** workspace_temp_py_objects,
                          int num_args,
                          TVMFFIAny* result,
                          int* c_api_ret_code) except -1
     void TVMFFICyRecycleTempArgs(TVMFFIAny* args, int32_t num_args, int64_t bitmask_temp_args) nogil
     void TVMFFICySetBitMaskTempArgs(int64_t* bitmask_temp_args, int32_t index) noexcept
-    void TVMFFICyPushTempArg(TVMFFICyCallContext* ctx, TVMFFIObjectHandle arg) noexcept
+    void TVMFFICyPushTempFFIObject(TVMFFICyCallContext* ctx, TVMFFIObjectHandle arg) noexcept
+    void TVMFFICyPushTempPyObject(TVMFFICyCallContext* ctx, PyObject* arg) noexcept
 
 
 cdef class ByteArrayArg:

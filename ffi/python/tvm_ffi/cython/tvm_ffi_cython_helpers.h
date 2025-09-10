@@ -25,6 +25,7 @@
 #include <tvm/ffi/extra/c_env_api.h>
 #include <unordered_map>
 #include <exception>
+#include <iostream>
 /*!
  * \brief Function pointer to speed convert a Tensor to a DLManagedTensor.
  * \param obj The Tensor to convert.
@@ -42,9 +43,13 @@ struct TVMFFICyCallContext {
   /*! \brief the stream to be set during the call */
   void* ctx_stream = nullptr;
   /*! \brief the temporary arguments to be recycled */
-  TVMFFIObjectHandle* temp_args = nullptr;
+  void** temp_ffi_objects = nullptr;
   /*! \brief the number of temporary arguments */
-  int num_temp_args = 0;
+  int num_temp_ffi_objects = 0;
+  /*! \brief the temporary arguments to be recycled */
+  void** temp_py_objects = nullptr;
+  /*! \brief the number of temporary arguments */
+  int num_temp_py_objects = 0;
 };
 
 /*!
@@ -103,13 +108,15 @@ class TVMFFICyCallDispatcher {
   int Call(void* chandle,
           PyObject* py_arg_tuple,
           TVMFFIAny* workspace_packed_args,
-          TVMFFIObjectHandle* workspace_temp_args,
+          void** workspace_temp_ffi_objects,
+          void** workspace_temp_py_objects,
           int num_args,
           TVMFFIAny* result,
           int* c_api_ret_code) {
     try {
       TVMFFICyCallContext ctx;
-      ctx.temp_args = workspace_temp_args;
+      ctx.temp_ffi_objects = workspace_temp_ffi_objects;
+      ctx.temp_py_objects = workspace_temp_py_objects;
       // setup arguments
       for (int i = 0; i < num_args; ++i) {
         PyObject* py_arg = PyTuple_GetItem(py_arg_tuple, i);
@@ -145,11 +152,14 @@ class TVMFFICyCallDispatcher {
         if (c_api_ret_code[0] != 0) return 0;
       }
       // recycle the temporary arguments if any
-      for (int i = 0; i < ctx.num_temp_args; ++i) {
-        TVMFFIObject* obj = static_cast<TVMFFIObject*>(ctx.temp_args[i]);
+      for (int i = 0; i < ctx.num_temp_ffi_objects; ++i) {
+        TVMFFIObject* obj = static_cast<TVMFFIObject*>(ctx.temp_ffi_objects[i]);
         if (obj->deleter != nullptr) {
           obj->deleter(obj, kTVMFFIObjectDeleterFlagBitMaskBoth);
         }
+      }
+      for (int i = 0; i < ctx.num_temp_py_objects; ++i) {
+        Py_DECREF(static_cast<PyObject*>(ctx.temp_py_objects[i]));
       }
       return 0;
     } catch (const std::exception& err) {
@@ -176,7 +186,10 @@ class TVMFFICyCallDispatcher {
 /*!
  * \brief Call a function with a variable number of arguments
  * \param chandle The handle of the function to call
- * \param args The arguments to the function
+ * \param py_arg_tuple The arguments to the function
+ * \param workspace_packed_args The workspace for the packed arguments
+ * \param workspace_temp_args The workspace for the temporary arguments
+ * \param workspace_temp_py_objects The workspace for the temporary python objects
  * \param num_args The number of arguments
  * \param result The result of the function
  * \param c_api_ret_code The return code of the function
@@ -186,12 +199,13 @@ int TVMFFICyFuncCall(TVMFFICyArgSetterFactory setter_factory,
                     void* chandle,
                     PyObject* py_arg_tuple,
                     TVMFFIAny* workspace_packed_args,
-                    TVMFFIObjectHandle* workspace_temp_args,
+                    void** workspace_temp_args,
+                    void** workspace_temp_py_objects,
                     int num_args,
                     TVMFFIAny* result,
                     int* c_api_ret_code) {
   return TVMFFICyCallDispatcher::ThreadLocal(setter_factory)->Call(
-    chandle, py_arg_tuple, workspace_packed_args, workspace_temp_args, num_args, result, c_api_ret_code
+    chandle, py_arg_tuple, workspace_packed_args, workspace_temp_args, workspace_temp_py_objects, num_args, result, c_api_ret_code
   );
 }
 
@@ -212,8 +226,13 @@ inline void TVMFFICyRecycleTempArgs(
   }
 }
 
-inline void TVMFFICyPushTempArg(TVMFFICyCallContext* ctx, TVMFFIObjectHandle arg) noexcept {
-  ctx->temp_args[ctx->num_temp_args++] = arg;
+inline void TVMFFICyPushTempFFIObject(TVMFFICyCallContext* ctx, TVMFFIObjectHandle arg) noexcept {
+  ctx->temp_ffi_objects[ctx->num_temp_ffi_objects++] = arg;
+}
+
+inline void TVMFFICyPushTempPyObject(TVMFFICyCallContext* ctx, PyObject* arg) noexcept {
+  Py_INCREF(arg);
+  ctx->temp_py_objects[ctx->num_temp_py_objects++] = arg;
 }
 
 inline void TVMFFICySetBitMaskTempArgs(int64_t* bitmask_temp_args, int32_t index) noexcept {

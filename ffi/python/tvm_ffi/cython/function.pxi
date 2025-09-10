@@ -105,6 +105,7 @@ cdef int arg_setter_float(void* handle, TVMFFICyCallContext* ctx,  PyObject* arg
 
 
 cdef int arg_setter_object(void* handle, TVMFFICyCallContext* ctx,  PyObject* arg, TVMFFIAny* out) except -1:
+    print("arg_setter_object")
     out.type_index = TVMFFIObjectGetTypeIndex((<Object>arg).chandle)
     out.v_ptr = (<Object>arg).chandle
     return 0
@@ -120,18 +121,118 @@ cdef int arg_setter_dlpack_c_converter(void* handle, TVMFFICyCallContext* ctx,  
         raise BufferError("Failed to convert DLManagedTensor to TVMTensor")
     out.type_index = kTVMFFITensor
     out.v_ptr = temp_chandle
-    TVMFFICyPushTempArg(ctx, temp_chandle)
+    TVMFFICyPushTempFFIObject(ctx, temp_chandle)
     return 0
 
 
-cdef int arg_setter_opaque_object(void* handle, TVMFFICyCallContext* ctx,  PyObject* arg, TVMFFIAny* out) except -1:
-    cdef Object opaque_arg = _convert_to_opaque_object(<object>arg)
-    out.type_index = kTVMFFIOpaquePyObject
-    out.v_ptr = opaque_arg.chandle
-    # push to temp and set original opaque arg ptr to null
-    TVMFFICyPushTempArg(ctx, opaque_arg.chandle)
-    opaque_arg.chandle = NULL
-    return 0
+cdef int arg_setter_fallback(void* handle, TVMFFICyCallContext* ctx,  PyObject* py_arg, TVMFFIAny* out) except -1:
+    cdef unsigned long long temp_ptr
+    cdef DLTensor* temp_dltensor
+    cdef DLManagedTensor* temp_managed_tensor
+    cdef TVMFFIObjectHandle temp_chandle
+    cdef object arg = <object>py_arg
+    if torch is not None and isinstance(arg, torch.Tensor):
+        is_cuda = arg.is_cuda
+        if _torch_to_dlpack_as_intptr is not None:
+            temp_ptr = _torch_to_dlpack_as_intptr(arg)
+            arg = _from_dlpack_intptr(<void*>temp_ptr)
+        else:
+            arg = from_dlpack(torch.utils.dlpack.to_dlpack(arg))
+        out.type_index = kTVMFFITensor
+        out.v_ptr = (<Tensor>arg).chandle
+        temp_dltensor = TVMFFITensorGetDLTensorPtr((<Tensor>arg).chandle)
+        # record the stream and device for torch context
+        if is_cuda and ctx.ctx_device_type != -1:
+            ctx.ctx_device_type = temp_dltensor.device.device_type
+            ctx.ctx_device_id = temp_dltensor.device.device_id
+            # This is an API that dynamo and other uses to get the raw stream from torch
+            temp_ptr = torch._C._cuda_getCurrentRawStream(temp_dltensor.device.device_id)
+            ctx.ctx_stream = <TVMFFIStreamHandle>temp_ptr
+        # push to temp and clear the handle
+        TVMFFICyPushTempPyObject(ctx, <PyObject*>arg)
+    elif hasattr(arg, "__dlpack__"):
+        _from_dlpack_universal(arg, 0, 0, &temp_chandle)
+        out.type_index = kTVMFFITensor
+        out.v_ptr = temp_chandle
+        # record the stream from the source framework context when possible
+        temp_dltensor = TVMFFITensorGetDLTensorPtr(temp_chandle)
+        if (temp_dltensor.device.device_type != kDLCPU and
+            ctx.ctx_device_type != -1):
+            # __tvm_ffi_env_stream__ returns the expected stream that should be set
+            # through TVMFFIEnvSetCurrentStream when calling a TVM FFI function
+            if hasattr(arg, "__tvm_ffi_env_stream__"):
+                # Ideally projects should directly setup their stream context API
+                # write through by also calling TVMFFIEnvSetCurrentStream
+                # so we do not need this protocol to do exchange
+                ctx.ctx_device_type = temp_dltensor.device.device_type
+                ctx.ctx_device_id = temp_dltensor.device.device_id
+                temp_ptr= arg.__tvm_ffi_env_stream__()
+                ctx.ctx_stream = <TVMFFIStreamHandle>temp_ptr
+        TVMFFICyPushTempFFIObject(ctx, temp_chandle)
+    elif isinstance(arg, PyNativeObject) and arg.__tvm_ffi_object__ is not None:
+        arg = arg.__tvm_ffi_object__
+        out.type_index = TVMFFIObjectGetTypeIndex((<Object>arg).chandle)
+        out.v_ptr = (<Object>arg).chandle
+    elif isinstance(arg, bool):
+        # A python `bool` is a subclass of `int`, so this check
+        # must occur before `Integral`.
+        out.type_index = kTVMFFIBool
+        out.v_int64 = arg
+    elif isinstance(arg, Integral):
+        out.type_index = kTVMFFIInt
+        out.v_int64 = arg
+    elif isinstance(arg, _CLASS_DTYPE):
+        # dtype is a subclass of str, so this check occur before str
+        arg = arg.__tvm_ffi_dtype__
+        out.type_index = kTVMFFIDataType
+        out.v_dtype = (<DataType>arg).cdtype
+    elif isinstance(arg, _CLASS_DEVICE):
+        out.type_index = kTVMFFIDevice
+        out.v_device = (<Device>arg).cdevice
+    elif isinstance(arg, str):
+        tstr = c_str(arg)
+        out.type_index = kTVMFFIRawStr
+        out.v_c_str = tstr
+        TVMFFICyPushTempPyObject(ctx, <PyObject*>tstr)
+    elif arg is None:
+        out.type_index = kTVMFFINone
+        out.v_int64 = 0
+    elif isinstance(arg, Real):
+        out.type_index = kTVMFFIFloat
+        out.v_float64 = arg
+    elif isinstance(arg, (bytes, bytearray)):
+        arg = ByteArrayArg(arg)
+        out.type_index = kTVMFFIByteArrayPtr
+        out.v_int64 = 0
+        out.v_ptr = (<ByteArrayArg>arg).cptr()
+        TVMFFICyPushTempPyObject(ctx, <PyObject*>arg)
+    elif isinstance(arg, (list, tuple, dict, ObjectConvertible)):
+        arg = _FUNC_CONVERT_TO_OBJECT(arg)
+        out.type_index = TVMFFIObjectGetTypeIndex((<Object>arg).chandle)
+        out.v_ptr = (<Object>arg).chandle
+        TVMFFICyPushTempPyObject(ctx, <PyObject*>arg)
+    elif isinstance(arg, ctypes.c_void_p):
+        out.type_index = kTVMFFIOpaquePtr
+        out.v_ptr = c_handle(arg)
+    elif isinstance(arg, Exception):
+        arg = _convert_to_ffi_error(arg)
+        out.type_index = TVMFFIObjectGetTypeIndex((<Object>arg).chandle)
+        out.v_ptr = (<Object>arg).chandle
+        TVMFFICyPushTempPyObject(ctx, <PyObject*>arg)
+    elif isinstance(arg, ObjectRValueRef):
+        out.type_index = kTVMFFIObjectRValueRef
+        out.v_ptr = &((<Object>(arg.obj)).chandle)
+    elif callable(arg):
+        arg = _convert_to_ffi_func(arg)
+        out.type_index = TVMFFIObjectGetTypeIndex((<Object>arg).chandle)
+        out.v_ptr = (<Object>arg).chandle
+        TVMFFICyPushTempPyObject(ctx, <PyObject*>arg)
+    else:
+        arg = _convert_to_opaque_object(arg)
+        out.type_index = kTVMFFIOpaquePyObject
+        out.v_ptr = (<Object>arg).chandle
+        TVMFFICyPushTempPyObject(ctx, <PyObject*>arg)
+
 
 cdef int arg_setter_factory(PyObject* value, TVMFFICyArgSetter* out) except -1:
     cdef object arg = <object>value
@@ -144,35 +245,43 @@ cdef int arg_setter_factory(PyObject* value, TVMFFICyArgSetter* out) except -1:
     if isinstance(arg, float):
         out.func = arg_setter_float
         return 0
+    if isinstance(arg, float):
+        out.func = arg_setter_float
+        return 0
     if hasattr(arg, "__dlpack_c_converter__"):
         out.func = arg_setter_dlpack_c_converter
         return 0
     # default to opaque object
-    out.func = arg_setter_opaque_object
+    out.func = arg_setter_fallback
     return 0
 
 
 cdef inline int CyFuncCall(void* chandle,
-                            tuple args,
-                            TVMFFIAny* result,
-                            int* c_api_ret_code) except -1:
+                           tuple args,
+                           TVMFFIAny* result,
+                           int* c_api_ret_code) except -1:
     cdef TVMFFIAny[4] workspace_packed_args
-    cdef TVMFFIObjectHandle[4] workspace_temp_args
+    cdef TVMFFIObjectHandle[4] workspace_temp_py_objects
+    cdef TVMFFIObjectHandle[4] workspace_temp_ffi_objects
     cdef int nargs = len(args)
 
     if nargs <= 4:
         return TVMFFICyFuncCall(arg_setter_factory, chandle, <PyObject*>args,
-                                &workspace_packed_args[0], &workspace_temp_args[0],
+                                &workspace_packed_args[0],
+                                &workspace_temp_ffi_objects[0],
+                                &workspace_temp_py_objects[0],
                                 nargs, result, c_api_ret_code)
 
-    cdef vector[TVMFFIAny] big_ws_packed_args
-    cdef vector[TVMFFIObjectHandle] big_ws_temp_args
-    big_ws_packed_args.resize(nargs)
-    big_ws_temp_args.resize(nargs)
+    cdef vector[TVMFFIAny] big_workspace
+    # invariance: TVMFFIAny equals two times TVMFFIObjectHandle
+    # so nargs * 2 is exactly the size of call stack plus extra two temp space
+    big_workspace.resize(nargs * 2)
+    cdef TVMFFIObjectHandle* big_workspace_ptrs = <TVMFFIObjectHandle*>(&big_workspace[0] + nargs)
     return TVMFFICyFuncCall(arg_setter_factory, chandle, <PyObject*>args,
-                            &big_ws_packed_args[0], &big_ws_temp_args[0],
+                            &big_workspace[0],
+                            big_workspace_ptrs,
+                            big_workspace_ptrs + nargs,
                             nargs, result, c_api_ret_code)
-
 ##--------------------------------------------------------------------
 ## make_args
 ##--------------------------------------------------------------------
