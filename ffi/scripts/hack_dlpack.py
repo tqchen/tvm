@@ -422,19 +422,45 @@ DLManagedTensor* toDLPackX(const at::Tensor& src) {
 int64_t to_dlpack(const at::Tensor& src) {
   return reinterpret_cast<int64_t>(at::toDLPackX(src));
 }
+
+
+void dlpack_bench(const at::Tensor& src, int repeat) {
+  for (int i = 0; i < repeat; i++) {
+    DLManagedTensor* dlpack = at::toDLPackX(src);
+    dlpack->deleter(dlpack);
+  }
+}
     """
     dlpack_path = tvm_ffi.libinfo.find_dlpack_include_path()
     print(f"dlpack_path: {dlpack_path}")
     module = cpp_extension.load_inline(
         name="to_dlpack",
         cpp_sources=cpp_source,
-        functions="to_dlpack",
+        functions=["to_dlpack", "dlpack_bench"],
         extra_cflags=["-O3"],
         extra_include_paths=[dlpack_path],
         verbose=True,
     )
-    return module.to_dlpack
+    return module
 
 
-to_dlpack = load_to_dlpack()
-tvm_ffi.core._torch_to_dlpack_as_intptr = to_dlpack
+mod = load_to_dlpack()
+dlpack_bench = mod.dlpack_bench
+tvm_ffi.core._torch_to_dlpack_as_intptr = mod.to_dlpack
+
+
+def run_dlpack_bench(name, func, repeat):
+    x = torch.arange(1)
+    func(x, 1)
+    tstart = time.time()
+    func(x, repeat)
+    tend = time.time()
+    print(f"Time taken: {(tend - tstart) / repeat} secs/call")
+
+
+def main():
+    repeat = 10000
+    run_dlpack_bench("ffi", dlpack_bench, repeat)
+
+if __name__ == "__main__":
+    main()
