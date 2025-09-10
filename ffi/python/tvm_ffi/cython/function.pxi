@@ -122,17 +122,6 @@ cdef inline int make_args(tuple py_args, TVMFFIAny* out, list temp_args,
         elif isinstance(arg, float):
             out[i].type_index = kTVMFFIFloat
             out[i].v_float64 = arg
-        elif hasattr(arg, "__dlpack_c_converter__"):
-            temp_ptr = arg.__dlpack_c_converter__
-            temp_dlpack_c_converter = <TVMFFICyTensorToDLPackCallType>temp_ptr
-            temp_pyobj = <PyObject*>arg
-            temp_dlpack_c_converter(<void*>temp_pyobj, &temp_managed_tensor)
-            TVMFFITensorFromDLPack(temp_managed_tensor, 0, 0, &temp_chandle)
-            out[i].type_index = kTVMFFITensor
-            out[i].v_ptr = temp_chandle
-            # TVMFFIObjectIncRef(out[i].v_ptr)
-            # TVMFFICySetBitMaskTempArgs(bitmask_temp_args, i)
-            TVMFFICySetBitMaskTempArgs(bitmask_temp_args, i)
         elif torch is not None and isinstance(arg, torch.Tensor):
             is_cuda = arg.is_cuda
             if _torch_to_dlpack_as_intptr is not None:
@@ -151,6 +140,17 @@ cdef inline int make_args(tuple py_args, TVMFFIAny* out, list temp_args,
                 temp_ptr = torch._C._cuda_getCurrentRawStream(temp_dltensor.device.device_id)
                 ctx_stream[0] = <TVMFFIStreamHandle>temp_ptr
             temp_args.append(arg)
+        elif hasattr(arg, "__dlpack_c_converter__"):
+            temp_ptr = arg.__dlpack_c_converter__
+            temp_dlpack_c_converter = <TVMFFICyTensorToDLPackCallType>temp_ptr
+            temp_pyobj = <PyObject*>arg
+            temp_dlpack_c_converter(<void*>temp_pyobj, &temp_managed_tensor)
+            TVMFFITensorFromDLPack(temp_managed_tensor, 0, 0, &temp_chandle)
+            out[i].type_index = kTVMFFITensor
+            out[i].v_ptr = temp_chandle
+            # TVMFFIObjectIncRef(out[i].v_ptr)
+            # TVMFFICySetBitMaskTempArgs(bitmask_temp_args, i)
+            TVMFFICySetBitMaskTempArgs(bitmask_temp_args, i)
         elif PyObject_HasAttrString(arg, "__dlpack__"):
             _from_dlpack_universal(arg, 0, 0, &temp_chandle)
             out[i].type_index = kTVMFFITensor
