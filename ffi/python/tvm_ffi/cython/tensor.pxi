@@ -306,6 +306,24 @@ cdef class DLTensorTestWrapper:
         return self.tensor.__dlpack__(**kwargs)
 
 
+
+cdef int _dltensor_test_wrapper_to_dlpack(void* py_obj, DLManagedTensor** out) noexcept:
+    cdef PyObject* obj = <PyObject*>py_obj
+    cdef object ref_obj = <object>obj
+    cdef DLTensorTestWrapper wrapper = <DLTensorTestWrapper>ref_obj
+    return TVMFFITensorToDLPack(wrapper.tensor.chandle, out)
+
+
+def _set_dlpack_c_converter():
+    cdef TVMFFICyTensorToDLPackCallType converter_func = _dltensor_test_wrapper_to_dlpack
+    cdef void* temp_ptr = <void*>converter_func
+    cdef long long temp_int_ptr = <long long>temp_ptr
+    DLTensorTestWrapper.__dlpack_c_converter__ = temp_int_ptr
+
+
+_set_dlpack_c_converter()
+
+
 cdef inline object make_ret_dltensor(TVMFFIAny result):
     cdef DLTensor* dltensor
     dltensor = <DLTensor*>result.v_ptr

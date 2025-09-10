@@ -92,10 +92,16 @@ cdef inline int make_args(tuple py_args, TVMFFIAny* out, list temp_args,
     """Pack arguments into c args tvm call accept"""
     cdef unsigned long long temp_ptr
     cdef DLTensor* temp_dltensor
+    cdef PyObject* temp_pyobj
+    cdef DLManagedTensor* temp_managed_tensor
+    cdef TVMFFICyTensorToDLPackCallType temp_dlpack_c_converter
     cdef TVMFFIObjectHandle temp_chandle
+    cdef object arg
     cdef int is_cuda = 0
+    cdef int nargs = len(py_args)
 
-    for i, arg in enumerate(py_args):
+    for i in range(nargs):
+        arg = py_args[i]
         # clear the value to ensure zero padding on 32bit platforms
         if sizeof(void*) != 8:
             out[i].v_int64 = 0
@@ -108,9 +114,25 @@ cdef inline int make_args(tuple py_args, TVMFFIAny* out, list temp_args,
             else:
                 out[i].type_index = kTVMFFIDLTensorPtr
                 out[i].v_ptr = (<Tensor>arg).cdltensor
-        elif isinstance(arg, Object):
-            out[i].type_index = TVMFFIObjectGetTypeIndex((<Object>arg).chandle)
-            out[i].v_ptr = (<Object>arg).chandle
+        elif isinstance(arg, bool):
+            # A python `bool` is a subclass of `int`, so this check
+            # must occur before `Integral`.
+            out[i].type_index = kTVMFFIBool
+            out[i].v_int64 = arg
+        elif isinstance(arg, float):
+            out[i].type_index = kTVMFFIFloat
+            out[i].v_float64 = arg
+        elif hasattr(arg, "__dlpack_c_converter__"):
+            temp_ptr = arg.__dlpack_c_converter__
+            temp_dlpack_c_converter = <TVMFFICyTensorToDLPackCallType>temp_ptr
+            temp_pyobj = <PyObject*>arg
+            temp_dlpack_c_converter(<void*>temp_pyobj, &temp_managed_tensor)
+            TVMFFITensorFromDLPack(temp_managed_tensor, 0, 0, &temp_chandle)
+            out[i].type_index = kTVMFFITensor
+            out[i].v_ptr = temp_chandle
+            # TVMFFIObjectIncRef(out[i].v_ptr)
+            # TVMFFICySetBitMaskTempArgs(bitmask_temp_args, i)
+            TVMFFICySetBitMaskTempArgs(bitmask_temp_args, i)
         elif torch is not None and isinstance(arg, torch.Tensor):
             is_cuda = arg.is_cuda
             if _torch_to_dlpack_as_intptr is not None:
@@ -129,7 +151,7 @@ cdef inline int make_args(tuple py_args, TVMFFIAny* out, list temp_args,
                 temp_ptr = torch._C._cuda_getCurrentRawStream(temp_dltensor.device.device_id)
                 ctx_stream[0] = <TVMFFIStreamHandle>temp_ptr
             temp_args.append(arg)
-        elif hasattr(arg, "__dlpack__"):
+        elif PyObject_HasAttrString(arg, "__dlpack__"):
             _from_dlpack_universal(arg, 0, 0, &temp_chandle)
             out[i].type_index = kTVMFFITensor
             out[i].v_ptr = temp_chandle
@@ -148,22 +170,17 @@ cdef inline int make_args(tuple py_args, TVMFFIAny* out, list temp_args,
                     ctx_dev_id[0] = temp_dltensor.device.device_id
                     temp_ptr= arg.__tvm_ffi_env_stream__()
                     ctx_stream[0] = <TVMFFIStreamHandle>temp_ptr
-            bitmask_temp_args[0] |= 1 << i
+            TVMFFICySetBitMaskTempArgs(bitmask_temp_args, i)
+        elif isinstance(arg, Object):
+            out[i].type_index = TVMFFIObjectGetTypeIndex((<Object>arg).chandle)
+            out[i].v_ptr = (<Object>arg).chandle
         elif isinstance(arg, PyNativeObject) and arg.__tvm_ffi_object__ is not None:
             arg = arg.__tvm_ffi_object__
             out[i].type_index = TVMFFIObjectGetTypeIndex((<Object>arg).chandle)
             out[i].v_ptr = (<Object>arg).chandle
-        elif isinstance(arg, bool):
-            # A python `bool` is a subclass of `int`, so this check
-            # must occur before `Integral`.
-            out[i].type_index = kTVMFFIBool
-            out[i].v_int64 = arg
         elif isinstance(arg, Integral):
             out[i].type_index = kTVMFFIInt
             out[i].v_int64 = arg
-        elif isinstance(arg, float):
-            out[i].type_index = kTVMFFIFloat
-            out[i].v_float64 = arg
         elif isinstance(arg, _CLASS_DTYPE):
             # dtype is a subclass of str, so this check occur before str
             arg = arg.__tvm_ffi_dtype__
@@ -217,12 +234,12 @@ cdef inline int make_args(tuple py_args, TVMFFIAny* out, list temp_args,
             temp_args.append(arg)
 
 
-cdef inline int FuncCall3(void* chandle,
+cdef inline int FuncCall4(void* chandle,
                           tuple args,
                           TVMFFIAny* result,
                           int* c_api_ret_code) except -1:
     # fast path with stack alloca for less than 3 args
-    cdef TVMFFIAny[3] packed_args
+    cdef TVMFFIAny[4] packed_args
     cdef int nargs = len(args)
     cdef int ctx_dev_type = -1
     cdef int ctx_dev_id = 0
@@ -261,8 +278,8 @@ cdef inline int FuncCall(void* chandle,
     cdef TVMFFIStreamHandle prev_stream = NULL
     cdef int64_t bitmask_temp_args = 0
 
-    if nargs <= 3:
-        FuncCall3(chandle, args, result, c_api_ret_code)
+    if nargs <= 4:
+        FuncCall4(chandle, args, result, c_api_ret_code)
         return 0
 
     cdef vector[TVMFFIAny] packed_args

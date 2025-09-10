@@ -22,7 +22,7 @@ from cpython.bytes cimport PyBytes_AsStringAndSize, PyBytes_FromStringAndSize, P
 from cpython cimport Py_INCREF, Py_DECREF
 from cpython cimport PyErr_CheckSignals, PyGILState_Ensure, PyGILState_Release, PyObject
 from cpython cimport pycapsule, PyCapsule_Destructor
-from cpython cimport PyErr_SetNone
+from cpython cimport PyErr_SetNone, PyObject_HasAttrString
 
 cdef extern from "dlpack/dlpack.h":
     cdef enum:
@@ -195,6 +195,7 @@ cdef extern from "tvm/ffi/c_api.h":
         const TVMFFITypeMetadata* metadata
 
     int TVMFFIObjectDecRef(TVMFFIObjectHandle obj) nogil
+    int TVMFFIObjectIncRef(TVMFFIObjectHandle obj) nogil
     int TVMFFIObjectCreateOpaque(void* handle, int32_t type_index,
                                  void (*deleter)(void*), TVMFFIObjectHandle* out) nogil
     int TVMFFIObjectGetTypeIndex(TVMFFIObjectHandle obj) nogil
@@ -245,6 +246,8 @@ cdef extern from "tvm/ffi/extra/c_env_api.h":
 
 cdef extern from "tvm_ffi_cython_helpers.h":
     void TVMFFICyRecycleTempArgs(TVMFFIAny* args, int32_t num_args, int64_t bitmask_temp_args) nogil
+    void TVMFFICySetBitMaskTempArgs(int64_t* bitmask_temp_args, int32_t index) noexcept
+    ctypedef int (*TVMFFICyTensorToDLPackCallType)(void* py_obj, DLManagedTensor** out) noexcept
 
 
 cdef class ByteArrayArg:

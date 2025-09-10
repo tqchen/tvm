@@ -116,6 +116,15 @@ inline size_t GetDataSize(const DLTensor& arr) {
   return GetDataSize(size, arr.dtype);
 }
 
+class DLManagedTensorPool {
+ public:
+
+
+ private:
+  std::unordered_map<void*, DLManagedTensor*> active_;
+  std::vector<std::unique_ptr<DLManagedTensor>> free_;
+};
+
 /*! \brief An object representing a Tensor. */
 class TensorObj : public Object, public DLTensor {
  public:
@@ -133,16 +142,26 @@ class TensorObj : public Object, public DLTensor {
    * \return The converted DLPack managed tensor.
    */
   DLManagedTensor* ToDLPack() const {
+    bool use_embedded = true;
     TensorObj* self = const_cast<TensorObj*>(this);
-    if (embedded_dl_managed_tensor_ == nullptr) {
+    if (use_embedded) {
+      if (embedded_dl_managed_tensor_ == nullptr) {
+        DLManagedTensor* ret = new DLManagedTensor();
+        ret->dl_tensor = *static_cast<DLTensor*>(self);
+        ret->manager_ctx = self;
+        ret->deleter = EmbeddedDLManagedTensorDeleter;
+        embedded_dl_managed_tensor_ = ret;
+      }
+      details::ObjectUnsafe::IncRefObjectHandle(self);
+      return embedded_dl_managed_tensor_;
+    } else {
       DLManagedTensor* ret = new DLManagedTensor();
       ret->dl_tensor = *static_cast<DLTensor*>(self);
       ret->manager_ctx = self;
-      ret->deleter = EmbeddedDLManagedTensorDeleter;
-      embedded_dl_managed_tensor_ = ret;
+      ret->deleter = DLManagedTensorDeleter;
+      details::ObjectUnsafe::IncRefObjectHandle(self);
+      return ret;
     }
-    details::ObjectUnsafe::IncRefObjectHandle(self);
-    return embedded_dl_managed_tensor_;
   }
 
   /*!
