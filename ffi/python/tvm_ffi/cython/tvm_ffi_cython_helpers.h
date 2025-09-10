@@ -79,7 +79,7 @@ struct TVMFFICyArgSetter {
 
 /*!
  * \brief Factory that returns the argument setter for a given python argument.
- * \param value The python argument.
+ * \param value The python argument value as an example.
  * \param out The output argument setter.
  * \return 0 on success, nonzero on failure.
  */
@@ -159,7 +159,6 @@ class TVMFFICyCallDispatcher {
   TVMFFICyArgSetterFactory setter_factory_;
 };
 
-
 /*!
  * \brief Call a function with a variable number of arguments
  * \param chandle The handle of the function to call
@@ -169,17 +168,18 @@ class TVMFFICyCallDispatcher {
  * \param c_api_ret_code The return code of the function
  * \return 0 on success, nonzero on failure
  */
-inline int TVMFFICyFuncCallImpl(void* chandle,
-                                PyObject* py_args,
-                                TVMFFIAny* packed_args,
-                                int num_args,
-                                TVMFFIAny* result,
-                                int* c_api_ret_code) {
-
-
-  return 0;
+TVM_FFI_INLINE int TVMFFICyFuncCall(TVMFFICyArgSetterFactory setter_factory,
+                                    void* chandle,
+                                    PyObject* py_arg_tuple,
+                                    TVMFFIAny* workspace_packed_args,
+                                    TVMFFIObjectHandle* workspace_temp_args,
+                                    int num_args,
+                                    TVMFFIAny* result,
+                                    int* c_api_ret_code) {
+  return TVMFFICyCallDispatcher::ThreadLocal(setter_factory)->Call(
+    chandle, py_arg_tuple, workspace_packed_args, workspace_temp_args, num_args, result, c_api_ret_code
+  );
 }
-
 
 /**
  * \brief Recycle temporary arguments

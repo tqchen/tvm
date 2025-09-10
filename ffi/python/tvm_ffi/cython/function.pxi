@@ -85,6 +85,14 @@ cdef inline object make_ret(TVMFFIAny result):
     raise ValueError("Unhandled type index %d" % type_index)
 
 
+
+
+
+
+
+
+
+
 cdef inline int make_args(tuple py_args, TVMFFIAny* out, list temp_args,
                           int64_t* bitmask_temp_args,
                           int* ctx_dev_type, int* ctx_dev_id,
