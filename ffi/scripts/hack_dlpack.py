@@ -11,6 +11,7 @@ def load_to_dlpack():
 #include <dlpack/dlpack.h>
 #include <ATen/DLConvertor.h>
 #include <ATen/Functions.h>
+#include <c10/cuda/CUDAStream.h>
 
 using namespace std;
 namespace at {
@@ -430,15 +431,36 @@ void dlpack_bench(const at::Tensor& src, int repeat) {
     dlpack->deleter(dlpack);
   }
 }
+
+typedef int (*TVMFFICyTensorConverter)(PyObject* py_obj, DLManagedTensor** out, void** env_stream);
+
+int CyTensorConverter(PyObject* py_obj, DLManagedTensor** out, void** env_stream) {
+  try {
+    py::handle handle(py_obj);
+    at::Tensor tensor = handle.cast<at::Tensor>();
+    if (env_stream != nullptr && tensor.is_cuda()) {
+      *env_stream = at::cuda::getCurrentCUDAStream(tensor.device().index()).stream();
+    }
+    *out = at::toDLPackX(tensor);
+    return 0;
+  } catch (const std::exception& e) {
+    PyErr_SetString(PyExc_RuntimeError, e.what());
+    return -1;
+  }
+}
+
+int64_t CyTensorConverterPtr() {
+  return reinterpret_cast<int64_t>(CyTensorConverter);
+}
     """
     dlpack_path = tvm_ffi.libinfo.find_dlpack_include_path()
     print(f"dlpack_path: {dlpack_path}")
     module = cpp_extension.load_inline(
         name="to_dlpack",
         cpp_sources=cpp_source,
-        functions=["to_dlpack", "dlpack_bench"],
+        functions=["to_dlpack", "dlpack_bench", "CyTensorConverterPtr"],
         extra_cflags=["-O3"],
-        extra_include_paths=[dlpack_path],
+        extra_include_paths=[dlpack_path] + cpp_extension.include_paths("cuda"),
         verbose=True,
     )
     return module
@@ -447,7 +469,7 @@ void dlpack_bench(const at::Tensor& src, int repeat) {
 mod = load_to_dlpack()
 dlpack_bench = mod.dlpack_bench
 tvm_ffi.core._torch_to_dlpack_as_intptr = mod.to_dlpack
-
+tvm_ffi.core._torch_tensor_c_converter_ptr = mod.CyTensorConverterPtr()
 
 def run_dlpack_bench(name, func, repeat):
     x = torch.arange(1)

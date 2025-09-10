@@ -51,7 +51,7 @@ struct TVMFFICyCallContext {
  * \param env_stream The environment stream, if not nullptr, the stream will be set to the environment stream.
  * \return 0 on success, nonzero on failure.
  */
-typedef int (*TVMFFICyTensorConverter)(PyObject* py_obj, DLManagedTensor** out, TVMFFIStreamHandle* env_stream);
+typedef int (*TVMFFICyTensorConverter)(PyObject* py_obj, DLManagedTensor** out, void** env_stream);
 
 
 /*! \brief the context for the argument setter */
@@ -98,7 +98,9 @@ class TVMFFICyCallDispatcher {
   * \param c_api_ret_code The return code of the function
   * \return 0 on success, -1 on python error
   */
-  int Call(void* chandle,
+  int Call(
+    TVMFFICyArgSetterFactory setter_factory,
+    void* chandle,
           PyObject* py_arg_tuple,
           TVMFFIAny* workspace_packed_args,
           void** workspace_temp_ffi_objects,
@@ -123,7 +125,7 @@ class TVMFFICyCallDispatcher {
           // no dispatch found, query and create a new one.
           TVMFFICyArgSetter setter;
           // propagate python error back
-          if (setter_factory_(py_arg, &setter) != 0) {
+          if (setter_factory(py_arg, &setter) != 0) {
             return -1;
           }
           dispatch_.emplace(py_type, setter);
@@ -168,16 +170,13 @@ class TVMFFICyCallDispatcher {
     std::cout << "dispatch_.size(): " << dispatch_.size() << std::endl;
   }
 
-  static TVMFFICyCallDispatcher* ThreadLocal(TVMFFICyArgSetterFactory factory) {
-   static thread_local TVMFFICyCallDispatcher inst(factory);
+  static TVMFFICyCallDispatcher* ThreadLocal() {
+   static thread_local TVMFFICyCallDispatcher inst;
    return &inst;
   }
 
  private:
-  explicit TVMFFICyCallDispatcher(TVMFFICyArgSetterFactory factory) : setter_factory_(factory) {}
-
   std::unordered_map<PyTypeObject*, TVMFFICyArgSetter> dispatch_;
-  TVMFFICyArgSetterFactory setter_factory_;
 };
 
 /*!
@@ -201,8 +200,9 @@ int TVMFFICyFuncCall(TVMFFICyArgSetterFactory setter_factory,
                     int num_args,
                     TVMFFIAny* result,
                     int* c_api_ret_code) {
-  return TVMFFICyCallDispatcher::ThreadLocal(setter_factory)->Call(
-    chandle, py_arg_tuple, workspace_packed_args, workspace_temp_args, workspace_temp_py_objects, num_args, result, c_api_ret_code
+  return TVMFFICyCallDispatcher::ThreadLocal()->Call(
+    setter_factory, chandle, py_arg_tuple, workspace_packed_args,
+    workspace_temp_args, workspace_temp_py_objects, num_args, result, c_api_ret_code
   );
 }
 
@@ -234,6 +234,10 @@ inline void TVMFFICyPushTempPyObject(TVMFFICyCallContext* ctx, PyObject* arg) no
 
 inline void TVMFFICySetBitMaskTempArgs(int64_t* bitmask_temp_args, int32_t index) noexcept {
   *bitmask_temp_args |= 1 << index;
+}
+
+inline void TVMFFICyPrintInfo() noexcept {
+  TVMFFICyCallDispatcher::ThreadLocal()->PrintInfo();
 }
 
 #endif

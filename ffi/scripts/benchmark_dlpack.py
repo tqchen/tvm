@@ -41,7 +41,7 @@ import torch
 import numpy as np
 import tvm_ffi
 import time
-# import hack_dlpack
+import hack_dlpack
 
 def print_speed(name, speed):
     print(f"{name:<60} {speed} sec/call")
@@ -376,8 +376,16 @@ def bench_torch_get_current_stream(repeat, name, func):
     print_speed(f"torch.cuda.current_stream[{name}]", speed)
 
 
+def populate_object_table(num_classes):
+    nop = tvm_ffi.get_global_func("testing.nop")
+    dummy_instances = [type(f"DummyClass{i}", (object,), {})() for i in range(num_classes)]
+    for instance in dummy_instances:
+        nop(instance)
+
 def main():
     repeat = 10000
+    num_classes = 1000
+    # populate_object_table(num_classes)
     print("-----------------------------")
     print("Benchmark f(x, y, z) overhead")
     print("-----------------------------")
@@ -424,7 +432,10 @@ def main():
             repeat, "cpp-extension", load_torch_get_current_cuda_stream()
         )
         bench_torch_get_current_stream(repeat, "python", torch_get_cuda_stream_native)
-
+    print("---------------------------------------------------")
+    print("Benchmark tvm_ffi.print_helper_info")
+    print("---------------------------------------------------")
+    tvm_ffi.core.print_helper_info()
 
 if __name__ == "__main__":
     main()

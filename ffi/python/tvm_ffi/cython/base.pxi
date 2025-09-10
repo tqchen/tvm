@@ -273,6 +273,7 @@ cdef extern from "tvm_ffi_cython_helpers.h":
     void TVMFFICySetBitMaskTempArgs(int64_t* bitmask_temp_args, int32_t index) noexcept
     void TVMFFICyPushTempFFIObject(TVMFFICyCallContext* ctx, TVMFFIObjectHandle arg) noexcept
     void TVMFFICyPushTempPyObject(TVMFFICyCallContext* ctx, PyObject* arg) noexcept
+    void TVMFFICyPrintInfo() noexcept
 
 
 cdef class ByteArrayArg:

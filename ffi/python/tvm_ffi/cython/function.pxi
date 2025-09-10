@@ -29,6 +29,8 @@ else:
     torch = None
 
 _torch_to_dlpack_as_intptr = None
+_torch_tensor_c_converter_ptr = None
+
 
 cdef inline object make_ret_small_str(TVMFFIAny result):
     """convert small string to return value."""
@@ -261,6 +263,11 @@ cdef int arg_setter_factory(PyObject* value, TVMFFICyArgSetter* out) except -1:
     if hasattr(arg, "__dlpack_c_converter__"):
         out.func = arg_setter_dlpack_c_converter
         temp_ptr = arg.__dlpack_c_converter__
+        out.tensor_converter = <TVMFFICyTensorConverter>temp_ptr
+        return 0
+    if torch is not None and isinstance(arg, torch.Tensor) and _torch_tensor_c_converter_ptr is not None:
+        temp_ptr = _torch_tensor_c_converter_ptr
+        out.func = arg_setter_dlpack_c_converter
         out.tensor_converter = <TVMFFICyTensorConverter>temp_ptr
         return 0
     # default to opaque object
@@ -541,7 +548,7 @@ class Function(Object):
         # IMPORTANT: caller need to initialize result->type_index to kTVMFFINone
         result.type_index = kTVMFFINone
         result.v_int64 = 0
-        FuncCall((<Object>self).chandle, args, &result, &c_api_ret_code)
+        CyFuncCall((<Object>self).chandle, args, &result, &c_api_ret_code)
         # NOTE: logic is same as check_call
         # directly inline here to simplify traceback
         if c_api_ret_code == 0:
@@ -753,6 +760,8 @@ def _convert_to_opaque_object(object pyobject):
     (<Object>ret).chandle = chandle
     return ret
 
+def print_helper_info():
+    TVMFFICyPrintInfo()
 
 _STR_CONSTRUCTOR = _get_global_func("ffi.String", False)
 _BYTES_CONSTRUCTOR = _get_global_func("ffi.Bytes", False)

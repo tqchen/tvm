@@ -142,7 +142,7 @@ class TensorObj : public Object, public DLTensor {
    * \return The converted DLPack managed tensor.
    */
   DLManagedTensor* ToDLPack() const {
-    bool use_embedded = true;
+    bool use_embedded = false;
     TensorObj* self = const_cast<TensorObj*>(this);
     if (use_embedded) {
       if (embedded_dl_managed_tensor_ == nullptr) {
