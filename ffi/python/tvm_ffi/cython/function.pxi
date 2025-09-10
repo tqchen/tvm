@@ -114,14 +114,12 @@ cdef inline int make_args(tuple py_args, TVMFFIAny* out, list temp_args,
             else:
                 out[i].type_index = kTVMFFIDLTensorPtr
                 out[i].v_ptr = (<Tensor>arg).cdltensor
-        elif isinstance(arg, bool):
-            # A python `bool` is a subclass of `int`, so this check
-            # must occur before `Integral`.
-            out[i].type_index = kTVMFFIBool
-            out[i].v_int64 = arg
         elif isinstance(arg, float):
             out[i].type_index = kTVMFFIFloat
             out[i].v_float64 = arg
+        elif isinstance(arg, Object):
+            out[i].type_index = TVMFFIObjectGetTypeIndex((<Object>arg).chandle)
+            out[i].v_ptr = (<Object>arg).chandle
         elif torch is not None and isinstance(arg, torch.Tensor):
             is_cuda = arg.is_cuda
             if _torch_to_dlpack_as_intptr is not None:
@@ -151,7 +149,7 @@ cdef inline int make_args(tuple py_args, TVMFFIAny* out, list temp_args,
             # TVMFFIObjectIncRef(out[i].v_ptr)
             # TVMFFICySetBitMaskTempArgs(bitmask_temp_args, i)
             TVMFFICySetBitMaskTempArgs(bitmask_temp_args, i)
-        elif PyObject_HasAttrString(arg, "__dlpack__"):
+        elif hasattr(arg, "__dlpack__"):
             _from_dlpack_universal(arg, 0, 0, &temp_chandle)
             out[i].type_index = kTVMFFITensor
             out[i].v_ptr = temp_chandle
@@ -171,13 +169,15 @@ cdef inline int make_args(tuple py_args, TVMFFIAny* out, list temp_args,
                     temp_ptr= arg.__tvm_ffi_env_stream__()
                     ctx_stream[0] = <TVMFFIStreamHandle>temp_ptr
             TVMFFICySetBitMaskTempArgs(bitmask_temp_args, i)
-        elif isinstance(arg, Object):
-            out[i].type_index = TVMFFIObjectGetTypeIndex((<Object>arg).chandle)
-            out[i].v_ptr = (<Object>arg).chandle
         elif isinstance(arg, PyNativeObject) and arg.__tvm_ffi_object__ is not None:
             arg = arg.__tvm_ffi_object__
             out[i].type_index = TVMFFIObjectGetTypeIndex((<Object>arg).chandle)
             out[i].v_ptr = (<Object>arg).chandle
+        elif isinstance(arg, bool):
+            # A python `bool` is a subclass of `int`, so this check
+            # must occur before `Integral`.
+            out[i].type_index = kTVMFFIBool
+            out[i].v_int64 = arg
         elif isinstance(arg, Integral):
             out[i].type_index = kTVMFFIInt
             out[i].v_int64 = arg
