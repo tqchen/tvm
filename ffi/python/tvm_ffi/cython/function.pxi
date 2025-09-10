@@ -541,7 +541,7 @@ class Function(Object):
         # IMPORTANT: caller need to initialize result->type_index to kTVMFFINone
         result.type_index = kTVMFFINone
         result.v_int64 = 0
-        CyFuncCall((<Object>self).chandle, args, &result, &c_api_ret_code)
+        FuncCall((<Object>self).chandle, args, &result, &c_api_ret_code)
         # NOTE: logic is same as check_call
         # directly inline here to simplify traceback
         if c_api_ret_code == 0:
