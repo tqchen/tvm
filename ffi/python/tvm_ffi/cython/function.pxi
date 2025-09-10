@@ -114,8 +114,18 @@ cdef int arg_setter_dlpack_c_converter(void* handle, TVMFFICyCallContext* ctx,  
     cdef DLManagedTensor* temp_managed_tensor
     cdef TVMFFIObjectHandle temp_chandle
     cdef TVMFFICyArgSetter* this = <TVMFFICyArgSetter*>handle
-    if (this.tensor_converter)(arg, &temp_managed_tensor) != 0:
-        return -1
+    cdef TVMFFIStreamHandle env_stream = NULL
+
+    if ctx.ctx_device_id != -1:
+        if (this.tensor_converter)(arg, &temp_managed_tensor, NULL) != 0:
+            return -1
+    else:
+        if (this.tensor_converter)(arg, &temp_managed_tensor, &env_stream) != 0:
+            return -1
+        if ctx.ctx_device_id == -1 and temp_managed_tensor.dl_tensor.device.device_type != kDLCPU:
+            ctx.ctx_stream = env_stream
+            ctx.ctx_device_type = temp_managed_tensor.dl_tensor.device.device_type
+            ctx.ctx_device_id = temp_managed_tensor.dl_tensor.device.device_id
     if TVMFFITensorFromDLPack(temp_managed_tensor, 0, 0, &temp_chandle) != 0:
         raise BufferError("Failed to convert DLManagedTensor to TVMTensor")
     out.type_index = kTVMFFITensor
@@ -235,6 +245,7 @@ cdef int arg_setter_fallback(void* handle, TVMFFICyCallContext* ctx,  PyObject* 
 
 cdef int arg_setter_factory(PyObject* value, TVMFFICyArgSetter* out) except -1:
     cdef object arg = <object>value
+    cdef long long temp_ptr
     if isinstance(arg, Tensor):
         out.func = arg_setter_tensor
         return 0
@@ -249,6 +260,8 @@ cdef int arg_setter_factory(PyObject* value, TVMFFICyArgSetter* out) except -1:
         return 0
     if hasattr(arg, "__dlpack_c_converter__"):
         out.func = arg_setter_dlpack_c_converter
+        temp_ptr = arg.__dlpack_c_converter__
+        out.tensor_converter = <TVMFFICyTensorConverter>temp_ptr
         return 0
     # default to opaque object
     out.func = arg_setter_fallback
@@ -293,7 +306,7 @@ cdef inline int make_args(tuple py_args, TVMFFIAny* out, list temp_args,
     cdef DLTensor* temp_dltensor
     cdef PyObject* temp_pyobj
     cdef DLManagedTensor* temp_managed_tensor
-    cdef TVMFFICyTensorToDLPackCallType temp_dlpack_c_converter
+    cdef TVMFFICyTensorConverter temp_dlpack_c_converter
     cdef TVMFFIObjectHandle temp_chandle
     cdef object arg
     cdef int is_cuda = 0
@@ -339,14 +352,11 @@ cdef inline int make_args(tuple py_args, TVMFFIAny* out, list temp_args,
             temp_args.append(arg)
         elif hasattr(arg, "__dlpack_c_converter__"):
             temp_ptr = arg.__dlpack_c_converter__
-            temp_dlpack_c_converter = <TVMFFICyTensorToDLPackCallType>temp_ptr
-            temp_pyobj = <PyObject*>arg
-            temp_dlpack_c_converter(<void*>temp_pyobj, &temp_managed_tensor)
+            temp_dlpack_c_converter = <TVMFFICyTensorConverter>temp_ptr
+            temp_dlpack_c_converter(<PyObject*>arg, &temp_managed_tensor, NULL)
             TVMFFITensorFromDLPack(temp_managed_tensor, 0, 0, &temp_chandle)
             out[i].type_index = kTVMFFITensor
             out[i].v_ptr = temp_chandle
-            # TVMFFIObjectIncRef(out[i].v_ptr)
-            # TVMFFICySetBitMaskTempArgs(bitmask_temp_args, i)
             TVMFFICySetBitMaskTempArgs(bitmask_temp_args, i)
         elif hasattr(arg, "__dlpack__"):
             _from_dlpack_universal(arg, 0, 0, &temp_chandle)

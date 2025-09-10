@@ -307,15 +307,20 @@ cdef class DLTensorTestWrapper:
 
 
 
-cdef int _dltensor_test_wrapper_to_dlpack(void* py_obj, DLManagedTensor** out) noexcept:
-    cdef PyObject* obj = <PyObject*>py_obj
+cdef int _dltensor_test_wrapper_to_dlpack(PyObject* obj, DLManagedTensor** out, TVMFFIStreamHandle* env_stream) noexcept:
     cdef object ref_obj = <object>obj
     cdef DLTensorTestWrapper wrapper = <DLTensorTestWrapper>ref_obj
+    cdef TVMFFIStreamHandle current_stream
+
+    if env_stream != NULL:
+        env_stream[0] = TVMFFIEnvGetCurrentStream(
+            wrapper.tensor.cdltensor.device.device_type, wrapper.tensor.cdltensor.device.device_id
+        )
     return TVMFFITensorToDLPack(wrapper.tensor.chandle, out)
 
 
 def _set_dlpack_c_converter():
-    cdef TVMFFICyTensorToDLPackCallType converter_func = _dltensor_test_wrapper_to_dlpack
+    cdef TVMFFICyTensorConverter converter_func = _dltensor_test_wrapper_to_dlpack
     cdef void* temp_ptr = <void*>converter_func
     cdef long long temp_int_ptr = <long long>temp_ptr
     DLTensorTestWrapper.__dlpack_c_converter__ = temp_int_ptr

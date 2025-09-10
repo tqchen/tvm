@@ -26,14 +26,6 @@
 #include <unordered_map>
 #include <exception>
 #include <iostream>
-/*!
- * \brief Function pointer to speed convert a Tensor to a DLManagedTensor.
- * \param obj The Tensor to convert.
- * \param out The output DLManagedTensor.
- * \return 0 on success, nonzero on failure.
- */
-typedef int (*TVMFFICyTensorToDLPackCallType)(void* py_obj, DLManagedTensor** out);
-
 
 struct TVMFFICyCallContext {
   /*! \brief the device type to be set during the call */
@@ -56,9 +48,10 @@ struct TVMFFICyCallContext {
  * \brief Function pointer to speed convert a Tensor to a DLManagedTensor.
  * \param obj The Tensor to convert.
  * \param out The output DLManagedTensor.
+ * \param env_stream The environment stream, if not nullptr, the stream will be set to the environment stream.
  * \return 0 on success, nonzero on failure.
  */
-typedef int (*TVMFFICyTensorConverter)(PyObject* py_obj, DLManagedTensor** out);
+typedef int (*TVMFFICyTensorConverter)(PyObject* py_obj, DLManagedTensor** out, TVMFFIStreamHandle* env_stream);
 
 
 /*! \brief the context for the argument setter */
@@ -169,6 +162,10 @@ class TVMFFICyCallDispatcher {
       c_api_ret_code[0] = -1;
       return 0;
     }
+  }
+
+  void PrintInfo() {
+    std::cout << "dispatch_.size(): " << dispatch_.size() << std::endl;
   }
 
   static TVMFFICyCallDispatcher* ThreadLocal(TVMFFICyArgSetterFactory factory) {

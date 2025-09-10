@@ -245,8 +245,6 @@ cdef extern from "tvm/ffi/extra/c_env_api.h":
 
 
 cdef extern from "tvm_ffi_cython_helpers.h":
-    ctypedef int (*TVMFFICyTensorToDLPackCallType)(void* py_obj, DLManagedTensor** out) noexcept
-
     ctypedef struct TVMFFICyCallContext:
         int ctx_device_type
         int ctx_device_id
@@ -257,7 +255,7 @@ cdef extern from "tvm_ffi_cython_helpers.h":
         int num_temp_py_objects
 
 
-    ctypedef int (*TVMFFICyTensorConverter)(PyObject* py_obj, DLManagedTensor** out) noexcept
+    ctypedef int (*TVMFFICyTensorConverter)(PyObject* py_obj, DLManagedTensor** out, TVMFFIStreamHandle* env_stream) noexcept
     ctypedef struct TVMFFICyArgSetter:
         int (*func)(void* handle, TVMFFICyCallContext* ctx,  PyObject* py_arg, TVMFFIAny* out) except -1
         TVMFFICyTensorConverter tensor_converter
