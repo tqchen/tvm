@@ -72,7 +72,6 @@ void dlpack_py_c_exporter_bench(int64_t py_obj_ptr, int64_t dlpack_c_exporter, i
 
 
 def run_dlpack_cpp_exporter_bench(name, x, func, repeat):
-    x = tvm_ffi.from_dlpack(torch.arange(1))
     func(x, 1)
     tstart = time.time()
     func(x, repeat)
@@ -103,7 +102,7 @@ def main():
         torch_module = hack_torch_dlpack.load_to_dlpack()
         x.__dlpack_c_exporter__ = torch_module.TorchDLPackPyCExporterPtr(False)
         x.__dlpack_c_exporter_cached__ = torch_module.TorchDLPackPyCExporterPtr(True)
-        run_dlpack_cpp_exporter_bench("torch-cpp-exporter-bench", x, module.dlpack_cpp_exporter_bench, repeat)
+        run_dlpack_cpp_exporter_bench("torch-cpp-exporter-bench", x, torch_module.dlpack_cpp_exporter_bench, repeat)
         # run_dlpack_py_c_exporter_bench("torch-py-c-exporter-bench", x, module.dlpack_py_c_exporter_bench, repeat, cached=False)
 
 if __name__ == "__main__":
