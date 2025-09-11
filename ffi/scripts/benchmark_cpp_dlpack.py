@@ -37,14 +37,12 @@ extern "C" {
 typedef int (*DLPackPyCExporter)(void* py_obj, DLManagedTensorVersioned** out, void** env_stream);
 }
 
-void dlpack_cpp_bench(tvm::ffi::Tensor input, int repeat) {
+void dlpack_cpp_exporter_bench(tvm::ffi::Tensor input, int repeat) {
   TVMFFIObjectHandle chandle = tvm::ffi::details::ObjectUnsafe::MoveObjectRefToTVMFFIObjectPtr(std::move(input));
-  TVMFFIObjectHandle output;
   DLManagedTensorVersioned* dlpack;
   for (int i = 0; i < repeat; i++) {
     TVM_FFI_CHECK_SAFE_CALL(TVMFFITensorToDLPackVersioned(chandle, &dlpack));
-    TVM_FFI_CHECK_SAFE_CALL(TVMFFITensorFromDLPackVersioned(dlpack, 0, 0, &output));
-    TVMFFIObjectDecRef(output);
+    dlpack->deleter(dlpack);
   }
   TVMFFIObjectDecRef(chandle);
 }
@@ -68,7 +66,7 @@ void dlpack_py_c_exporter_bench(int64_t py_obj_ptr, int64_t dlpack_c_exporter, i
     return module
 
 
-def run_dlpack_cpp_bench(name, func, repeat):
+def run_dlpack_cpp_exporter_bench(name, func, repeat):
     x = tvm_ffi.from_dlpack(torch.arange(1))
     func(x, 1)
     tstart = time.time()
@@ -91,7 +89,7 @@ def run_dlpack_py_c_exporter_bench(name, func, repeat, cached=False):
 def main():
     repeat = 10000
     module = get_ffi_dlpack_bench()
-    run_dlpack_cpp_bench("cpp-bench", module.dlpack_cpp_bench, repeat)
+    run_dlpack_cpp_exporter_bench("cpp-exporter-bench", module.dlpack_cpp_exporter_bench, repeat)
     run_dlpack_py_c_exporter_bench("py-c-exporter-bench", module.dlpack_py_c_exporter_bench, repeat, cached=False)
     run_dlpack_py_c_exporter_bench("py-c-exporter-bench", module.dlpack_py_c_exporter_bench, repeat, cached=True)
 
