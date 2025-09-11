@@ -81,9 +81,9 @@ def run_dlpack_cpp_exporter_bench(name, x, func, repeat):
 
 def run_dlpack_py_c_exporter_bench(name, x, func, repeat, cached=False):
     func_ptr = x.__dlpack_c_exporter_cached__ if cached else x.__dlpack_c_exporter__
-    func(x.__pyobject_ptr__(), func_ptr, 1)
+    func(id(x), func_ptr, 1)
     tstart = time.time()
-    func(x.__pyobject_ptr__(), func_ptr, repeat)
+    func(id(x), func_ptr, repeat)
     tend = time.time()
     print_speed(f"{name}[cached={cached}]", (tend - tstart) / repeat)
 
@@ -103,7 +103,8 @@ def main():
         x.__dlpack_c_exporter__ = torch_module.TorchDLPackPyCExporterPtr(False)
         x.__dlpack_c_exporter_cached__ = torch_module.TorchDLPackPyCExporterPtr(True)
         run_dlpack_cpp_exporter_bench("torch-cpp-exporter-bench", x, torch_module.dlpack_cpp_exporter_bench, repeat)
-        # run_dlpack_py_c_exporter_bench("torch-py-c-exporter-bench", x, module.dlpack_py_c_exporter_bench, repeat, cached=False)
+        run_dlpack_py_c_exporter_bench("torch-py-c-exporter-bench", x, module.dlpack_py_c_exporter_bench, repeat, cached=False)
+        run_dlpack_py_c_exporter_bench("torch-py-c-exporter-bench", x, module.dlpack_py_c_exporter_bench, repeat, cached=True)
 
 if __name__ == "__main__":
     main()

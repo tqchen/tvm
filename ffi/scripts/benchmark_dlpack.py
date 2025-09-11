@@ -41,6 +41,7 @@ import torch
 import numpy as np
 import tvm_ffi
 import time
+import hack_torch_dlpack
 
 
 def print_speed(name, speed):

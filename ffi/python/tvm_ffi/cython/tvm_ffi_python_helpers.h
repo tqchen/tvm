@@ -158,20 +158,9 @@ class DLPackPyIntrusiveCache : public DLManagedTensorVersioned {
  * \param source The underlying DLTensor
  * \return 0 on success, -1 on failure
  */
-int DLPackPyIntrusiveCacheAttach(
+inline int DLPackPyIntrusiveCacheAttach(
   PyObject* parent, DLManagedTensorVersioned* source, DLManagedTensorVersioned** out) {
   return DLPackPyIntrusiveCache<DLManagedTensorVersioned>::Attach(parent, source, out);
-}
-
-/*!
- * \brief Attach the IntrusiveDLPackCache to the parent PyObject, overload for DLManagedTensor
- * \param parent The parent PyObject that holds the reference to the data
- * \param source The underlying DLTensor
- * \return 0 on success, -1 on failure
- */
-int DLPackPyIntrusiveCacheAttach(
-  PyObject* parent, DLManagedTensor* source, DLManagedTensorVersioned** out) {
-  return DLPackPyIntrusiveCache<DLManagedTensor>::Attach(parent, source, out);
 }
 
 /*!
@@ -182,7 +171,7 @@ int DLPackPyIntrusiveCacheAttach(
  * \note This operation will increase the reference count of the parent if successful
  *       caller needs to call deleter of out explicitly to reduce the reference count
  */
-int DLPackPyIntrusiveCacheFetch(PyObject* parent, DLManagedTensorVersioned** out) {
+inline int DLPackPyIntrusiveCacheFetch(PyObject* parent, DLManagedTensorVersioned** out) {
   return DLPackPyIntrusiveCache<DLManagedTensorVersioned>::Fetch(parent, out);
 }
 
