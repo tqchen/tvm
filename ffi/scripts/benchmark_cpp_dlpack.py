@@ -23,6 +23,12 @@ import tvm_ffi.cpp
 import torch
 import time
 
+try:
+  import hack_torch_dlpack
+except ImportError:
+  hack_torch_dlpack = None
+  pass
+
 def print_speed(name, speed):
     print(f"{name:<60} {speed} sec/call")
 
@@ -33,9 +39,8 @@ def get_ffi_dlpack_bench():
 #include <iostream>
 namespace ffi = tvm::ffi;
 
-extern "C" {
 typedef int (*DLPackPyCExporter)(void* py_obj, DLManagedTensorVersioned** out, void** env_stream);
-}
+
 
 void dlpack_cpp_exporter_bench(tvm::ffi::Tensor input, int repeat) {
   TVMFFIObjectHandle chandle = tvm::ffi::details::ObjectUnsafe::MoveObjectRefToTVMFFIObjectPtr(std::move(input));
@@ -66,7 +71,7 @@ void dlpack_py_c_exporter_bench(int64_t py_obj_ptr, int64_t dlpack_c_exporter, i
     return module
 
 
-def run_dlpack_cpp_exporter_bench(name, func, repeat):
+def run_dlpack_cpp_exporter_bench(name, x, func, repeat):
     x = tvm_ffi.from_dlpack(torch.arange(1))
     func(x, 1)
     tstart = time.time()
@@ -75,9 +80,7 @@ def run_dlpack_cpp_exporter_bench(name, func, repeat):
     print_speed(name, (tend - tstart) / repeat)
 
 
-def run_dlpack_py_c_exporter_bench(name, func, repeat, cached=False):
-    x = tvm_ffi.from_dlpack(torch.arange(1))
-    x = tvm_ffi.core.DLTensorTestWrapper(x)
+def run_dlpack_py_c_exporter_bench(name, x, func, repeat, cached=False):
     func_ptr = x.__dlpack_c_exporter_cached__ if cached else x.__dlpack_c_exporter__
     func(x.__pyobject_ptr__(), func_ptr, 1)
     tstart = time.time()
@@ -86,12 +89,22 @@ def run_dlpack_py_c_exporter_bench(name, func, repeat, cached=False):
     print_speed(f"{name}[cached={cached}]", (tend - tstart) / repeat)
 
 
+
 def main():
     repeat = 10000
     module = get_ffi_dlpack_bench()
-    run_dlpack_cpp_exporter_bench("cpp-exporter-bench", module.dlpack_cpp_exporter_bench, repeat)
-    run_dlpack_py_c_exporter_bench("py-c-exporter-bench", module.dlpack_py_c_exporter_bench, repeat, cached=False)
-    run_dlpack_py_c_exporter_bench("py-c-exporter-bench", module.dlpack_py_c_exporter_bench, repeat, cached=True)
+    x = torch.arange(1, device="cuda")
+    ffi_x = tvm_ffi.from_dlpack(x)
+    wrapper_x = tvm_ffi.core.DLTensorTestWrapper(ffi_x)
+    run_dlpack_cpp_exporter_bench("cpp-exporter-bench", ffi_x, module.dlpack_cpp_exporter_bench, repeat)
+    run_dlpack_py_c_exporter_bench("py-c-exporter-bench", wrapper_x, module.dlpack_py_c_exporter_bench, repeat, cached=False)
+    run_dlpack_py_c_exporter_bench("py-c-exporter-bench", wrapper_x, module.dlpack_py_c_exporter_bench, repeat, cached=True)
+    if hack_torch_dlpack is not None:
+        torch_module = hack_torch_dlpack.load_to_dlpack()
+        x.__dlpack_c_exporter__ = torch_module.TorchDLPackPyCExporterPtr(False)
+        x.__dlpack_c_exporter_cached__ = torch_module.TorchDLPackPyCExporterPtr(True)
+        run_dlpack_cpp_exporter_bench("torch-cpp-exporter-bench", x, module.dlpack_cpp_exporter_bench, repeat)
+        # run_dlpack_py_c_exporter_bench("torch-py-c-exporter-bench", x, module.dlpack_py_c_exporter_bench, repeat, cached=False)
 
 if __name__ == "__main__":
     main()
