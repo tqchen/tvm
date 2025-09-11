@@ -286,6 +286,7 @@ _register_object_by_index(kTVMFFITensor, Tensor)
 cdef int _dltensor_test_wrapper_dlpack_c_exporter(
     void* obj, DLManagedTensorVersioned** out, TVMFFIStreamHandle* env_stream
 ) except -1:
+    cdef PyObject* py_obj = <PyObject*>obj
     cdef object ref_obj = <object>(<PyObject*>obj)
     cdef DLTensorTestWrapper wrapper = <DLTensorTestWrapper>ref_obj
     cdef TVMFFIStreamHandle current_stream
@@ -295,6 +296,7 @@ cdef int _dltensor_test_wrapper_dlpack_c_exporter(
             wrapper.tensor.cdltensor.device.device_type,
             wrapper.tensor.cdltensor.device.device_id
         )
+
     return TVMFFITensorToDLPackVersioned(wrapper.tensor.chandle, out)
 
 

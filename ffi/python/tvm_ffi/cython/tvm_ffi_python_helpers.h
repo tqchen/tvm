@@ -34,6 +34,92 @@
 /// We deliberately designed the data structure and function to be C-style
 //  prefixed with TVMFFIPy so they can be easily invoked through Cython.
 ///--------------------------------------------------------------------------------
+
+/*!
+ * \brief An intrusive cache for the DLManagedTensorVersioned
+ *
+ * \note When created, the PyCapsule MUST be attached to the parent PyObject
+ *       and remain unchanged until the PyCapsule is destroyed.
+ *
+ * \param parent The parent PyObject that holds the reference to the data
+ * \param source The underlying DLTensor
+ * \param source The source type, can be DLManagedTensor or DLManagedTensorVersioned
+ *
+ */
+template <typename SourceType>
+class TVMFFIPyIntrusiveDLPackCache : public DLManagedTensorVersioned {
+ public:
+  /*
+   * \brief The name of the attribute that holds the PyCapsule
+   */
+  static const char* kAttachedAttrName = "__dlpack_cache__";
+  /*
+   * \brief Attach the PyCapsule to the parent PyObject
+   * \param parent The parent PyObject that holds the reference to the data
+   * \param source The underlying DLTensor
+   * \param source The source type, can be DLManagedTensor or DLManagedTensorVersioned
+   * \return 0 on success, -1 on failure
+   */
+  static int Attach(PyObject* parent, SourceType* source) {
+    // create the PyCapsule
+    PyCapsule* capsule = PyCapsule_New(new SelfType(parent, source), nullptr, PyCapsuleDeleter);
+    if (capsule == nullptr) return -1;
+    // set the attribute to the parent
+    if (PyObject_SetAttrString(parent, kAttachedAttrName, capsule) != 0) return -1;
+    // release the reference to the PyCapsule, as it is now attached to the parent
+    Py_DECREF(capsule);
+    // increase reference count of the parent, so future deleter will decref the parent
+    Py_INCREF(parent);
+    return 0;
+  }
+
+ private:
+  using SelfType = TVMFFIPyIntrusiveDLPackCache<SourceType>;
+  // underlying DLTensor, mainly to be compact with
+  // older version of torch. Upgrade once torch releases latest support
+  SourceType* source_;
+
+  TVMFFIPyIntrusiveDLPackCache(PyObject* parent, SourceType* source)
+    : source_(source) {
+    this->dl_tensor = source->dl_tensor;
+    this->version.major = DLPACK_MAJOR_VERSION;
+    this->version.minor = DLPACK_MINOR_VERSION;
+    this->manager_ctx = parent;
+    this->deleter = DLManagedTensorVersionedDeleter;
+    this->flags = 0;
+  }
+
+  ~TVMFFIPyIntrusiveDLPackCache() {
+    source_->deleter(source_);
+  }
+
+  static void PyCapsuleDeleter(PyObject* self) {
+    void* ptr = PyCapsule_GetPointer(self, nullptr);
+    if (ptr != nullptr) {
+      delete static_cast<SelfType*>(ptr);
+    }
+  }
+
+  static void DLManagedTensorVersionedDeleter(DLManagedTensorVersioned* self) {
+    // deleter must be called with GIL acquired
+    // because we need to decref the parent
+    PyGILState_STATE gstate;
+    gstate = PyGILState_Ensure();
+    Py_DECREF(static_cast<PyObject*>(self->ctx));
+    PyGILState_Release(gstate);
+  }
+};
+
+/*!
+ * \brief Attach the IntrusiveDLPackCache to the parent PyObject
+ * \param parent The parent PyObject that holds the reference to the data
+ * \param source The underlying DLTensor
+ * \return 0 on success, -1 on failure
+ */
+int TVMFFIPyAttachIntrusiveDLPackCache(PyObject* parent, DLManagedTensorVersioned* source) {
+  return TVMFFIPyIntrusiveDLPackCache<DLManagedTensorVersioned>::Attach(parent, source);
+}
+
 /*!
  * \brief Context for each ffi call to track the stream, device and temporary arguments.
  */
