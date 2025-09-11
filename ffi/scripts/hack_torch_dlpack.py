@@ -292,7 +292,6 @@ class DLPackPyIntrusiveCache : public DLManagedTensorVersioned {
     Py_DECREF(capsule);
     // increase reference count of the parent, so future deleter will decref the parent
     Py_INCREF(parent);
-    std::cout << "parent counter=" << Py_REFCNT(parent);    
     *out = cache;
     return 0;
   }
@@ -332,7 +331,7 @@ class DLPackPyIntrusiveCache : public DLManagedTensorVersioned {
   }
 
   static void PyCapsuleDeleter(PyObject* self) {
-    std::cout << "PyCapsuleDeleter triggered" << std::endl;    
+    std::cout << "PyCapsuleDeleter triggered" << std::endl;
     void* ptr = PyCapsule_GetPointer(self, nullptr);
     if (ptr != nullptr) {
       delete static_cast<SelfType*>(ptr);
@@ -345,8 +344,7 @@ class DLPackPyIntrusiveCache : public DLManagedTensorVersioned {
     PyGILState_STATE gstate;
     gstate = PyGILState_Ensure();
     PyObject* py_obj = static_cast<PyObject*>(self->manager_ctx);
-    std::cout << "Deleter triggered!! refcount= " << Py_REFCNT(py_obj) << std::endl;
-    Py_DECREF(py_obj);    
+    Py_DECREF(py_obj);
     PyGILState_Release(gstate);
   }
 };
@@ -401,13 +399,20 @@ void dlpack_py_c_exporter_bench(int64_t py_obj_ptr, int64_t dlpack_c_exporter, i
     dlpack->deleter(dlpack);
   }
 }
+
+void refcount_update(int64_t py_obj_ptr) {
+  PyObject* py_obj = reinterpret_cast<PyObject*>(py_obj_ptr);
+  std::cout << "refcount=" << Py_REFCNT(py_obj) << std::endl;
+  Py_INCREF(py_obj);
+  Py_DECREF(py_obj);
+}
     """
     dlpack_path = tvm_ffi.libinfo.find_dlpack_include_path()
     print(f"dlpack_path: {dlpack_path}")
     module = cpp_extension.load_inline(
         name="to_dlpack",
         cpp_sources=cpp_source,
-        functions=["dlpack_cpp_exporter_bench", "TorchDLPackPyCExporterPtr", "dlpack_py_c_exporter_bench"],
+        functions=["dlpack_cpp_exporter_bench", "TorchDLPackPyCExporterPtr", "dlpack_py_c_exporter_bench", "refcount_update"],
         extra_cflags=["-O3"],
         extra_include_paths=[dlpack_path] + cpp_extension.include_paths("cuda"),
         verbose=True,
