@@ -386,13 +386,24 @@ int64_t TorchDLPackPyCExporterPtr(bool cached) {
 inline int64_t TorchDLPackPyCExporterPtrCached(PyObject* py_obj) {
   return reinterpret_cast<int64_t>(TorchDLPackPyCExporterCached);
 }
+
+void dlpack_py_c_exporter_bench(int64_t py_obj_ptr, int64_t dlpack_c_exporter, int repeat) {
+  py::gil_scoped_acquire ensure;
+  DLPackPyCExporter exporter = reinterpret_cast<DLPackPyCExporter>(dlpack_c_exporter);
+  void* py_obj = reinterpret_cast<void*>(py_obj_ptr);
+  for (int i = 0; i < repeat; i++) {
+    DLManagedTensorVersioned* dlpack;
+    (*exporter)(py_obj, &dlpack, nullptr);
+    dlpack->deleter(dlpack);
+  }
+}
     """
     dlpack_path = tvm_ffi.libinfo.find_dlpack_include_path()
     print(f"dlpack_path: {dlpack_path}")
     module = cpp_extension.load_inline(
         name="to_dlpack",
         cpp_sources=cpp_source,
-        functions=["dlpack_cpp_exporter_bench", "TorchDLPackPyCExporterPtr"],
+        functions=["dlpack_cpp_exporter_bench", "TorchDLPackPyCExporterPtr", "dlpack_py_c_exporter_bench"],
         extra_cflags=["-O3"],
         extra_include_paths=[dlpack_path] + cpp_extension.include_paths("cuda"),
         verbose=True,
@@ -402,3 +413,4 @@ inline int64_t TorchDLPackPyCExporterPtrCached(PyObject* py_obj) {
 
 mod = load_to_dlpack()
 tvm_ffi.core._torch_dlpack_c_exporter_ptr = mod.TorchDLPackPyCExporterPtr(False)
+tvm_ffi.core._torch_dlpack_c_exporter_ptr = mod.TorchDLPackPyCExporterPtr(True)

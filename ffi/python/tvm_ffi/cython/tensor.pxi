@@ -284,7 +284,7 @@ _register_object_by_index(kTVMFFITensor, Tensor)
 
 cdef int _dltensor_test_wrapper_dlpack_c_exporter(
     void* obj, DLManagedTensorVersioned** out, TVMFFIStreamHandle* env_stream
-) except -1 with gil:
+) except -1:
     cdef PyObject* py_obj = <PyObject*>obj
     cdef DLTensorTestWrapper wrapper = <DLTensorTestWrapper>py_obj
     cdef TVMFFIStreamHandle current_stream
@@ -300,7 +300,7 @@ cdef int _dltensor_test_wrapper_dlpack_c_exporter(
 
 cdef int _dltensor_test_wrapper_dlpack_c_exporter_cached(
     void* obj, DLManagedTensorVersioned** out, TVMFFIStreamHandle* env_stream
-) except -1 with gil:
+) except -1:
     cdef PyObject* py_obj = <PyObject*>obj
     cdef DLManagedTensorVersioned* temp_managed_tensor = NULL
     # first try to query the cache
