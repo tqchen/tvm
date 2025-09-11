@@ -60,7 +60,7 @@ void dlpack_py_c_exporter_bench(int64_t py_obj_ptr, int64_t dlpack_c_exporter, i
     module = tvm_ffi.cpp.load_inline(
         name="dlpack_bench",
         cpp_sources=cpp_source,
-        functions=["dlpack_cpp_bench", "dlpack_py_c_exporter_bench"],
+        functions=["dlpack_cpp_exporter_bench", "dlpack_py_c_exporter_bench"],
         extra_cflags=["-O3"],
     )
     return module
