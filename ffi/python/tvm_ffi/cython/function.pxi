@@ -353,13 +353,13 @@ cdef int TVMFFIPyArgSetterFactory_(PyObject* value, TVMFFIPyArgSetter* out) exce
     if hasattr(arg, "__dlpack_c_exporter__"):
         out.func = TVMFFIPyArgSetterDLPackCExporter_
         temp_ptr = arg.__dlpack_c_exporter__
-        out.dlpack_c_exporter = <DLPackPyObjectCExporter>temp_ptr
+        out.dlpack_c_exporter = <DLPackPyCExporter>temp_ptr
         return 0
     if torch is not None and isinstance(arg, torch.Tensor):
         if _torch_dlpack_c_exporter_ptr is not None:
             temp_ptr = _torch_dlpack_c_exporter_ptr
             out.func = TVMFFIPyArgSetterDLPackCExporter_
-            out.dlpack_c_exporter = <DLPackPyObjectCExporter>temp_ptr
+            out.dlpack_c_exporter = <DLPackPyCExporter>temp_ptr
         else:
             out.func = TVMFFIPyArgSetterTorch_
         return 0

@@ -246,19 +246,26 @@ cdef extern from "tvm/ffi/extra/c_env_api.h":
 
 cdef extern from "tvm_ffi_python_helpers.h":
     # no need to expose fields of the call context
+     # setter data structure
+    ctypedef int (*DLPackPyCExporter)(
+        void* py_obj, DLManagedTensorVersioned** out, TVMFFIStreamHandle* env_stream
+    ) except -1
+
+    int DLPackPyIntrusiveCacheAttach(
+        PyObject* parent,
+        DLManagedTensorVersioned* source,
+        DLManagedTensorVersioned** out
+    ) except -1
+    int DLPackPyIntrusiveCacheFetch(PyObject* parent, DLManagedTensorVersioned** out) except -1
+
     ctypedef struct TVMFFIPyCallContext:
         int device_type
         int device_id
         TVMFFIStreamHandle stream
 
-     # setter data structure
-    ctypedef int (*DLPackPyObjectCExporter)(
-        void* py_obj, DLManagedTensorVersioned** out, TVMFFIStreamHandle* env_stream
-    ) except -1
-
     ctypedef struct TVMFFIPyArgSetter:
         int (*func)(TVMFFIPyArgSetter* handle, TVMFFIPyCallContext* ctx,  PyObject* py_arg, TVMFFIAny* out) except -1
-        DLPackPyObjectCExporter dlpack_c_exporter
+        DLPackPyCExporter dlpack_c_exporter
 
     ctypedef int (*TVMFFIPyArgSetterFactory)(PyObject* value, TVMFFIPyArgSetter* out) except -1
     # The main call function

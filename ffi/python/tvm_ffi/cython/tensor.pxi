@@ -282,15 +282,13 @@ _set_class_tensor(Tensor)
 _register_object_by_index(kTVMFFITensor, Tensor)
 
 
-
 cdef int _dltensor_test_wrapper_dlpack_c_exporter(
     void* obj, DLManagedTensorVersioned** out, TVMFFIStreamHandle* env_stream
-) except -1:
+) except -1 with gil:
     cdef PyObject* py_obj = <PyObject*>obj
-    cdef object ref_obj = <object>(<PyObject*>obj)
-    cdef DLTensorTestWrapper wrapper = <DLTensorTestWrapper>ref_obj
+    cdef DLTensorTestWrapper wrapper = <DLTensorTestWrapper>py_obj
     cdef TVMFFIStreamHandle current_stream
-
+    cdef DLManagedTensorVersioned* temp_managed_tensor
     if env_stream != NULL:
         env_stream[0] = TVMFFIEnvGetCurrentStream(
             wrapper.tensor.cdltensor.device.device_type,
@@ -300,19 +298,45 @@ cdef int _dltensor_test_wrapper_dlpack_c_exporter(
     return TVMFFITensorToDLPackVersioned(wrapper.tensor.chandle, out)
 
 
-def _dltensor_test_wrapper_dlpack_c_exporter_as_intptr():
-    cdef DLPackPyObjectCExporter converter_func = _dltensor_test_wrapper_dlpack_c_exporter
+cdef int _dltensor_test_wrapper_dlpack_c_exporter_cached(
+    void* obj, DLManagedTensorVersioned** out, TVMFFIStreamHandle* env_stream
+) except -1 with gil:
+    cdef PyObject* py_obj = <PyObject*>obj
+    cdef DLManagedTensorVersioned* temp_managed_tensor = NULL
+    # first try to query the cache
+    if DLPackPyIntrusiveCacheFetch(py_obj, &temp_managed_tensor) != 0:
+        return -1
+    # if cache is found, return it
+    if temp_managed_tensor != NULL:
+        out[0] = temp_managed_tensor
+        if env_stream != NULL:
+            env_stream[0] = TVMFFIEnvGetCurrentStream(
+                temp_managed_tensor.dl_tensor.device.device_type,
+                temp_managed_tensor.dl_tensor.device.device_id
+            )
+        return 0
+    # if cache is not found, create a new one
+    _dltensor_test_wrapper_dlpack_c_exporter(obj, &temp_managed_tensor, env_stream)
+    return DLPackPyIntrusiveCacheAttach(py_obj, temp_managed_tensor, out)
+
+
+def _dltensor_test_wrapper_dlpack_c_exporter_as_intptr(cached=False):
+    cdef DLPackPyCExporter converter_func = (
+        _dltensor_test_wrapper_dlpack_c_exporter_cached
+        if cached else _dltensor_test_wrapper_dlpack_c_exporter
+    )
     cdef void* temp_ptr = <void*>converter_func
     cdef long long temp_int_ptr = <long long>temp_ptr
-    DLTensorTestWrapper.__dlpack_c_exporter__ = temp_int_ptr
     return temp_int_ptr
 
 
 cdef class DLTensorTestWrapper:
     """Wrapper of a Tensor that exposes DLPack protocol, only for testing purpose.
     """
-    __dlpack_c_exporter__ = _dltensor_test_wrapper_dlpack_c_exporter_as_intptr()
+    __dlpack_c_exporter__ = _dltensor_test_wrapper_dlpack_c_exporter_as_intptr(cached=False)
+    __dlpack_c_exporter_cached__ = _dltensor_test_wrapper_dlpack_c_exporter_as_intptr(cached=True)
     cdef Tensor tensor
+    cdef dict __dict__
     def __init__(self, tensor):
         self.tensor = tensor
 
@@ -331,6 +355,9 @@ cdef class DLTensorTestWrapper:
 
     def __dlpack__(self, *, **kwargs):
         return self.tensor.__dlpack__(**kwargs)
+
+    def __pyobject_ptr__(self):
+        return <long long><PyObject*>self
 
 
 cdef inline object make_ret_dltensor(TVMFFIAny result):

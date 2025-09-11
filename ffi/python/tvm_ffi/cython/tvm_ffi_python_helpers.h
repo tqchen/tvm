@@ -29,11 +29,22 @@
 
 #include <exception>
 #include <unordered_map>
+#include <iostream>
 
 ///--------------------------------------------------------------------------------
 /// We deliberately designed the data structure and function to be C-style
 //  prefixed with TVMFFIPy so they can be easily invoked through Cython.
 ///--------------------------------------------------------------------------------
+/*!
+ * \brief C-style function pointer to speed convert a Tensor to a DLManagedTensorVersioned.
+ * \param py_obj The Python object to convert, this should be PyObject*
+ * \param out The output DLManagedTensorVersioned.
+ * \param env_stream Outputs the current context stream of the device provided by the tensor.
+ * \return 0 on success, -1 on failure. PyError should be set if -1 is returned.
+ * \note We use void* to avoid dependency on Python.h so this specific type is
+ *       not dependent on Python.h and can be copied to dlpack.h
+ */
+typedef int (*DLPackPyCExporter)(void* py_obj, DLManagedTensorVersioned** out, void** env_stream);
 
 /*!
  * \brief An intrusive cache for the DLManagedTensorVersioned
@@ -47,39 +58,70 @@
  *
  */
 template <typename SourceType>
-class TVMFFIPyIntrusiveDLPackCache : public DLManagedTensorVersioned {
+class DLPackPyIntrusiveCache : public DLManagedTensorVersioned {
  public:
   /*
    * \brief The name of the attribute that holds the PyCapsule
    */
-  static const char* kAttachedAttrName = "__dlpack_cache__";
+  static constexpr const char* kAttachedAttrName = "__dlpack_cache__";
+  /*!
+   * \brief Get the attribute name
+   * \return The attribute name
+   */
+  static PyObject* GetAttachedAttrName() {
+    // the value is alive in entire program process, so we don't need to decref it
+    static PyObject* attr_name = PyUnicode_InternFromString(kAttachedAttrName);
+    return attr_name;
+  }
   /*
    * \brief Attach the PyCapsule to the parent PyObject
    * \param parent The parent PyObject that holds the reference to the data
    * \param source The underlying DLTensor
    * \param source The source type, can be DLManagedTensor or DLManagedTensorVersioned
+   * \param out The output DLManagedTensorVersioned
    * \return 0 on success, -1 on failure
    */
-  static int Attach(PyObject* parent, SourceType* source) {
+  static int Attach(PyObject* parent, SourceType* source, DLManagedTensorVersioned** out) {
     // create the PyCapsule
-    PyCapsule* capsule = PyCapsule_New(new SelfType(parent, source), nullptr, PyCapsuleDeleter);
+    SelfType* cache = new SelfType(parent, source);
+    PyObject* capsule = PyCapsule_New(cache, nullptr, PyCapsuleDeleter);
     if (capsule == nullptr) return -1;
     // set the attribute to the parent
-    if (PyObject_SetAttrString(parent, kAttachedAttrName, capsule) != 0) return -1;
+    if (PyObject_SetAttr(parent, GetAttachedAttrName(), capsule) != 0) return -1;
     // release the reference to the PyCapsule, as it is now attached to the parent
     Py_DECREF(capsule);
     // increase reference count of the parent, so future deleter will decref the parent
     Py_INCREF(parent);
+    *out = cache;
+    return 0;
+  }
+
+  /*!
+   * \brief Fetch the IntrusiveDLPackCache from the parent PyObject
+   * \param parent The parent PyObject that holds the reference to the data
+   * \param out The output DLManagedTensorVersioned, if not found, return nullptr
+   * \return 0 on success, -1 on failure
+   */
+  static int Fetch(PyObject* parent, DLManagedTensorVersioned** out) {
+    if (PyObject_HasAttr(parent, GetAttachedAttrName()) == 0) {
+      *out = nullptr;
+      return 0;
+    }
+    PyObject* capsule = PyObject_GetAttr(parent, GetAttachedAttrName());
+    if (capsule == nullptr) return -1;
+    *out = static_cast<DLManagedTensorVersioned*>(PyCapsule_GetPointer(capsule, nullptr));
+    Py_INCREF(parent);
+    Py_DECREF(capsule);
     return 0;
   }
 
  private:
-  using SelfType = TVMFFIPyIntrusiveDLPackCache<SourceType>;
+  using SelfType = DLPackPyIntrusiveCache<SourceType>;
   // underlying DLTensor, mainly to be compact with
   // older version of torch. Upgrade once torch releases latest support
   SourceType* source_;
 
-  TVMFFIPyIntrusiveDLPackCache(PyObject* parent, SourceType* source)
+  DLPackPyIntrusiveCache(PyObject* parent, SourceType* source)
     : source_(source) {
     this->dl_tensor = source->dl_tensor;
     this->version.major = DLPACK_MAJOR_VERSION;
@@ -89,7 +131,7 @@ class TVMFFIPyIntrusiveDLPackCache : public DLManagedTensorVersioned {
     this->flags = 0;
   }
 
-  ~TVMFFIPyIntrusiveDLPackCache() {
+  ~DLPackPyIntrusiveCache() {
     source_->deleter(source_);
   }
 
@@ -105,7 +147,7 @@ class TVMFFIPyIntrusiveDLPackCache : public DLManagedTensorVersioned {
     // because we need to decref the parent
     PyGILState_STATE gstate;
     gstate = PyGILState_Ensure();
-    Py_DECREF(static_cast<PyObject*>(self->ctx));
+    Py_DECREF(static_cast<PyObject*>(self->manager_ctx));
     PyGILState_Release(gstate);
   }
 };
@@ -116,8 +158,32 @@ class TVMFFIPyIntrusiveDLPackCache : public DLManagedTensorVersioned {
  * \param source The underlying DLTensor
  * \return 0 on success, -1 on failure
  */
-int TVMFFIPyAttachIntrusiveDLPackCache(PyObject* parent, DLManagedTensorVersioned* source) {
-  return TVMFFIPyIntrusiveDLPackCache<DLManagedTensorVersioned>::Attach(parent, source);
+int DLPackPyIntrusiveCacheAttach(
+  PyObject* parent, DLManagedTensorVersioned* source, DLManagedTensorVersioned** out) {
+  return DLPackPyIntrusiveCache<DLManagedTensorVersioned>::Attach(parent, source, out);
+}
+
+/*!
+ * \brief Attach the IntrusiveDLPackCache to the parent PyObject, overload for DLManagedTensor
+ * \param parent The parent PyObject that holds the reference to the data
+ * \param source The underlying DLTensor
+ * \return 0 on success, -1 on failure
+ */
+int DLPackPyIntrusiveCacheAttach(
+  PyObject* parent, DLManagedTensor* source, DLManagedTensorVersioned** out) {
+  return DLPackPyIntrusiveCache<DLManagedTensor>::Attach(parent, source, out);
+}
+
+/*!
+ * \brief Fetch the IntrusiveDLPackCache from the parent PyObject
+ * \param parent The parent PyObject that holds the reference to the data
+ * \param out The output DLManagedTensorVersioned, if not found, return nullptr
+ * \return 0 on success, -1 on failure
+ * \note This operation will increase the reference count of the parent if successful
+ *       caller needs to call deleter of out explicitly to reduce the reference count
+ */
+int DLPackPyIntrusiveCacheFetch(PyObject* parent, DLManagedTensorVersioned** out) {
+  return DLPackPyIntrusiveCache<DLManagedTensorVersioned>::Fetch(parent, out);
 }
 
 /*!
@@ -142,18 +208,6 @@ struct TVMFFIPyCallContext {
   int num_temp_py_objects = 0;
 };
 
-/*!
- * \brief C-style function pointer to speed convert a Tensor to a DLManagedTensorVersioned.
- * \param py_obj The Python object to convert, this should be PyObject*
- * \param out The output DLManagedTensorVersioned.
- * \param env_stream Outputs the current context stream of the device provided by the tensor.
- * \return 0 on success, -1 on failure. PyError should be set if -1 is returned.
- * \note We use void* to avoid dependency on Python.h so this specific type is
- *       not dependent on Python.h and can be copied to dlpack.h
- */
-typedef int (*DLPackPyObjectCExporter)(void* py_obj, DLManagedTensorVersioned** out,
-                                       void** env_stream);
-
 /*! \brief Argument setter for a given python argument. */
 struct TVMFFIPyArgSetter {
   /*!
@@ -169,7 +223,7 @@ struct TVMFFIPyArgSetter {
   /*!
    * \brief Optional DLPack exporter for for setters that leverages DLPack protocol.
    */
-  DLPackPyObjectCExporter dlpack_c_exporter{nullptr};
+  DLPackPyCExporter dlpack_c_exporter{nullptr};
   /*!
    * \brief Invoke the setter.
    * \param call_ctx The call context.
