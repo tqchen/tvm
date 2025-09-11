@@ -22,6 +22,7 @@ import tvm_ffi
 import tvm_ffi.cpp
 import torch
 import time
+import sys
 
 try:
   import hack_torch_dlpack
@@ -70,6 +71,8 @@ void dlpack_py_c_exporter_bench(int64_t py_obj_ptr, int64_t dlpack_c_exporter, i
     )
     return module
 
+import gc
+
 
 def run_dlpack_cpp_exporter_bench(name, x, func, repeat):
     func(x, 1)
@@ -88,26 +91,44 @@ def run_dlpack_py_c_exporter_bench(name, x, func, repeat, cached=False):
     print_speed(f"{name}[cached={cached}]", (tend - tstart) / repeat)
     if cached:
       print(x.__dlpack_cache__)
+      # x.__dlpack_cache__ = None
+    print(sys.getrefcount(x))
+    print("referres of x", gc.get_referrers(x))
+    
 
-
-
-def main():
-    repeat = 100000
+def run():
+    repeat = 1
     module = get_ffi_dlpack_bench()
     x = torch.arange(1, device="cuda")
-    ffi_x = tvm_ffi.from_dlpack(x)
+    
+    
+    ffi_x = tvm_ffi.from_dlpack(torch.arange(1, device="cuda"))
     wrapper_x = tvm_ffi.core.DLTensorTestWrapper(ffi_x)
     torch_mod = hack_torch_dlpack.mod
     
-    run_dlpack_cpp_exporter_bench("cpp-exporter-bench", ffi_x, module.dlpack_cpp_exporter_bench, repeat)
-    run_dlpack_py_c_exporter_bench("py-c-exporter-bench", wrapper_x, torch_mod.dlpack_py_c_exporter_bench, repeat, cached=False)
-    run_dlpack_py_c_exporter_bench("py-c-exporter-bench", wrapper_x, torch_mod.dlpack_py_c_exporter_bench, repeat, cached=True)
+    #run_dlpack_cpp_exporter_bench("cpp-exporter-bench", ffi_x, module.dlpack_cpp_exporter_bench, repeat)
+    #run_dlpack_py_c_exporter_bench("py-c-exporter-bench", wrapper_x, torch_mod.dlpack_py_c_exporter_bench, repeat, cached=False)
+    #run_dlpack_py_c_exporter_bench("py-c-exporter-bench", wrapper_x, torch_mod.dlpack_py_c_exporter_bench, repeat, cached=True)
 
     x.__dlpack_c_exporter__ = torch_mod.TorchDLPackPyCExporterPtr(False)
     x.__dlpack_c_exporter_cached__ = torch_mod.TorchDLPackPyCExporterPtr(True)
-    run_dlpack_cpp_exporter_bench("torch-cpp-exporter-bench", x, torch_mod.dlpack_cpp_exporter_bench, repeat)
-    run_dlpack_py_c_exporter_bench("torch-py-c-exporter-bench", x, torch_mod.dlpack_py_c_exporter_bench, repeat, cached=False)
+    #run_dlpack_cpp_exporter_bench("torch-cpp-exporter-bench", x, torch_mod.dlpack_cpp_exporter_bench, repeat)
+    # run_dlpack_py_c_exporter_bench("torch-py-c-exporter-bench", x, torch_mod.dlpack_py_c_exporter_bench, repeat, cached=False)
     run_dlpack_py_c_exporter_bench("torch-py-c-exporter-bench", x, torch_mod.dlpack_py_c_exporter_bench, repeat, cached=True)
 
+    print(sys.getrefcount(x))
+    del x    
+    x = None
+
+    
+import gc
+
+def main():
+    gc.set_debug(gc.DEBUG_SAVEALL)
+    run()
+    gc.collect()
+    # print(gc.garbage)
+
+    
 if __name__ == "__main__":
     main()

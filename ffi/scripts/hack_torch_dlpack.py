@@ -292,6 +292,7 @@ class DLPackPyIntrusiveCache : public DLManagedTensorVersioned {
     Py_DECREF(capsule);
     // increase reference count of the parent, so future deleter will decref the parent
     Py_INCREF(parent);
+    std::cout << "parent counter=" << Py_REFCNT(parent);    
     *out = cache;
     return 0;
   }
@@ -331,6 +332,7 @@ class DLPackPyIntrusiveCache : public DLManagedTensorVersioned {
   }
 
   static void PyCapsuleDeleter(PyObject* self) {
+    std::cout << "PyCapsuleDeleter triggered" << std::endl;    
     void* ptr = PyCapsule_GetPointer(self, nullptr);
     if (ptr != nullptr) {
       delete static_cast<SelfType*>(ptr);
@@ -342,7 +344,9 @@ class DLPackPyIntrusiveCache : public DLManagedTensorVersioned {
     // because we need to decref the parent
     PyGILState_STATE gstate;
     gstate = PyGILState_Ensure();
-    Py_DECREF(static_cast<PyObject*>(self->manager_ctx));
+    PyObject* py_obj = static_cast<PyObject*>(self->manager_ctx);
+    std::cout << "Deleter triggered!! refcount= " << Py_REFCNT(py_obj) << std::endl;
+    Py_DECREF(py_obj);    
     PyGILState_Release(gstate);
   }
 };
