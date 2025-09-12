@@ -30,6 +30,7 @@
 #include <exception>
 #include <unordered_map>
 #include <iostream>
+#include <cstring>
 
 ///--------------------------------------------------------------------------------
 /// We deliberately designed the data structure and function to be C-style
@@ -45,7 +46,7 @@
  *       not dependent on Python.h and can be copied to dlpack.h
  */
 typedef int (*DLPackPyCExporter)(void* py_obj, DLManagedTensorVersioned** out, void** env_stream);
-
+namespace {
 /*!
  * \brief An intrusive cache for the DLManagedTensorVersioned
  *
@@ -57,8 +58,7 @@ typedef int (*DLPackPyCExporter)(void* py_obj, DLManagedTensorVersioned** out, v
  * \param source The source type, can be DLManagedTensor or DLManagedTensorVersioned
  *
  */
-template <typename SourceType>
-class DLPackPyIntrusiveCache : public DLManagedTensorVersioned {
+class DLPackPyIntrusiveCache {
  public:
   /*
    * \brief The name of the attribute that holds the PyCapsule
@@ -81,18 +81,53 @@ class DLPackPyIntrusiveCache : public DLManagedTensorVersioned {
    * \param out The output DLManagedTensorVersioned
    * \return 0 on success, -1 on failure
    */
+  template <typename SourceType>
   static int Attach(PyObject* parent, SourceType* source, DLManagedTensorVersioned** out) {
+    static_assert(sizeof(DLManagedTensorVersioned) % sizeof(int64_t) == 0);
+    static_assert(alignof(int64_t) % alignof(DLManagedTensorVersioned) == 0);
+    // allocate data space for payload and shape/strides inplace
+    // right after DLManagedTensorVersioned
+    // Tihs is because the source's shape/strides may get released after source get released
+    // We have to release source unfortunately, because it may contain references to
+    // the parent object in some cases
+    int64_t* data = new int64_t[
+      sizeof(DLManagedTensorVersioned) / sizeof(int64_t) + source->dl_tensor.ndim * 2];
+    DLManagedTensorVersioned* cache = reinterpret_cast<DLManagedTensorVersioned*>(data);
+    cache->dl_tensor = source->dl_tensor;
+    cache->version.major = DLPACK_MAJOR_VERSION;
+    cache->version.minor = DLPACK_MINOR_VERSION;
+    cache->manager_ctx = parent;
+    cache->deleter = DLManagedTensorVersionedDeleter;
+    cache->flags = 0;
+    // copy over shape and strides, since they may be released after source get released
+    cache->dl_tensor.shape = reinterpret_cast<int64_t*>(
+      reinterpret_cast<char*>(cache) + sizeof(DLManagedTensorVersioned));
+    cache->dl_tensor.strides = cache->dl_tensor.shape + cache->dl_tensor.ndim;
+    std::copy(
+      cache->dl_tensor.shape, source->dl_tensor.shape + source->dl_tensor.ndim, cache->dl_tensor.shape
+    );
+    std::copy(
+      cache->dl_tensor.strides, source->dl_tensor.strides + source->dl_tensor.ndim, cache->dl_tensor.strides
+    );
+    // increase reference count of the parent to retain the liveness of data
+    Py_INCREF(parent);
+    // Unfortunately we need to delete source here
+    // as source may contain references to the parent object in some cases
+    source->deleter(source);
     // create the PyCapsule
-    SelfType* cache = new SelfType(parent, source);
     PyObject* capsule = PyCapsule_New(cache, nullptr, PyCapsuleDeleter);
-    if (capsule == nullptr) return -1;
+    if (capsule == nullptr) {
+      delete[] data;
+      return -1;
+    }
     // set the attribute to the parent
-    if (PyObject_SetAttr(parent, GetAttachedAttrName(), capsule) != 0) return -1;
+    if (PyObject_SetAttr(parent, GetAttachedAttrName(), capsule) != 0) {
+      Py_DECREF(capsule);
+      return -1;
+    }
     // release the reference to the PyCapsule, as it is now attached to the parent
     Py_DECREF(capsule);
-    // increase reference count of the parent, so future deleter will decref the parent
-    Py_INCREF(parent);
-    *out = cache;
+    *out = static_cast<DLManagedTensorVersioned*>(cache);
     return 0;
   }
 
@@ -109,36 +144,20 @@ class DLPackPyIntrusiveCache : public DLManagedTensorVersioned {
     }
     PyObject* capsule = PyObject_GetAttr(parent, GetAttachedAttrName());
     if (capsule == nullptr) return -1;
-    *out = static_cast<DLManagedTensorVersioned*>(PyCapsule_GetPointer(capsule, nullptr));
+    void* cache = PyCapsule_GetPointer(capsule, nullptr);
+    *out = static_cast<DLManagedTensorVersioned*>(cache);
+    // increase reference count of the parent to retain the liveness of data
     Py_INCREF(parent);
+    // release the reference to the PyCapsule
     Py_DECREF(capsule);
     return 0;
   }
 
  private:
-  using SelfType = DLPackPyIntrusiveCache<SourceType>;
-  // underlying DLTensor, mainly to be compact with
-  // older version of torch. Upgrade once torch releases latest support
-  SourceType* source_;
-
-  DLPackPyIntrusiveCache(PyObject* parent, SourceType* source)
-    : source_(source) {
-    this->dl_tensor = source->dl_tensor;
-    this->version.major = DLPACK_MAJOR_VERSION;
-    this->version.minor = DLPACK_MINOR_VERSION;
-    this->manager_ctx = parent;
-    this->deleter = DLManagedTensorVersionedDeleter;
-    this->flags = 0;
-  }
-
-  ~DLPackPyIntrusiveCache() {
-    source_->deleter(source_);
-  }
-
   static void PyCapsuleDeleter(PyObject* self) {
     void* ptr = PyCapsule_GetPointer(self, nullptr);
     if (ptr != nullptr) {
-      delete static_cast<SelfType*>(ptr);
+      delete[] static_cast<int64_t*>(ptr);
     }
   }
 
@@ -160,7 +179,7 @@ class DLPackPyIntrusiveCache : public DLManagedTensorVersioned {
  */
 inline int DLPackPyIntrusiveCacheAttach(
   PyObject* parent, DLManagedTensorVersioned* source, DLManagedTensorVersioned** out) {
-  return DLPackPyIntrusiveCache<DLManagedTensorVersioned>::Attach(parent, source, out);
+  return DLPackPyIntrusiveCache::Attach(parent, source, out);
 }
 
 /*!
@@ -172,9 +191,9 @@ inline int DLPackPyIntrusiveCacheAttach(
  *       caller needs to call deleter of out explicitly to reduce the reference count
  */
 inline int DLPackPyIntrusiveCacheFetch(PyObject* parent, DLManagedTensorVersioned** out) {
-  return DLPackPyIntrusiveCache<DLManagedTensorVersioned>::Fetch(parent, out);
+  return DLPackPyIntrusiveCache::Fetch(parent, out);
 }
-
+}  // namespace
 /*!
  * \brief Context for each ffi call to track the stream, device and temporary arguments.
  */

@@ -12,6 +12,7 @@ def load_to_dlpack():
 #include <ATen/DLConvertor.h>
 #include <ATen/Functions.h>
 #include <c10/cuda/CUDAStream.h>
+#include "tvm_ffi_python_helpers.h"
 
 using namespace std;
 namespace at {
@@ -242,6 +243,7 @@ T* toDLPackImpl(const Tensor& src) {
 // Explicitly instantiate the template above for both classes.
 template DLManagedTensor* toDLPackImpl<DLManagedTensor>(const Tensor&);
 template DLManagedTensorVersioned* toDLPackImpl<DLManagedTensorVersioned>(const Tensor&);
+
 } // namespace
 } // namespace at
 
@@ -252,8 +254,6 @@ void dlpack_cpp_exporter_bench(const at::Tensor& src, int repeat) {
     dlpack->deleter(dlpack);
   }
 }
-
-typedef int (*DLPackPyCExporter)(void* py_obj, DLManagedTensorVersioned** out, void** env_stream);
 
 int TorchDLPackPyCExporter(void* py_obj, DLManagedTensorVersioned** out, void** env_stream) {
   try {
@@ -268,95 +268,6 @@ int TorchDLPackPyCExporter(void* py_obj, DLManagedTensorVersioned** out, void** 
     PyErr_SetString(PyExc_RuntimeError, e.what());
     return -1;
   }
-}
-
-template <typename SourceType>
-class DLPackPyIntrusiveCache : public DLManagedTensorVersioned {
- public:
-  static constexpr const char* kAttachedAttrName = "__dlpack_cache__";
-
-  static PyObject* GetAttachedAttrName() {
-    // the value is alive in entire program process, so we don't need to decref it
-    static PyObject* attr_name = PyUnicode_InternFromString(kAttachedAttrName);
-    return attr_name;
-  }
-
-  static int Attach(PyObject* parent, SourceType* source, DLManagedTensorVersioned** out) {
-    // create the PyCapsule
-    SelfType* cache = new SelfType(parent, source);
-    PyObject* capsule = PyCapsule_New(cache, nullptr, PyCapsuleDeleter);
-    if (capsule == nullptr) return -1;
-    // set the attribute to the parent
-    if (PyObject_SetAttr(parent, GetAttachedAttrName(), capsule) != 0) return -1;
-    // release the reference to the PyCapsule, as it is now attached to the parent
-    Py_DECREF(capsule);
-    // increase reference count of the parent, so future deleter will decref the parent
-    Py_INCREF(parent);
-    *out = cache;
-    return 0;
-  }
-
-
-  static int Fetch(PyObject* parent, DLManagedTensorVersioned** out) {
-    if (PyObject_HasAttr(parent, GetAttachedAttrName()) == 0) {
-      *out = nullptr;
-      return 0;
-    }
-    PyObject* capsule = PyObject_GetAttr(parent, GetAttachedAttrName());
-    if (capsule == nullptr) return -1;
-    *out = static_cast<DLManagedTensorVersioned*>(PyCapsule_GetPointer(capsule, nullptr));
-    Py_INCREF(parent);
-    Py_DECREF(capsule);
-    return 0;
-  }
-
- private:
-  using SelfType = DLPackPyIntrusiveCache<SourceType>;
-  // underlying DLTensor, mainly to be compact with
-  // older version of torch. Upgrade once torch releases latest support
-  SourceType* source_;
-
-  DLPackPyIntrusiveCache(PyObject* parent, SourceType* source)
-    : source_(source) {
-    this->dl_tensor = source->dl_tensor;
-    this->version.major = DLPACK_MAJOR_VERSION;
-    this->version.minor = DLPACK_MINOR_VERSION;
-    this->manager_ctx = parent;
-    this->deleter = DLManagedTensorVersionedDeleter;
-    this->flags = 0;
-  }
-
-  ~DLPackPyIntrusiveCache() {
-    source_->deleter(source_);
-  }
-
-  static void PyCapsuleDeleter(PyObject* self) {
-    std::cout << "PyCapsuleDeleter triggered" << std::endl;
-    void* ptr = PyCapsule_GetPointer(self, nullptr);
-    if (ptr != nullptr) {
-      delete static_cast<SelfType*>(ptr);
-    }
-  }
-
-  static void DLManagedTensorVersionedDeleter(DLManagedTensorVersioned* self) {
-    // deleter must be called with GIL acquired
-    // because we need to decref the parent
-    PyGILState_STATE gstate;
-    gstate = PyGILState_Ensure();
-    PyObject* py_obj = static_cast<PyObject*>(self->manager_ctx);
-    Py_DECREF(py_obj);
-    PyGILState_Release(gstate);
-  }
-};
-
-
-int DLPackPyIntrusiveCacheAttach(
-  PyObject* parent, DLManagedTensorVersioned* source, DLManagedTensorVersioned** out) {
-  return DLPackPyIntrusiveCache<DLManagedTensorVersioned>::Attach(parent, source, out);
-}
-
-inline int DLPackPyIntrusiveCacheFetch(PyObject* parent, DLManagedTensorVersioned** out) {
-  return DLPackPyIntrusiveCache<DLManagedTensorVersioned>::Fetch(parent, out);
 }
 
 int TorchDLPackPyCExporterCached(void* obj, DLManagedTensorVersioned** out, void** env_stream) {
@@ -390,7 +301,6 @@ inline int64_t TorchDLPackPyCExporterPtrCached(PyObject* py_obj) {
 }
 
 void dlpack_py_c_exporter_bench(int64_t py_obj_ptr, int64_t dlpack_c_exporter, int repeat) {
-  py::gil_scoped_acquire ensure;
   DLPackPyCExporter exporter = reinterpret_cast<DLPackPyCExporter>(dlpack_c_exporter);
   void* py_obj = reinterpret_cast<void*>(py_obj_ptr);
   for (int i = 0; i < repeat; i++) {
@@ -407,14 +317,12 @@ void refcount_update(int64_t py_obj_ptr) {
   Py_DECREF(py_obj);
 }
     """
-    dlpack_path = tvm_ffi.libinfo.find_dlpack_include_path()
-    print(f"dlpack_path: {dlpack_path}")
     module = cpp_extension.load_inline(
         name="to_dlpack",
         cpp_sources=cpp_source,
         functions=["dlpack_cpp_exporter_bench", "TorchDLPackPyCExporterPtr", "dlpack_py_c_exporter_bench", "refcount_update"],
         extra_cflags=["-O3"],
-        extra_include_paths=[dlpack_path] + cpp_extension.include_paths("cuda"),
+        extra_include_paths=tvm_ffi.libinfo.include_paths() + cpp_extension.include_paths("cuda"),
         verbose=True,
     )
     return module
@@ -422,4 +330,4 @@ void refcount_update(int64_t py_obj_ptr) {
 
 mod = load_to_dlpack()
 tvm_ffi.core._torch_dlpack_c_exporter_ptr = mod.TorchDLPackPyCExporterPtr(False)
-tvm_ffi.core._torch_dlpack_c_exporter_ptr = mod.TorchDLPackPyCExporterPtr(True)
+# tvm_ffi.core._torch_dlpack_c_exporter_ptr = mod.TorchDLPackPyCExporterPtr(True)
