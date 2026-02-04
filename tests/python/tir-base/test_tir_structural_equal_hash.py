@@ -20,6 +20,9 @@ import pytest
 from tvm import te
 from tvm_ffi.access_path import AccessPath
 from tvm.script import tir as T, ir as I
+from tvm.script.ir_builder import IRBuilder
+from tvm.script.ir_builder import ir as I_
+from tvm.script.ir_builder import tir as T_
 
 
 def consistent_equal(x, y, map_free_vars=False):
@@ -206,28 +209,22 @@ def test_attrs():
 
 
 def test_stmt():
-    x = te.var("x")
-    y = te.var("y")
-    n = 128
-    A = te.placeholder((n, n), name="A")
-    B = te.placeholder((n, n), name="B")
-    ii = te.var("i")
-    jj = te.var("j")
-
-    Ab = tvm.tir.decl_buffer((n,), name="A")
-    n = te.var("n")
-
-    def func2():
-        ib = tvm.tir.ir_builder.create()
-        A = ib.buffer_ptr(Ab)
-        with ib.for_range(0, n, name="i") as i:
-            A[i] = A[i] + 1
-            with ib.for_range(0, 10, name="j") as j:
-                A[j] = A[j] + 2
-                A[j] = A[j] + 2
+    def build_stmt():
+        with IRBuilder() as ib:
+            with I_.ir_module():
+                with T_.prim_func():
+                    T_.func_name("main")
+                    n = T_.arg("n", T_.int32())
+                    A_handle = T_.arg("A", T_.handle())
+                    A = T_.match_buffer(A_handle, (n,), "float32")
+                    with T_.serial(0, n) as i:
+                        T_.buffer_store(A, A[i] + T_.float32(1), [i])
+                        with T_.serial(0, 10) as j:
+                            T_.buffer_store(A, A[j] + T_.float32(2), [j])
+                            T_.buffer_store(A, A[j] + T_.float32(2), [j])
         return ib.get()
 
-    assert consistent_equal(func2(), func2())
+    assert consistent_equal(build_stmt(), build_stmt())
 
 
 def test_buffer_storage_scope():

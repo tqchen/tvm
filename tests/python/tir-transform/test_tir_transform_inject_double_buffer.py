@@ -18,30 +18,35 @@
 import tvm
 import tvm.testing
 
-from tvm.script import tir as T, ir as I
 from tvm import te
+from tvm.script import tir as T, ir as I
+from tvm.script.ir_builder import IRBuilder
+from tvm.script.ir_builder import ir as I_
+from tvm.script.ir_builder import tir as T_
 
 
 def test_double_buffer():
-    dtype = "int64"
     n = 100
     m = 4
     tx = te.thread_axis("threadIdx.x")
-    ib = tvm.tir.ir_builder.create()
-    A = ib.pointer("float32", name="A")
-    C = ib.pointer("float32", name="C")
-    ib.scope_attr(tx, "thread_extent", 1)
-    with ib.for_range(0, n) as i:
-        B = ib.allocate("float32", m, name="B", scope="shared")
-        with ib.new_scope():
-            ib.scope_attr(B.asobject().data, "double_buffer_scope", 1)
-            with ib.for_range(0, m) as j:
-                B[j] = A[i * 4 + j]
-        with ib.for_range(0, m) as j:
-            C[j] = B[j] + 1
-
-    stmt = ib.get()
-    mod = tvm.IRModule({"db": tvm.tir.PrimFunc([A.asobject(), C.asobject()], stmt)})
+    with IRBuilder() as ib:
+        with I_.ir_module():
+            with T_.prim_func():
+                T_.func_name("db")
+                A_handle = T_.arg("A", T_.handle())
+                C_handle = T_.arg("C", T_.handle())
+                A = T_.match_buffer(A_handle, (n * m,), "float32")
+                C = T_.match_buffer(C_handle, (m,), "float32")
+                with T_.attr(tx, "thread_extent", 1):
+                    with T_.serial(0, n) as i:
+                        with T_.allocate([m], "float32", scope="shared") as B_data:
+                            B = T_.Buffer([m], "float32", data=B_data)
+                            with T_.attr(B_data, "double_buffer_scope", 1):
+                                with T_.serial(0, m) as j:
+                                    T_.buffer_store(B, A[i * 4 + j], [j])
+                            with T_.serial(0, m) as j:
+                                T_.buffer_store(C, B[j] + T_.float32(1), [j])
+    mod = ib.get()
 
     opt = tvm.transform.Sequential(
         [tvm.tir.transform.InjectDoubleBuffer(), tvm.tir.transform.Simplify()]
@@ -51,8 +56,11 @@ def test_double_buffer():
         mod = opt(mod)
     stmt = mod["db"].body
 
-    assert isinstance(stmt.body, tvm.tir.Allocate)
-    assert list(stmt.body.extents) == [m * 2]
+    # Find the Allocate node (may be at different depths depending on IR structure)
+    alloc = stmt
+    while not isinstance(alloc, tvm.tir.Allocate):
+        alloc = alloc.body
+    assert list(alloc.extents) == [m * 2]
 
     f = tvm.tir.transform.ThreadSync("shared")(mod)["db"]
     count = [0]

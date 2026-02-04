@@ -22,6 +22,9 @@ import tvm.testing
 
 from tvm.script import ir as I
 from tvm.script import tir as T
+from tvm.script.ir_builder import IRBuilder
+from tvm.script.ir_builder import ir as I_
+from tvm.script.ir_builder import tir as T_
 
 import numpy as np
 
@@ -126,24 +129,20 @@ def test_call_packed_return_non_i32():
             value.dtype, tvm.ir.Op.get("tir.tvm_call_packed"), "testing.echo", value
         )
 
-    def build_tir():
-        Ab = tvm.tir.decl_buffer((2,), "float32")
-        ib = tvm.tir.ir_builder.create()
-        Aptr = ib.buffer_ptr(Ab)
-        # return f32
-        # Aptr[0] = testing.echo(expected_value[0])
-        Aptr[0] = packed_echo(tvm.tir.const(expected_value[0], "float32"))
-        # return handle
-        # let Aptr_var = testing.echo(Aptr) in Aptr_var[1] = expected_value[1]
-        Aptr_var = ib.let("Aptr_dup", packed_echo(Aptr.asobject().data))
-        ib.emit(tvm.tir.BufferStore(Aptr, tvm.tir.const(expected_value[1], "float32"), [1]))
-
-        stmt = ib.get()
-        return tvm.IRModule.from_expr(
-            tvm.tir.PrimFunc([Ab], stmt).with_attr("global_symbol", "packed_test")
-        )
-
-    mod = build_tir()
+    with IRBuilder() as ib:
+        with I_.ir_module():
+            with T_.prim_func():
+                T_.func_name("packed_test")
+                A_handle = T_.arg("A", T_.handle())
+                A = T_.match_buffer(A_handle, (2,), "float32")
+                # return f32
+                # A[0] = testing.echo(expected_value[0])
+                T_.buffer_store(A, packed_echo(tvm.tir.const(expected_value[0], "float32")), [0])
+                # return handle
+                # let Aptr_var = testing.echo(A.data) in A[1] = expected_value[1]
+                with T_.LetStmt(packed_echo(A.data)) as Aptr_dup:
+                    T_.buffer_store(A, tvm.tir.const(expected_value[1], "float32"), [1])
+    mod = ib.get()
     f = tvm.compile(mod, None)
     a = tvm.runtime.tensor(np.zeros(2, dtype="float32"))
     f(a)

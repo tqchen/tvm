@@ -18,23 +18,26 @@ import tvm
 from tvm import te
 import ctypes
 import numpy as np
+from tvm.script.ir_builder import IRBuilder
+from tvm.script.ir_builder import ir as I_
+from tvm.script.ir_builder import tir as T_
 
 
 def test_static_callback():
     dtype = "int64"
-    n = te.size_var("n")
-    Ab = tvm.tir.decl_buffer((n,), dtype)
-    i = te.size_var("i")
-    ib = tvm.tir.ir_builder.create()
-    A = ib.buffer_ptr(Ab)
     cp = te.thread_axis((0, 1), "cop")
     finit = tvm.tir.StringImm("TVMBackendRunOnce")
-    ib.scope_attr(cp, "coproc_uop_scope", finit)
-    with ib.for_range(0, n, "i", kind="parallel") as i:
-        A[i] = A[i] + 1
-    stmt = ib.get()
-
-    mod = tvm.IRModule.from_expr(tvm.tir.PrimFunc([Ab], stmt).with_attr("global_symbol", "ramp"))
+    with IRBuilder() as ib:
+        with I_.ir_module():
+            with T_.prim_func():
+                T_.func_name("ramp")
+                A_handle = T_.arg("A", T_.handle())
+                n = tvm.tir.Var("n", "int32")
+                A = T_.match_buffer(A_handle, (n,), dtype)
+                with T_.attr(cp, "coproc_uop_scope", finit):
+                    with T_.parallel(0, n) as i:
+                        T_.buffer_store(A, A[i] + T_.int64(1), [i])
+    mod = ib.get()
     f = tvm.driver.build(mod, target="llvm")
     a = tvm.runtime.tensor(np.zeros(10, dtype=dtype))
     f(a)
@@ -44,20 +47,22 @@ def test_static_callback():
 
 def test_static_init():
     dtype = "int64"
-    n = te.size_var("n")
-    Ab = tvm.tir.decl_buffer((n,), dtype)
-    i = te.size_var("i")
-    ib = tvm.tir.ir_builder.create()
-    handle = tvm.tir.call_intrin("handle", "tir.tvm_static_handle")
-    ib.emit(tvm.tir.call_packed("test_static_callback", handle, Ab))
 
     @tvm.register_global_func("test_static_callback")
     def test_cb(sh, A):
         assert isinstance(sh, ctypes.c_void_p)
         return sh
 
-    stmt = ib.get()
-    mod = tvm.IRModule.from_expr(tvm.tir.PrimFunc([Ab], stmt).with_attr("global_symbol", "ramp"))
+    with IRBuilder() as ib:
+        with I_.ir_module():
+            with T_.prim_func():
+                T_.func_name("ramp")
+                A_handle = T_.arg("A", T_.handle())
+                n = tvm.tir.Var("n", "int32")
+                A = T_.match_buffer(A_handle, (n,), dtype)
+                handle = tvm.tir.call_intrin("handle", "tir.tvm_static_handle")
+                T_.evaluate(tvm.tir.call_packed("test_static_callback", handle, A.data))
+    mod = ib.get()
     f = tvm.driver.build(mod, target="llvm")
     a = tvm.runtime.tensor(np.zeros(10, dtype=dtype))
     f(a)

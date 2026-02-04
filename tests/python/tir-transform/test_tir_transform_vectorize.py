@@ -47,16 +47,16 @@ def test_vectorize_loop(extent, target):
 
 
 def test_vectorize_vector():
-    n = te.var("n")
-    ib = tvm.tir.ir_builder.create()
-    A = ib.pointer("float32x4", name="A")
-    with ib.for_range(0, n) as i:
-        with ib.for_range(0, 4, kind="vectorize") as j:
-            A[j] = tvm.tir.const(1, A.dtype)
-    stmt = ib.get()
+    @T.prim_func(private=True)
+    def before(A: T.Buffer((4,), "float32x4"), n: T.int32):
+        for i in range(n):
+            for j in T.vectorized(4):
+                A[j] = T.Broadcast(T.float32(1), 4)
+
+    mod = tvm.IRModule.from_expr(before)
+    stmt = mod["main"].body
     assert isinstance(stmt.body, tvm.tir.For)
 
-    mod = tvm.IRModule.from_expr(tvm.tir.PrimFunc([A, n], stmt))
     stmt = tvm.tir.transform.VectorizeLoop()(mod)["main"].body
 
     assert isinstance(stmt, tvm.tir.For)
@@ -221,34 +221,30 @@ def test_vectorize_let(extent, target):
 
 @pytest.mark.parametrize("extent, target", [(4, simple_target), (tvm.tir.vscale() * 4, sve_target)])
 def test_vectorize_with_le_cond(extent, target):
-    n = te.var("n")
-    ib = tvm.tir.ir_builder.create()
-    A = ib.pointer("float32", name="A")
-    with ib.for_range(0, extent, kind="vectorize") as i:
-        with ib.if_scope(i <= n):
-            A[i] = A[i] + 1
-    stmt = ib.get()
+    @T.prim_func(private=True, check_well_formed=False)
+    def before(A: T.Buffer((16,), "float32"), n: T.int32):
+        for i in T.vectorized(extent):
+            if i <= n:
+                A[i] = A[i] + T.float32(1)
 
-    mod = tvm.IRModule.from_expr(tvm.tir.PrimFunc([A, n], stmt))
+    mod = tvm.IRModule.from_expr(before)
 
     with tvm.target.Target(target):
         stmt = tvm.tir.transform.VectorizeLoop()(mod)["main"].body
 
-        # Check that the loop was't vectorised
+        # Check that the loop wasn't vectorised
         assert isinstance(stmt, tvm.tir.For)
 
 
 @pytest.mark.parametrize("extent, target", [(4, simple_target), (tvm.tir.vscale() * 4, sve_target)])
 def test_vectorize_with_ge_cond(extent, target):
-    n = te.var("n")
-    ib = tvm.tir.ir_builder.create()
-    A = ib.pointer("float32", name="A")
-    with ib.for_range(0, extent, kind="vectorize") as i:
-        with ib.if_scope(i >= n):
-            A[i] = A[i] + 1
-    stmt = ib.get()
+    @T.prim_func(private=True, check_well_formed=False)
+    def before(A: T.Buffer((16,), "float32"), n: T.int32):
+        for i in T.vectorized(extent):
+            if i >= n:
+                A[i] = A[i] + T.float32(1)
 
-    mod = tvm.IRModule.from_expr(tvm.tir.PrimFunc([A, n], stmt))
+    mod = tvm.IRModule.from_expr(before)
 
     with tvm.target.Target(target):
         stmt = tvm.tir.transform.VectorizeLoop()(mod)["main"].body

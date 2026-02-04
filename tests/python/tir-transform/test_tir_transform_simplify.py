@@ -17,57 +17,45 @@
 import tvm
 import tvm.testing
 
-from tvm import te
 from tvm.script import tir as T, ir as I
 
 
 def test_stmt_simplify():
-    ib = tvm.tir.ir_builder.create()
-    A = ib.pointer("float32", name="A")
-    C = ib.pointer("float32", name="C")
-    n = te.size_var("n")
-    with ib.for_range(0, n, name="i") as i:
-        with ib.if_scope(i < 12):
-            A[i] = C[i]
+    @T.prim_func(private=True)
+    def before(A: T.Buffer((10,), "float32"), C: T.Buffer((10,), "float32")):
+        for i in range(10):
+            if i < 12:
+                A[i] = C[i]
 
-    body = tvm.tir.LetStmt(n, 10, ib.get())
-    mod = tvm.IRModule.from_expr(tvm.tir.PrimFunc([A, C, n], body))
+    mod = tvm.IRModule.from_expr(before)
     body = tvm.tir.transform.Simplify()(mod)["main"].body
     assert isinstance(body.body, tvm.tir.BufferStore)
 
 
 def test_thread_extent_simplify():
-    ib = tvm.tir.ir_builder.create()
-    A = ib.pointer("float32", name="A")
-    C = ib.pointer("float32", name="C")
-    n = te.size_var("n")
-    tx = te.thread_axis("threadIdx.x")
-    ty = te.thread_axis("threadIdx.y")
-    ib.scope_attr(tx, "thread_extent", n)
-    ib.scope_attr(tx, "thread_extent", n)
-    ib.scope_attr(ty, "thread_extent", 1)
-    with ib.if_scope(tx + ty < 12):
-        A[tx] = C[tx + ty]
-    body = tvm.tir.LetStmt(n, 10, ib.get())
-    mod = tvm.IRModule.from_expr(tvm.tir.PrimFunc([A, C, n], body))
+    @T.prim_func(private=True)
+    def before(A: T.Buffer((10,), "float32"), C: T.Buffer((10,), "float32")):
+        tx = T.launch_thread("threadIdx.x", 10)
+        tx2 = T.launch_thread("threadIdx.x", 10)
+        ty = T.launch_thread("threadIdx.y", 1)
+        if tx + ty < 12:
+            A[tx] = C[tx + ty]
+
+    mod = tvm.IRModule.from_expr(before)
     body = tvm.tir.transform.Simplify()(mod)["main"].body
     assert isinstance(body.body.body.body, tvm.tir.BufferStore)
 
 
 def test_if_likely():
-    ib = tvm.tir.ir_builder.create()
-    A = ib.pointer("float32", name="A")
-    C = ib.pointer("float32", name="C")
-    n = te.size_var("n")
-    tx = te.thread_axis("threadIdx.x")
-    ty = te.thread_axis("threadIdx.y")
-    ib.scope_attr(tx, "thread_extent", 32)
-    ib.scope_attr(ty, "thread_extent", 32)
-    with ib.if_scope(ib.likely(tx * 32 + ty < n)):
-        with ib.if_scope(ib.likely(tx * 32 + ty < n)):
-            A[tx] = C[tx * 32 + ty]
-    body = ib.get()
-    mod = tvm.IRModule.from_expr(tvm.tir.PrimFunc([A, C, n], body))
+    @T.prim_func(private=True)
+    def before(A: T.Buffer((32,), "float32"), C: T.Buffer((1024,), "float32"), n: T.int32):
+        tx = T.launch_thread("threadIdx.x", 32)
+        ty = T.launch_thread("threadIdx.y", 32)
+        if T.likely(tx * 32 + ty < n):
+            if T.likely(tx * 32 + ty < n):
+                A[tx] = C[tx * 32 + ty]
+
+    mod = tvm.IRModule.from_expr(before)
     body = tvm.tir.transform.Simplify()(mod)["main"].body
     assert isinstance(body.body.body, tvm.tir.IfThenElse)
     assert not isinstance(body.body.body.then_case, tvm.tir.IfThenElse)

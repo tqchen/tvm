@@ -21,6 +21,9 @@ from tvm import tir
 from tvm.base import TVMError
 from tvm.ir.transform import PassContext
 from tvm.script import tir as T
+from tvm.script.ir_builder import IRBuilder
+from tvm.script.ir_builder import ir as I_
+from tvm.script.ir_builder import tir as T_
 import itertools
 import pytest
 
@@ -102,15 +105,18 @@ def test_ret_const():
 
 
 def test_control_flow_jump():
-    ib = tvm.tir.ir_builder.create()
-    a = tir.Var("a", "float32")
-    b = tir.Var("b", "float32")
-    with ib.if_scope(True):
-        ib.emit(tir.Evaluate(tir.ret(a)))
-    ib.emit(tir.Evaluate(tir.ret(b)))
-    stmt = ib.get()
-    func = tir.PrimFunc([a, b], stmt)
-    func = build_tir_func(func)
+    with IRBuilder() as ib:
+        with I_.ir_module():
+            with T_.prim_func():
+                T_.func_name("main")
+                a = T_.arg("a", T_.float32())
+                b = T_.arg("b", T_.float32())
+                with T_.If(True):
+                    with T_.Then():
+                        T_.evaluate(tir.ret(a))
+                T_.evaluate(tir.ret(b))
+    mod = ib.get()
+    func = build_tir_func(mod["main"])
     out = func(1.0, 2.0)
     assert out == 1.0
 

@@ -15,13 +15,15 @@
 # specific language governing permissions and limitations
 # under the License.
 import tvm
-from tvm import te
+from tvm.script.ir_builder import IRBuilder
+from tvm.script.ir_builder import ir as I_
+from tvm.script.ir_builder import tir as T_
 
 
 def test_rewrite_Select():
-    ib = tvm.tir.ir_builder.create()
-    A = ib.allocate("float32", 100, name="A", scope="global")
-    i = te.var("i")
+    i = tvm.tir.Var("i", "int32")
+    A_data = tvm.tir.Var("A", tvm.ir.PointerType(tvm.ir.PrimType("float32")))
+    A = tvm.tir.decl_buffer((100,), "float32", data=A_data)
     y = tvm.tir.Select(i > 1, A[i - 1], 1.0)
 
     mod = tvm.IRModule.from_expr(tvm.tir.PrimFunc([i], tvm.tir.Evaluate(y)))
