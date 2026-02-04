@@ -14,6 +14,6 @@
 # KIND, either express or implied.  See the License for the
 # specific language governing permissions and limitations
 # under the License.
-"""The TIR Adreno backend passes """
+"""S-TIR backend compilation pipeline and other passes."""
 
-from . import transform
+from . import adreno

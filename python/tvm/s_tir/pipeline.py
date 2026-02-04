@@ -16,13 +16,15 @@
 # under the License.
 
 # pylint: disable=invalid-name
-"""The TIR backend compilation pipeline for Adreno"""
+"""The S-TIR backend compilation pipeline."""
 
 import tvm
 from tvm import tir
+from tvm.tir import pipeline as tir_pipeline
+from . import backend
 
 
-def default_tir_pipeline():
+def default_s_tir_pipeline():
     """The default tir pipeline used in tvm.tir.build"""
 
     @tvm.transform.module_pass(opt_level=0)
@@ -31,7 +33,6 @@ def default_tir_pipeline():
         pass_ctx = tvm.transform.PassContext.current()
         config = pass_ctx.config
         passes = [
-            tir.backend.adreno.transform.TextureFlatten(),
             tir.transform.CanonicalizeLoop(),
             tir.transform.LowerCrossThreadReduction(),
             tir.transform.LowerInitBlock(),
@@ -49,7 +50,6 @@ def default_tir_pipeline():
             tir.transform.InjectSoftwarePipeline(),
             tir.transform.TransformMmaBufferLayout(),
             tir.transform.LowerOpaqueBlock(),
-            tir.backend.adreno.transform.InjectTextureAlloc(),
             tir.transform.FlattenBuffer(),
             tir.transform.BF16ComputeLegalize(),
             tir.transform.NarrowDataType(32),
@@ -141,20 +141,4 @@ def finalize_host_passes():  # pylint: disable=unused-argument
     return tvm.ir.transform.Sequential(host_pass_list)
 
 
-def finalize_device_passes():  # pylint: disable=unused-argument
-    """The default finalization passes for TIR backend."""
-    device_pass_list = [
-        tir.transform.LowerWarpMemory(),
-        tir.transform.Simplify(),
-        tir.transform.LowerCustomDatatypes(),
-        tir.transform.LowerDeviceStorageAccessInfo(),
-        tir.transform.LowerIntrin(),
-    ]
-    return tvm.ir.transform.Sequential(device_pass_list)
-
-
-def get_tir_pipeline(
-    target: tvm.target.Target,  # pylint: disable=unused-argument
-) -> tvm.transform.Pass:
-    """Get the TIR pipeline for Adreno GPU."""
-    return default_tir_pipeline()
+tir_pipeline.PIPELINE_MAP["s_tir"] = default_s_tir_pipeline

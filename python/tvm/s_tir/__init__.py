@@ -14,6 +14,8 @@
 # KIND, either express or implied.  See the License for the
 # specific language governing permissions and limitations
 # under the License.
-"""The TIR Adreno backend passes """
+# pylint: disable=invalid-name
+"""S-TIR namespace for scheduable TensorIR"""
 
-from . import transform
+from . import backend
+from . import pipeline
