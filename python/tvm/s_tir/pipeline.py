@@ -19,7 +19,7 @@
 """The S-TIR backend compilation pipeline."""
 
 import tvm
-from tvm import tir
+from tvm import tir, s_tir
 from tvm.tir import pipeline as tir_pipeline
 
 
@@ -32,7 +32,7 @@ def default_s_tir_pipeline():
         pass_ctx = tvm.transform.PassContext.current()
         config = pass_ctx.config
         passes = [
-            tir.transform.CanonicalizeLoop(),
+            s_tir.transform.CanonicalizeLoop(),
             tir.transform.LowerCrossThreadReduction(),
             tir.transform.LowerInitBlock(),
             tir.transform.PlanAndUpdateBufferAllocationLocation(),

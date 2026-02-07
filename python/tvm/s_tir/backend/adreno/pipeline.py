@@ -19,7 +19,7 @@
 """The TIR backend compilation pipeline for Adreno"""
 
 import tvm
-from tvm import tir
+from tvm import tir, s_tir
 from tvm.tir import pipeline as tir_pipeline
 
 
@@ -33,7 +33,7 @@ def default_tir_pipeline():
         config = pass_ctx.config
         passes = [
             tir.backend.adreno.transform.TextureFlatten(),
-            tir.transform.CanonicalizeLoop(),
+            s_tir.transform.CanonicalizeLoop(),
             tir.transform.LowerCrossThreadReduction(),
             tir.transform.LowerInitBlock(),
             tir.transform.PlanAndUpdateBufferAllocationLocation(),

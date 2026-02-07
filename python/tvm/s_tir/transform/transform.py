@@ -14,14 +14,17 @@
 # KIND, either express or implied.  See the License for the
 # specific language governing permissions and limitations
 # under the License.
-# pylint: disable=invalid-name
-"""S-TIR namespace for scheduable TensorIR"""
+"""S-TIR specific transformations."""
+# pylint: disable=invalid-name, unsupported-binary-operation
 
-from tvm.tir.function import TensorIntrin
+from . import _ffi_api
 
-from . import backend
-from . import pipeline
-from . import transform
-from . import schedule
-from .schedule import StmtSRef, SBlockScope, ScheduleState, Schedule, ScheduleError, Trace
-from .block_dependence_info import SBlockDependenceInfo
+def CanonicalizeLoop():
+    """Canonicalize the loop to start from zero and use trivial step
+
+    Returns
+    -------
+    fpass : tvm.transform.Pass
+        The result pass
+    """
+    return _ffi_api.CanonicalizeLoop()  # type: ignore

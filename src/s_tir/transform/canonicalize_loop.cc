@@ -88,12 +88,12 @@ Pass CanonicalizeLoop() {
   auto pass_func = [=](PrimFunc f, IRModule m, PassContext ctx) {
     return CanonicalizeLoop(std::move(f));
   };
-  return CreatePrimFuncPass(pass_func, 0, "tir.CanonicalizeLoop", {});
+  return CreatePrimFuncPass(pass_func, 0, "s_tir.CanonicalizeLoop", {});
 }
 
 TVM_FFI_STATIC_INIT_BLOCK() {
   namespace refl = tvm::ffi::reflection;
-  refl::GlobalDef().def("tir.transform.CanonicalizeLoop", CanonicalizeLoop);
+  refl::GlobalDef().def("s_tir.transform.CanonicalizeLoop", CanonicalizeLoop);
 }
 
 }  // namespace transform
