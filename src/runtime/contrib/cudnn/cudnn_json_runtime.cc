@@ -94,7 +94,7 @@ class cuDNNJSONRuntime : public JSONRuntimeBase {
 
   std::vector<int> vstr2vint(const JSONGraphNode& node, const std::string& attrStr) {
     auto string_to_int = [](const std::string& str) { return std::stoi(str); };
-    auto string_vec = node.GetAttr<std::vector<std::string>>(attrStr);
+    auto string_vec = node.GetAttr<ffi::Array<ffi::String>>(attrStr);
     std::vector<int> int_vec(string_vec.size());
     std::transform(string_vec.begin(), string_vec.end(), int_vec.begin(), string_to_int);
     return int_vec;
@@ -121,12 +121,12 @@ class cuDNNJSONRuntime : public JSONRuntimeBase {
       output_dims.emplace_back(static_cast<int>(_i));
     }
     bool has_bias = attr_in_name(op_name, "bias");
-    int groups = std::stoi(node.GetAttr<std::vector<std::string>>("groups")[0]);
+    int groups = std::stoi(node.GetAttr<ffi::Array<ffi::String>>("groups")[0]);
     std::vector<int> padding = vstr2vint(node, "padding");
     std::vector<int> strides = vstr2vint(node, "strides");
     std::vector<int> dilation = vstr2vint(node, "dilation");
-    auto conv_dtype = node.GetAttr<std::vector<std::string>>("out_dtype")[0];
-    std::string layout = node.GetAttr<std::vector<std::string>>("out_layout")[0];
+    auto conv_dtype = node.GetAttr<ffi::Array<ffi::String>>("out_dtype")[0];
+    std::string layout = node.GetAttr<ffi::Array<ffi::String>>("out_layout")[0];
     int dims = layout.size() - 2;  // remove O and I dims
 
     int format = CUDNN_TENSOR_NHWC;
@@ -198,7 +198,7 @@ class cuDNNJSONRuntime : public JSONRuntimeBase {
     int num_kv_heads = vstr2vint(node, "num_kv_heads")[0];
     int head_size = vstr2vint(node, "head_size")[0];
     int head_size_v = vstr2vint(node, "head_size_v")[0];
-    std::string layout = node.GetAttr<std::vector<std::string>>("layout")[0];
+    std::string layout = node.GetAttr<ffi::Array<ffi::String>>("layout")[0];
     const auto& input_qkv_node = nodes_[EntryID(node.GetInputs()[0])];
     auto qkv_shapes = input_qkv_node.GetOpShape()[0];
 
@@ -215,7 +215,7 @@ class cuDNNJSONRuntime : public JSONRuntimeBase {
       LOG(FATAL) << "Unsupported layout: " << layout;
     }
     double scale = 1 / std::sqrt(head_size);
-    std::string scale_attr = node.GetAttr<std::vector<std::string>>("scale")[0];
+    std::string scale_attr = node.GetAttr<ffi::Array<ffi::String>>("scale")[0];
     if (scale_attr.size()) {
       scale = std::stod(scale_attr);
     }

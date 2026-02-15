@@ -982,9 +982,9 @@ class CLMLRuntime : public JSONRuntimeBase {
    */
   void CreateConvolution2DLayer(CachedLayer* layer, const JSONGraphNode& node,
                                 cl_convolution_mode_qcom mode, size_t nid) {
-    std::vector<std::string> padding = node.GetAttr<std::vector<std::string>>("padding");
-    std::vector<std::string> strides = node.GetAttr<std::vector<std::string>>("strides");
-    std::vector<std::string> dilation = node.GetAttr<std::vector<std::string>>("dilation");
+    ffi::Array<ffi::String> padding = node.GetAttr<ffi::Array<ffi::String>>("padding");
+    ffi::Array<ffi::String> strides = node.GetAttr<ffi::Array<ffi::String>>("strides");
+    ffi::Array<ffi::String> dilation = node.GetAttr<ffi::Array<ffi::String>>("dilation");
     std::vector<cl_uint> clml_padding = GetVectorValues(padding);
 
     DLDataType tvm_dtype = node.GetOpDataType()[0];
@@ -1002,7 +1002,7 @@ class CLMLRuntime : public JSONRuntimeBase {
     cl_uint clml_strides[CL_ML_TENSOR_MAX_SPATIAL_DIMS_QCOM] = {v_strides[0], v_strides[1]};
     cl_uint clml_dilation[CL_ML_TENSOR_MAX_SPATIAL_DIMS_QCOM] = {v_dilation[0], v_dilation[1]};
 
-    cl_uint groups = std::stoi(node.GetAttr<std::vector<std::string>>("groups")[0]);
+    cl_uint groups = std::stoi(node.GetAttr<ffi::Array<ffi::String>>("groups")[0]);
     if (CL_CONVOLUTION_MODE_CONVOLUTION_QCOM == mode) {
       ICHECK(groups == 1) << "CLML convolution only supports group size of 1.";
     } else {
@@ -1013,7 +1013,7 @@ class CLMLRuntime : public JSONRuntimeBase {
     std::string activation_type;
     cl_activation_function_qcom clml_act_type = CL_ACTIVATION_RELU;
     if (node.HasAttr("activation_type")) {
-      activation_type = node.GetAttr<std::vector<std::string>>("activation_type")[0];
+      activation_type = node.GetAttr<ffi::Array<ffi::String>>("activation_type")[0];
       ICHECK(activation_type == "relu" || activation_type == "relu6")
           << "Unknown activation type:" << activation_type;
       if (activation_type == "relu") {
@@ -1079,9 +1079,9 @@ class CLMLRuntime : public JSONRuntimeBase {
       layer->function.push_back(op);
     } else {
       int bn_index = has_bias ? 3 : 2;
-      int axis = std::stoi(node.GetAttr<std::vector<std::string>>("batchnorm")[0]);
+      int axis = std::stoi(node.GetAttr<ffi::Array<ffi::String>>("batchnorm")[0]);
       auto bn_dims = GetTensorDims(nodes_[inputs[bn_index].id_]);
-      float epsilon = std::stof(node.GetAttr<std::vector<std::string>>("batchnorm")[1]);
+      float epsilon = std::stof(node.GetAttr<ffi::Array<ffi::String>>("batchnorm")[1]);
 
       std::vector<cl_ml_op_properties_qcom> opProperties;
       opProperties.push_back(CL_ML_BATCH_NORM_OP_EPSILON_QCOM);
@@ -1168,8 +1168,8 @@ class CLMLRuntime : public JSONRuntimeBase {
     cl_arithmetic_mode_qcom cl_arithmetic_mode = MakeCLArithMode(cl_dtype, cl_dtype);
     auto input = MakeCLMLTensorFromJSONEntry(node.GetInputs()[0].id_, {},
                                              CL_TENSOR_LAYOUT_OPTIMAL_QCOM, cl_dtype);
-    int axis = std::stoi(node.GetAttr<std::vector<std::string>>("axis")[0]);
-    float epsilon = std::stof(node.GetAttr<std::vector<std::string>>("epsilon")[0]);
+    int axis = std::stoi(node.GetAttr<ffi::Array<ffi::String>>("axis")[0]);
+    float epsilon = std::stof(node.GetAttr<ffi::Array<ffi::String>>("epsilon")[0]);
 
     std::vector<cl_ml_op_properties_qcom> opProperties;
     opProperties.push_back(CL_ML_BATCH_NORM_OP_EPSILON_QCOM);
@@ -1223,9 +1223,9 @@ class CLMLRuntime : public JSONRuntimeBase {
                                              CL_TENSOR_LAYOUT_OPTIMAL_QCOM, cl_dtype);
     auto output = MakeCLMLTensorFromJSONEntry(nid, {}, CL_TENSOR_LAYOUT_OPTIMAL_QCOM, cl_dtype);
 
-    std::vector<std::string> windows = node.GetAttr<std::vector<std::string>>("pool_size");
-    std::vector<std::string> strides = node.GetAttr<std::vector<std::string>>("strides");
-    std::vector<std::string> padding = node.GetAttr<std::vector<std::string>>("padding");
+    ffi::Array<ffi::String> windows = node.GetAttr<ffi::Array<ffi::String>>("pool_size");
+    ffi::Array<ffi::String> strides = node.GetAttr<ffi::Array<ffi::String>>("strides");
+    ffi::Array<ffi::String> padding = node.GetAttr<ffi::Array<ffi::String>>("padding");
     std::vector<cl_uint> clml_window = GetVectorValues(windows);
     std::vector<cl_uint> clml_stride = GetVectorValues(strides);
     std::vector<cl_uint> clml_padding = GetVectorValues(padding);
@@ -1315,7 +1315,7 @@ class CLMLRuntime : public JSONRuntimeBase {
     DLDataType tvm_dtype = node.GetOpDataType()[0];
     cl_channel_type cl_dtype = MakeCLDataType(tvm_dtype);
     auto out_dims = GetTensorDims(nodes_[node.GetInputs()[0].id_]);
-    int axis = std::stoi(node.GetAttr<std::vector<std::string>>("axis")[0]);
+    int axis = std::stoi(node.GetAttr<ffi::Array<ffi::String>>("axis")[0]);
     // enabling  NHWC layout && NCHW layout for 4D,  basis the axis value
     if (out_dims.h >= 1 && out_dims.w >= 1) {
       if (axis == 3 || axis == -1) {
@@ -1373,8 +1373,8 @@ class CLMLRuntime : public JSONRuntimeBase {
                                              CL_TENSOR_LAYOUT_OPTIMAL_QCOM, cl_dtype);
     auto output = MakeCLMLTensorFromJSONEntry(nid, {}, CL_TENSOR_LAYOUT_OPTIMAL_QCOM, cl_dtype);
 
-    std::string pad_mode = node.GetAttr<std::vector<std::string>>("pad_mode")[0];
-    std::vector<std::string> padding = node.GetAttr<std::vector<std::string>>("pad_width");
+    std::string pad_mode = node.GetAttr<ffi::Array<ffi::String>>("pad_mode")[0];
+    ffi::Array<ffi::String> padding = node.GetAttr<ffi::Array<ffi::String>>("pad_width");
     std::vector<cl_uint> clml_padding = GetVectorValues(padding);
 
     cl_pad_mode_qcom clml_pad_mode = CL_PAD_MODE_CONSTANT_QCOM;
@@ -1463,7 +1463,7 @@ class CLMLRuntime : public JSONRuntimeBase {
     cl_arithmetic_mode_qcom cl_arithmetic_mode = MakeCLArithMode(cl_dtype, cl_dtype);
     int inputSize = input_.size();
     auto output = MakeCLMLTensorFromJSONEntry(nid, {}, CL_TENSOR_LAYOUT_OPTIMAL_QCOM, cl_dtype);
-    cl_uint axis = std::stoi(node.GetAttr<std::vector<std::string>>("axis")[0]);
+    cl_uint axis = std::stoi(node.GetAttr<ffi::Array<ffi::String>>("axis")[0]);
     cl_ml_tensor_qcom* concatInputs = new cl_ml_tensor_qcom[inputSize];
     for (int i = 0; i < inputSize; i++) {
       auto input = MakeCLMLTensorFromJSONEntry(node.GetInputs()[i].id_, {},
@@ -1621,7 +1621,7 @@ class CLMLRuntime : public JSONRuntimeBase {
         MakeCLMLTensorFromJSONEntry(nid, clml_out_shape, CL_TENSOR_LAYOUT_NCHW_QCOM, cl_dtype);
     layer->out_shapes.insert({nid, clml_out_shape});
 
-    cl_bool b_transpose = std::stoi(node.GetAttr<std::vector<std::string>>("transpose_b")[0]);
+    cl_bool b_transpose = std::stoi(node.GetAttr<ffi::Array<ffi::String>>("transpose_b")[0]);
     cl_gemm_transform_qcom b_transform = CL_GEMM_TRANSFORM_NONE_QCOM;
     if (b_transpose) {
       b_transform = CL_GEMM_TRANSFORM_TRANSPOSE_QCOM;
@@ -1688,8 +1688,8 @@ class CLMLRuntime : public JSONRuntimeBase {
     auto input = MakeCLMLTensorFromJSONEntry(node.GetInputs()[0].id_, {},
                                              CL_TENSOR_LAYOUT_OPTIMAL_QCOM, cl_dtype);
     auto output = MakeCLMLTensorFromJSONEntry(nid, {}, CL_TENSOR_LAYOUT_OPTIMAL_QCOM, cl_dtype);
-    cl_float a_max = std::stof(node.GetAttr<std::vector<std::string>>("a_max")[0]);
-    cl_float a_min = std::stof(node.GetAttr<std::vector<std::string>>("a_min")[0]);
+    cl_float a_max = std::stof(node.GetAttr<ffi::Array<ffi::String>>("a_max")[0]);
+    cl_float a_min = std::stof(node.GetAttr<ffi::Array<ffi::String>>("a_min")[0]);
 
     cl_ml_op_clip_desc_qcom clip_desc = {
         CL_CLIP_BY_VALUE_QCOM, {{a_max}, CL_FLOAT}, {{a_min}, CL_FLOAT}, cl_arithmetic_mode};
@@ -1761,7 +1761,7 @@ class CLMLRuntime : public JSONRuntimeBase {
     auto input = MakeCLMLTensorFromJSONEntry(node.GetInputs()[0].id_, {},
                                              CL_TENSOR_LAYOUT_OPTIMAL_QCOM, cl_dtype);
     auto output = MakeCLMLTensorFromJSONEntry(nid, {}, CL_TENSOR_LAYOUT_OPTIMAL_QCOM, cl_dtype);
-    cl_uint block_size = std::stoi(node.GetAttr<std::vector<std::string>>("block_size")[0]);
+    cl_uint block_size = std::stoi(node.GetAttr<ffi::Array<ffi::String>>("block_size")[0]);
 
     cl_ml_op_depthtospace_desc_qcom dtos_desc = {block_size, cl_arithmetic_mode};
     CLML_CALL(clCreateMLOpDepthToSpaceQCOM, CLML_CTX, nullptr, &dtos_desc, input->tensor,
@@ -1787,7 +1787,7 @@ class CLMLRuntime : public JSONRuntimeBase {
     auto input = MakeCLMLTensorFromJSONEntry(node.GetInputs()[0].id_, {},
                                              CL_TENSOR_LAYOUT_OPTIMAL_QCOM, cl_dtype);
     auto output = MakeCLMLTensorFromJSONEntry(nid, {}, CL_TENSOR_LAYOUT_OPTIMAL_QCOM, cl_dtype);
-    cl_bool align_corners = std::stoi(node.GetAttr<std::vector<std::string>>("align_corners")[0]);
+    cl_bool align_corners = std::stoi(node.GetAttr<ffi::Array<ffi::String>>("align_corners")[0]);
 
     cl_ml_op_resize_bilinear_desc_qcom resize_desc = {align_corners, false, cl_arithmetic_mode};
     CLML_CALL(clCreateMLOpResizeBilinearQCOM, CLML_CTX, nullptr, &resize_desc, input->tensor,

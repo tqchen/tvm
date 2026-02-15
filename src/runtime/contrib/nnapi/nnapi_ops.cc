@@ -245,7 +245,7 @@ void TransposeOpConverter::Convert(NNAPIModelBuilder& builder, const JSONGraphNo
 
   std::vector<int32_t> axes;
   if (node.HasAttr("axes")) {
-    const auto axes_attr = node.GetAttr<std::vector<std::string>>("axes");
+    const auto axes_attr = node.GetAttr<ffi::Array<ffi::String>>("axes");
     for (auto str_axis : axes_attr) {
       axes.push_back(std::stoi(str_axis));
     }
@@ -272,7 +272,7 @@ void CastOpConverter::Convert(NNAPIModelBuilder& builder, const JSONGraphNode& n
   auto output_indices = ExtractOperandIndices(outputs);
 
   // Extract the dtype attribute and check that the output operand type matches the dtype specified.
-  const auto dtype_attr = node.GetAttr<std::vector<std::string>>("astype_dtype");
+  const auto dtype_attr = node.GetAttr<ffi::Array<ffi::String>>("astype_dtype");
   ICHECK(dtype_attr.size() == 1);
   const auto dtype_str = dtype_attr[0];
   const DLDataType dtype = StringToDLDataType(dtype_str);
@@ -343,7 +343,7 @@ void Conv2dOpConverter::Convert(NNAPIModelBuilder& builder, const JSONGraphNode&
   }
   // padding operand
   std::vector<int32_t> padding;
-  const auto padding_attr = node.GetAttr<std::vector<std::string>>("padding");
+  const auto padding_attr = node.GetAttr<ffi::Array<ffi::String>>("padding");
 
   for (auto str_pad : padding_attr) {
     padding.push_back(std::stoi(str_pad));
@@ -368,7 +368,7 @@ void Conv2dOpConverter::Convert(NNAPIModelBuilder& builder, const JSONGraphNode&
 
   // stride operand
   std::vector<int32_t> stride;
-  const auto stride_attr = node.GetAttr<std::vector<std::string>>("strides");
+  const auto stride_attr = node.GetAttr<ffi::Array<ffi::String>>("strides");
   for (auto str_stride : stride_attr) {
     stride.push_back(std::stoi(str_stride));
   }
@@ -384,7 +384,7 @@ void Conv2dOpConverter::Convert(NNAPIModelBuilder& builder, const JSONGraphNode&
 
   // group
   int32_t group;
-  const auto group_attr = node.GetAttr<std::vector<std::string>>("group");
+  const auto group_attr = node.GetAttr<ffi::Array<ffi::String>>("group");
   for (auto str_group : group_attr) {
     group = std::stoi(str_group);
   }
@@ -423,7 +423,7 @@ void MaxPool2dOpConverter::Convert(NNAPIModelBuilder& builder, const JSONGraphNo
 
   // padding operand
   std::vector<int32_t> padding;
-  const auto padding_attr = node.GetAttr<std::vector<std::string>>("padding");
+  const auto padding_attr = node.GetAttr<ffi::Array<ffi::String>>("padding");
 
   for (auto str_pad : padding_attr) {
     padding.push_back(std::stoi(str_pad));
@@ -447,7 +447,7 @@ void MaxPool2dOpConverter::Convert(NNAPIModelBuilder& builder, const JSONGraphNo
 
   // stride operand
   std::vector<int32_t> stride;
-  const auto stride_attr = node.GetAttr<std::vector<std::string>>("strides");
+  const auto stride_attr = node.GetAttr<ffi::Array<ffi::String>>("strides");
   for (auto str_stride : stride_attr) {
     stride.push_back(std::stoi(str_stride));
   }
@@ -462,7 +462,7 @@ void MaxPool2dOpConverter::Convert(NNAPIModelBuilder& builder, const JSONGraphNo
 
   // filter operand
   std::vector<int32_t> pool_size;
-  const auto pool_size_attr = node.GetAttr<std::vector<std::string>>("pool_size");
+  const auto pool_size_attr = node.GetAttr<ffi::Array<ffi::String>>("pool_size");
   for (auto size : pool_size_attr) {
     pool_size.push_back(std::stoi(size));
   }
@@ -532,7 +532,7 @@ void MeanOpConverter::Convert(NNAPIModelBuilder& builder, const JSONGraphNode& n
   auto output_indices = ExtractOperandIndices(outputs);
 
   // Extract the axis attribute and create an operand for it.
-  const auto axis_attr = node.GetAttr<std::vector<std::string>>("axis");
+  const auto axis_attr = node.GetAttr<ffi::Array<ffi::String>>("axis");
   std::vector<int32_t> axis;
   for (auto dim : axis_attr) {
     axis.push_back(std::stoi(dim));
@@ -545,7 +545,7 @@ void MeanOpConverter::Convert(NNAPIModelBuilder& builder, const JSONGraphNode& n
   input_indices.push_back(axis_operand.GetOperandIndex());
 
   // Extract the keepdims attribute and create an operand for it.
-  const auto keepdims_attr = node.GetAttr<std::vector<std::string>>("keepdims");
+  const auto keepdims_attr = node.GetAttr<ffi::Array<ffi::String>>("keepdims");
   ICHECK(keepdims_attr.size() == 1);
   const int32_t keepdims = keepdims_attr[0] == "1";
 

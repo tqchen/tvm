@@ -124,7 +124,7 @@ class TensorRTRuntime : public JSONRuntimeBase {
     for (size_t i = 0; i < nodes_.size(); ++i) {
       if (nodes_[i].HasAttr("use_implicit_batch") && nodes_[i].HasAttr("max_workspace_size")) {
         use_implicit_batch_ =
-            std::stoi(nodes_[i].GetAttr<std::vector<std::string>>("use_implicit_batch")[0]);
+            std::stoi(nodes_[i].GetAttr<ffi::Array<ffi::String>>("use_implicit_batch")[0]);
         // Allow max_workspace_size to be overridden at runtime.
         size_t runtime_max_workspace_size =
             support::GetEnv("TVM_TENSORRT_MAX_WORKSPACE_SIZE", size_t(0));
@@ -132,11 +132,11 @@ class TensorRTRuntime : public JSONRuntimeBase {
           max_workspace_size_ = runtime_max_workspace_size;
         } else {
           max_workspace_size_ =
-              std::stoul(nodes_[i].GetAttr<std::vector<std::string>>("max_workspace_size")[0]);
+              std::stoul(nodes_[i].GetAttr<ffi::Array<ffi::String>>("max_workspace_size")[0]);
         }
       }
       if (nodes_[i].HasAttr("use_fp16")) {
-        use_fp16_ = std::stoi(nodes_[i].GetAttr<std::vector<std::string>>("use_fp16")[0]);
+        use_fp16_ = std::stoi(nodes_[i].GetAttr<ffi::Array<ffi::String>>("use_fp16")[0]);
       }
     }
   }

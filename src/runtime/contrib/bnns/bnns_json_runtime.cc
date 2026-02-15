@@ -222,10 +222,10 @@ class BNNSJSONRuntime : public JSONRuntimeBase {
     auto dl_weight_shape = nodes_[wgh_entry.id_].GetOpShape()[wgh_entry.index_];
     BNNS::Shape input_shape{dl_input_shape.begin(), dl_input_shape.end()};
     BNNS::Shape weight_shape{dl_weight_shape.begin(), dl_weight_shape.end()};
-    std::vector<std::string> str_strides = node.GetAttr<std::vector<std::string>>("strides");
-    std::vector<std::string> str_dilation = node.GetAttr<std::vector<std::string>>("dilation");
-    std::vector<std::string> str_padding = node.GetAttr<std::vector<std::string>>("padding");
-    BNNS::Dim groups = std::stoi(node.GetAttr<std::vector<std::string>>("groups")[0]);
+    auto str_strides = node.GetAttr<ffi::Array<ffi::String>>("strides");
+    auto str_dilation = node.GetAttr<ffi::Array<ffi::String>>("dilation");
+    auto str_padding = node.GetAttr<ffi::Array<ffi::String>>("padding");
+    BNNS::Dim groups = std::stoi(node.GetAttr<ffi::Array<ffi::String>>("groups")[0]);
 
     BNNS::Dim PH_L = std::stoi(str_padding[0]),  // height padding: left
         PH_R = std::stoi(str_padding[2]),        // height padding: right
@@ -388,10 +388,10 @@ class BNNSJSONRuntime : public JSONRuntimeBase {
 
   void InstanceNormalization(const size_t& nid) {
     auto node = nodes_[nid];
-    size_t axis = std::stoi(node.GetAttr<std::vector<std::string>>("axis")[0]);
-    float epsilon = std::stof(node.GetAttr<std::vector<std::string>>("epsilon")[0]);
-    bool center = std::stoi(node.GetAttr<std::vector<std::string>>("center")[0]);
-    bool scale = std::stoi(node.GetAttr<std::vector<std::string>>("scale")[0]);
+    size_t axis = std::stoi(node.GetAttr<ffi::Array<ffi::String>>("axis")[0]);
+    float epsilon = std::stof(node.GetAttr<ffi::Array<ffi::String>>("epsilon")[0]);
+    bool center = std::stoi(node.GetAttr<ffi::Array<ffi::String>>("center")[0]);
+    bool scale = std::stoi(node.GetAttr<ffi::Array<ffi::String>>("scale")[0]);
 
     // Setup attributes.
     auto src_entry = node.GetInputs()[0];
@@ -483,9 +483,9 @@ class BNNSJSONRuntime : public JSONRuntimeBase {
     size_t y_stride = 1;
     size_t x_stride = 1;
     if (!global) {
-      std::vector<std::string> pool_size = node.GetAttr<std::vector<std::string>>("pool_size");
-      std::vector<std::string> padding = node.GetAttr<std::vector<std::string>>("padding");
-      std::vector<std::string> strides = node.GetAttr<std::vector<std::string>>("strides");
+      auto pool_size = node.GetAttr<ffi::Array<ffi::String>>("pool_size");
+      auto padding = node.GetAttr<ffi::Array<ffi::String>>("padding");
+      auto strides = node.GetAttr<ffi::Array<ffi::String>>("strides");
       k_height = std::stoi(pool_size[0]);
       k_width = std::stoi(pool_size[1]);
       y_padding = std::stoi(padding[0]);

@@ -67,10 +67,8 @@ class OpAttrExtractor {
     return out.str();
   }
 
-  void SetNodeAttr(const char* key, const std::vector<std::string>& value) {
-    std::vector<std::any> attr;
-    attr.emplace_back(value);
-    node_->SetAttr(key, attr);
+  void SetNodeAttr(const char* key, const ffi::Array<ffi::String>& value) {
+    node_->SetAttr(key, value);
   }
 
   void Visit(const char* key, double* value) { SetNodeAttr(key, {Fp2String(*value)}); }
@@ -111,7 +109,7 @@ class OpAttrExtractor {
 
   void Visit(const char* key, ffi::Any* value) {
     if (const auto* an = (*value).as<ffi::ArrayObj>()) {
-      std::vector<std::string> attr;
+      ffi::Array<ffi::String> attr;
       for (size_t i = 0; i < an->size(); ++i) {
         if (auto opt_int = (*an)[i].try_cast<int64_t>()) {
           attr.push_back(std::to_string(opt_int.value()));
@@ -129,13 +127,13 @@ class OpAttrExtractor {
       }
       SetNodeAttr(key, attr);
     } else if (*value == nullptr) {  // Skip NullValue
-      SetNodeAttr(key, std::vector<std::string>{""});
+      SetNodeAttr(key, ffi::Array<ffi::String>{""});
     } else if (const auto* im = (*value).as<IntImmNode>()) {
-      SetNodeAttr(key, std::vector<std::string>{std::to_string(im->value)});
+      SetNodeAttr(key, ffi::Array<ffi::String>{std::to_string(im->value)});
     } else if (const auto* fm = (*value).as<FloatImmNode>()) {
-      SetNodeAttr(key, std::vector<std::string>{Fp2String(fm->value)});
+      SetNodeAttr(key, ffi::Array<ffi::String>{Fp2String(fm->value)});
     } else if (const auto opt_str = (*value).as<ffi::String>()) {
-      SetNodeAttr(key, std::vector<std::string>{*opt_str});
+      SetNodeAttr(key, ffi::Array<ffi::String>{*opt_str});
     } else {
       LOG(FATAL) << "Not yet supported type: " << (*value).GetTypeKey();
     }
@@ -267,13 +265,14 @@ class JSONSerializer : public relax::MemoizedExprTranslator<NodeEntries> {
       dtype.emplace_back(DType2String(tensor_sinfo->dtype));
       ret.push_back(JSONGraphNodeEntry(node_id, 0));
     }
-    std::vector<std::any> shape_attrs;
-    shape_attrs.emplace_back(shape);
-    node->SetAttr("shape", shape_attrs);
-
-    std::vector<std::any> type_attrs;
-    type_attrs.emplace_back(dtype);
-    node->SetAttr("dtype", type_attrs);
+    node->SetShape(shape);
+    {
+      std::vector<DLDataType> dl_dtypes;
+      for (const auto& dt : dtype) {
+        dl_dtypes.push_back(ffi::StringToDLDataType(dt));
+      }
+      node->SetDType(dl_dtypes);
+    }
     return ret;
   }
 
@@ -286,11 +285,7 @@ class JSONSerializer : public relax::MemoizedExprTranslator<NodeEntries> {
       ICHECK(false);
       auto pattern = fn->GetAttr<ffi::String>(attr::kPartitionedFromPattern);
       ICHECK(pattern.has_value());
-      std::vector<std::string> values;
-      values.push_back(pattern.value());
-      std::vector<std::any> attr;
-      attr.emplace_back(values);
-      node->SetAttr("PartitionedFromPattern", attr);
+      node->SetAttr("PartitionedFromPattern", ffi::Array<ffi::String>{pattern.value()});
     }
   }
 

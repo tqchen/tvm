@@ -180,12 +180,12 @@ class ActivationOpConverter : public TensorRTOpConverter {
         params->network->addActivation(*params->inputs.at(0).tensor, it->second);
 #if TRT_VERSION_GE(5, 1, 5)
     if (op_name == "clip") {
-      float a_min = std::stof(params->node.GetAttr<std::vector<std::string>>("a_min")[0]);
-      float a_max = std::stof(params->node.GetAttr<std::vector<std::string>>("a_max")[0]);
+      float a_min = std::stof(params->node.GetAttr<ffi::Array<ffi::String>>("a_min")[0]);
+      float a_max = std::stof(params->node.GetAttr<ffi::Array<ffi::String>>("a_max")[0]);
       act_layer->setAlpha(a_min);
       act_layer->setBeta(a_max);
     } else if (op_name == "nn.leaky_relu") {
-      float alpha = std::stof(params->node.GetAttr<std::vector<std::string>>("alpha")[0]);
+      float alpha = std::stof(params->node.GetAttr<ffi::Array<ffi::String>>("alpha")[0]);
       act_layer->setAlpha(alpha);
     }
 #endif
@@ -246,16 +246,16 @@ class Conv1DOpConverter : public TensorRTOpConverter {
     auto input_tensor = params->inputs.at(0).tensor;
     auto input_dims = TrtDimsToVector(input_tensor->getDimensions());
     auto weight_shape = params->inputs.at(1).weight_shape;
-    ICHECK_EQ(params->node.GetAttr<std::vector<std::string>>("data_layout")[0], "NCW");
-    ICHECK_EQ(params->node.GetAttr<std::vector<std::string>>("kernel_layout")[0], "OIW");
-    auto str_strides = params->node.GetAttr<std::vector<std::string>>("strides");
-    auto str_dilation = params->node.GetAttr<std::vector<std::string>>("dilation");
-    auto str_padding = params->node.GetAttr<std::vector<std::string>>("padding");
-    int groups = std::stoi(params->node.GetAttr<std::vector<std::string>>("groups")[0]);
+    ICHECK_EQ(params->node.GetAttr<ffi::Array<ffi::String>>("data_layout")[0], "NCW");
+    ICHECK_EQ(params->node.GetAttr<ffi::Array<ffi::String>>("kernel_layout")[0], "OIW");
+    auto str_strides = params->node.GetAttr<ffi::Array<ffi::String>>("strides");
+    auto str_dilation = params->node.GetAttr<ffi::Array<ffi::String>>("dilation");
+    auto str_padding = params->node.GetAttr<ffi::Array<ffi::String>>("padding");
+    int groups = std::stoi(params->node.GetAttr<ffi::Array<ffi::String>>("groups")[0]);
     int channels = weight_shape[0];
     if (params->node.HasAttr("channels") &&
-        !params->node.GetAttr<std::vector<std::string>>("channels")[0].empty()) {
-      channels = std::stoi(params->node.GetAttr<std::vector<std::string>>("channels")[0]);
+        !params->node.GetAttr<ffi::Array<ffi::String>>("channels")[0].empty()) {
+      channels = std::stoi(params->node.GetAttr<ffi::Array<ffi::String>>("channels")[0]);
     }
 
     auto shuffle_layer = params->network->addShuffle(*input_tensor);
@@ -299,18 +299,18 @@ class Conv2DOpConverter : public TensorRTOpConverter {
     auto input_tensor = params->inputs.at(0).tensor;
     auto input_dims = TrtDimsToVector(input_tensor->getDimensions());
     auto weight_shape = params->inputs.at(1).weight_shape;
-    ICHECK_EQ(params->node.GetAttr<std::vector<std::string>>("data_layout")[0], "NCHW");
-    ICHECK(params->node.GetAttr<std::vector<std::string>>("out_layout")[0] == "" ||
-           params->node.GetAttr<std::vector<std::string>>("out_layout")[0] == "NCHW");
-    ICHECK_EQ(params->node.GetAttr<std::vector<std::string>>("kernel_layout")[0], "OIHW");
-    auto str_strides = params->node.GetAttr<std::vector<std::string>>("strides");
-    auto str_dilation = params->node.GetAttr<std::vector<std::string>>("dilation");
-    auto str_padding = params->node.GetAttr<std::vector<std::string>>("padding");
-    int groups = std::stoi(params->node.GetAttr<std::vector<std::string>>("groups")[0]);
+    ICHECK_EQ(params->node.GetAttr<ffi::Array<ffi::String>>("data_layout")[0], "NCHW");
+    ICHECK(params->node.GetAttr<ffi::Array<ffi::String>>("out_layout")[0] == "" ||
+           params->node.GetAttr<ffi::Array<ffi::String>>("out_layout")[0] == "NCHW");
+    ICHECK_EQ(params->node.GetAttr<ffi::Array<ffi::String>>("kernel_layout")[0], "OIHW");
+    auto str_strides = params->node.GetAttr<ffi::Array<ffi::String>>("strides");
+    auto str_dilation = params->node.GetAttr<ffi::Array<ffi::String>>("dilation");
+    auto str_padding = params->node.GetAttr<ffi::Array<ffi::String>>("padding");
+    int groups = std::stoi(params->node.GetAttr<ffi::Array<ffi::String>>("groups")[0]);
     int channels = weight_shape[0];
     if (params->node.HasAttr("channels") &&
-        !params->node.GetAttr<std::vector<std::string>>("channels")[0].empty()) {
-      channels = std::stoi(params->node.GetAttr<std::vector<std::string>>("channels")[0]);
+        !params->node.GetAttr<ffi::Array<ffi::String>>("channels")[0].empty()) {
+      channels = std::stoi(params->node.GetAttr<ffi::Array<ffi::String>>("channels")[0]);
     }
     // TRT conv2d op doesn't support asymmetric padding before 5.1, so we
     // workaround by adding a padding layer before the pooling op.
@@ -365,21 +365,20 @@ class Conv3DOpConverter : public TensorRTOpConverter {
     auto input_tensor = params->inputs.at(0).tensor;
     auto input_dims = TrtDimsToVector(input_tensor->getDimensions());
     auto weight_shape = params->inputs.at(1).weight_shape;
-    ICHECK_EQ(params->node.GetAttr<std::vector<std::string>>("data_layout")[0], "NCDHW");
-    ICHECK(params->node.GetAttr<std::vector<std::string>>("out_layout")[0] == "" ||
-           params->node.GetAttr<std::vector<std::string>>("out_layout")[0] == "NCDHW");
-    ICHECK_EQ(params->node.GetAttr<std::vector<std::string>>("kernel_layout")[0], "OIDHW");
-    auto str_strides = params->node.GetAttr<std::vector<std::string>>("strides");
-    auto str_dilation = params->node.GetAttr<std::vector<std::string>>("dilation");
-    auto str_padding = params->node.GetAttr<std::vector<std::string>>("padding");
-    int groups = std::stoi(params->node.GetAttr<std::vector<std::string>>("groups")[0]);
+    ICHECK_EQ(params->node.GetAttr<ffi::Array<ffi::String>>("data_layout")[0], "NCDHW");
+    ICHECK(params->node.GetAttr<ffi::Array<ffi::String>>("out_layout")[0] == "" ||
+           params->node.GetAttr<ffi::Array<ffi::String>>("out_layout")[0] == "NCDHW");
+    ICHECK_EQ(params->node.GetAttr<ffi::Array<ffi::String>>("kernel_layout")[0], "OIDHW");
+    auto str_strides = params->node.GetAttr<ffi::Array<ffi::String>>("strides");
+    auto str_dilation = params->node.GetAttr<ffi::Array<ffi::String>>("dilation");
+    auto str_padding = params->node.GetAttr<ffi::Array<ffi::String>>("padding");
+    int groups = std::stoi(params->node.GetAttr<ffi::Array<ffi::String>>("groups")[0]);
 
     nvinfer1::Dims prepadding, postpadding;
     bool use_asymmetric_padding;
     GetPadding3D(str_padding, &use_asymmetric_padding, &prepadding, &postpadding);
 
-    const int num_outputs =
-        std::stoi(params->node.GetAttr<std::vector<std::string>>("channels")[0]);
+    const int num_outputs = std::stoi(params->node.GetAttr<ffi::Array<ffi::String>>("channels")[0]);
     const auto kernel_size = nvinfer1::Dims3(weight_shape[2], weight_shape[3], weight_shape[4]);
     const nvinfer1::DataType weight_type = params->inputs.at(1).weight.type;
     nvinfer1::Weights bias{weight_type, nullptr, 0};
@@ -457,10 +456,10 @@ class BatchNormOpConverter : public TensorRTOpConverter {
     ICHECK_EQ(gamma.count, beta.count);
     ICHECK_EQ(gamma.count, mean.count);
     ICHECK_EQ(gamma.count, var.count);
-    const float epsilon = std::stof(params->node.GetAttr<std::vector<std::string>>("epsilon")[0]);
-    const int axis = std::stoi(params->node.GetAttr<std::vector<std::string>>("axis")[0]);
-    const bool scale = std::stoi(params->node.GetAttr<std::vector<std::string>>("scale")[0]);
-    const bool center = std::stoi(params->node.GetAttr<std::vector<std::string>>("center")[0]);
+    const float epsilon = std::stof(params->node.GetAttr<ffi::Array<ffi::String>>("epsilon")[0]);
+    const int axis = std::stoi(params->node.GetAttr<ffi::Array<ffi::String>>("axis")[0]);
+    const bool scale = std::stoi(params->node.GetAttr<ffi::Array<ffi::String>>("scale")[0]);
+    const bool center = std::stoi(params->node.GetAttr<ffi::Array<ffi::String>>("center")[0]);
     auto input_dims = TrtDimsToVector(input->getDimensions());
     const size_t min_rank = TRT_HAS_IMPLICIT_BATCH(params) ? 3 : 4;
     const size_t max_rank = TRT_HAS_IMPLICIT_BATCH(params) ? 4 : 5;
@@ -553,11 +552,11 @@ class LayerNormOpConverter : public TensorRTOpConverter {
     auto beta_input = params->inputs.at(2).weight;
     ICHECK_EQ(gamma_input.count, beta_input.count);
 
-    const float epsilon = std::stof(params->node.GetAttr<std::vector<std::string>>("epsilon")[0]);
-    const bool scale = std::stoi(params->node.GetAttr<std::vector<std::string>>("scale")[0]);
-    const bool center = std::stoi(params->node.GetAttr<std::vector<std::string>>("center")[0]);
+    const float epsilon = std::stof(params->node.GetAttr<ffi::Array<ffi::String>>("epsilon")[0]);
+    const bool scale = std::stoi(params->node.GetAttr<ffi::Array<ffi::String>>("scale")[0]);
+    const bool center = std::stoi(params->node.GetAttr<ffi::Array<ffi::String>>("center")[0]);
     const int input_rank = input->getDimensions().nbDims;
-    const int original_axis = std::stoi(params->node.GetAttr<std::vector<std::string>>("axis")[0]);
+    const int original_axis = std::stoi(params->node.GetAttr<ffi::Array<ffi::String>>("axis")[0]);
     const int axis = ConvertAxis(params, original_axis, input_rank);
 
     std::vector<int> weight_shape(input_rank, 1);
@@ -639,7 +638,7 @@ class SoftmaxOpConverter : public TensorRTOpConverter {
   void Convert(TensorRTOpConverterParams* params) const {
     auto input = params->inputs.at(0).tensor;
     const int input_rank = input->getDimensions().nbDims;
-    const int original_axis = std::stoi(params->node.GetAttr<std::vector<std::string>>("axis")[0]);
+    const int original_axis = std::stoi(params->node.GetAttr<ffi::Array<ffi::String>>("axis")[0]);
     const int axis = ConvertAxis(params, original_axis, input_rank);
     nvinfer1::ISoftMaxLayer* softmax_layer = params->network->addSoftMax(*input);
     softmax_layer->setAxes(1 << axis);
@@ -661,14 +660,14 @@ class PoolingOpConverter : public TensorRTOpConverter {
         {"nn.avg_pool2d", nvinfer1::PoolingType::kAVERAGE}};
     auto it = op_map.find(op_name);
     ICHECK(it != op_map.end()) << "Unsupported pooling type " << op_name << " in TensorRT";
-    ICHECK_EQ(params->node.GetAttr<std::vector<std::string>>("layout")[0], "NCHW");
-    auto str_pool_size = params->node.GetAttr<std::vector<std::string>>("pool_size");
-    auto str_padding = params->node.GetAttr<std::vector<std::string>>("padding");
-    auto str_strides = params->node.GetAttr<std::vector<std::string>>("strides");
+    ICHECK_EQ(params->node.GetAttr<ffi::Array<ffi::String>>("layout")[0], "NCHW");
+    auto str_pool_size = params->node.GetAttr<ffi::Array<ffi::String>>("pool_size");
+    auto str_padding = params->node.GetAttr<ffi::Array<ffi::String>>("padding");
+    auto str_strides = params->node.GetAttr<ffi::Array<ffi::String>>("strides");
     nvinfer1::DimsHW prepadding, postpadding;
     bool use_asymmetric_padding;
     GetPadding(str_padding, &use_asymmetric_padding, &prepadding, &postpadding);
-    bool ceil_mode = std::stoi(params->node.GetAttr<std::vector<std::string>>("ceil_mode")[0]);
+    bool ceil_mode = std::stoi(params->node.GetAttr<ffi::Array<ffi::String>>("ceil_mode")[0]);
 
 // TRT pooling op doesn't support asymmetric padding before 5.1, so we
 // workaround by adding a padding layer before the pooling op.
@@ -700,7 +699,7 @@ class PoolingOpConverter : public TensorRTOpConverter {
     }
     if (op_name == "nn.avg_pool2d") {
       bool count_include_pad =
-          std::stoi(params->node.GetAttr<std::vector<std::string>>("count_include_pad")[0]);
+          std::stoi(params->node.GetAttr<ffi::Array<ffi::String>>("count_include_pad")[0]);
       // count_include_pad=True is useless if there is no padding. TRT doesn't
       // like count_include_pad in combination with strides even when there is
       // no padding or assymetric padding even, so turn off inclusive to avoid
@@ -736,14 +735,14 @@ class Pooling3DOpConverter : public TensorRTOpConverter {
         {"nn.avg_pool3d", nvinfer1::PoolingType::kAVERAGE}};
     auto it = op_map.find(op_name);
     ICHECK(it != op_map.end()) << "Unsupported pooling type " << op_name << " in TensorRT";
-    ICHECK_EQ(params->node.GetAttr<std::vector<std::string>>("layout")[0], "NCDHW");
-    auto str_pool_size = params->node.GetAttr<std::vector<std::string>>("pool_size");
-    auto str_padding = params->node.GetAttr<std::vector<std::string>>("padding");
-    auto str_strides = params->node.GetAttr<std::vector<std::string>>("strides");
+    ICHECK_EQ(params->node.GetAttr<ffi::Array<ffi::String>>("layout")[0], "NCDHW");
+    auto str_pool_size = params->node.GetAttr<ffi::Array<ffi::String>>("pool_size");
+    auto str_padding = params->node.GetAttr<ffi::Array<ffi::String>>("padding");
+    auto str_strides = params->node.GetAttr<ffi::Array<ffi::String>>("strides");
     nvinfer1::DimsHW prepadding, postpadding;
     bool use_asymmetric_padding;
     GetPadding3D(str_padding, &use_asymmetric_padding, &prepadding, &postpadding);
-    bool ceil_mode = std::stoi(params->node.GetAttr<std::vector<std::string>>("ceil_mode")[0]);
+    bool ceil_mode = std::stoi(params->node.GetAttr<ffi::Array<ffi::String>>("ceil_mode")[0]);
     nvinfer1::Dims window_size = nvinfer1::Dims3(
         std::stoi(str_pool_size[0]), std::stoi(str_pool_size[1]), std::stoi(str_pool_size[2]));
     auto pool_layer = params->network->addPoolingNd(*input, it->second, window_size);
@@ -759,7 +758,7 @@ class Pooling3DOpConverter : public TensorRTOpConverter {
     }
     if (op_name == "nn.avg_pool3d") {
       bool count_include_pad =
-          std::stoi(params->node.GetAttr<std::vector<std::string>>("count_include_pad")[0]);
+          std::stoi(params->node.GetAttr<ffi::Array<ffi::String>>("count_include_pad")[0]);
       pool_layer->setAverageCountExcludesPadding(!count_include_pad);
     }
     if (ceil_mode) {
@@ -784,7 +783,7 @@ class GlobalPoolingOpConverter : public TensorRTOpConverter {
         {"nn.global_avg_pool2d", nvinfer1::PoolingType::kAVERAGE}};
     auto it = op_map.find(op_name);
     ICHECK(it != op_map.end()) << "Unsupported pooling type " << op_name << " in TensorRT";
-    ICHECK_EQ(params->node.GetAttr<std::vector<std::string>>("layout")[0], "NCHW");
+    ICHECK_EQ(params->node.GetAttr<ffi::Array<ffi::String>>("layout")[0], "NCHW");
     const int h = TRT_HAS_IMPLICIT_BATCH(params) ? input_dims[1] : input_dims[2];
     const int w = TRT_HAS_IMPLICIT_BATCH(params) ? input_dims[2] : input_dims[3];
     auto pool_layer =
@@ -803,9 +802,9 @@ class ExpandDimsOpConverter : public TensorRTOpConverter {
   void Convert(TensorRTOpConverterParams* params) const {
     auto input_tensor = params->inputs.at(0).tensor;
     auto input_dims = TrtDimsToVector(input_tensor->getDimensions());
-    const int original_axis = std::stoi(params->node.GetAttr<std::vector<std::string>>("axis")[0]);
+    const int original_axis = std::stoi(params->node.GetAttr<ffi::Array<ffi::String>>("axis")[0]);
     const int num_newaxis =
-        std::stoi(params->node.GetAttr<std::vector<std::string>>("num_newaxis")[0]);
+        std::stoi(params->node.GetAttr<ffi::Array<ffi::String>>("num_newaxis")[0]);
     const int axis = ConvertAxis(params, original_axis, input_dims.size() + 1);
     for (int i = 0; i < num_newaxis; ++i) {
       input_dims.insert(input_dims.begin() + axis, 1);
@@ -823,7 +822,7 @@ class SqueezeOpConverter : public TensorRTOpConverter {
   void Convert(TensorRTOpConverterParams* params) const {
     auto input_tensor = params->inputs.at(0).tensor;
     auto input_dims = TrtDimsToVector(input_tensor->getDimensions());
-    auto str_axis = params->node.GetAttr<std::vector<std::string>>("axis");
+    auto str_axis = params->node.GetAttr<ffi::Array<ffi::String>>("axis");
     for (size_t i = 0; i < str_axis.size(); ++i) {
       const int axis = ConvertAxis(params, std::stoi(str_axis[i]), input_dims.size());
       input_dims[axis] = 0;
@@ -885,7 +884,7 @@ class ConcatOpConverter : public TensorRTOpConverter {
       input_tensors.push_back(input.tensor);
     }
 
-    const int original_axis = std::stoi(params->node.GetAttr<std::vector<std::string>>("axis")[0]);
+    const int original_axis = std::stoi(params->node.GetAttr<ffi::Array<ffi::String>>("axis")[0]);
     const int axis = ConvertAxis(params, original_axis, input_rank);
 
     nvinfer1::IConcatenationLayer* concat_layer =
@@ -906,11 +905,10 @@ class SplitOpConverter : public TensorRTOpConverter {
   void Convert(TensorRTOpConverterParams* params) const {
     auto input = params->inputs.at(0).tensor;
     auto input_dims = TrtDimsToVector(input->getDimensions());
-    const int original_axis = std::stoi(params->node.GetAttr<std::vector<std::string>>("axis")[0]);
+    const int original_axis = std::stoi(params->node.GetAttr<ffi::Array<ffi::String>>("axis")[0]);
     const int axis = ConvertAxis(params, original_axis, input_dims.size());
-    auto indices_or_sections =
-        params->node.GetAttr<std::vector<std::string>>("indices_or_sections");
-    auto mode = params->node.GetAttr<std::vector<std::string>>("mode")[0];
+    auto indices_or_sections = params->node.GetAttr<ffi::Array<ffi::String>>("indices_or_sections");
+    auto mode = params->node.GetAttr<ffi::Array<ffi::String>>("mode")[0];
 
     std::vector<int> split_starts;
     std::vector<int> split_sizes;
@@ -958,7 +956,7 @@ class BiasAddOpConverter : public TensorRTOpConverter {
     auto input_dims = TrtDimsToVector(input_tensor->getDimensions());
     size_t required_rank = TRT_HAS_IMPLICIT_BATCH(params) ? 3 : 4;
     const size_t input_nbDims = input_tensor->getDimensions().nbDims;
-    int axis = std::stoi(params->node.GetAttr<std::vector<std::string>>("axis")[0]);
+    int axis = std::stoi(params->node.GetAttr<ffi::Array<ffi::String>>("axis")[0]);
     if (axis == -1) {
       // Make sure there are 2 dimensions after channel dimension,
       if (input_nbDims + 2 > required_rank) required_rank = input_nbDims + 2;
@@ -1001,16 +999,16 @@ class Conv2DTransposeOpConverter : public TensorRTOpConverter {
   void Convert(TensorRTOpConverterParams* params) const {
     auto input_tensor = params->inputs.at(0).tensor;
     auto weight_shape = params->inputs.at(1).weight_shape;
-    ICHECK_EQ(params->node.GetAttr<std::vector<std::string>>("data_layout")[0], "NCHW");
-    ICHECK(params->node.GetAttr<std::vector<std::string>>("out_layout")[0] == "" ||
-           params->node.GetAttr<std::vector<std::string>>("out_layout")[0] == "NCHW");
-    ICHECK_EQ(params->node.GetAttr<std::vector<std::string>>("kernel_layout")[0], "OIHW");
-    auto str_dilation = params->node.GetAttr<std::vector<std::string>>("dilation");
+    ICHECK_EQ(params->node.GetAttr<ffi::Array<ffi::String>>("data_layout")[0], "NCHW");
+    ICHECK(params->node.GetAttr<ffi::Array<ffi::String>>("out_layout")[0] == "" ||
+           params->node.GetAttr<ffi::Array<ffi::String>>("out_layout")[0] == "NCHW");
+    ICHECK_EQ(params->node.GetAttr<ffi::Array<ffi::String>>("kernel_layout")[0], "OIHW");
+    auto str_dilation = params->node.GetAttr<ffi::Array<ffi::String>>("dilation");
     ICHECK(std::stoi(str_dilation[0]) == 1 && std::stoi(str_dilation[1]) == 1);
-    auto str_strides = params->node.GetAttr<std::vector<std::string>>("strides");
-    auto str_padding = params->node.GetAttr<std::vector<std::string>>("padding");
-    auto str_output_padding = params->node.GetAttr<std::vector<std::string>>("output_padding");
-    int groups = std::stoi(params->node.GetAttr<std::vector<std::string>>("groups")[0]);
+    auto str_strides = params->node.GetAttr<ffi::Array<ffi::String>>("strides");
+    auto str_padding = params->node.GetAttr<ffi::Array<ffi::String>>("padding");
+    auto str_output_padding = params->node.GetAttr<ffi::Array<ffi::String>>("output_padding");
+    int groups = std::stoi(params->node.GetAttr<ffi::Array<ffi::String>>("groups")[0]);
 
     // TRT deconv op doesn't support asymmetric padding before 5.1, so we
     // workaround by adding a padding layer before the pooling op.
@@ -1028,8 +1026,7 @@ class Conv2DTransposeOpConverter : public TensorRTOpConverter {
     }
 #endif
 
-    const int num_outputs =
-        std::stoi(params->node.GetAttr<std::vector<std::string>>("channels")[0]);
+    const int num_outputs = std::stoi(params->node.GetAttr<ffi::Array<ffi::String>>("channels")[0]);
     const auto kernel_size = nvinfer1::DimsHW(weight_shape[2], weight_shape[3]);
     const nvinfer1::DataType weight_type = params->inputs.at(1).weight.type;
     nvinfer1::Weights bias{weight_type, nullptr, 0};
@@ -1073,24 +1070,23 @@ class Conv3DTransposeOpConverter : public TensorRTOpConverter {
   void Convert(TensorRTOpConverterParams* params) const {
     auto input_tensor = params->inputs.at(0).tensor;
     auto weight_shape = params->inputs.at(1).weight_shape;
-    ICHECK_EQ(params->node.GetAttr<std::vector<std::string>>("data_layout")[0], "NCDHW");
-    ICHECK(params->node.GetAttr<std::vector<std::string>>("out_layout")[0] == "" ||
-           params->node.GetAttr<std::vector<std::string>>("out_layout")[0] == "NCDHW");
-    ICHECK_EQ(params->node.GetAttr<std::vector<std::string>>("kernel_layout")[0], "OIDHW");
-    auto str_dilation = params->node.GetAttr<std::vector<std::string>>("dilation");
+    ICHECK_EQ(params->node.GetAttr<ffi::Array<ffi::String>>("data_layout")[0], "NCDHW");
+    ICHECK(params->node.GetAttr<ffi::Array<ffi::String>>("out_layout")[0] == "" ||
+           params->node.GetAttr<ffi::Array<ffi::String>>("out_layout")[0] == "NCDHW");
+    ICHECK_EQ(params->node.GetAttr<ffi::Array<ffi::String>>("kernel_layout")[0], "OIDHW");
+    auto str_dilation = params->node.GetAttr<ffi::Array<ffi::String>>("dilation");
     ICHECK_EQ(str_dilation.size(), 3);
     ICHECK(std::stoi(str_dilation[0]) == 1 && std::stoi(str_dilation[1]) == 1 &&
            std::stoi(str_dilation[2]) == 1);
-    auto str_strides = params->node.GetAttr<std::vector<std::string>>("strides");
-    auto str_padding = params->node.GetAttr<std::vector<std::string>>("padding");
-    auto str_output_padding = params->node.GetAttr<std::vector<std::string>>("output_padding");
-    int groups = std::stoi(params->node.GetAttr<std::vector<std::string>>("groups")[0]);
+    auto str_strides = params->node.GetAttr<ffi::Array<ffi::String>>("strides");
+    auto str_padding = params->node.GetAttr<ffi::Array<ffi::String>>("padding");
+    auto str_output_padding = params->node.GetAttr<ffi::Array<ffi::String>>("output_padding");
+    int groups = std::stoi(params->node.GetAttr<ffi::Array<ffi::String>>("groups")[0]);
     nvinfer1::Dims prepadding, postpadding;
     bool use_asymmetric_padding;
     GetPadding3D(str_padding, &use_asymmetric_padding, &prepadding, &postpadding);
 
-    const int num_outputs =
-        std::stoi(params->node.GetAttr<std::vector<std::string>>("channels")[0]);
+    const int num_outputs = std::stoi(params->node.GetAttr<ffi::Array<ffi::String>>("channels")[0]);
     const auto kernel_size = nvinfer1::Dims3(weight_shape[2], weight_shape[3], weight_shape[4]);
     const nvinfer1::DataType weight_type = params->inputs.at(1).weight.type;
     nvinfer1::Weights bias{weight_type, nullptr, 0};
@@ -1130,7 +1126,7 @@ class TransposeOpConverter : public TensorRTOpConverter {
 
   void Convert(TensorRTOpConverterParams* params) const {
     auto input = params->inputs.at(0).tensor;
-    auto str_axes = params->node.GetAttr<std::vector<std::string>>("axes");
+    auto str_axes = params->node.GetAttr<ffi::Array<ffi::String>>("axes");
     std::vector<int> order;
     for (size_t i = 0; i < str_axes.size(); ++i) {
       order.push_back(std::stoi(str_axes[i]));
@@ -1147,8 +1143,8 @@ class LayoutTransformOpConverter : public TensorRTOpConverter {
 
   void Convert(TensorRTOpConverterParams* params) const {
     auto input = params->inputs.at(0).tensor;
-    auto src = params->node.GetAttr<std::vector<std::string>>("src_layout")[0];
-    auto dst = params->node.GetAttr<std::vector<std::string>>("dst_layout")[0];
+    auto src = params->node.GetAttr<ffi::Array<ffi::String>>("src_layout")[0];
+    auto dst = params->node.GetAttr<ffi::Array<ffi::String>>("dst_layout")[0];
     std::vector<int> order;
     if (src == "NCHW" && dst == "NHWC") {
       order = {0, 2, 3, 1};
@@ -1172,7 +1168,7 @@ class ReshapeOpConverter : public TensorRTOpConverter {
   void Convert(TensorRTOpConverterParams* params) const {
     auto input = params->inputs.at(0).tensor;
     auto input_dims = TrtDimsToVector(input->getDimensions());
-    auto str_newshape = params->node.GetAttr<std::vector<std::string>>("newshape");
+    auto str_newshape = params->node.GetAttr<ffi::Array<ffi::String>>("newshape");
     std::vector<int> new_shape;
     int start_index = TRT_HAS_IMPLICIT_BATCH(params) ? 1 : 0;
     if (std::stoi(str_newshape[0]) == -1) start_index = 0;
@@ -1193,7 +1189,7 @@ class PadOpConverter : public TensorRTOpConverter {
 
   void Convert(TensorRTOpConverterParams* params) const {
     auto input = params->inputs.at(0).tensor;
-    auto str_paddding = params->node.GetAttr<std::vector<std::string>>("padding");
+    auto str_paddding = params->node.GetAttr<ffi::Array<ffi::String>>("padding");
     nvinfer1::DimsHW prepadding =
         nvinfer1::DimsHW(std::stoi(str_paddding[0]), std::stoi(str_paddding[1]));
     nvinfer1::DimsHW postpadding =
@@ -1220,9 +1216,9 @@ class ReduceOpConverter : public TensorRTOpConverter {
     ICHECK(it != op_map.end()) << "Unsupported reduce type " << op_name;
 
     auto input = params->inputs.at(0).tensor;
-    ICHECK_EQ(std::stoi(params->node.GetAttr<std::vector<std::string>>("exclude")[0]), false);
-    bool keepdims = std::stoi(params->node.GetAttr<std::vector<std::string>>("keepdims")[0]);
-    auto str_axis = params->node.GetAttr<std::vector<std::string>>("axis");
+    ICHECK_EQ(std::stoi(params->node.GetAttr<ffi::Array<ffi::String>>("exclude")[0]), false);
+    bool keepdims = std::stoi(params->node.GetAttr<ffi::Array<ffi::String>>("keepdims")[0]);
+    auto str_axis = params->node.GetAttr<ffi::Array<ffi::String>>("axis");
     // TODO(trevmorr): Support reduce to scalar.
     ICHECK_GT(str_axis.size(), 0);
     uint32_t reduce_axes = 0;
@@ -1253,9 +1249,9 @@ class StridedSliceOpConverter : public TensorRTOpConverter {
   void Convert(TensorRTOpConverterParams* params) const {
     auto input = params->inputs.at(0).tensor;
     auto input_dims = TrtDimsToVector(input->getDimensions());
-    auto str_start = params->node.GetAttr<std::vector<std::string>>("start");
-    auto str_size = params->node.GetAttr<std::vector<std::string>>("size");
-    auto str_strides = params->node.GetAttr<std::vector<std::string>>("strides");
+    auto str_start = params->node.GetAttr<ffi::Array<ffi::String>>("start");
+    auto str_size = params->node.GetAttr<ffi::Array<ffi::String>>("size");
+    auto str_strides = params->node.GetAttr<ffi::Array<ffi::String>>("strides");
     std::vector<int> start, size, strides;
     std::transform(str_start.begin(), str_start.end(), std::back_inserter(start),
                    [](const std::string& s) { return std::stoi(s); });
@@ -1289,7 +1285,7 @@ class AdaptivePoolingOpConverter : public TensorRTOpConverter {
         {"nn.adaptive_avg_pool2d", nvinfer1::PoolingType::kAVERAGE}};
     auto it = op_map.find(op_name);
     ICHECK(it != op_map.end()) << "Unsupported pooling type " << op_name << " in TensorRT";
-    ICHECK_EQ(params->node.GetAttr<std::vector<std::string>>("layout")[0], "NCHW");
+    ICHECK_EQ(params->node.GetAttr<ffi::Array<ffi::String>>("layout")[0], "NCHW");
 
     // This is an approximation of adaptive pooling. Results will not be
     // mathematically exact except when output_size is (1, 1).
@@ -1314,8 +1310,8 @@ class BatchMatmulOpConverter : public TensorRTOpConverter {
   ~BatchMatmulOpConverter() = default;
 
   void Convert(TensorRTOpConverterParams* params) const {
-    auto transa = std::stoi(params->node.GetAttr<std::vector<std::string>>("transpose_a")[0]);
-    auto transb = std::stoi(params->node.GetAttr<std::vector<std::string>>("transpose_b")[0]);
+    auto transa = std::stoi(params->node.GetAttr<ffi::Array<ffi::String>>("transpose_a")[0]);
+    auto transb = std::stoi(params->node.GetAttr<ffi::Array<ffi::String>>("transpose_b")[0]);
     nvinfer1::MatrixOperation trt_transa =
         transa ? nvinfer1::MatrixOperation::kTRANSPOSE : nvinfer1::MatrixOperation::kNONE;
     nvinfer1::MatrixOperation trt_transb =

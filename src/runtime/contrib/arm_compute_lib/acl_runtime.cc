@@ -251,17 +251,17 @@ class ACLRuntime : public JSONRuntimeBase {
    */
   void CreateConvolution2DLayer(CachedLayer* layer, const JSONGraphNode& node,
                                 const std::shared_ptr<arm_compute::MemoryManagerOnDemand>& mm) {
-    std::vector<std::string> padding = node.GetAttr<std::vector<std::string>>("padding");
-    std::vector<std::string> strides = node.GetAttr<std::vector<std::string>>("strides");
-    std::vector<std::string> dilation = node.GetAttr<std::vector<std::string>>("dilation");
+    auto padding = node.GetAttr<ffi::Array<ffi::String>>("padding");
+    auto strides = node.GetAttr<ffi::Array<ffi::String>>("strides");
+    auto dilation = node.GetAttr<ffi::Array<ffi::String>>("dilation");
     arm_compute::PadStrideInfo pad_stride_info = MakeACLPadStride(padding, strides);
 
-    int groups = std::stoi(node.GetAttr<std::vector<std::string>>("groups")[0]);
+    int groups = std::stoi(node.GetAttr<ffi::Array<ffi::String>>("groups")[0]);
     ICHECK(groups == 1) << "Arm Compute Library NEON convolution only supports group size of 1.";
 
     arm_compute::ActivationLayerInfo act_info;
     if (node.HasAttr("activation_type")) {
-      std::string activation_type = node.GetAttr<std::vector<std::string>>("activation_type")[0];
+      std::string activation_type = node.GetAttr<ffi::Array<ffi::String>>("activation_type")[0];
       act_info = MakeACLActivationInfo(activation_type);
     }
 
@@ -309,14 +309,14 @@ class ACLRuntime : public JSONRuntimeBase {
   void CreateDepthwiseConvolution2DLayer(
       CachedLayer* layer, const JSONGraphNode& node,
       const std::shared_ptr<arm_compute::MemoryManagerOnDemand>& mm) {
-    std::vector<std::string> padding = node.GetAttr<std::vector<std::string>>("padding");
-    std::vector<std::string> strides = node.GetAttr<std::vector<std::string>>("strides");
-    std::vector<std::string> dilation = node.GetAttr<std::vector<std::string>>("dilation");
+    auto padding = node.GetAttr<ffi::Array<ffi::String>>("padding");
+    auto strides = node.GetAttr<ffi::Array<ffi::String>>("strides");
+    auto dilation = node.GetAttr<ffi::Array<ffi::String>>("dilation");
     arm_compute::PadStrideInfo pad_stride_info = MakeACLPadStride(padding, strides);
 
     arm_compute::ActivationLayerInfo act_info;
     if (node.HasAttr("activation_type")) {
-      std::string activation_type = node.GetAttr<std::vector<std::string>>("activation_type")[0];
+      std::string activation_type = node.GetAttr<ffi::Array<ffi::String>>("activation_type")[0];
       act_info = MakeACLActivationInfo(activation_type);
     }
 
@@ -410,12 +410,12 @@ class ACLRuntime : public JSONRuntimeBase {
    * \param node The JSON representation of the operator.
    */
   void CreatePoolingLayer(CachedLayer* layer, const JSONGraphNode& node) {
-    std::vector<std::string> padding = node.GetAttr<std::vector<std::string>>("padding");
-    std::vector<std::string> strides = node.GetAttr<std::vector<std::string>>("strides");
-    std::vector<std::string> dilation = node.GetAttr<std::vector<std::string>>("dilation");
-    bool ceil_mode = std::stoi(node.GetAttr<std::vector<std::string>>("ceil_mode")[0]);
+    auto padding = node.GetAttr<ffi::Array<ffi::String>>("padding");
+    auto strides = node.GetAttr<ffi::Array<ffi::String>>("strides");
+    auto dilation = node.GetAttr<ffi::Array<ffi::String>>("dilation");
+    bool ceil_mode = std::stoi(node.GetAttr<ffi::Array<ffi::String>>("ceil_mode")[0]);
     arm_compute::PadStrideInfo pad_stride_info = MakeACLPadStride(padding, strides, ceil_mode);
-    auto attr_pool_size = node.GetAttr<std::vector<std::string>>("pool_size");
+    auto attr_pool_size = node.GetAttr<ffi::Array<ffi::String>>("pool_size");
     int pool_size_h = std::stoi(attr_pool_size[0]);
     int pool_size_w = std::stoi(attr_pool_size[1]);
 
@@ -424,7 +424,7 @@ class ACLRuntime : public JSONRuntimeBase {
     bool exclude_pad = false;
     if (node.HasAttr("count_include_pad")) {
       int count_include_pad =
-          std::stoi(node.GetAttr<std::vector<std::string>>("count_include_pad")[0]);
+          std::stoi(node.GetAttr<ffi::Array<ffi::String>>("count_include_pad")[0]);
       exclude_pad = !count_include_pad;
     }
 
@@ -548,7 +548,7 @@ class ACLRuntime : public JSONRuntimeBase {
    * \param node The JSON representation of the operator.
    */
   void CreateConcatenateLayer(CachedLayer* layer, const JSONGraphNode& node) {
-    std::vector<std::string> axis = node.GetAttr<std::vector<std::string>>("axis");
+    auto axis = node.GetAttr<ffi::Array<ffi::String>>("axis");
     std::vector<const arm_compute::ITensor*> inputs;
     for (auto input : node.GetInputs()) {
       layer->inputs.push_back(MakeACLTensorFromJSONEntry(input, nullptr, nullptr, false));

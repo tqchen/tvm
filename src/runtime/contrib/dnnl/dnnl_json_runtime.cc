@@ -799,8 +799,12 @@ class DNNLJSONRuntime : public JSONRuntimeBase {
   template <typename T>
   const T GetNodeAttr(const json::JSONGraphNode& node, std::string name,
                       std::vector<std::string> def = {}) {
-    auto attr = node.HasAttr(name) ? node.GetAttr<std::vector<std::string>>(name) : def;
-    return AttrConvert<T>(attr);
+    if (node.HasAttr(name)) {
+      auto attr_array = node.GetAttr<ffi::Array<ffi::String>>(name);
+      std::vector<std::string> attr(attr_array.begin(), attr_array.end());
+      return AttrConvert<T>(attr);
+    }
+    return AttrConvert<T>(def);
   }
 
   TensorRequisite GetInput(const size_t& nid, const int idx) {
