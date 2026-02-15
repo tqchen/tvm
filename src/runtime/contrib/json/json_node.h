@@ -26,15 +26,17 @@
 #define TVM_RUNTIME_CONTRIB_JSON_JSON_NODE_H_
 
 #include <dlpack/dlpack.h>
+#include <tvm/ffi/any.h>
+#include <tvm/ffi/container/array.h>
+#include <tvm/ffi/container/map.h>
 #include <tvm/ffi/extra/json.h>
+#include <tvm/ffi/string.h>
 #include <tvm/runtime/data_type.h>
 
-#include <any>
 #include <cstdint>
 #include <cstdio>
 #include <memory>
 #include <string>
-#include <unordered_map>
 #include <utility>
 #include <vector>
 
@@ -42,7 +44,67 @@ namespace tvm {
 namespace runtime {
 namespace json {
 
-using JSONGraphAttrs = std::unordered_map<std::string, std::any>;
+using JSONGraphAttrs = ffi::Map<ffi::String, ffi::Any>;
+
+/*!
+ * \brief Convert an ffi::Any value to a JSON value for serialization.
+ */
+inline ffi::json::Value AnyToJSONValue(const ffi::Any& v) {
+  if (auto opt_int = v.try_cast<int64_t>()) {
+    return ffi::json::Value(opt_int.value());
+  } else if (auto opt_float = v.try_cast<double>()) {
+    return ffi::json::Value(opt_float.value());
+  } else if (auto opt_str = v.try_cast<ffi::String>()) {
+    return ffi::json::Value(opt_str.value());
+  } else if (const auto* arr_obj = v.as<ffi::ArrayObj>()) {
+    ffi::json::Array arr;
+    for (size_t i = 0; i < arr_obj->size(); ++i) {
+      arr.push_back(AnyToJSONValue((*arr_obj)[i]));
+    }
+    return arr;
+  } else {
+    LOG(FATAL) << "Unsupported type for JSON serialization: " << v.GetTypeKey();
+    return ffi::json::Value();
+  }
+}
+
+/*!
+ * \brief Convert a JSON value to an ffi::Any for deserialization.
+ */
+inline ffi::Any JSONValueToAny(const ffi::json::Value& v) {
+  if (auto opt_int = v.try_cast<int64_t>()) {
+    return ffi::Any(opt_int.value());
+  } else if (auto opt_float = v.try_cast<double>()) {
+    return ffi::Any(opt_float.value());
+  } else if (auto opt_str = v.try_cast<ffi::String>()) {
+    return ffi::Any(opt_str.value());
+  } else if (auto opt_arr = v.try_cast<ffi::json::Array>()) {
+    auto arr = opt_arr.value();
+    if (arr.size() == 0) {
+      return ffi::Any(ffi::Array<int64_t>{});
+    }
+    // Determine element type from first element
+    if (arr[0].try_cast<int64_t>()) {
+      ffi::Array<int64_t> result;
+      for (const auto& elem : arr) result.push_back(elem.cast<int64_t>());
+      return ffi::Any(result);
+    } else if (arr[0].try_cast<double>()) {
+      ffi::Array<double> result;
+      for (const auto& elem : arr) result.push_back(elem.cast<double>());
+      return ffi::Any(result);
+    } else if (arr[0].try_cast<ffi::String>()) {
+      ffi::Array<ffi::String> result;
+      for (const auto& elem : arr) result.push_back(elem.cast<ffi::String>());
+      return ffi::Any(result);
+    } else {
+      LOG(FATAL) << "Unsupported JSON array element type";
+      return ffi::Any();
+    }
+  } else {
+    LOG(FATAL) << "Unsupported JSON value type";
+    return ffi::Any();
+  }
+}
 
 /*!
  * \brief The node entry in the serialized json graph.
@@ -86,85 +148,6 @@ class JSONGraphNodeEntry {
   uint32_t version_;
 };
 
-namespace {
-
-template <typename T>
-bool SameType(const std::any& data) {
-  return data.type() == typeid(T);
-}
-
-ffi::json::Value AnyVecToJson(const std::vector<std::any>& data) {
-  ffi::json::Array arr;
-  for (const auto& v : data) {
-    if (SameType<std::string>(v)) {
-      arr.push_back(ffi::String(std::any_cast<std::string>(v)));
-    } else if (SameType<int>(v)) {
-      arr.push_back(static_cast<int64_t>(std::any_cast<int>(v)));
-    } else if (SameType<std::vector<size_t>>(v)) {
-      const auto& sv = std::any_cast<const std::vector<size_t>&>(v);
-      ffi::json::Array inner;
-      for (auto x : sv) inner.push_back(static_cast<int64_t>(x));
-      arr.push_back(std::move(inner));
-    } else if (SameType<std::vector<std::vector<int64_t>>>(v)) {
-      const auto& vv = std::any_cast<const std::vector<std::vector<int64_t>>&>(v);
-      ffi::json::Array inner;
-      for (const auto& row : vv) {
-        ffi::json::Array r;
-        for (auto x : row) r.push_back(x);
-        inner.push_back(std::move(r));
-      }
-      arr.push_back(std::move(inner));
-    } else if (SameType<std::vector<std::string>>(v)) {
-      const auto& sv = std::any_cast<const std::vector<std::string>&>(v);
-      ffi::json::Array inner;
-      for (const auto& s : sv) inner.push_back(ffi::String(s));
-      arr.push_back(std::move(inner));
-    } else {
-      LOG(FATAL) << "Not supported type in std::any vector";
-    }
-  }
-  return arr;
-}
-
-ffi::json::Value AttrsToJson(const std::unordered_map<std::string, std::any>& data) {
-  ffi::json::Object obj;
-  for (const auto& kv : data) {
-    const auto& k = kv.first;
-    const auto& v = kv.second;
-    if (SameType<std::string>(v)) {
-      obj.Set(ffi::String(k), ffi::String(std::any_cast<std::string>(v)));
-    } else if (SameType<int>(v)) {
-      obj.Set(ffi::String(k), static_cast<int64_t>(std::any_cast<int>(v)));
-    } else if (SameType<std::vector<size_t>>(v)) {
-      const auto& sv = std::any_cast<const std::vector<size_t>&>(v);
-      ffi::json::Array arr;
-      for (auto x : sv) arr.push_back(static_cast<int64_t>(x));
-      obj.Set(ffi::String(k), std::move(arr));
-    } else if (SameType<std::vector<std::vector<int64_t>>>(v)) {
-      const auto& vv = std::any_cast<const std::vector<std::vector<int64_t>>&>(v);
-      ffi::json::Array arr;
-      for (const auto& row : vv) {
-        ffi::json::Array r;
-        for (auto x : row) r.push_back(x);
-        arr.push_back(std::move(r));
-      }
-      obj.Set(ffi::String(k), std::move(arr));
-    } else if (SameType<std::vector<std::string>>(v)) {
-      const auto& sv = std::any_cast<const std::vector<std::string>&>(v);
-      ffi::json::Array arr;
-      for (const auto& s : sv) arr.push_back(ffi::String(s));
-      obj.Set(ffi::String(k), std::move(arr));
-    } else if (SameType<std::vector<std::any>>(v)) {
-      obj.Set(ffi::String(k), AnyVecToJson(std::any_cast<const std::vector<std::any>&>(v)));
-    } else {
-      LOG(FATAL) << "Not supported type in attrs";
-    }
-  }
-  return obj;
-}
-
-}  // namespace
-
 /*!
  * \brief The node of the serialized json graph. It includes an array of
  * entries.
@@ -187,8 +170,8 @@ class JSONGraphNode {
    */
   ffi::json::Value SaveToJSON() {
     if (!inputs_.empty()) {
-      SetAttr("num_inputs", std::to_string(inputs_.size()));
-      SetAttr("num_outputs", std::to_string(num_outputs_));
+      SetAttr("num_inputs", static_cast<int64_t>(inputs_.size()));
+      SetAttr("num_outputs", static_cast<int64_t>(num_outputs_));
     }
     ffi::json::Object obj;
     obj.Set(ffi::String("op"), ffi::String(op_type_));
@@ -200,8 +183,32 @@ class JSONGraphNode {
       }
       obj.Set(ffi::String("inputs"), std::move(inputs_arr));
     }
-    if (!attrs_.empty()) {
-      obj.Set(ffi::String("attrs"), AttrsToJson(attrs_));
+    if (attrs_.size() > 0) {
+      ffi::json::Object attrs_obj;
+      // serialize shape and dtype specially
+      if (shape_.size() > 0) {
+        ffi::json::Array shapes_arr;
+        for (const auto& s : shape_) {
+          ffi::json::Array row;
+          for (auto x : s) row.push_back(x);
+          shapes_arr.push_back(std::move(row));
+        }
+        attrs_obj.Set(ffi::String("shape"), std::move(shapes_arr));
+      }
+      if (dtype_.size() > 0) {
+        ffi::json::Array dtype_arr;
+        for (const auto& d : dtype_) {
+          dtype_arr.push_back(ffi::String(ffi::DLDataTypeToString(d)));
+        }
+        attrs_obj.Set(ffi::String("dtype"), std::move(dtype_arr));
+      }
+      for (const auto& kv : attrs_) {
+        std::string key = kv.first;
+        if (key == "shape" || key == "dtype") continue;
+        const ffi::Any& v = kv.second;
+        attrs_obj.Set(ffi::String(key), AnyToJSONValue(v));
+      }
+      obj.Set(ffi::String("attrs"), std::move(attrs_obj));
     }
     return obj;
   }
@@ -213,22 +220,16 @@ class JSONGraphNode {
     for (const auto& kv : obj) {
       std::string key = std::string(kv.first.cast<ffi::String>());
       if (key == "num_inputs") {
-        std::string value = std::string(kv.second.cast<ffi::String>());
-        num_inputs_ = strtoul(value.c_str(), nullptr, 10);
+        num_inputs_ = static_cast<uint32_t>(kv.second.cast<int64_t>());
       } else if (key == "num_outputs") {
-        std::string value = std::string(kv.second.cast<ffi::String>());
-        num_outputs_ = strtoul(value.c_str(), nullptr, 10);
+        num_outputs_ = static_cast<uint32_t>(kv.second.cast<int64_t>());
       } else if (key == "dtype") {
-        auto outer = kv.second.cast<ffi::json::Array>();
-        ICHECK_EQ(outer.size(), 1);
-        auto inner = outer[0].cast<ffi::json::Array>();
-        for (const auto& it : inner) {
+        auto dtype_arr = kv.second.cast<ffi::json::Array>();
+        for (const auto& it : dtype_arr) {
           dtype_.push_back(ffi::StringToDLDataType(std::string(it.cast<ffi::String>())));
         }
       } else if (key == "shape") {
-        auto outer = kv.second.cast<ffi::json::Array>();
-        ICHECK_EQ(outer.size(), 1);
-        auto shapes_arr = outer[0].cast<ffi::json::Array>();
+        auto shapes_arr = kv.second.cast<ffi::json::Array>();
         shape_.clear();
         for (const auto& s : shapes_arr) {
           auto row = s.cast<ffi::json::Array>();
@@ -237,12 +238,7 @@ class JSONGraphNode {
           shape_.push_back(shape_vec);
         }
       } else {
-        auto outer = kv.second.cast<ffi::json::Array>();
-        ICHECK_EQ(outer.size(), 1);
-        auto inner = outer[0].cast<ffi::json::Array>();
-        std::vector<std::string> tmp;
-        for (const auto& v : inner) tmp.push_back(std::string(v.cast<ffi::String>()));
-        attrs_[key] = tmp;
+        attrs_.Set(key, JSONValueToAny(kv.second));
       }
     }
     ICHECK_EQ(shape_.size(), dtype_.size());
@@ -340,21 +336,27 @@ class JSONGraphNode {
    */
   template <typename T>
   T GetAttr(const std::string& key) const {
-    ICHECK_GT(attrs_.count(key), 0U) << "Key: " << key << " is not found";
-    return std::any_cast<T>(attrs_.at(key));
+    ICHECK(attrs_.count(key) > 0) << "Key: " << key << " is not found";
+    return attrs_[key].cast<T>();
   }
 
   /*!
    * \brief Set an attribute for the node.
    *
-   * \tparam ValueT The type of the value being stored.
    * \param key The key of the attribute.
-   * \param value The value of the attribute.
+   * \param value The attribute value (native type: int64_t, double, ffi::String, ffi::Array, etc.)
    */
-  template <typename ValueT>
-  void SetAttr(const std::string& key, const ValueT& value) {
-    attrs_[key] = value;
-  }
+  void SetAttr(const std::string& key, ffi::Any value) { attrs_.Set(key, std::move(value)); }
+
+  /*!
+   * \brief Set shape for the node.
+   */
+  void SetShape(const std::vector<std::vector<int64_t>>& shape) { shape_ = shape; }
+
+  /*!
+   * \brief Set dtype for the node.
+   */
+  void SetDType(const std::vector<DLDataType>& dtype) { dtype_ = dtype; }
 
   /*!
    * \brief Check if node has attribute.
@@ -363,11 +365,11 @@ class JSONGraphNode {
    *
    * \return True if attribute exists, false otherwise.
    */
-  bool HasAttr(const std::string& key) const { return attrs_.find(key) != attrs_.end(); }
+  bool HasAttr(const std::string& key) const { return attrs_.count(key) > 0; }
 
   void CaptureAttrs(const JSONGraphNode& that) {
     for (const auto& kv : that.attrs_) {
-      attrs_[kv.first] = kv.second;
+      attrs_.Set(kv.first, kv.second);
     }
   }
 
