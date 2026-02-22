@@ -1,0 +1,4 @@
+[console_scripts]
+tvm-ffi-config = tvm_ffi.config:__main__
+tvm-ffi-stubgen = tvm_ffi.stub.cli:__main__
+
