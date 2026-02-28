@@ -36,6 +36,19 @@ WELL_FORMED_ERROR_MESSAGE = (
 )
 
 
+def _resolve_annotations(func):
+    """Resolve annotations, handling PEP 563 stringified annotations.
+
+    Uses inspect.get_annotations with eval_str=True to resolve string
+    annotations back to objects. Falls back to raw __annotations__ if
+    evaluation fails (e.g., closure variables not in func.__globals__).
+    """
+    try:
+        return inspect.get_annotations(func, eval_str=True)
+    except Exception:  # pylint: disable=broad-exception-caught
+        return func.__annotations__
+
+
 def _default_globals() -> dict[str, Any]:
     # lazy import here to avoid circular deps
     from tvm.script.parser import (
@@ -93,11 +106,11 @@ def parse(
     ann = {}
     all_pyfuncs = {}
     if inspect.isfunction(program):
-        ann = {program.__name__: program.__annotations__}
+        ann = {program.__name__: _resolve_annotations(program)}
     elif inspect.isclass(program):
         for name, func in program.__dict__.items():
             if inspect.isfunction(func):
-                ann[name] = func.__annotations__
+                ann[name] = _resolve_annotations(func)
                 all_pyfuncs[name] = func
 
     source = Source(program)
