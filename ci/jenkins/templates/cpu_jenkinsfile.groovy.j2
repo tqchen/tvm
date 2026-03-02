@@ -48,7 +48,18 @@
   {{ m.download_artifacts(tag='cpu') }}
   ci_setup(ci_cpu)
   cpp_unittest(ci_cpu)
-  python_unittest(ci_cpu)
+  sh (
+    script: "${docker_run} ${ci_cpu} ./tests/scripts/task_python_unittest_core.sh",
+    label: 'Run Python core unit tests',
+  )
+  sh (
+    script: "${docker_run} ${ci_cpu} ./tests/scripts/task_python_unittest_s_tir.sh",
+    label: 'Run Python S-TIR unit tests',
+  )
+  sh (
+    script: "${docker_run} ${ci_cpu} ./tests/scripts/task_python_unittest_relax.sh",
+    label: 'Run Python Relax unit tests',
+  )
 {% endcall %}
 
 {{ m.invoke_tests(node="CPU-SMALL", test_method_names=test_method_names) -}}

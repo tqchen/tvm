@@ -25,7 +25,9 @@ export PYTEST_ADDOPTS="-m gpu ${PYTEST_ADDOPTS:-}"
 export TVM_TEST_TARGETS='cuda;metal;rocm;nvptx'
 export TVM_UNITTEST_TESTSUITE_NAME=python-unittest-gpu
 
-./tests/scripts/task_python_unittest.sh
+./tests/scripts/task_python_unittest_core.sh
+./tests/scripts/task_python_unittest_s_tir.sh
+./tests/scripts/task_python_unittest_relax.sh
 
 # Kept separate to avoid increasing time needed to run CI, testing
 # only minimal functionality of Vulkan runtime.

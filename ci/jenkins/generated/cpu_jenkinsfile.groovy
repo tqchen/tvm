@@ -60,7 +60,7 @@
 // 'python3 jenkins/generate.py'
 // Note: This timestamp is here to ensure that updates to the Jenkinsfile are
 // always rebased on main before merging:
-// Generated at 2025-08-24T16:41:22.367054
+// Generated at 2026-03-02T14:44:01.231808
 
 import org.jenkinsci.plugins.pipeline.modeldefinition.Utils
 // These are set at runtime from data in ci/jenkins/docker-images.yml, update
@@ -558,7 +558,18 @@ def shard_run_unittest_CPU_1_of_2(node_type) {
 
               ci_setup(ci_cpu)
               cpp_unittest(ci_cpu)
-              python_unittest(ci_cpu)
+              sh (
+                script: "${docker_run} ${ci_cpu} ./tests/scripts/task_python_unittest_core.sh",
+                label: 'Run Python core unit tests',
+              )
+              sh (
+                script: "${docker_run} ${ci_cpu} ./tests/scripts/task_python_unittest_s_tir.sh",
+                label: 'Run Python S-TIR unit tests',
+              )
+              sh (
+                script: "${docker_run} ${ci_cpu} ./tests/scripts/task_python_unittest_relax.sh",
+                label: 'Run Python Relax unit tests',
+              )
           })
         }
         // only run upload if things are successful
@@ -602,7 +613,18 @@ def shard_run_unittest_CPU_2_of_2(node_type) {
 
               ci_setup(ci_cpu)
               cpp_unittest(ci_cpu)
-              python_unittest(ci_cpu)
+              sh (
+                script: "${docker_run} ${ci_cpu} ./tests/scripts/task_python_unittest_core.sh",
+                label: 'Run Python core unit tests',
+              )
+              sh (
+                script: "${docker_run} ${ci_cpu} ./tests/scripts/task_python_unittest_s_tir.sh",
+                label: 'Run Python S-TIR unit tests',
+              )
+              sh (
+                script: "${docker_run} ${ci_cpu} ./tests/scripts/task_python_unittest_relax.sh",
+                label: 'Run Python Relax unit tests',
+              )
           })
         }
         // only run upload if things are successful
