@@ -38,8 +38,8 @@
 
 
 {% call(shard_index, num_shards) m.sharded_test_step(
-  name="unittest: CPU",
-  ws="tvm/ut-python-cpu",
+  name="unittest: CPU core",
+  ws="tvm/ut-python-cpu-core",
   platform="cpu",
   num_shards=2,
   docker_image="ci_cpu",
@@ -52,10 +52,34 @@
     script: "${docker_run} ${ci_cpu} ./tests/scripts/task_python_unittest_core.sh",
     label: 'Run Python core unit tests',
   )
+{% endcall %}
+
+{% call(shard_index, num_shards) m.sharded_test_step(
+  name="unittest: CPU s_tir",
+  ws="tvm/ut-python-cpu-s-tir",
+  platform="cpu",
+  num_shards=2,
+  docker_image="ci_cpu",
+  test_method_names=test_method_names,
+) %}
+  {{ m.download_artifacts(tag='cpu') }}
+  ci_setup(ci_cpu)
   sh (
     script: "${docker_run} ${ci_cpu} ./tests/scripts/task_python_unittest_s_tir.sh",
     label: 'Run Python S-TIR unit tests',
   )
+{% endcall %}
+
+{% call(shard_index, num_shards) m.sharded_test_step(
+  name="unittest: CPU relax",
+  ws="tvm/ut-python-cpu-relax",
+  platform="cpu",
+  num_shards=2,
+  docker_image="ci_cpu",
+  test_method_names=test_method_names,
+) %}
+  {{ m.download_artifacts(tag='cpu') }}
+  ci_setup(ci_cpu)
   sh (
     script: "${docker_run} ${ci_cpu} ./tests/scripts/task_python_unittest_relax.sh",
     label: 'Run Python Relax unit tests',

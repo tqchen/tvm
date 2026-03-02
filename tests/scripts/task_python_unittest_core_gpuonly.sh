@@ -18,29 +18,8 @@
 
 set -euxo pipefail
 
-source tests/scripts/setup-pytest-env.sh
+export PYTEST_ADDOPTS="-m gpu ${PYTEST_ADDOPTS:-}"
+export TVM_TEST_TARGETS='cuda;metal;rocm;nvptx'
+export TVM_UNITTEST_TESTSUITE_NAME=python-unittest-gpu-core
 
-# cleanup pycache
-find . -type f -path "*.pyc" | xargs rm -f
-
-# setup tvm-ffi into python folder
-python3 -m pip install  -v --target=python ./3rdparty/tvm-ffi/
-
-# NOTE: also set by task_python_unittest_gpuonly.sh.
-if [ -z "${TVM_UNITTEST_TESTSUITE_NAME:-}" ]; then
-    TVM_UNITTEST_TESTSUITE_NAME=python-unittest-s-tir
-fi
-
-# S-TIR unit tests
-TEST_FILES=(
-  "s_tir/base"
-  "s_tir/schedule"
-  "s_tir/dlight"
-  "s_tir/analysis"
-  "s_tir/meta_schedule"
-  "s_tir/transform"
-)
-
-for TEST_FILE in ${TEST_FILES[@]}; do
-    run_pytest ${TEST_FILE}, tests/python/${TEST_FILE}
-done
+./tests/scripts/task_python_unittest_core.sh

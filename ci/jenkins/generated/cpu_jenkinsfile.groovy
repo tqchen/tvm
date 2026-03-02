@@ -60,7 +60,7 @@
 // 'python3 jenkins/generate.py'
 // Note: This timestamp is here to ensure that updates to the Jenkinsfile are
 // always rebased on main before merging:
-// Generated at 2026-03-02T14:44:01.231808
+// Generated at 2026-03-02T15:03:51.161179
 
 import org.jenkinsci.plugins.pipeline.modeldefinition.Utils
 // These are set at runtime from data in ci/jenkins/docker-images.yml, update
@@ -536,18 +536,18 @@ build()
 
 
 
-def shard_run_unittest_CPU_1_of_2(node_type) {
+def shard_run_unittest_CPU_core_1_of_2(node_type) {
   echo 'Begin running on node_type ' + node_type
   if (!skip_ci && is_docs_only_build != 1) {
     node(node_type) {
-      ws("workspace/exec_${env.EXECUTOR_NUMBER}/tvm/ut-python-cpu") {
+      ws("workspace/exec_${env.EXECUTOR_NUMBER}/tvm/ut-python-cpu-core") {
         // NOTE: if exception happens, it will be caught outside
         init_git()
         docker_init(ci_cpu)
         timeout(time: max_time, unit: 'MINUTES') {
           withEnv([
             'PLATFORM=cpu',
-            'TEST_STEP_NAME=unittest: CPU',
+            'TEST_STEP_NAME=unittest: CPU core',
             'TVM_NUM_SHARDS=2',
             'TVM_SHARD_INDEX=0',
             "SKIP_SLOW_TESTS=${skip_slow_tests}"], {
@@ -562,20 +562,12 @@ def shard_run_unittest_CPU_1_of_2(node_type) {
                 script: "${docker_run} ${ci_cpu} ./tests/scripts/task_python_unittest_core.sh",
                 label: 'Run Python core unit tests',
               )
-              sh (
-                script: "${docker_run} ${ci_cpu} ./tests/scripts/task_python_unittest_s_tir.sh",
-                label: 'Run Python S-TIR unit tests',
-              )
-              sh (
-                script: "${docker_run} ${ci_cpu} ./tests/scripts/task_python_unittest_relax.sh",
-                label: 'Run Python Relax unit tests',
-              )
           })
         }
         // only run upload if things are successful
         try {
           sh(
-            script: "./${jenkins_scripts_root}/s3.py --action upload --bucket ${s3_bucket} --prefix ${s3_prefix}/pytest-results/unittest_CPU --items build/pytest-results",
+            script: "./${jenkins_scripts_root}/s3.py --action upload --bucket ${s3_bucket} --prefix ${s3_prefix}/pytest-results/unittest_CPU_core --items build/pytest-results",
             label: 'Upload JUnits to S3',
           )
 
@@ -587,22 +579,22 @@ def shard_run_unittest_CPU_1_of_2(node_type) {
     }
     echo 'End running on node_type ' + node_type
   } else {
-    Utils.markStageSkippedForConditional('unittest: CPU 1 of 2')
+    Utils.markStageSkippedForConditional('unittest: CPU core 1 of 2')
   }
 }
 
-def shard_run_unittest_CPU_2_of_2(node_type) {
+def shard_run_unittest_CPU_core_2_of_2(node_type) {
   echo 'Begin running on node_type ' + node_type
   if (!skip_ci && is_docs_only_build != 1) {
     node(node_type) {
-      ws("workspace/exec_${env.EXECUTOR_NUMBER}/tvm/ut-python-cpu") {
+      ws("workspace/exec_${env.EXECUTOR_NUMBER}/tvm/ut-python-cpu-core") {
         // NOTE: if exception happens, it will be caught outside
         init_git()
         docker_init(ci_cpu)
         timeout(time: max_time, unit: 'MINUTES') {
           withEnv([
             'PLATFORM=cpu',
-            'TEST_STEP_NAME=unittest: CPU',
+            'TEST_STEP_NAME=unittest: CPU core',
             'TVM_NUM_SHARDS=2',
             'TVM_SHARD_INDEX=1',
             "SKIP_SLOW_TESTS=${skip_slow_tests}"], {
@@ -617,20 +609,12 @@ def shard_run_unittest_CPU_2_of_2(node_type) {
                 script: "${docker_run} ${ci_cpu} ./tests/scripts/task_python_unittest_core.sh",
                 label: 'Run Python core unit tests',
               )
-              sh (
-                script: "${docker_run} ${ci_cpu} ./tests/scripts/task_python_unittest_s_tir.sh",
-                label: 'Run Python S-TIR unit tests',
-              )
-              sh (
-                script: "${docker_run} ${ci_cpu} ./tests/scripts/task_python_unittest_relax.sh",
-                label: 'Run Python Relax unit tests',
-              )
           })
         }
         // only run upload if things are successful
         try {
           sh(
-            script: "./${jenkins_scripts_root}/s3.py --action upload --bucket ${s3_bucket} --prefix ${s3_prefix}/pytest-results/unittest_CPU --items build/pytest-results",
+            script: "./${jenkins_scripts_root}/s3.py --action upload --bucket ${s3_bucket} --prefix ${s3_prefix}/pytest-results/unittest_CPU_core --items build/pytest-results",
             label: 'Upload JUnits to S3',
           )
 
@@ -642,7 +626,195 @@ def shard_run_unittest_CPU_2_of_2(node_type) {
     }
     echo 'End running on node_type ' + node_type
   } else {
-    Utils.markStageSkippedForConditional('unittest: CPU 2 of 2')
+    Utils.markStageSkippedForConditional('unittest: CPU core 2 of 2')
+  }
+}
+
+
+
+def shard_run_unittest_CPU_s_tir_1_of_2(node_type) {
+  echo 'Begin running on node_type ' + node_type
+  if (!skip_ci && is_docs_only_build != 1) {
+    node(node_type) {
+      ws("workspace/exec_${env.EXECUTOR_NUMBER}/tvm/ut-python-cpu-s-tir") {
+        // NOTE: if exception happens, it will be caught outside
+        init_git()
+        docker_init(ci_cpu)
+        timeout(time: max_time, unit: 'MINUTES') {
+          withEnv([
+            'PLATFORM=cpu',
+            'TEST_STEP_NAME=unittest: CPU s_tir',
+            'TVM_NUM_SHARDS=2',
+            'TVM_SHARD_INDEX=0',
+            "SKIP_SLOW_TESTS=${skip_slow_tests}"], {
+            sh(
+                  script: "./${jenkins_scripts_root}/s3.py --action download --bucket ${s3_bucket} --prefix ${s3_prefix}/cpu",
+                  label: 'Download artifacts from S3',
+                )
+
+              ci_setup(ci_cpu)
+              sh (
+                script: "${docker_run} ${ci_cpu} ./tests/scripts/task_python_unittest_s_tir.sh",
+                label: 'Run Python S-TIR unit tests',
+              )
+          })
+        }
+        // only run upload if things are successful
+        try {
+          sh(
+            script: "./${jenkins_scripts_root}/s3.py --action upload --bucket ${s3_bucket} --prefix ${s3_prefix}/pytest-results/unittest_CPU_s_tir --items build/pytest-results",
+            label: 'Upload JUnits to S3',
+          )
+
+          junit 'build/pytest-results/*.xml'
+        } catch (Exception e) {
+          echo 'Exception during JUnit upload: ' + e.toString()
+        }
+      }
+    }
+    echo 'End running on node_type ' + node_type
+  } else {
+    Utils.markStageSkippedForConditional('unittest: CPU s_tir 1 of 2')
+  }
+}
+
+def shard_run_unittest_CPU_s_tir_2_of_2(node_type) {
+  echo 'Begin running on node_type ' + node_type
+  if (!skip_ci && is_docs_only_build != 1) {
+    node(node_type) {
+      ws("workspace/exec_${env.EXECUTOR_NUMBER}/tvm/ut-python-cpu-s-tir") {
+        // NOTE: if exception happens, it will be caught outside
+        init_git()
+        docker_init(ci_cpu)
+        timeout(time: max_time, unit: 'MINUTES') {
+          withEnv([
+            'PLATFORM=cpu',
+            'TEST_STEP_NAME=unittest: CPU s_tir',
+            'TVM_NUM_SHARDS=2',
+            'TVM_SHARD_INDEX=1',
+            "SKIP_SLOW_TESTS=${skip_slow_tests}"], {
+            sh(
+                  script: "./${jenkins_scripts_root}/s3.py --action download --bucket ${s3_bucket} --prefix ${s3_prefix}/cpu",
+                  label: 'Download artifacts from S3',
+                )
+
+              ci_setup(ci_cpu)
+              sh (
+                script: "${docker_run} ${ci_cpu} ./tests/scripts/task_python_unittest_s_tir.sh",
+                label: 'Run Python S-TIR unit tests',
+              )
+          })
+        }
+        // only run upload if things are successful
+        try {
+          sh(
+            script: "./${jenkins_scripts_root}/s3.py --action upload --bucket ${s3_bucket} --prefix ${s3_prefix}/pytest-results/unittest_CPU_s_tir --items build/pytest-results",
+            label: 'Upload JUnits to S3',
+          )
+
+          junit 'build/pytest-results/*.xml'
+        } catch (Exception e) {
+          echo 'Exception during JUnit upload: ' + e.toString()
+        }
+      }
+    }
+    echo 'End running on node_type ' + node_type
+  } else {
+    Utils.markStageSkippedForConditional('unittest: CPU s_tir 2 of 2')
+  }
+}
+
+
+
+def shard_run_unittest_CPU_relax_1_of_2(node_type) {
+  echo 'Begin running on node_type ' + node_type
+  if (!skip_ci && is_docs_only_build != 1) {
+    node(node_type) {
+      ws("workspace/exec_${env.EXECUTOR_NUMBER}/tvm/ut-python-cpu-relax") {
+        // NOTE: if exception happens, it will be caught outside
+        init_git()
+        docker_init(ci_cpu)
+        timeout(time: max_time, unit: 'MINUTES') {
+          withEnv([
+            'PLATFORM=cpu',
+            'TEST_STEP_NAME=unittest: CPU relax',
+            'TVM_NUM_SHARDS=2',
+            'TVM_SHARD_INDEX=0',
+            "SKIP_SLOW_TESTS=${skip_slow_tests}"], {
+            sh(
+                  script: "./${jenkins_scripts_root}/s3.py --action download --bucket ${s3_bucket} --prefix ${s3_prefix}/cpu",
+                  label: 'Download artifacts from S3',
+                )
+
+              ci_setup(ci_cpu)
+              sh (
+                script: "${docker_run} ${ci_cpu} ./tests/scripts/task_python_unittest_relax.sh",
+                label: 'Run Python Relax unit tests',
+              )
+          })
+        }
+        // only run upload if things are successful
+        try {
+          sh(
+            script: "./${jenkins_scripts_root}/s3.py --action upload --bucket ${s3_bucket} --prefix ${s3_prefix}/pytest-results/unittest_CPU_relax --items build/pytest-results",
+            label: 'Upload JUnits to S3',
+          )
+
+          junit 'build/pytest-results/*.xml'
+        } catch (Exception e) {
+          echo 'Exception during JUnit upload: ' + e.toString()
+        }
+      }
+    }
+    echo 'End running on node_type ' + node_type
+  } else {
+    Utils.markStageSkippedForConditional('unittest: CPU relax 1 of 2')
+  }
+}
+
+def shard_run_unittest_CPU_relax_2_of_2(node_type) {
+  echo 'Begin running on node_type ' + node_type
+  if (!skip_ci && is_docs_only_build != 1) {
+    node(node_type) {
+      ws("workspace/exec_${env.EXECUTOR_NUMBER}/tvm/ut-python-cpu-relax") {
+        // NOTE: if exception happens, it will be caught outside
+        init_git()
+        docker_init(ci_cpu)
+        timeout(time: max_time, unit: 'MINUTES') {
+          withEnv([
+            'PLATFORM=cpu',
+            'TEST_STEP_NAME=unittest: CPU relax',
+            'TVM_NUM_SHARDS=2',
+            'TVM_SHARD_INDEX=1',
+            "SKIP_SLOW_TESTS=${skip_slow_tests}"], {
+            sh(
+                  script: "./${jenkins_scripts_root}/s3.py --action download --bucket ${s3_bucket} --prefix ${s3_prefix}/cpu",
+                  label: 'Download artifacts from S3',
+                )
+
+              ci_setup(ci_cpu)
+              sh (
+                script: "${docker_run} ${ci_cpu} ./tests/scripts/task_python_unittest_relax.sh",
+                label: 'Run Python Relax unit tests',
+              )
+          })
+        }
+        // only run upload if things are successful
+        try {
+          sh(
+            script: "./${jenkins_scripts_root}/s3.py --action upload --bucket ${s3_bucket} --prefix ${s3_prefix}/pytest-results/unittest_CPU_relax --items build/pytest-results",
+            label: 'Upload JUnits to S3',
+          )
+
+          junit 'build/pytest-results/*.xml'
+        } catch (Exception e) {
+          echo 'Exception during JUnit upload: ' + e.toString()
+        }
+      }
+    }
+    echo 'End running on node_type ' + node_type
+  } else {
+    Utils.markStageSkippedForConditional('unittest: CPU relax 2 of 2')
   }
 }
 
@@ -653,9 +825,9 @@ def test() {
       SKIP_SLOW_TESTS = "${skip_slow_tests}"
     }
     parallel(
-    'unittest: CPU 1 of 2': {
+    'unittest: CPU core 1 of 2': {
       try {
-      shard_run_unittest_CPU_1_of_2('CPU-SMALL-SPOT')
+      shard_run_unittest_CPU_core_1_of_2('CPU-SMALL-SPOT')
       } catch (Throwable ex) {
         echo 'Exception during SPOT run ' + ex.toString()
         if (is_last_build()) {
@@ -664,16 +836,16 @@ def test() {
           // and try again via on demand node
           echo 'Retry on-demand given it is last build'
           currentBuild.result = 'SUCCESS'
-          shard_run_unittest_CPU_1_of_2('CPU-SMALL')
+          shard_run_unittest_CPU_core_1_of_2('CPU-SMALL')
         } else {
           echo 'Exit since it is not last build'
           throw ex
         }
       }
     },
-    'unittest: CPU 2 of 2': {
+    'unittest: CPU core 2 of 2': {
       try {
-      shard_run_unittest_CPU_2_of_2('CPU-SMALL-SPOT')
+      shard_run_unittest_CPU_core_2_of_2('CPU-SMALL-SPOT')
       } catch (Throwable ex) {
         echo 'Exception during SPOT run ' + ex.toString()
         if (is_last_build()) {
@@ -682,7 +854,79 @@ def test() {
           // and try again via on demand node
           echo 'Retry on-demand given it is last build'
           currentBuild.result = 'SUCCESS'
-          shard_run_unittest_CPU_2_of_2('CPU-SMALL')
+          shard_run_unittest_CPU_core_2_of_2('CPU-SMALL')
+        } else {
+          echo 'Exit since it is not last build'
+          throw ex
+        }
+      }
+    },
+    'unittest: CPU s_tir 1 of 2': {
+      try {
+      shard_run_unittest_CPU_s_tir_1_of_2('CPU-SMALL-SPOT')
+      } catch (Throwable ex) {
+        echo 'Exception during SPOT run ' + ex.toString()
+        if (is_last_build()) {
+          // retry if at last build
+          // mark the current stage as success
+          // and try again via on demand node
+          echo 'Retry on-demand given it is last build'
+          currentBuild.result = 'SUCCESS'
+          shard_run_unittest_CPU_s_tir_1_of_2('CPU-SMALL')
+        } else {
+          echo 'Exit since it is not last build'
+          throw ex
+        }
+      }
+    },
+    'unittest: CPU s_tir 2 of 2': {
+      try {
+      shard_run_unittest_CPU_s_tir_2_of_2('CPU-SMALL-SPOT')
+      } catch (Throwable ex) {
+        echo 'Exception during SPOT run ' + ex.toString()
+        if (is_last_build()) {
+          // retry if at last build
+          // mark the current stage as success
+          // and try again via on demand node
+          echo 'Retry on-demand given it is last build'
+          currentBuild.result = 'SUCCESS'
+          shard_run_unittest_CPU_s_tir_2_of_2('CPU-SMALL')
+        } else {
+          echo 'Exit since it is not last build'
+          throw ex
+        }
+      }
+    },
+    'unittest: CPU relax 1 of 2': {
+      try {
+      shard_run_unittest_CPU_relax_1_of_2('CPU-SMALL-SPOT')
+      } catch (Throwable ex) {
+        echo 'Exception during SPOT run ' + ex.toString()
+        if (is_last_build()) {
+          // retry if at last build
+          // mark the current stage as success
+          // and try again via on demand node
+          echo 'Retry on-demand given it is last build'
+          currentBuild.result = 'SUCCESS'
+          shard_run_unittest_CPU_relax_1_of_2('CPU-SMALL')
+        } else {
+          echo 'Exit since it is not last build'
+          throw ex
+        }
+      }
+    },
+    'unittest: CPU relax 2 of 2': {
+      try {
+      shard_run_unittest_CPU_relax_2_of_2('CPU-SMALL-SPOT')
+      } catch (Throwable ex) {
+        echo 'Exception during SPOT run ' + ex.toString()
+        if (is_last_build()) {
+          // retry if at last build
+          // mark the current stage as success
+          // and try again via on demand node
+          echo 'Retry on-demand given it is last build'
+          currentBuild.result = 'SUCCESS'
+          shard_run_unittest_CPU_relax_2_of_2('CPU-SMALL')
         } else {
           echo 'Exit since it is not last build'
           throw ex
