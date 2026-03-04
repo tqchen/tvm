@@ -144,6 +144,19 @@ class TVM_DLL StmtVisitor : protected StmtFunctor<void(const Stmt&)> {
    *       and redirect Visit to ExprMutator::VisitExpr(Expr)
    */
   virtual void VisitExpr(const PrimExpr& e) {}
+  /*!
+   * \brief Visit buffer at definition site (AllocBuffer, DeclBuffer, SBlock alloc_buffers).
+   *  Visits buffer shape, strides, elem_offset via VisitExpr.
+   * \param buffer The buffer being defined.
+   * \param alloc_data If true, the buffer's data pointer is a new allocation (AllocBuffer);
+   *              if false, data references an existing variable (DeclBuffer).
+   */
+  virtual void VisitBufferDef(const Buffer& buffer, bool alloc_data);
+  /*!
+   * \brief Visit buffer at use site (BufferStore, BufferLoad, SBlock reads/writes).
+   *  By default visits buffer shape, strides, elem_offset via VisitExpr.
+   */
+  virtual void VisitBufferUse(const Buffer& buffer);
   // statement visitor
   void VisitStmt_(const AttrStmtNode* op) override;
   void VisitStmt_(const IfThenElseNode* op) override;
@@ -179,6 +192,8 @@ class TVM_DLL StmtMutator : protected StmtFunctor<Stmt(const Stmt&)> {
   }
 
  protected:
+  /*! \brief Map from old buffer to new buffer, populated by VisitBufferDef. */
+  ffi::Map<Buffer, Buffer> buffer_remap_;
   // We perform copy on write optimizations on the StmtMutator
   // so that an unique copy of parent can be mutated inplace
   // when some of its children changed.
@@ -240,6 +255,20 @@ class TVM_DLL StmtMutator : protected StmtFunctor<Stmt(const Stmt&)> {
    *       and redirect Mutate to ExprMutator::Mutate(Expr)
    */
   virtual PrimExpr VisitExpr(const PrimExpr& e) { return e; }
+  /*!
+   * \brief Visit buffer at definition site. Visits shape/strides/elem_offset via VisitExpr.
+   *  If any field changes, creates a new buffer and records it in buffer_remap_.
+   * \param buffer The buffer being defined.
+   * \param alloc_data If true, the buffer's data pointer is a new allocation (AllocBuffer);
+   *              if false, data references an existing variable (DeclBuffer).
+   * \return The (possibly new) buffer.
+   */
+  virtual Buffer VisitBufferDef(const Buffer& buffer, bool alloc_data);
+  /*!
+   * \brief Visit buffer at use site. Checks buffer_remap_ and returns remapped buffer if exists.
+   * \return The (possibly remapped) buffer.
+   */
+  virtual Buffer VisitBufferUse(const Buffer& buffer);
   // statement visitor
   Stmt VisitStmt_(const AttrStmtNode* op) override;
   Stmt VisitStmt_(const IfThenElseNode* op) override;
@@ -276,31 +305,49 @@ class TVM_DLL StmtMutator : protected StmtFunctor<Stmt(const Stmt&)> {
 /*!
  * \brief Visitor that recursively visit stmts and exprs on them.
  */
-class StmtExprVisitor : public StmtVisitor, public ExprVisitor {
+class TVM_DLL StmtExprVisitor : public StmtVisitor, public ExprVisitor {
  public:
   using StmtVisitor::operator();
   using ExprVisitor::operator();
 
  protected:
   using ExprVisitor::VisitExpr;
+  using ExprVisitor::VisitExpr_;
   using StmtVisitor::VisitStmt;
 
   void VisitExpr(const PrimExpr& e) override { return ExprVisitor::VisitExpr(e); }
+  void VisitExpr_(const BufferLoadNode* op) override {
+    this->VisitBufferUse(op->buffer);
+    ExprVisitor::VisitExpr_(op);
+  }
 };
 
 /*!
  * \brief Mutator that recursively mutates stmts and exprs on them.
  */
-class StmtExprMutator : public StmtMutator, public ExprMutator {
+class TVM_DLL StmtExprMutator : public StmtMutator, public ExprMutator {
  public:
   using StmtMutator::operator();
   using ExprMutator::operator();
 
  protected:
   using ExprMutator::VisitExpr;
+  using ExprMutator::VisitExpr_;
   using StmtMutator::VisitExpr;
 
   PrimExpr VisitExpr(const PrimExpr& e) override { return ExprMutator::VisitExpr(e); }
+  PrimExpr VisitExpr_(const BufferLoadNode* op) override {
+    Buffer new_buf = this->VisitBufferUse(op->buffer);
+    PrimExpr expr = ExprMutator::VisitExpr_(op);
+    op = expr.as<BufferLoadNode>();
+    TVM_FFI_ICHECK(op != nullptr);
+    if (!new_buf.same_as(op->buffer)) {
+      auto n = ffi::make_object<BufferLoadNode>(*op);
+      n->buffer = std::move(new_buf);
+      return PrimExpr(n);
+    }
+    return expr;
+  }
 };
 
 /*!
