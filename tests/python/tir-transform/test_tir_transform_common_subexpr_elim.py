@@ -504,4 +504,3 @@ if __name__ == "__main__":
     test_no_normalization_without_commoning()
     test_semantic_equiv_distributivity()
     test_semantic_equiv_associativity()
-    print("All tests passed!")
