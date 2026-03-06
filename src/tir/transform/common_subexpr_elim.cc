@@ -23,25 +23,25 @@
  *
  * Architecture overview
  * ---------------------
- * The pass is structured as two cooperating phases wrapped in a cascade loop:
+ * The pass is structured as two cooperating phases (single plan, single rewrite):
  *
  *   Phase 1 — **CSEPlanner** (analysis, no mutation)
- *     Walks the TIR tree and builds:
+ *     Walks the TIR tree bottom-up and builds:
  *       - A *scope tree* that mirrors the nesting structure of For/If/While/AttrStmt.
  *       - An *expression table* mapping each structurally-unique eligible expression
- *         to its occurrence count, LCA scope, and first-use location.
- *     From this it produces a *plan*: two tables describing what to insert where
- *     (InsertBeforeTable) and what to replace (ExprRemapTable).
+ *         to its occurrence count, LCA scope, first-use location, and direct
+ *         parent relationships (which deeper expressions contain it).
+ *     From this it produces a *plan* in a single pass (shallower expressions
+ *     first): two tables describing what to insert where (InsertBeforeTable)
+ *     and what to replace (ExprRemapTable). Shallower-first processing with
+ *     repr propagation resolves all CSE opportunities without a cascade loop.
  *
  *   Phase 2 — **CSERewriter** (mechanical mutation)
  *     Consumes the plan and performs two kinds of edits:
  *       - Inserts `Bind(cse_var, expr)` statements at the planned insertion points.
  *       - Replaces every occurrence of a CSE'd expression with its variable.
- *
- *   **Cascade loop**
- *     After one round of CSE, new opportunities may appear (e.g. sub-expressions
- *     of a CSE'd expression now occur >= 2 times). The loop re-runs until no more
- *     opportunities are found (insert_before is empty).
+ *     Insertions are handled by overriding VisitStmt and wrapping in SeqStmt;
+ *     SeqStmt flattening handles correct nesting.
  *
  * Eligibility rules
  * -----------------
@@ -138,14 +138,30 @@ struct ScopeEntry {
  * The planner maintains one ExprEntry per unique expression (keyed by
  * ExprDeepEqual). Fields are updated incrementally as occurrences are found.
  */
+struct ExprEntry;
+
+/*!
+ * \brief Record of a direct parent expression and multiplicity.
+ *
+ * A "direct parent" of expression S is an expression P such that S appears
+ * inside P without being nested inside another eligible table entry.
+ * Multiplicity is how many times S appears directly in P (e.g., 2 for
+ * `(x+y) * (x+y)` with S = `x+y`).
+ */
+struct ParentInfo {
+  /*! \brief Pointer to the parent ExprEntry (non-owning). */
+  ExprEntry* entry;
+  /*! \brief Number of direct occurrences of the child in the parent expression. */
+  int multiplicity;
+};
+
 struct ExprEntry {
   /*! \brief Total number of occurrences across all scopes. */
   int count{0};
   /*!
    * \brief Nesting depth of eligible sub-expressions within this expression (leaf=0).
    *
-   * Used to sort entries so that deeper (more complex) expressions are CSE'd
-   * first, enabling accurate sub-expression count subtraction.
+   * Used to sort entries so that shallower expressions are processed first.
    */
   int expr_depth{0};
   /*! \brief The expression itself (first occurrence). */
@@ -168,6 +184,14 @@ struct ExprEntry {
    * Used as the insertion point when the LCA equals the first-use scope.
    */
   Stmt first_use_stmt;
+  /*!
+   * \brief Direct parent expressions that contain this expression.
+   *
+   * Populated during the scan phase (bottom-up: children are in the table
+   * before parents). Used to compute independent occurrence counts without
+   * re-traversing expressions in ComputePlan.
+   */
+  std::vector<ParentInfo> direct_parents;
 };
 
 /*! \brief Expression table keyed by structural equality (ExprDeepEqual). */
@@ -392,8 +416,9 @@ class CSEPlanner : public StmtExprVisitor {
    * \brief Record an occurrence of an expression in the expression table.
    *
    * If this is the first occurrence, initializes the entry with the current
-   * scope and statement context. For subsequent occurrences, updates the LCA
-   * to include the new scope.
+   * scope and statement context, and records direct parent relationships
+   * (children are already in the table due to bottom-up visitation).
+   * For subsequent occurrences, updates the LCA to include the new scope.
    *
    * \param e The expression to record. Ignored if not eligible.
    */
@@ -407,10 +432,66 @@ class CSEPlanner : public StmtExprVisitor {
       entry.first_use_stmt = current_seq_child_;
       entry.repr = e;
       entry.expr_depth = ComputeExprDepth(e);
+      // Record this expression as a direct parent of its eligible children.
+      // Children are already in the table (bottom-up visitation order).
+      RecordDirectParents(e, &entry);
     } else {
       entry.lca_scope = LCA(entry.lca_scope, current_scope_);
     }
     entry.count += 1;
+  }
+
+  /*!
+   * \brief Find direct eligible children of `parent_expr` in the table
+   *        and register `parent_entry` as their direct parent.
+   *
+   * "Direct" means the child appears in the parent expression without
+   * being nested inside another eligible table entry. The visitor stops
+   * recursing at any expression already in the table (since that entry
+   * is a closer parent for anything nested within it).
+   *
+   * \param parent_expr The parent expression to scan.
+   * \param parent_entry The ExprEntry of the parent.
+   */
+  void RecordDirectParents(const PrimExpr& parent_expr, ExprEntry* parent_entry) {
+    struct ChildFinder : public ExprVisitor {
+      ExprTable* table;
+      ExprEntry* parent_entry;
+      ExprDeepEqual eq;
+      PrimExpr parent_expr;
+
+      void VisitExpr(const PrimExpr& e) override {
+        // Skip the root expression itself (we want children, not self)
+        if (eq(e, parent_expr)) {
+          ExprVisitor::VisitExpr(e);
+          return;
+        }
+        // If this child is in the table, record the parent relationship
+        auto it = table->find(e);
+        if (it != table->end()) {
+          // Check if this parent is already recorded (for multiplicity)
+          bool found = false;
+          for (auto& pi : it->second.direct_parents) {
+            if (pi.entry == parent_entry) {
+              pi.multiplicity++;
+              found = true;
+              break;
+            }
+          }
+          if (!found) {
+            it->second.direct_parents.push_back({parent_entry, 1});
+          }
+          return;  // stop here — don't recurse into table entries
+        }
+        // Not in table — recurse to find deeper children
+        ExprVisitor::VisitExpr(e);
+      }
+    };
+    ChildFinder finder;
+    finder.table = &table_;
+    finder.parent_entry = parent_entry;
+    finder.parent_expr = parent_expr;
+    finder.VisitExpr(parent_expr);
   }
 
   // ------------------------------------------------------------------
@@ -580,45 +661,15 @@ class CSEPlanner : public StmtExprVisitor {
   // ------------------------------------------------------------------
 
   /*!
-   * \brief Count how many times `target` appears as a sub-expression of `body`.
-   *
-   * Uses structural equality (ExprDeepEqual). Does not count recursively
-   * inside a match (i.e., if `target` is `x+y` and body is `(x+y)+(x+y)`,
-   * returns 2, not counting any deeper nesting inside `x+y` itself).
-   *
-   * \param body The expression to search.
-   * \param target The sub-expression to count.
-   * \return Number of occurrences.
-   */
-  static int CountSubexprOccurrences(const PrimExpr& body, const PrimExpr& target) {
-    struct Counter : public ExprVisitor {
-      ExprDeepEqual eq;
-      PrimExpr target;
-      int count = 0;
-      void VisitExpr(const PrimExpr& e) override {
-        if (eq(e, target)) {
-          ++count;
-          return;  // don't recurse into the match
-        }
-        ExprVisitor::VisitExpr(e);
-      }
-    };
-    Counter c;
-    c.target = target;
-    c.VisitExpr(body);
-    return c.count;
-  }
-
-  /*!
    * \brief Convert the accumulated expression table into InsertBefore + ExprRemap tables.
    *
    * Algorithm (shallower-first with repr propagation):
    *   1. Collect all entries and sort by expr_depth ascending (shallower first),
    *      with structural hash as tie-breaker for determinism.
-   *   2. Compute "consumed" counts: for each entry, count how many of its
-   *      occurrences are strictly inside deeper entries that also have count >= 2.
-   *      An entry whose occurrences are all consumed by deeper parents has no
-   *      independent uses and is skipped (avoids unnecessary single-use bindings).
+   *   2. Compute independent occurrence counts using direct_parents (populated
+   *      during the scan phase). For each entry, occurrences "consumed" by
+   *      direct parent CSE candidates are subtracted. An entry with fewer than
+   *      2 independent occurrences is skipped.
    *   3. For each entry with independent_count >= 2:
    *      a. Determine the insertion point.
    *      b. Create a CSE variable and Bind statement (using the entry's repr,
@@ -626,9 +677,6 @@ class CSEPlanner : public StmtExprVisitor {
    *      c. Add to insert_before and expr_remap.
    *      d. Propagate: replace this expression in all deeper entries' repr
    *         with the new CSE variable.
-   *
-   * Processing shallower expressions first and propagating into deeper reprs
-   * resolves all CSE opportunities in a single pass — no cascade loop needed.
    *
    * \return A pair of (InsertBeforeTable, ExprRemapTable).
    */
@@ -648,21 +696,16 @@ class CSEPlanner : public StmtExprVisitor {
           return hasher(a.first) < hasher(b.first);
         });
 
-    // Step 2: For each entry, compute how many occurrences are consumed
-    // by strictly deeper entries (parents) that are also CSE candidates.
-    // consumed = sum over parents with count>=2 of (parent.count * multiplicity)
-    // independent_count = count - consumed
+    // Step 2: Compute independent occurrence counts using direct_parents.
+    // For each direct parent P with count >= 2, (P.count - 1) * multiplicity
+    // occurrences are consumed (the Bind value retains one copy).
+    // Only direct parents are considered — no double-counting through grandparents.
     std::unordered_map<ExprEntry*, int> independent_count;
     for (auto& [expr, entry] : all_entries) {
       int consumed = 0;
-      for (auto& [parent_expr, parent_entry] : all_entries) {
-        if (parent_entry->expr_depth <= entry->expr_depth) continue;
-        if (parent_entry->count < 2) continue;
-        int mult = CountSubexprOccurrences(parent_expr, expr);
-        if (mult > 0) {
-          // After CSE, the parent's Bind value retains one copy of the child,
-          // so only (parent.count - 1) occurrences are truly eliminated.
-          consumed += (parent_entry->count - 1) * mult;
+      for (const auto& pi : entry->direct_parents) {
+        if (pi.entry->count >= 2) {
+          consumed += (pi.entry->count - 1) * pi.multiplicity;
         }
       }
       independent_count[entry] = entry->count - consumed;
