@@ -133,32 +133,21 @@ struct ScopeEntry {
 };
 
 /*!
- * \brief Metadata accumulated for each structurally-unique eligible expression.
+ * \brief Node in the expression DAG built during the bottom-up scan.
  *
- * The planner maintains one ExprEntry per unique expression (keyed by
- * ExprDeepEqual). Fields are updated incrementally as occurrences are found.
+ * The planner maintains one ExprEntry per structurally-unique eligible
+ * expression (keyed by ExprDeepEqual). Since expressions are recorded
+ * bottom-up (children before parents), the DAG children are naturally
+ * discovered when a node is first added. Fields like expr_depth are
+ * computed incrementally from children — no separate traversal needed.
  */
-/*!
- * \brief Record of a direct parent expression and multiplicity.
- *
- * A "direct parent" of expression S is an expression P such that S appears
- * inside P without being nested inside another eligible table entry.
- * Multiplicity is how many times S appears directly in P (e.g., 2 for
- * `(x+y) * (x+y)` with S = `x+y`).
- */
-struct ParentInfo {
-  /*! \brief The parent expression (key into ExprTable). */
-  PrimExpr parent_expr;
-  /*! \brief Number of direct occurrences of the child in the parent expression. */
-  int multiplicity;
-};
-
 struct ExprEntry {
   /*! \brief Total number of occurrences across all scopes. */
   int count{0};
   /*!
-   * \brief Nesting depth of eligible sub-expressions within this expression (leaf=0).
+   * \brief Nesting depth of eligible sub-expressions (leaf eligible = 1).
    *
+   * Computed from children: `1 + max(child.expr_depth)`, or 1 if no children.
    * Used to sort entries so that shallower expressions are processed first.
    */
   int expr_depth{0};
@@ -183,13 +172,14 @@ struct ExprEntry {
    */
   Stmt first_use_stmt;
   /*!
-   * \brief Direct parent expressions that contain this expression.
+   * \brief Direct children in the expression DAG: (child_expr, multiplicity).
    *
-   * Populated during the scan phase (bottom-up: children are in the table
-   * before parents). Used to compute independent occurrence counts without
-   * re-traversing expressions in ComputePlan.
+   * A "direct child" is an eligible table entry reachable from this expression
+   * without passing through another table entry. Multiplicity counts how many
+   * times the child appears (e.g., 2 for `(x+y) * (x+y)` with child `x+y`).
+   * Populated during RecordExpr (bottom-up: children already in table).
    */
-  std::vector<ParentInfo> direct_parents;
+  std::vector<std::pair<PrimExpr, int>> children;
 };
 
 /*! \brief Expression table keyed by structural equality (ExprDeepEqual). */
@@ -198,10 +188,13 @@ using ExprTable = std::unordered_map<PrimExpr, ExprEntry, ffi::StructuralHash, E
 /*!
  * \brief Phase 1 of the two-phase CSE pass.
  *
- * CSEPlanner is a read-only visitor that scans the TIR tree and builds:
+ * CSEPlanner is a read-only visitor that scans the TIR tree bottom-up and builds:
  *   1. A **scope tree** (vector of ScopeEntry) reflecting For/If/While/AttrStmt nesting.
- *   2. An **expression table** (ExprTable) mapping each eligible expression to its
- *      occurrence count, expression depth, LCA scope, and first-use location.
+ *   2. An **expression DAG** (ExprTable) where each node is an eligible expression
+ *      with occurrence count, expr_depth, LCA scope, first-use location, and
+ *      direct children (other table entries reachable without passing through
+ *      another table entry). Children and expr_depth are computed incrementally
+ *      during the bottom-up scan — no separate traversal needed.
  *
  * After scanning, ComputePlan() converts the internal state into two output tables:
  *   - InsertBeforeTable: where to insert `Bind(cse_var, expr)` statements.
@@ -280,39 +273,6 @@ class CSEPlanner : public StmtExprVisitor {
     if (expr.as<RampNode>() || expr.as<BroadcastNode>()) return false;
     if (CheckContains::ExprContains(expr, IsForbiddenNode)) return false;
     return true;
-  }
-
-  /*!
-   * \brief Compute the nesting depth of eligible sub-expressions.
-   *
-   * The expression depth counts how many levels of eligible expressions are
-   * nested. For example:
-   *   - `x + y`         → depth 1
-   *   - `(x + y) + z`   → depth 2 (the inner `x + y` is eligible, nested inside the outer add)
-   *   - `x`             → depth 0 (leaf, not eligible)
-   *
-   * This is used to sort expressions so that deeper (more complex) ones are
-   * processed first in ComputePlan, ensuring that sub-expression count
-   * subtraction is accurate.
-   *
-   * \param e The expression to measure.
-   * \return The maximum nesting depth of eligible sub-expressions.
-   */
-  static int ComputeExprDepth(const PrimExpr& e) {
-    struct DepthVisitor : public ExprVisitor {
-      int max_depth = 0;
-      int current = 0;
-      void VisitExpr(const PrimExpr& expr) override {
-        bool eligible = IsEligible(expr);
-        if (eligible) current++;
-        max_depth = std::max(max_depth, current);
-        ExprVisitor::VisitExpr(expr);
-        if (eligible) current--;
-      }
-    };
-    DepthVisitor v;
-    v.VisitExpr(e);
-    return v.max_depth;
   }
 
   // ------------------------------------------------------------------
@@ -413,80 +373,45 @@ class CSEPlanner : public StmtExprVisitor {
   /*!
    * \brief Record an occurrence of an expression in the expression table.
    *
-   * If this is the first occurrence, initializes the entry with the current
-   * scope and statement context, and records direct parent relationships
-   * (children are already in the table due to bottom-up visitation).
-   * For subsequent occurrences, updates the LCA to include the new scope.
+   * On first occurrence: initializes the entry, records direct children
+   * (AST children that are in the table), and computes expr_depth from
+   * children. On subsequent occurrences: updates the LCA scope.
    *
-   * \param e The expression to record. Ignored if not eligible.
+   * \param e The expression to record.
+   * \param ast_children The direct AST children of e (passed by the caller
+   *                     who knows the node structure: op->a, op->b, etc.).
    */
-  void RecordExpr(const PrimExpr& e) {
+  void RecordExpr(const PrimExpr& e, std::initializer_list<PrimExpr> ast_children) {
     if (!IsEligible(e)) return;
-
     ExprEntry& entry = table_[e];
     if (entry.count == 0) {
       entry.lca_scope = current_scope_;
       entry.first_use_scope = current_scope_;
       entry.first_use_stmt = current_seq_child_;
       entry.repr = e;
-      entry.expr_depth = ComputeExprDepth(e);
-      // Record this expression as a direct parent of its eligible children.
-      // Children are already in the table (bottom-up visitation order).
-      RecordDirectParents(e);
+      // Collect children: AST children that are in the table.
+      // Handles multiplicity (e.g., (x+y) * (x+y) → x+y appears twice).
+      ExprDeepEqual eq;
+      int max_child_depth = 0;
+      for (const auto& child : ast_children) {
+        auto it = table_.find(child);
+        if (it == table_.end()) continue;
+        max_child_depth = std::max(max_child_depth, it->second.expr_depth);
+        bool found = false;
+        for (auto& [c, m] : entry.children) {
+          if (eq(c, child)) {
+            m++;
+            found = true;
+            break;
+          }
+        }
+        if (!found) entry.children.push_back({child, 1});
+      }
+      entry.expr_depth = 1 + max_child_depth;
     } else {
       entry.lca_scope = LCA(entry.lca_scope, current_scope_);
     }
     entry.count += 1;
-  }
-
-  /*!
-   * \brief Find direct eligible children of `parent_expr` in the table
-   *        and register `parent_entry` as their direct parent.
-   *
-   * "Direct" means the child appears in the parent expression without
-   * being nested inside another eligible table entry. The visitor stops
-   * recursing at any expression already in the table (since that entry
-   * is a closer parent for anything nested within it).
-   *
-   * \param parent_expr The parent expression to scan.
-   */
-  void RecordDirectParents(const PrimExpr& parent_expr) {
-    struct ChildFinder : public ExprVisitor {
-      ExprTable* table;
-      ExprDeepEqual eq;
-      PrimExpr parent_expr;
-
-      void VisitExpr(const PrimExpr& e) override {
-        // Skip the root expression itself (we want children, not self)
-        if (eq(e, parent_expr)) {
-          ExprVisitor::VisitExpr(e);
-          return;
-        }
-        // If this child is in the table, record the parent relationship
-        auto it = table->find(e);
-        if (it != table->end()) {
-          // Check if this parent is already recorded (for multiplicity)
-          bool found = false;
-          for (auto& pi : it->second.direct_parents) {
-            if (eq(pi.parent_expr, parent_expr)) {
-              pi.multiplicity++;
-              found = true;
-              break;
-            }
-          }
-          if (!found) {
-            it->second.direct_parents.push_back({parent_expr, 1});
-          }
-          return;  // stop here — don't recurse into table entries
-        }
-        // Not in table — recurse to find deeper children
-        ExprVisitor::VisitExpr(e);
-      }
-    };
-    ChildFinder finder;
-    finder.table = &table_;
-    finder.parent_expr = parent_expr;
-    finder.VisitExpr(parent_expr);
   }
 
   // ------------------------------------------------------------------
@@ -500,85 +425,42 @@ class CSEPlanner : public StmtExprVisitor {
 
   using StmtExprVisitor::VisitExpr_;
 
-  void VisitExpr_(const AddNode* op) override {
-    StmtExprVisitor::VisitExpr_(op);
-    RecordExpr(ffi::GetRef<PrimExpr>(op));
+  // Binary arithmetic operators (op->a, op->b)
+#define CSE_VISIT_BINARY(NodeType)                       \
+  void VisitExpr_(const NodeType* op) override {         \
+    StmtExprVisitor::VisitExpr_(op);                     \
+    RecordExpr(ffi::GetRef<PrimExpr>(op), {op->a, op->b}); \
   }
-  void VisitExpr_(const SubNode* op) override {
-    StmtExprVisitor::VisitExpr_(op);
-    RecordExpr(ffi::GetRef<PrimExpr>(op));
-  }
-  void VisitExpr_(const MulNode* op) override {
-    StmtExprVisitor::VisitExpr_(op);
-    RecordExpr(ffi::GetRef<PrimExpr>(op));
-  }
-  void VisitExpr_(const DivNode* op) override {
-    StmtExprVisitor::VisitExpr_(op);
-    RecordExpr(ffi::GetRef<PrimExpr>(op));
-  }
-  void VisitExpr_(const ModNode* op) override {
-    StmtExprVisitor::VisitExpr_(op);
-    RecordExpr(ffi::GetRef<PrimExpr>(op));
-  }
-  void VisitExpr_(const FloorDivNode* op) override {
-    StmtExprVisitor::VisitExpr_(op);
-    RecordExpr(ffi::GetRef<PrimExpr>(op));
-  }
-  void VisitExpr_(const FloorModNode* op) override {
-    StmtExprVisitor::VisitExpr_(op);
-    RecordExpr(ffi::GetRef<PrimExpr>(op));
-  }
-  void VisitExpr_(const MinNode* op) override {
-    StmtExprVisitor::VisitExpr_(op);
-    RecordExpr(ffi::GetRef<PrimExpr>(op));
-  }
-  void VisitExpr_(const MaxNode* op) override {
-    StmtExprVisitor::VisitExpr_(op);
-    RecordExpr(ffi::GetRef<PrimExpr>(op));
-  }
-  void VisitExpr_(const EQNode* op) override {
-    StmtExprVisitor::VisitExpr_(op);
-    RecordExpr(ffi::GetRef<PrimExpr>(op));
-  }
-  void VisitExpr_(const NENode* op) override {
-    StmtExprVisitor::VisitExpr_(op);
-    RecordExpr(ffi::GetRef<PrimExpr>(op));
-  }
-  void VisitExpr_(const LTNode* op) override {
-    StmtExprVisitor::VisitExpr_(op);
-    RecordExpr(ffi::GetRef<PrimExpr>(op));
-  }
-  void VisitExpr_(const LENode* op) override {
-    StmtExprVisitor::VisitExpr_(op);
-    RecordExpr(ffi::GetRef<PrimExpr>(op));
-  }
-  void VisitExpr_(const GTNode* op) override {
-    StmtExprVisitor::VisitExpr_(op);
-    RecordExpr(ffi::GetRef<PrimExpr>(op));
-  }
-  void VisitExpr_(const GENode* op) override {
-    StmtExprVisitor::VisitExpr_(op);
-    RecordExpr(ffi::GetRef<PrimExpr>(op));
-  }
-  void VisitExpr_(const AndNode* op) override {
-    StmtExprVisitor::VisitExpr_(op);
-    RecordExpr(ffi::GetRef<PrimExpr>(op));
-  }
-  void VisitExpr_(const OrNode* op) override {
-    StmtExprVisitor::VisitExpr_(op);
-    RecordExpr(ffi::GetRef<PrimExpr>(op));
-  }
+  CSE_VISIT_BINARY(AddNode)
+  CSE_VISIT_BINARY(SubNode)
+  CSE_VISIT_BINARY(MulNode)
+  CSE_VISIT_BINARY(DivNode)
+  CSE_VISIT_BINARY(ModNode)
+  CSE_VISIT_BINARY(FloorDivNode)
+  CSE_VISIT_BINARY(FloorModNode)
+  CSE_VISIT_BINARY(MinNode)
+  CSE_VISIT_BINARY(MaxNode)
+  CSE_VISIT_BINARY(EQNode)
+  CSE_VISIT_BINARY(NENode)
+  CSE_VISIT_BINARY(LTNode)
+  CSE_VISIT_BINARY(LENode)
+  CSE_VISIT_BINARY(GTNode)
+  CSE_VISIT_BINARY(GENode)
+  CSE_VISIT_BINARY(AndNode)
+  CSE_VISIT_BINARY(OrNode)
+#undef CSE_VISIT_BINARY
+
   void VisitExpr_(const NotNode* op) override {
     StmtExprVisitor::VisitExpr_(op);
-    RecordExpr(ffi::GetRef<PrimExpr>(op));
+    RecordExpr(ffi::GetRef<PrimExpr>(op), {op->a});
   }
   void VisitExpr_(const CastNode* op) override {
     StmtExprVisitor::VisitExpr_(op);
-    RecordExpr(ffi::GetRef<PrimExpr>(op));
+    RecordExpr(ffi::GetRef<PrimExpr>(op), {op->value});
   }
   void VisitExpr_(const SelectNode* op) override {
     StmtExprVisitor::VisitExpr_(op);
-    RecordExpr(ffi::GetRef<PrimExpr>(op));
+    RecordExpr(ffi::GetRef<PrimExpr>(op), {op->condition, op->true_value, op->false_value});
   }
 
   // ------------------------------------------------------------------
@@ -661,10 +543,11 @@ class CSEPlanner : public StmtExprVisitor {
    * Algorithm (shallower-first with repr propagation):
    *   1. Collect all entries and sort by expr_depth ascending (shallower first),
    *      with structural hash as tie-breaker for determinism.
-   *   2. Compute independent occurrence counts using direct_parents (populated
-   *      during the scan phase). For each entry, occurrences "consumed" by
-   *      direct parent CSE candidates are subtracted. An entry with fewer than
-   *      2 independent occurrences is skipped.
+   *   2. Compute independent occurrence counts from the DAG children.
+   *      For each parent P with count >= 2, its children's consumed counts
+   *      are incremented by `(P.count - 1) * multiplicity` (the Bind value
+   *      retains one copy). An entry with fewer than 2 independent occurrences
+   *      is skipped (avoids unnecessary single-use bindings).
    *   3. For each entry with independent_count >= 2:
    *      a. Determine the insertion point.
    *      b. Create a CSE variable and Bind statement (using the entry's repr,
@@ -691,20 +574,19 @@ class CSEPlanner : public StmtExprVisitor {
           return hasher(a.first) < hasher(b.first);
         });
 
-    // Step 2: Compute independent occurrence counts using direct_parents.
-    // For each direct parent P with count >= 2, (P.count - 1) * multiplicity
-    // occurrences are consumed (the Bind value retains one copy).
-    // Only direct parents are considered — no double-counting through grandparents.
-    std::unordered_map<ExprEntry*, int> independent_count;
+    // Step 2: Compute consumed counts from the DAG (parent → children).
+    // For each parent P with count >= 2, each child's consumed count is
+    // incremented by (P.count - 1) * multiplicity. Only direct children
+    // are affected — no double-counting through grandparents.
+    std::unordered_map<ExprEntry*, int> consumed;
     for (auto& [expr, entry] : all_entries) {
-      int consumed = 0;
-      for (const auto& pi : entry->direct_parents) {
-        auto pit = table_.find(pi.parent_expr);
-        if (pit != table_.end() && pit->second.count >= 2) {
-          consumed += (pit->second.count - 1) * pi.multiplicity;
+      if (entry->count < 2) continue;
+      for (const auto& [child_expr, mult] : entry->children) {
+        auto cit = table_.find(child_expr);
+        if (cit != table_.end()) {
+          consumed[&cit->second] += (entry->count - 1) * mult;
         }
       }
-      independent_count[entry] = entry->count - consumed;
     }
 
     InsertBeforeTable insert_before;
@@ -713,7 +595,7 @@ class CSEPlanner : public StmtExprVisitor {
 
     // Step 3: Process each candidate (shallower first)
     for (auto& [expr, entry] : all_entries) {
-      if (independent_count[entry] < 2) continue;
+      if (entry->count - consumed[entry] < 2) continue;
 
       // Step 3a: Determine where to insert the Bind
       Stmt insert_at = FindInsertionStmt(*entry);
