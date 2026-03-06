@@ -28,7 +28,7 @@ from tvm.script import tir as T
 def _apply_cse(func, identify_equiv_terms=False):
     """Apply CSE pass and return the transformed function."""
     mod = tvm.IRModule.from_expr(func.with_attr("global_symbol", "main"))
-    mod = tvm.tir.transform.CommonSubexprElimTIR(identify_equiv_terms=identify_equiv_terms)(mod)
+    mod = tvm.tir.transform.CommonSubexprElim(identify_equiv_terms=identify_equiv_terms)(mod)
     return mod["main"]
 
 
@@ -225,7 +225,7 @@ def test_deterministic():
 
     initial_hash = None
     for _ in range(REPEATS):
-        out = tvm.tir.transform.CommonSubexprElimTIR()(mod)
+        out = tvm.tir.transform.CommonSubexprElim()(mod)
         func = out["main"]
         json_val = save_json(func)
         json_hash = hashlib.sha256(json_val.encode()).hexdigest()
@@ -402,6 +402,38 @@ def test_cannot_lift_call():
 
 
 # =====================================================================
+# T16: No single-use binding -- sub-expr fully consumed by parent
+# =====================================================================
+def test_no_single_use_binding():
+    """When all occurrences of a sub-expression are inside a deeper
+    expression that is also CSE'd, the sub-expression should NOT get
+    its own binding (it would be used only once in the parent's value)."""
+
+    @T.prim_func
+    def before(
+        B: T.Buffer((50,), "int32"),
+        x: T.int32,
+        y: T.int32,
+        z: T.int32,
+    ):
+        B[0] = (x + y) + z
+        B[1] = (x + y) + z
+
+    @T.prim_func
+    def expected(
+        B: T.Buffer((50,), "int32"),
+        x: T.int32,
+        y: T.int32,
+        z: T.int32,
+    ):
+        cse_v1 = T.Bind((x + y) + z)
+        B[0] = cse_v1
+        B[1] = cse_v1
+
+    _check(before, expected)
+
+
+# =====================================================================
 # No normalization without commoning (identify_equiv_terms=True)
 # =====================================================================
 def test_no_normalization_without_commoning():
@@ -501,6 +533,7 @@ if __name__ == "__main__":
     test_multi_independent()
     test_if_condition()
     test_cannot_lift_call()
+    test_no_single_use_binding()
     test_no_normalization_without_commoning()
     test_semantic_equiv_distributivity()
     test_semantic_equiv_associativity()

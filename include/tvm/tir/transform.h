@@ -316,7 +316,7 @@ TVM_DLL Pass FlattenBuffer();
  * \param identify_equiv_terms Whether equivalent terms should be identified.
  * \return The pass.
  */
-TVM_DLL Pass CommonSubexprElimTIR(bool enable_cse_tir = true, bool identify_equiv_terms = false);
+TVM_DLL Pass CommonSubexprElim(bool identify_equiv_terms = false);
 
 /*!
  * \brief This is the unified static memory planner pass that will

@@ -19,13 +19,43 @@
 
 /*!
  * \file common_subexpr_elim.cc
- * \brief Two-phase Common Subexpression Elimination for TIR.
+ * \brief Two-phase Common Subexpression Elimination (CSE) for TIR.
  *
- * Clean-room implementation:
- *   CSEPlanner: scans tree, builds scope tree + expression table, returns
- *     (insert_before, expr_remap) plan.
- *   CSERewriter: mechanical insertion of Bind stmts + expression substitution.
- *   Cascade loop handles multi-level CSE opportunities.
+ * Architecture overview
+ * ---------------------
+ * The pass is structured as two cooperating phases wrapped in a cascade loop:
+ *
+ *   Phase 1 — **CSEPlanner** (analysis, no mutation)
+ *     Walks the TIR tree and builds:
+ *       - A *scope tree* that mirrors the nesting structure of For/If/While/AttrStmt.
+ *       - An *expression table* mapping each structurally-unique eligible expression
+ *         to its occurrence count, LCA scope, and first-use location.
+ *     From this it produces a *plan*: two tables describing what to insert where
+ *     (InsertBeforeTable) and what to replace (ExprRemapTable).
+ *
+ *   Phase 2 — **CSERewriter** (mechanical mutation)
+ *     Consumes the plan and performs two kinds of edits:
+ *       - Inserts `Bind(cse_var, expr)` statements at the planned insertion points.
+ *       - Replaces every occurrence of a CSE'd expression with its variable.
+ *
+ *   **Cascade loop**
+ *     After one round of CSE, new opportunities may appear (e.g. sub-expressions
+ *     of a CSE'd expression now occur >= 2 times). The loop re-runs until no more
+ *     opportunities are found (insert_before is empty).
+ *
+ * Eligibility rules
+ * -----------------
+ * An expression is eligible for CSE if:
+ *   - It is not a leaf (Var, IntImm, FloatImm, StringImm).
+ *   - It does not contain Call or BufferLoad (side-effects / memory dependence).
+ *   - It is not Ramp or Broadcast (hardware-specific vector ops).
+ *
+ * Scope tree
+ * ----------
+ * Each For, IfThenElse (each branch), While, and AttrStmt body creates a new
+ * scope. The scope tree enables computing the Lowest Common Ancestor (LCA) of
+ * all scopes where an expression occurs, which determines the correct insertion
+ * point — the narrowest scope that dominates all uses.
  */
 
 #include <tvm/ffi/container/array.h>
@@ -54,114 +84,275 @@ namespace tvm {
 namespace tir {
 
 // ============================================================================
-// Types for the plan interface (internal, C++ only)
+// Plan interface types (internal, C++ only)
 // ============================================================================
 
-/*! \brief Map from expression to CSE variable, using structural equality. */
+/*!
+ * \brief Map from expression to CSE variable, keyed by structural equality.
+ *
+ * Used by CSERewriter to look up whether a visited expression should be
+ * replaced by a previously-introduced CSE variable.
+ */
 using ExprRemapTable = std::unordered_map<PrimExpr, Var, ffi::StructuralHash, ExprDeepEqual>;
 
-/*! \brief Map from Stmt (by pointer identity) to list of Bind stmts to insert. */
+/*!
+ * \brief Map from statement (by pointer identity) to a list of Bind
+ *        statements that should be inserted immediately before it.
+ *
+ * Pointer identity (ObjectPtrHash/Equal) is used because the insertion
+ * point is a specific child of a SeqStmt, not a structurally-equivalent
+ * statement elsewhere in the tree.
+ */
 using InsertBeforeTable =
     std::unordered_map<Stmt, std::vector<Stmt>, ObjectPtrHash, ObjectPtrEqual>;
 
 // ============================================================================
-// Eligibility predicates
+// CSEPlanner: Phase 1 — scan tree, build scope tree + expression table
 // ============================================================================
 
-static bool ForbiddenComputation(const PrimExpr& expr) {
-  return (expr.as<CallNode>() != nullptr || expr.as<BufferLoadNode>() != nullptr);
-}
-
-static bool IsEligible(const PrimExpr& expr) {
-  // Leaf nodes: not eligible (no computation to save)
-  if (expr.as<IntImmNode>() || expr.as<FloatImmNode>() || expr.as<StringImmNode>() ||
-      expr.as<VarNode>()) {
-    return false;
-  }
-  // Forbidden top-level ops
-  if (ForbiddenComputation(expr)) return false;
-  // Ramp and Broadcast: not eligible
-  if (expr.as<RampNode>() || expr.as<BroadcastNode>()) return false;
-  // Contains forbidden sub-expression
-  if (CheckContains::ExprContains(expr, ForbiddenComputation)) return false;
-  return true;
-}
-
-// ============================================================================
-// CSEPlanner: Phase 1 -- scan tree, build scope tree + expression table
-// ============================================================================
-
-/*! \brief One node in the scope tree. */
+/*!
+ * \brief One node in the scope tree.
+ *
+ * The scope tree mirrors the nesting structure of the TIR program.
+ * Each scope-creating statement (For, IfThenElse branch, While, AttrStmt)
+ * gets its own ScopeEntry. The root scope (depth 0) represents the function
+ * body itself.
+ */
 struct ScopeEntry {
-  int parent;        /*!< Parent scope ID (-1 for root) */
-  int depth;         /*!< Tree depth (root = 0) */
-  Stmt creator_stmt; /*!< For/IfThenElse/etc that created this scope */
+  /*! \brief Parent scope ID (-1 for root). */
+  int parent;
+  /*! \brief Distance from root (root = 0). */
+  int depth;
+  /*!
+   * \brief The statement that created this scope (e.g. ForNode).
+   *
+   * Null for the root scope. Used as the insertion point when a CSE
+   * binding must be placed before the scope.
+   */
+  Stmt creator_stmt;
 };
 
-/*! \brief Metadata per unique expression. */
+/*!
+ * \brief Metadata accumulated for each structurally-unique eligible expression.
+ *
+ * The planner maintains one ExprEntry per unique expression (keyed by
+ * ExprDeepEqual). Fields are updated incrementally as occurrences are found.
+ */
 struct ExprEntry {
-  int count{0};            /*!< Number of occurrences */
-  int expr_depth{0};       /*!< Expression tree height (leaf=0) */
-  PrimExpr repr;           /*!< The expression itself */
-  int lca_scope{-1};       /*!< LCA of all scopes containing an occurrence */
-  int first_use_scope{-1}; /*!< Scope ID of the first occurrence */
-  Stmt first_use_stmt;     /*!< First SeqStmt child containing this expr */
+  /*! \brief Total number of occurrences across all scopes. */
+  int count{0};
+  /*!
+   * \brief Nesting depth of eligible sub-expressions within this expression (leaf=0).
+   *
+   * Used to sort entries so that deeper (more complex) expressions are CSE'd
+   * first, enabling accurate sub-expression count subtraction.
+   */
+  int expr_depth{0};
+  /*! \brief The expression itself (first occurrence). */
+  PrimExpr repr;
+  /*!
+   * \brief Scope ID of the Lowest Common Ancestor of all scopes containing an occurrence.
+   *
+   * Determines the outermost valid insertion point.
+   */
+  int lca_scope{-1};
+  /*!
+   * \brief Scope ID where the first occurrence was found.
+   *
+   * When lca_scope == first_use_scope, the binding is inserted before first_use_stmt.
+   */
+  int first_use_scope{-1};
+  /*!
+   * \brief The SeqStmt child (or body statement) containing the first occurrence.
+   *
+   * Used as the insertion point when the LCA equals the first-use scope.
+   */
+  Stmt first_use_stmt;
 };
 
-/*! \brief Expression table keyed by structural equality. */
+/*! \brief Expression table keyed by structural equality (ExprDeepEqual). */
 using ExprTable = std::unordered_map<PrimExpr, ExprEntry, ffi::StructuralHash, ExprDeepEqual>;
 
-/*! \brief Compute expression depth (nesting level of eligible sub-expressions). */
-static int ComputeExprDepth(const PrimExpr& e) {
-  struct DepthVisitor : public ExprVisitor {
-    int max_depth = 0;
-    int current = 0;
-    void VisitExpr(const PrimExpr& expr) override {
-      bool eligible = IsEligible(expr);
-      if (eligible) current++;
-      max_depth = std::max(max_depth, current);
-      ExprVisitor::VisitExpr(expr);
-      if (eligible) current--;
-    }
-  };
-  DepthVisitor v;
-  v.VisitExpr(e);
-  return v.max_depth;
-}
-
+/*!
+ * \brief Phase 1 of the two-phase CSE pass.
+ *
+ * CSEPlanner is a read-only visitor that scans the TIR tree and builds:
+ *   1. A **scope tree** (vector of ScopeEntry) reflecting For/If/While/AttrStmt nesting.
+ *   2. An **expression table** (ExprTable) mapping each eligible expression to its
+ *      occurrence count, expression depth, LCA scope, and first-use location.
+ *
+ * After scanning, ComputePlan() converts the internal state into two output tables:
+ *   - InsertBeforeTable: where to insert `Bind(cse_var, expr)` statements.
+ *   - ExprRemapTable: which expressions to replace with their CSE variable.
+ *
+ * Usage:
+ * \code
+ *   auto [insert_before, expr_remap] = CSEPlanner::Plan(body, params);
+ * \endcode
+ */
 class CSEPlanner : public StmtExprVisitor {
  public:
   /*!
-   * \brief Run the planner on a function body.
-   * \param body The function body.
-   * \param params The function parameters (always in scope at root).
-   * \return A pair of (insert_before, expr_remap).
+   * \brief Run the planner on a function body (static entry point).
+   *
+   * Creates a planner instance, initializes the root scope, scans the body,
+   * and returns the computed plan.
+   *
+   * \param body The TIR function body to analyze.
+   * \param params The function's formal parameters. Currently unused but
+   *               reserved for future parameter-aware optimizations.
+   * \return A pair of (InsertBeforeTable, ExprRemapTable) describing the
+   *         planned CSE transformations.
    */
   static std::pair<InsertBeforeTable, ExprRemapTable> Plan(const Stmt& body,
                                                            const ffi::Array<Var>& params) {
     CSEPlanner planner;
-    // Root scope
+    // Root scope (no parent, depth 0, no creator statement)
     planner.scopes_.push_back({-1, 0, Stmt()});
     planner.current_scope_ = 0;
-    // Initialize current_seq_child_ to the body itself, so that when the
+    // Initialize current_seq_child_ to the body itself so that when the
     // body is not a SeqStmt, first_use_stmt still points to a valid stmt.
     planner.current_seq_child_ = body;
-    // Scan
+    // Scan the tree
     planner.VisitStmt(body);
-    // Compute plan
+    // Convert scan results into the plan
     return planner.ComputePlan();
   }
 
- protected:
+ private:
+  // ------------------------------------------------------------------
+  // Eligibility predicates
+  // ------------------------------------------------------------------
+
+  /*!
+   * \brief Check if an expression node type is forbidden for CSE.
+   *
+   * Call nodes may have side effects. BufferLoad nodes depend on memory
+   * state and cannot be safely hoisted or deduplicated.
+   *
+   * \param expr The expression to check.
+   * \return true if the expression is a Call or BufferLoad.
+   */
+  static bool IsForbiddenNode(const PrimExpr& expr) {
+    return (expr.as<CallNode>() != nullptr || expr.as<BufferLoadNode>() != nullptr);
+  }
+
+  /*!
+   * \brief Check if an expression is eligible for common subexpression elimination.
+   *
+   * An expression is eligible if it represents a non-trivial pure computation:
+   *   - Not a leaf (Var, IntImm, FloatImm, StringImm — no computation to save).
+   *   - Not a Call or BufferLoad (side effects / memory dependence).
+   *   - Not Ramp or Broadcast (hardware-specific vector construction).
+   *   - Does not transitively contain any forbidden node.
+   *
+   * \param expr The expression to check.
+   * \return true if the expression can participate in CSE.
+   */
+  static bool IsEligible(const PrimExpr& expr) {
+    if (expr.as<IntImmNode>() || expr.as<FloatImmNode>() || expr.as<StringImmNode>() ||
+        expr.as<VarNode>()) {
+      return false;
+    }
+    if (IsForbiddenNode(expr)) return false;
+    if (expr.as<RampNode>() || expr.as<BroadcastNode>()) return false;
+    if (CheckContains::ExprContains(expr, IsForbiddenNode)) return false;
+    return true;
+  }
+
+  /*!
+   * \brief Compute the nesting depth of eligible sub-expressions.
+   *
+   * The expression depth counts how many levels of eligible expressions are
+   * nested. For example:
+   *   - `x + y`         → depth 1
+   *   - `(x + y) + z`   → depth 2 (the inner `x + y` is eligible, nested inside the outer add)
+   *   - `x`             → depth 0 (leaf, not eligible)
+   *
+   * This is used to sort expressions so that deeper (more complex) ones are
+   * processed first in ComputePlan, ensuring that sub-expression count
+   * subtraction is accurate.
+   *
+   * \param e The expression to measure.
+   * \return The maximum nesting depth of eligible sub-expressions.
+   */
+  static int ComputeExprDepth(const PrimExpr& e) {
+    struct DepthVisitor : public ExprVisitor {
+      int max_depth = 0;
+      int current = 0;
+      void VisitExpr(const PrimExpr& expr) override {
+        bool eligible = IsEligible(expr);
+        if (eligible) current++;
+        max_depth = std::max(max_depth, current);
+        ExprVisitor::VisitExpr(expr);
+        if (eligible) current--;
+      }
+    };
+    DepthVisitor v;
+    v.VisitExpr(e);
+    return v.max_depth;
+  }
+
+  // ------------------------------------------------------------------
+  // Expression substitution
+  // ------------------------------------------------------------------
+
+  /*!
+   * \brief Replace all occurrences of `target` in `body` with `replacement`.
+   *
+   * Uses structural equality (ExprDeepEqual) to find matches. Stops recursing
+   * into a sub-tree once a match is found (the replacement is a leaf Var).
+   *
+   * \param body The expression to transform.
+   * \param target The sub-expression to find.
+   * \param replacement The expression to substitute in (typically a CSE Var).
+   * \return The transformed expression.
+   */
+  static PrimExpr SubstituteSubexpr(const PrimExpr& body, const PrimExpr& target,
+                                    const PrimExpr& replacement) {
+    struct Replacer : public ExprMutator {
+      ExprDeepEqual eq;
+      PrimExpr target, replacement;
+      PrimExpr VisitExpr(const PrimExpr& e) final {
+        if (eq(e, target)) return replacement;
+        return ExprMutator::VisitExpr(e);
+      }
+    };
+    Replacer r;
+    r.target = target;
+    r.replacement = replacement;
+    return r.VisitExpr(body);
+  }
+
   // ------------------------------------------------------------------
   // Scope tree operations
   // ------------------------------------------------------------------
+
+  /*!
+   * \brief Allocate a new child scope in the scope tree.
+   *
+   * \param parent The parent scope ID.
+   * \param creator_stmt The statement that creates this scope (e.g. ForNode).
+   *                     Stored for later use as an insertion point.
+   * \return The ID of the newly allocated scope.
+   */
   int AllocScope(int parent, Stmt creator_stmt) {
     int id = static_cast<int>(scopes_.size());
     scopes_.push_back({parent, scopes_[parent].depth + 1, std::move(creator_stmt)});
     return id;
   }
 
+  /*!
+   * \brief Compute the Lowest Common Ancestor of two scope IDs.
+   *
+   * Walks both scopes upward to the same depth, then walks both upward
+   * in lockstep until they meet. This is the standard LCA algorithm for
+   * trees with parent pointers.
+   *
+   * \param a First scope ID.
+   * \param b Second scope ID.
+   * \return The scope ID of the LCA.
+   */
   int LCA(int a, int b) const {
     while (scopes_[a].depth > scopes_[b].depth) a = scopes_[a].parent;
     while (scopes_[b].depth > scopes_[a].depth) b = scopes_[b].parent;
@@ -172,15 +363,40 @@ class CSEPlanner : public StmtExprVisitor {
     return a;
   }
 
-  Stmt FindInsertionStmt(int first_use_scope, int lca_scope) const {
-    int s = first_use_scope;
-    while (scopes_[s].parent != lca_scope) s = scopes_[s].parent;
+  /*!
+   * \brief Find the statement to insert a CSE binding before.
+   *
+   * Two cases:
+   *   - LCA == first-use scope: insert before the first_use_stmt directly.
+   *   - LCA is an ancestor: walk from first_use_scope upward to find the
+   *     scope-creating statement that is a direct child of the LCA scope,
+   *     and insert before that statement.
+   *
+   * \param entry The expression entry containing scope and first-use metadata.
+   * \return The statement before which the CSE Bind should be inserted.
+   */
+  Stmt FindInsertionStmt(const ExprEntry& entry) const {
+    if (entry.first_use_scope == entry.lca_scope) {
+      return entry.first_use_stmt;
+    }
+    int s = entry.first_use_scope;
+    while (scopes_[s].parent != entry.lca_scope) s = scopes_[s].parent;
     return scopes_[s].creator_stmt;
   }
 
   // ------------------------------------------------------------------
   // Expression recording
   // ------------------------------------------------------------------
+
+  /*!
+   * \brief Record an occurrence of an expression in the expression table.
+   *
+   * If this is the first occurrence, initializes the entry with the current
+   * scope and statement context. For subsequent occurrences, updates the LCA
+   * to include the new scope.
+   *
+   * \param e The expression to record. Ignored if not eligible.
+   */
   void RecordExpr(const PrimExpr& e) {
     if (!IsEligible(e)) return;
 
@@ -198,11 +414,16 @@ class CSEPlanner : public StmtExprVisitor {
   }
 
   // ------------------------------------------------------------------
-  // Visitor overrides
+  // Visitor overrides — expressions
   // ------------------------------------------------------------------
+  // Each arithmetic/comparison/logical/cast/select node visitor calls the
+  // base class to recurse into children first, then records the full
+  // expression. This bottom-up order ensures that sub-expressions are
+  // recorded before their parents.
+  // ------------------------------------------------------------------
+
   using StmtExprVisitor::VisitExpr_;
 
-  // Binary arithmetic ops
   void VisitExpr_(const AddNode* op) override {
     StmtExprVisitor::VisitExpr_(op);
     RecordExpr(ffi::GetRef<PrimExpr>(op));
@@ -239,7 +460,6 @@ class CSEPlanner : public StmtExprVisitor {
     StmtExprVisitor::VisitExpr_(op);
     RecordExpr(ffi::GetRef<PrimExpr>(op));
   }
-  // Comparison ops
   void VisitExpr_(const EQNode* op) override {
     StmtExprVisitor::VisitExpr_(op);
     RecordExpr(ffi::GetRef<PrimExpr>(op));
@@ -264,7 +484,6 @@ class CSEPlanner : public StmtExprVisitor {
     StmtExprVisitor::VisitExpr_(op);
     RecordExpr(ffi::GetRef<PrimExpr>(op));
   }
-  // Logical ops
   void VisitExpr_(const AndNode* op) override {
     StmtExprVisitor::VisitExpr_(op);
     RecordExpr(ffi::GetRef<PrimExpr>(op));
@@ -277,18 +496,26 @@ class CSEPlanner : public StmtExprVisitor {
     StmtExprVisitor::VisitExpr_(op);
     RecordExpr(ffi::GetRef<PrimExpr>(op));
   }
-  // Cast
   void VisitExpr_(const CastNode* op) override {
     StmtExprVisitor::VisitExpr_(op);
     RecordExpr(ffi::GetRef<PrimExpr>(op));
   }
-  // Select
   void VisitExpr_(const SelectNode* op) override {
     StmtExprVisitor::VisitExpr_(op);
     RecordExpr(ffi::GetRef<PrimExpr>(op));
   }
 
-  // Statement visitors
+  // ------------------------------------------------------------------
+  // Visitor overrides — statements
+  // ------------------------------------------------------------------
+
+  /*!
+   * \brief Visit a SeqStmt, tracking which child is currently being visited.
+   *
+   * Updates current_seq_child_ before visiting each child so that RecordExpr
+   * can associate first occurrences with the correct SeqStmt child for later
+   * insertion-point determination.
+   */
   void VisitStmt_(const SeqStmtNode* op) override {
     for (const auto& child : op->seq) {
       current_seq_child_ = child;
@@ -296,6 +523,7 @@ class CSEPlanner : public StmtExprVisitor {
     }
   }
 
+  /*! \brief For loops create a new scope for their body. */
   void VisitStmt_(const ForNode* op) override {
     int saved = current_scope_;
     current_scope_ = AllocScope(saved, ffi::GetRef<Stmt>(op));
@@ -303,14 +531,19 @@ class CSEPlanner : public StmtExprVisitor {
     current_scope_ = saved;
   }
 
+  /*!
+   * \brief IfThenElse creates separate scopes for then/else branches.
+   *
+   * The condition is visited in the parent scope (so expressions shared
+   * between the condition and a branch can be hoisted above the If).
+   * Each branch gets its own scope so that expressions appearing in only
+   * one branch are not hoisted above the If.
+   */
   void VisitStmt_(const IfThenElseNode* op) override {
-    // Condition is in the parent scope
     VisitExpr(op->condition);
     int saved = current_scope_;
-    // Then-scope
     current_scope_ = AllocScope(saved, ffi::GetRef<Stmt>(op));
     VisitStmt(op->then_case);
-    // Else-scope
     if (op->else_case) {
       current_scope_ = AllocScope(saved, ffi::GetRef<Stmt>(op));
       VisitStmt(op->else_case.value());
@@ -318,6 +551,7 @@ class CSEPlanner : public StmtExprVisitor {
     current_scope_ = saved;
   }
 
+  /*! \brief While loops: condition in parent scope, body in child scope. */
   void VisitStmt_(const WhileNode* op) override {
     VisitExpr(op->condition);
     int saved = current_scope_;
@@ -326,6 +560,7 @@ class CSEPlanner : public StmtExprVisitor {
     current_scope_ = saved;
   }
 
+  /*! \brief AttrStmt: value in parent scope, body in child scope. */
   void VisitStmt_(const AttrStmtNode* op) override {
     VisitExpr(op->value);
     int saved = current_scope_;
@@ -334,15 +569,71 @@ class CSEPlanner : public StmtExprVisitor {
     current_scope_ = saved;
   }
 
+  /*! \brief AllocBuffer is flat (no body). Visit buffer shape expressions. */
   void VisitStmt_(const AllocBufferNode* op) override { VisitBufferDef(op->buffer, true); }
 
+  /*! \brief DeclBuffer is flat (no body). Visit buffer shape expressions. */
   void VisitStmt_(const DeclBufferNode* op) override { VisitBufferDef(op->buffer, false); }
 
   // ------------------------------------------------------------------
-  // ComputePlan: convert internal state to output maps
+  // ComputePlan: convert scan results into the output plan
   // ------------------------------------------------------------------
+
+  /*!
+   * \brief Count how many times `target` appears as a sub-expression of `body`.
+   *
+   * Uses structural equality (ExprDeepEqual). Does not count recursively
+   * inside a match (i.e., if `target` is `x+y` and body is `(x+y)+(x+y)`,
+   * returns 2, not counting any deeper nesting inside `x+y` itself).
+   *
+   * \param body The expression to search.
+   * \param target The sub-expression to count.
+   * \return Number of occurrences.
+   */
+  static int CountSubexprOccurrences(const PrimExpr& body, const PrimExpr& target) {
+    struct Counter : public ExprVisitor {
+      ExprDeepEqual eq;
+      PrimExpr target;
+      int count = 0;
+      void VisitExpr(const PrimExpr& e) override {
+        if (eq(e, target)) {
+          ++count;
+          return;  // don't recurse into the match
+        }
+        ExprVisitor::VisitExpr(e);
+      }
+    };
+    Counter c;
+    c.target = target;
+    c.VisitExpr(body);
+    return c.count;
+  }
+
+  /*!
+   * \brief Convert the accumulated expression table into InsertBefore + ExprRemap tables.
+   *
+   * Algorithm (shallower-first with repr propagation):
+   *   1. Collect all entries and sort by expr_depth ascending (shallower first),
+   *      with structural hash as tie-breaker for determinism.
+   *   2. Compute "consumed" counts: for each entry, count how many of its
+   *      occurrences are strictly inside deeper entries that also have count >= 2.
+   *      An entry whose occurrences are all consumed by deeper parents has no
+   *      independent uses and is skipped (avoids unnecessary single-use bindings).
+   *   3. For each entry with independent_count >= 2:
+   *      a. Determine the insertion point.
+   *      b. Create a CSE variable and Bind statement (using the entry's repr,
+   *         which may already reference CSE vars from shallower entries).
+   *      c. Add to insert_before and expr_remap.
+   *      d. Propagate: replace this expression in all deeper entries' repr
+   *         with the new CSE variable.
+   *
+   * Processing shallower expressions first and propagating into deeper reprs
+   * resolves all CSE opportunities in a single pass — no cascade loop needed.
+   *
+   * \return A pair of (InsertBeforeTable, ExprRemapTable).
+   */
   std::pair<InsertBeforeTable, ExprRemapTable> ComputePlan() {
-    // Sort all entries by depth descending, then by structural hash for determinism
+    // Step 1: Sort entries by depth ascending (shallower first), hash for determinism
     std::vector<std::pair<PrimExpr, ExprEntry*>> all_entries;
     for (auto& kv : table_) {
       all_entries.push_back({kv.first, &kv.second});
@@ -352,188 +643,158 @@ class CSEPlanner : public StmtExprVisitor {
         all_entries.begin(), all_entries.end(),
         [](const std::pair<PrimExpr, ExprEntry*>& a, const std::pair<PrimExpr, ExprEntry*>& b) {
           if (a.second->expr_depth != b.second->expr_depth)
-            return a.second->expr_depth > b.second->expr_depth;
-          // Tie-break by structural hash
+            return a.second->expr_depth < b.second->expr_depth;
           ffi::StructuralHash hasher;
-          size_t ha = hasher(a.first);
-          size_t hb = hasher(b.first);
-          return ha < hb;
+          return hasher(a.first) < hasher(b.first);
         });
+
+    // Step 2: For each entry, compute how many occurrences are consumed
+    // by strictly deeper entries (parents) that are also CSE candidates.
+    // consumed = sum over parents with count>=2 of (parent.count * multiplicity)
+    // independent_count = count - consumed
+    std::unordered_map<ExprEntry*, int> independent_count;
+    for (auto& [expr, entry] : all_entries) {
+      int consumed = 0;
+      for (auto& [parent_expr, parent_entry] : all_entries) {
+        if (parent_entry->expr_depth <= entry->expr_depth) continue;
+        if (parent_entry->count < 2) continue;
+        int mult = CountSubexprOccurrences(parent_expr, expr);
+        if (mult > 0) {
+          // After CSE, the parent's Bind value retains one copy of the child,
+          // so only (parent.count - 1) occurrences are truly eliminated.
+          consumed += (parent_entry->count - 1) * mult;
+        }
+      }
+      independent_count[entry] = entry->count - consumed;
+    }
 
     InsertBeforeTable insert_before;
     ExprRemapTable expr_remap;
     int counter = 0;
-    ExprDeepEqual expr_eq;
 
+    // Step 3: Process each candidate (shallower first)
     for (auto& [expr, entry] : all_entries) {
-      // After subtracting sub-expression counts, check if still a candidate
-      if (entry->count < 2) continue;
+      if (independent_count[entry] < 2) continue;
 
-      // Determine insertion point
-      Stmt insert_at;
-      if (entry->first_use_scope == entry->lca_scope) {
-        insert_at = entry->first_use_stmt;
-      } else {
-        insert_at = FindInsertionStmt(entry->first_use_scope, entry->lca_scope);
-      }
+      // Step 3a: Determine where to insert the Bind
+      Stmt insert_at = FindInsertionStmt(*entry);
 
-      // Create CSE var and Bind
+      // Step 3b: Create CSE variable and Bind statement.
+      // entry->repr may already contain CSE vars from shallower entries.
       ++counter;
       std::string name = "cse_v" + std::to_string(counter);
       Var cse_var(name, entry->repr.dtype());
       Stmt bind = Bind(cse_var, entry->repr);
 
-      // Append to insert_before list for this stmt
+      // Step 3c: Record in output tables.
+      // expr_remap maps the ORIGINAL expression (for tree matching by the rewriter).
       insert_before[insert_at].push_back(bind);
-      expr_remap[entry->repr] = cse_var;
+      expr_remap[expr] = cse_var;
 
-      // Subtract this expression's count from all its eligible sub-expressions.
-      // After CSE of this expr, occurrences of its sub-expressions that were
-      // inside this expr are removed (they become part of the Bind value, not
-      // separate occurrences). The cascade loop will find new opportunities.
-      int parent_count = entry->count;
-      for (auto& [sub_expr, sub_entry] : all_entries) {
-        if (sub_entry == entry) continue;
-        if (sub_entry->expr_depth >= entry->expr_depth) continue;
-        // Check if sub_expr is a sub-expression of expr
-        if (CheckContains::ExprContains(
-                expr, [&sub_expr, &expr_eq](const PrimExpr& e) { return expr_eq(e, sub_expr); })) {
-          sub_entry->count -= parent_count;
-        }
+      // Step 3d: Propagate into deeper entries' repr.
+      // Replace occurrences of this entry's repr with cse_var so that
+      // deeper Bind values reference the CSE variable instead of
+      // recomputing the sub-expression.
+      for (auto& [other_expr, other_entry] : all_entries) {
+        if (other_entry->expr_depth <= entry->expr_depth) continue;
+        other_entry->repr = SubstituteSubexpr(other_entry->repr, entry->repr, cse_var);
       }
     }
 
     return {insert_before, expr_remap};
   }
 
- private:
+  // ------------------------------------------------------------------
+  // State
+  // ------------------------------------------------------------------
+  /*! \brief The scope tree (indexed by scope ID). */
   std::vector<ScopeEntry> scopes_;
+  /*! \brief Expression → metadata table. */
   ExprTable table_;
+  /*! \brief Scope ID of the currently visited node. */
   int current_scope_ = 0;
+  /*! \brief Current SeqStmt child being visited. Used to set first_use_stmt. */
   Stmt current_seq_child_;
 };
 
 // ============================================================================
-// CSERewriter: Phase 2 -- mechanical insertion + substitution
+// CSERewriter: Phase 2 — mechanical insertion + substitution
 // ============================================================================
 
+/*!
+ * \brief Phase 2 of the two-phase CSE pass.
+ *
+ * CSERewriter is a StmtExprMutator that consumes the plan produced by
+ * CSEPlanner and performs two kinds of edits:
+ *   - **Insertion**: Before each statement listed in InsertBeforeTable,
+ *     insert the planned `Bind(cse_var, expr)` statements.
+ *   - **Substitution**: Replace every expression listed in ExprRemapTable
+ *     with the corresponding CSE variable.
+ *
+ * Insertions are handled uniformly by overriding VisitStmt: when a
+ * statement has insert_before entries, the visited statement is wrapped
+ * in a SeqStmt with the Bind stmts prepended. SeqStmt's constructor
+ * flattens nested SeqStmts, so this works correctly for both SeqStmt
+ * children and direct bodies of scope-creating statements (For, If, etc.).
+ */
 class CSERewriter : public StmtExprMutator {
  public:
+  /*!
+   * \brief Construct a rewriter from the plan tables.
+   * \param insert_before Map from stmt → list of Bind stmts to insert before it.
+   * \param expr_remap Map from expression → CSE variable to substitute.
+   */
   CSERewriter(InsertBeforeTable insert_before, ExprRemapTable expr_remap)
       : insert_before_(std::move(insert_before)), expr_remap_(std::move(expr_remap)) {}
 
-  Stmt Rewrite(const Stmt& body) { return VisitBody(body); }
+  /*!
+   * \brief Apply the rewrite to a function body.
+   * \param body The original function body.
+   * \return The rewritten body with CSE bindings inserted and expressions replaced.
+   */
+  Stmt Rewrite(const Stmt& body) { return VisitStmt(body); }
 
  protected:
   using StmtExprMutator::VisitExpr;
   using StmtExprMutator::VisitExpr_;
 
+  /*!
+   * \brief Visit an expression, replacing it with its CSE variable if planned.
+   *
+   * Checks the remap table before recursing — if the full expression matches,
+   * it is replaced without visiting children.
+   */
   PrimExpr VisitExpr(const PrimExpr& e) override {
-    // Check for remap before recursing -- match using structural equality
     auto it = expr_remap_.find(e);
-    if (it != expr_remap_.end()) {
-      return it->second;
-    }
+    if (it != expr_remap_.end()) return it->second;
     return StmtExprMutator::VisitExpr(e);
   }
 
   /*!
-   * \brief Visit a body statement, prepending any insert_before binds.
+   * \brief Visit a statement, prepending planned Bind insertions.
    *
-   * If the body statement itself has insert_before entries, wrap with SeqStmt.
-   * This handles cases where the insertion point is a direct body (not wrapped
-   * in SeqStmt), e.g., the body of IfThenElse.then_case is an IfThenElse.
+   * Looks up the original statement (by pointer identity) in insert_before_
+   * before recursing. If insertions are planned, wraps the visited result
+   * in a SeqStmt with the Bind statements prepended. SeqStmt flattening
+   * ensures correct structure regardless of context.
    */
-  Stmt VisitBody(const Stmt& body) {
-    auto it = insert_before_.find(body);
+  Stmt VisitStmt(const Stmt& stmt) override {
+    auto it = insert_before_.find(stmt);
+    Stmt visited = StmtExprMutator::VisitStmt(stmt);
     if (it != insert_before_.end()) {
-      ffi::Array<Stmt> new_stmts;
-      for (const auto& bind_stmt : it->second) {
-        new_stmts.push_back(bind_stmt);
-      }
-      new_stmts.push_back(VisitStmt(body));
+      ffi::Array<Stmt> new_stmts(it->second.begin(), it->second.end());
+      new_stmts.push_back(visited);
       return SeqStmt(new_stmts);
     }
-    return VisitStmt(body);
+    return visited;
   }
-
-  Stmt VisitStmt_(const SeqStmtNode* op) override {
-    ffi::Array<Stmt> new_stmts;
-    for (const auto& child : op->seq) {
-      // Insert planned Bind stmts before this child (pointer identity match)
-      auto it = insert_before_.find(child);
-      if (it != insert_before_.end()) {
-        for (const auto& bind_stmt : it->second) {
-          new_stmts.push_back(bind_stmt);
-        }
-      }
-      new_stmts.push_back(VisitStmt(child));
-    }
-    return SeqStmt(new_stmts);
-  }
-
-  Stmt VisitStmt_(const ForNode* op) override {
-    Stmt body_new = VisitBody(op->body);
-    PrimExpr min_new = VisitExpr(op->min);
-    PrimExpr extent_new = VisitExpr(op->extent);
-    if (body_new.same_as(op->body) && min_new.same_as(op->min) && extent_new.same_as(op->extent)) {
-      return ffi::GetRef<Stmt>(op);
-    }
-    return For(op->loop_var, min_new, extent_new, op->kind, body_new, op->thread_binding,
-               op->annotations, op->step, op->span);
-  }
-
-  Stmt VisitStmt_(const IfThenElseNode* op) override {
-    PrimExpr cond_new = VisitExpr(op->condition);
-    Stmt then_new = VisitBody(op->then_case);
-    ffi::Optional<Stmt> else_new;
-    if (op->else_case) {
-      else_new = VisitBody(op->else_case.value());
-    }
-    if (cond_new.same_as(op->condition) && then_new.same_as(op->then_case) &&
-        else_new.same_as(op->else_case)) {
-      return ffi::GetRef<Stmt>(op);
-    }
-    return IfThenElse(cond_new, then_new, else_new, op->span);
-  }
-
-  Stmt VisitStmt_(const WhileNode* op) override {
-    PrimExpr cond_new = VisitExpr(op->condition);
-    Stmt body_new = VisitBody(op->body);
-    if (cond_new.same_as(op->condition) && body_new.same_as(op->body)) {
-      return ffi::GetRef<Stmt>(op);
-    }
-    return While(cond_new, body_new, op->span);
-  }
-
-  Stmt VisitStmt_(const AttrStmtNode* op) override {
-    PrimExpr value_new = VisitExpr(op->value);
-    Stmt body_new = VisitBody(op->body);
-    if (value_new.same_as(op->value) && body_new.same_as(op->body)) {
-      return ffi::GetRef<Stmt>(op);
-    }
-    return AttrStmt(op->node, op->attr_key, value_new, body_new, op->span);
-  }
-
-  // AllocBuffer/DeclBuffer are flat (no body) — base class handles them.
 
  private:
+  /*! \brief Plan: stmts to insert before each target. */
   InsertBeforeTable insert_before_;
+  /*! \brief Plan: expressions to replace with CSE vars. */
   ExprRemapTable expr_remap_;
 };
-
-// ============================================================================
-// Cascade loop
-// ============================================================================
-
-static Stmt CommonSubExprElim(Stmt body, ffi::Array<Var> params, bool identify_equiv_terms) {
-  while (true) {
-    auto [insert_before, expr_remap] = CSEPlanner::Plan(body, params);
-    if (insert_before.empty()) break;
-    body = CSERewriter(insert_before, expr_remap).Rewrite(body);
-  }
-  return body;
-}
 
 // ============================================================================
 // Pass registration
@@ -541,20 +802,30 @@ static Stmt CommonSubExprElim(Stmt body, ffi::Array<Var> params, bool identify_e
 
 namespace transform {
 
-Pass CommonSubexprElimTIR(bool enable_cse_tir, bool identify_equiv_terms) {
-  auto pass_func = [enable_cse_tir, identify_equiv_terms](PrimFunc f, IRModule m, PassContext ctx) {
-    if (enable_cse_tir) {
+/*!
+ * \brief Create the CommonSubexprElim pass.
+ *
+ * Plans all CSE opportunities in a single pass (shallower-first with repr
+ * propagation), then rewrites the tree once.
+ *
+ * \param identify_equiv_terms Reserved for future semantic equivalence support.
+ * \return The pass.
+ */
+Pass CommonSubexprElim(bool identify_equiv_terms) {
+  auto pass_func = [identify_equiv_terms](PrimFunc f, IRModule m, PassContext ctx) {
+    auto [insert_before, expr_remap] = CSEPlanner::Plan(f->body, f->params);
+    if (!insert_before.empty()) {
       auto* n = f.CopyOnWrite();
-      n->body = CommonSubExprElim(std::move(f->body), f->params, identify_equiv_terms);
+      n->body = CSERewriter(std::move(insert_before), std::move(expr_remap)).Rewrite(f->body);
     }
     return f;
   };
-  return CreatePrimFuncPass(pass_func, 0, "tir.CommonSubexprElimTIR", {});
+  return CreatePrimFuncPass(pass_func, 0, "tir.CommonSubexprElim", {});
 }
 
 TVM_FFI_STATIC_INIT_BLOCK() {
   namespace refl = tvm::ffi::reflection;
-  refl::GlobalDef().def("tir.transform.CommonSubexprElimTIR", CommonSubexprElimTIR);
+  refl::GlobalDef().def("tir.transform.CommonSubexprElim", CommonSubexprElim);
 }
 
 }  // namespace transform
