@@ -138,8 +138,6 @@ struct ScopeEntry {
  * The planner maintains one ExprEntry per unique expression (keyed by
  * ExprDeepEqual). Fields are updated incrementally as occurrences are found.
  */
-struct ExprEntry;
-
 /*!
  * \brief Record of a direct parent expression and multiplicity.
  *
@@ -149,8 +147,8 @@ struct ExprEntry;
  * `(x+y) * (x+y)` with S = `x+y`).
  */
 struct ParentInfo {
-  /*! \brief Pointer to the parent ExprEntry (non-owning). */
-  ExprEntry* entry;
+  /*! \brief The parent expression (key into ExprTable). */
+  PrimExpr parent_expr;
   /*! \brief Number of direct occurrences of the child in the parent expression. */
   int multiplicity;
 };
@@ -434,7 +432,7 @@ class CSEPlanner : public StmtExprVisitor {
       entry.expr_depth = ComputeExprDepth(e);
       // Record this expression as a direct parent of its eligible children.
       // Children are already in the table (bottom-up visitation order).
-      RecordDirectParents(e, &entry);
+      RecordDirectParents(e);
     } else {
       entry.lca_scope = LCA(entry.lca_scope, current_scope_);
     }
@@ -451,12 +449,10 @@ class CSEPlanner : public StmtExprVisitor {
    * is a closer parent for anything nested within it).
    *
    * \param parent_expr The parent expression to scan.
-   * \param parent_entry The ExprEntry of the parent.
    */
-  void RecordDirectParents(const PrimExpr& parent_expr, ExprEntry* parent_entry) {
+  void RecordDirectParents(const PrimExpr& parent_expr) {
     struct ChildFinder : public ExprVisitor {
       ExprTable* table;
-      ExprEntry* parent_entry;
       ExprDeepEqual eq;
       PrimExpr parent_expr;
 
@@ -472,14 +468,14 @@ class CSEPlanner : public StmtExprVisitor {
           // Check if this parent is already recorded (for multiplicity)
           bool found = false;
           for (auto& pi : it->second.direct_parents) {
-            if (pi.entry == parent_entry) {
+            if (eq(pi.parent_expr, parent_expr)) {
               pi.multiplicity++;
               found = true;
               break;
             }
           }
           if (!found) {
-            it->second.direct_parents.push_back({parent_entry, 1});
+            it->second.direct_parents.push_back({parent_expr, 1});
           }
           return;  // stop here — don't recurse into table entries
         }
@@ -489,7 +485,6 @@ class CSEPlanner : public StmtExprVisitor {
     };
     ChildFinder finder;
     finder.table = &table_;
-    finder.parent_entry = parent_entry;
     finder.parent_expr = parent_expr;
     finder.VisitExpr(parent_expr);
   }
@@ -704,8 +699,9 @@ class CSEPlanner : public StmtExprVisitor {
     for (auto& [expr, entry] : all_entries) {
       int consumed = 0;
       for (const auto& pi : entry->direct_parents) {
-        if (pi.entry->count >= 2) {
-          consumed += (pi.entry->count - 1) * pi.multiplicity;
+        auto pit = table_.find(pi.parent_expr);
+        if (pit != table_.end() && pit->second.count >= 2) {
+          consumed += (pit->second.count - 1) * pi.multiplicity;
         }
       }
       independent_count[entry] = entry->count - consumed;
