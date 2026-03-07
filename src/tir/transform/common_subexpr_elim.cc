@@ -392,34 +392,48 @@ class CSEPlanner : public StmtExprVisitor {
   void RecordExpr(const PrimExpr& e, std::initializer_list<PrimExpr> ast_children) {
     if (!IsEligible(e)) return;
     ExprEntry& entry = table_[e];
-    if (entry.count == 0) {
+    bool is_first_occurrence = (entry.count == 0);
+    if (is_first_occurrence) {
       entry.lca_scope = current_scope_;
       entry.first_use_scope = current_scope_;
       entry.first_use_stmt = current_seq_child_;
       entry.repr = e;
-      // Collect children: AST children that are in the table.
-      // Handles multiplicity (e.g., (x+y) * (x+y) → x+y appears twice).
-      ExprDeepEqual eq;
-      int max_child_depth = 0;
-      for (const auto& child : ast_children) {
-        auto it = table_.find(child);
-        if (it == table_.end()) continue;
-        max_child_depth = std::max(max_child_depth, it->second.expr_depth);
-        bool found = false;
-        for (auto& [c, m] : entry.children) {
-          if (eq(c, child)) {
-            m++;
-            found = true;
-            break;
-          }
-        }
-        if (!found) entry.children.push_back({child, 1});
-      }
-      entry.expr_depth = 1 + max_child_depth;
+      // Build DAG edges: check which AST children are eligible table entries.
+      // Since we visit bottom-up, children are already in the table.
+      CollectChildren(entry, ast_children);
     } else {
+      // Widen the insertion scope to cover all occurrences.
       entry.lca_scope = LCA(entry.lca_scope, current_scope_);
     }
     entry.count += 1;
+  }
+
+  /*!
+   * \brief Populate children and expr_depth for a newly created entry.
+   *
+   * Each AST child (e.g. op->a, op->b) that exists in the table becomes
+   * a DAG child. Multiplicity tracks duplicates (e.g. `(x+y)*(x+y)` has
+   * child `x+y` with multiplicity 2). expr_depth is 1 + max child depth.
+   */
+  void CollectChildren(ExprEntry& entry, std::initializer_list<PrimExpr> ast_children) {
+    ExprDeepEqual eq;
+    int max_child_depth = 0;
+    for (const PrimExpr& child : ast_children) {
+      auto it = table_.find(child);
+      if (it == table_.end()) continue;
+      max_child_depth = std::max(max_child_depth, it->second.expr_depth);
+      // Check if this child was already seen (handles multiplicity).
+      bool already_recorded = false;
+      for (auto& [existing_child, multiplicity] : entry.children) {
+        if (eq(existing_child, child)) {
+          multiplicity++;
+          already_recorded = true;
+          break;
+        }
+      }
+      if (!already_recorded) entry.children.push_back({child, 1});
+    }
+    entry.expr_depth = 1 + max_child_depth;
   }
 
   // ------------------------------------------------------------------
