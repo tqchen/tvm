@@ -310,9 +310,8 @@ TVM_DLL Pass PointerValueTypeRewrite();
 TVM_DLL Pass FlattenBuffer();
 
 /*!
- * \brief Implements a Common Subexpression Elimination (CSE) for TIR
- *        which introduces let-in bindings for duplicated sub-expressions.
- * \param enable_cse_tir Whether common subexpression elimination is enabled.
+ * \brief Implements Common Subexpression Elimination (CSE) for TIR
+ *        which introduces Bind statements for duplicated sub-expressions.
  * \return The pass.
  */
 TVM_DLL Pass CommonSubexprElim();

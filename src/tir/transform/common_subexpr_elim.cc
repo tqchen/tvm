@@ -28,9 +28,9 @@
  *   Phase 1 — **CSEPlanner** (analysis, no mutation)
  *     Walks the TIR tree bottom-up and builds:
  *       - A *scope tree* that mirrors the nesting structure of For/If/While/AttrStmt.
- *       - An *expression table* mapping each structurally-unique eligible expression
+ *       - An *expression DAG* mapping each structurally-unique eligible expression
  *         to its occurrence count, LCA scope, first-use location, and direct
- *         parent relationships (which deeper expressions contain it).
+ *         children (which shallower expressions it contains).
  *     From this it produces a *plan* in a single pass (shallower expressions
  *     first): two tables describing what to insert where (InsertBeforeTable)
  *     and what to replace (ExprRemapTable). Shallower-first processing with

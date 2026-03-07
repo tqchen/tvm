@@ -14,7 +14,6 @@
 # KIND, either express or implied.  See the License for the
 # specific language governing permissions and limitations
 # under the License.
-# ruff: noqa: F401
 import hashlib
 
 import tvm
@@ -22,9 +21,11 @@ from tvm.ir.base import save_json
 from tvm.script import tir as T
 
 
+# =====================================================================
+# T1: Basic multi-level CSE
+# Two common subexpressions at different scoping levels.
+# =====================================================================
 def test_basic():
-    """Basic multi-level CSE: two common subexprs at different scoping levels."""
-
     @tvm.script.ir_module
     class Before:
         @T.prim_func
@@ -39,7 +40,7 @@ def test_basic():
             B[i2] = a + b
 
     @tvm.script.ir_module
-    class After:
+    class Expected:
         @T.prim_func
         def main(B: T.Buffer((50,), "int32"), i1: T.int32, i2: T.int32, z3: T.int32):
             z1 = T.Bind(1)
@@ -53,13 +54,15 @@ def test_basic():
             b = T.Bind(cse_v2 + z3)
             B[i2] = a + b
 
-    result = tvm.tir.transform.CommonSubexprElim()(Before)
-    tvm.ir.assert_structural_equal(result, After)
+    after = tvm.tir.transform.CommonSubexprElim()(Before)
+    tvm.ir.assert_structural_equal(after, Expected)
 
 
+# =====================================================================
+# T2: If -- single-branch CSE
+# Duplicated expression only in then-branch stays inside then-branch.
+# =====================================================================
 def test_if_single_branch():
-    """Duplicated expression only in then-branch stays inside then-branch."""
-
     @tvm.script.ir_module
     class Before:
         @T.prim_func
@@ -79,7 +82,7 @@ def test_if_single_branch():
                 B[i3] = y
 
     @tvm.script.ir_module
-    class After:
+    class Expected:
         @T.prim_func
         def main(
             B: T.Buffer((50,), "int32"),
@@ -97,13 +100,15 @@ def test_if_single_branch():
             else:
                 B[i3] = y
 
-    result = tvm.tir.transform.CommonSubexprElim()(Before)
-    tvm.ir.assert_structural_equal(result, After)
+    after = tvm.tir.transform.CommonSubexprElim()(Before)
+    tvm.ir.assert_structural_equal(after, Expected)
 
 
+# =====================================================================
+# T3: If -- both-branch CSE
+# Duplicated expression in both branches is hoisted before the if.
+# =====================================================================
 def test_if_both_branches():
-    """Duplicated expression in both branches is hoisted before the if."""
-
     @tvm.script.ir_module
     class Before:
         @T.prim_func
@@ -123,7 +128,7 @@ def test_if_both_branches():
                 B[i3] = y + z
 
     @tvm.script.ir_module
-    class After:
+    class Expected:
         @T.prim_func
         def main(
             B: T.Buffer((50,), "int32"),
@@ -141,13 +146,15 @@ def test_if_both_branches():
             else:
                 B[i3] = cse_v1
 
-    result = tvm.tir.transform.CommonSubexprElim()(Before)
-    tvm.ir.assert_structural_equal(result, After)
+    after = tvm.tir.transform.CommonSubexprElim()(Before)
+    tvm.ir.assert_structural_equal(after, Expected)
 
 
+# =====================================================================
+# T4: Cascade CSE
+# Introducing (x+y)+z creates opportunity for x+y.
+# =====================================================================
 def test_cascade():
-    """Cascading CSE: introducing (x+y)+z creates opportunity for x+y."""
-
     @tvm.script.ir_module
     class Before:
         @T.prim_func
@@ -165,7 +172,7 @@ def test_cascade():
             B[i3] = x + y
 
     @tvm.script.ir_module
-    class After:
+    class Expected:
         @T.prim_func
         def main(
             B: T.Buffer((50,), "int32"),
@@ -182,13 +189,15 @@ def test_cascade():
             B[i2] = cse_v1
             B[i3] = cse_v2
 
-    result = tvm.tir.transform.CommonSubexprElim()(Before)
-    tvm.ir.assert_structural_equal(result, After)
+    after = tvm.tir.transform.CommonSubexprElim()(Before)
+    tvm.ir.assert_structural_equal(after, Expected)
 
 
+# =====================================================================
+# T5: No change when no duplication
+# Single occurrence — pass is identity.
+# =====================================================================
 def test_no_duplication():
-    """No change when no expression is duplicated."""
-
     @tvm.script.ir_module
     class Before:
         @T.prim_func
@@ -197,18 +206,22 @@ def test_no_duplication():
             T.evaluate(a)
 
     @tvm.script.ir_module
-    class After:
+    class Expected:
         @T.prim_func
         def main(x: T.int32, y: T.int32, z: T.int32):
             a = T.Bind(x + (y + z))
             T.evaluate(a)
 
-    result = tvm.tir.transform.CommonSubexprElim()(Before)
-    tvm.ir.assert_structural_equal(result, After)
+    after = tvm.tir.transform.CommonSubexprElim()(Before)
+    tvm.ir.assert_structural_equal(after, Expected)
 
 
+# =====================================================================
+# T6: Deterministic output
+# Multiple runs on same input produce identical output (same var names,
+# ordering). Verified via JSON serialization hash.
+# =====================================================================
 def test_deterministic():
-    """Multiple runs on same input produce identical output."""
     NUM_TERMS = 10
     REPEATS = 10
 
@@ -236,9 +249,11 @@ def test_deterministic():
         assert json_hash == initial_hash
 
 
+# =====================================================================
+# T7: CSE inside for-loop
+# Common sub-expression inside a for-loop body.
+# =====================================================================
 def test_for_loop():
-    """Common sub-expression inside a for-loop body."""
-
     @tvm.script.ir_module
     class Before:
         @T.prim_func
@@ -248,7 +263,7 @@ def test_for_loop():
                 B[i + 10] = y + z
 
     @tvm.script.ir_module
-    class After:
+    class Expected:
         @T.prim_func
         def main(B: T.Buffer((50,), "int32"), y: T.int32, z: T.int32):
             for i in range(10):
@@ -256,13 +271,16 @@ def test_for_loop():
                 B[i] = cse_v1
                 B[i + 10] = cse_v1
 
-    result = tvm.tir.transform.CommonSubexprElim()(Before)
-    tvm.ir.assert_structural_equal(result, After)
+    after = tvm.tir.transform.CommonSubexprElim()(Before)
+    tvm.ir.assert_structural_equal(after, Expected)
 
 
+# =====================================================================
+# T8: CSE across for-loop and outer scope
+# Expression appears both outside and inside a for-loop. Binding placed
+# in outer scope before the for.
+# =====================================================================
 def test_for_hoist():
-    """Expression appears both outside and inside a for-loop; hoisted to outer scope."""
-
     @tvm.script.ir_module
     class Before:
         @T.prim_func
@@ -272,7 +290,7 @@ def test_for_hoist():
                 B[i + 1] = y + z
 
     @tvm.script.ir_module
-    class After:
+    class Expected:
         @T.prim_func
         def main(B: T.Buffer((50,), "int32"), y: T.int32, z: T.int32):
             cse_v1 = T.Bind(y + z)
@@ -280,13 +298,16 @@ def test_for_hoist():
             for i in range(10):
                 B[i + 1] = cse_v1
 
-    result = tvm.tir.transform.CommonSubexprElim()(Before)
-    tvm.ir.assert_structural_equal(result, After)
+    after = tvm.tir.transform.CommonSubexprElim()(Before)
+    tvm.ir.assert_structural_equal(after, Expected)
 
 
+# =====================================================================
+# T9: Cannot-lift -- expressions containing BufferLoad
+# Expressions containing BufferLoad are ineligible even when duplicated,
+# because lifting them would change semantics (buffer may alias).
+# =====================================================================
 def test_cannot_lift_bufferload():
-    """Expressions containing BufferLoad are ineligible."""
-
     @tvm.script.ir_module
     class Before:
         @T.prim_func
@@ -295,19 +316,22 @@ def test_cannot_lift_bufferload():
             B[1] = A[0] + A[0]
 
     @tvm.script.ir_module
-    class After:
+    class Expected:
         @T.prim_func
         def main(A: T.Buffer((50,), "int32"), B: T.Buffer((50,), "int32")):
             B[0] = A[0] + A[0]
             B[1] = A[0] + A[0]
 
-    result = tvm.tir.transform.CommonSubexprElim()(Before)
-    tvm.ir.assert_structural_equal(result, After)
+    after = tvm.tir.transform.CommonSubexprElim()(Before)
+    tvm.ir.assert_structural_equal(after, Expected)
 
 
+# =====================================================================
+# T10: Nested if -- multi-level scope LCA
+# Expression in both branches of an inner if, but not the outer else.
+# Binding placed at the inner if's parent scope.
+# =====================================================================
 def test_nested_if():
-    """Expression in both branches of inner if; binding at inner if's parent scope."""
-
     @tvm.script.ir_module
     class Before:
         @T.prim_func
@@ -327,7 +351,7 @@ def test_nested_if():
                 B[2] = y
 
     @tvm.script.ir_module
-    class After:
+    class Expected:
         @T.prim_func
         def main(
             B: T.Buffer((50,), "int32"),
@@ -345,13 +369,15 @@ def test_nested_if():
             else:
                 B[2] = y
 
-    result = tvm.tir.transform.CommonSubexprElim()(Before)
-    tvm.ir.assert_structural_equal(result, After)
+    after = tvm.tir.transform.CommonSubexprElim()(Before)
+    tvm.ir.assert_structural_equal(after, Expected)
 
 
+# =====================================================================
+# T11: Multiple independent CSE candidates
+# Several independent expressions, each duplicated.
+# =====================================================================
 def test_multi_independent():
-    """Several independent expressions, each duplicated."""
-
     @tvm.script.ir_module
     class Before:
         @T.prim_func
@@ -368,7 +394,7 @@ def test_multi_independent():
             B[3] = c + d
 
     @tvm.script.ir_module
-    class After:
+    class Expected:
         @T.prim_func
         def main(
             B: T.Buffer((50,), "int32"),
@@ -384,13 +410,16 @@ def test_multi_independent():
             B[2] = cse_v1
             B[3] = cse_v2
 
-    result = tvm.tir.transform.CommonSubexprElim()(Before)
-    tvm.ir.assert_structural_equal(result, After)
+    after = tvm.tir.transform.CommonSubexprElim()(Before)
+    tvm.ir.assert_structural_equal(after, Expected)
 
 
+# =====================================================================
+# T12: Expression in if-condition and branch
+# One occurrence in the if-condition (parent scope), one in the
+# then-branch. Binding hoisted before the if.
+# =====================================================================
 def test_if_condition():
-    """Expression in if-condition and branch; hoisted before the if."""
-
     @tvm.script.ir_module
     class Before:
         @T.prim_func
@@ -399,20 +428,22 @@ def test_if_condition():
                 B[0] = y + z
 
     @tvm.script.ir_module
-    class After:
+    class Expected:
         @T.prim_func
         def main(B: T.Buffer((50,), "int32"), y: T.int32, z: T.int32):
             cse_v1 = T.Bind(y + z)
             if cse_v1 > 0:
                 B[0] = cse_v1
 
-    result = tvm.tir.transform.CommonSubexprElim()(Before)
-    tvm.ir.assert_structural_equal(result, After)
+    after = tvm.tir.transform.CommonSubexprElim()(Before)
+    tvm.ir.assert_structural_equal(after, Expected)
 
 
+# =====================================================================
+# T13: Cannot-lift -- expression containing Call
+# Function calls cannot be lifted.
+# =====================================================================
 def test_cannot_lift_call():
-    """Expressions containing Call are ineligible."""
-
     @tvm.script.ir_module
     class Before:
         @T.prim_func
@@ -421,19 +452,23 @@ def test_cannot_lift_call():
             B[1] = T.call_extern("my_func", x, dtype="int32") + 1
 
     @tvm.script.ir_module
-    class After:
+    class Expected:
         @T.prim_func
         def main(B: T.Buffer((50,), "int32"), x: T.int32):
             B[0] = T.call_extern("my_func", x, dtype="int32") + 1
             B[1] = T.call_extern("my_func", x, dtype="int32") + 1
 
-    result = tvm.tir.transform.CommonSubexprElim()(Before)
-    tvm.ir.assert_structural_equal(result, After)
+    after = tvm.tir.transform.CommonSubexprElim()(Before)
+    tvm.ir.assert_structural_equal(after, Expected)
 
 
+# =====================================================================
+# T14: No single-use binding
+# When all occurrences of a sub-expression are inside a deeper
+# expression that is also CSE'd, the sub-expression should NOT get
+# its own binding (it would be used only once in the parent's value).
+# =====================================================================
 def test_no_single_use_binding():
-    """Sub-expression fully consumed by parent should not get its own binding."""
-
     @tvm.script.ir_module
     class Before:
         @T.prim_func
@@ -447,7 +482,7 @@ def test_no_single_use_binding():
             B[1] = (x + y) + z
 
     @tvm.script.ir_module
-    class After:
+    class Expected:
         @T.prim_func
         def main(
             B: T.Buffer((50,), "int32"),
@@ -459,13 +494,15 @@ def test_no_single_use_binding():
             B[0] = cse_v1
             B[1] = cse_v1
 
-    result = tvm.tir.transform.CommonSubexprElim()(Before)
-    tvm.ir.assert_structural_equal(result, After)
+    after = tvm.tir.transform.CommonSubexprElim()(Before)
+    tvm.ir.assert_structural_equal(after, Expected)
 
 
+# =====================================================================
+# T15: No normalization without commoning
+# Single-occurrence expression is not normalized or modified.
+# =====================================================================
 def test_no_normalization_without_commoning():
-    """Single-occurrence expression is not normalized."""
-
     @tvm.script.ir_module
     class Before:
         @T.prim_func
@@ -474,14 +511,14 @@ def test_no_normalization_without_commoning():
             T.evaluate(a)
 
     @tvm.script.ir_module
-    class After:
+    class Expected:
         @T.prim_func
         def main(x: T.int32, y: T.int32, z: T.int32):
             a = T.Bind(x + (y + z))
             T.evaluate(a)
 
-    result = tvm.tir.transform.CommonSubexprElim()(Before)
-    tvm.ir.assert_structural_equal(result, After)
+    after = tvm.tir.transform.CommonSubexprElim()(Before)
+    tvm.ir.assert_structural_equal(after, Expected)
 
 
 if __name__ == "__main__":
