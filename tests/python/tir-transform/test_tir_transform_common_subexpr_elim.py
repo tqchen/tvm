@@ -25,16 +25,16 @@ from tvm.ir.module import IRModule
 from tvm.script import tir as T
 
 
-def _apply_cse(func, identify_equiv_terms=False):
+def _apply_cse(func):
     """Apply CSE pass and return the transformed function."""
     mod = tvm.IRModule.from_expr(func.with_attr("global_symbol", "main"))
-    mod = tvm.tir.transform.CommonSubexprElim(identify_equiv_terms=identify_equiv_terms)(mod)
+    mod = tvm.tir.transform.CommonSubexprElim()(mod)
     return mod["main"]
 
 
-def _check(original, expected, identify_equiv_terms=False):
+def _check(original, expected):
     """Apply CSE and check structural equality."""
-    result = _apply_cse(original, identify_equiv_terms)
+    result = _apply_cse(original)
     tvm.ir.assert_structural_equal(result, expected.with_attr("global_symbol", "main"))
 
 
@@ -447,73 +447,7 @@ def test_no_normalization_without_commoning():
         a = T.Bind(x + (y + z))
         T.evaluate(a)
 
-    _check(before, expected, identify_equiv_terms=True)
-
-
-# =====================================================================
-# Semantic equivalence -- distributivity (identify_equiv_terms=True)
-# =====================================================================
-@pytest.mark.xfail(reason="identify_equiv_terms not yet implemented in two-phase CSE")
-def test_semantic_equiv_distributivity():
-    @T.prim_func
-    def before(
-        B: T.Buffer((50,), "int32"),
-        i1: T.int32,
-        i2: T.int32,
-        x: T.int32,
-        y: T.int32,
-        z: T.int32,
-    ):
-        B[i1] = (y + z) * x
-        B[i2] = x * y + x * z
-
-    @T.prim_func
-    def expected(
-        B: T.Buffer((50,), "int32"),
-        i1: T.int32,
-        i2: T.int32,
-        x: T.int32,
-        y: T.int32,
-        z: T.int32,
-    ):
-        cse_v1 = T.Bind((y + z) * x)
-        B[i1] = cse_v1
-        B[i2] = cse_v1
-
-    _check(before, expected, identify_equiv_terms=True)
-
-
-# =====================================================================
-# Semantic equivalence -- associativity (identify_equiv_terms=True)
-# =====================================================================
-@pytest.mark.xfail(reason="identify_equiv_terms not yet implemented in two-phase CSE")
-def test_semantic_equiv_associativity():
-    @T.prim_func
-    def before(
-        B: T.Buffer((50,), "int32"),
-        i1: T.int32,
-        i2: T.int32,
-        x: T.int32,
-        y: T.int32,
-        z: T.int32,
-    ):
-        B[i1] = (x + y) + z
-        B[i2] = x + (y + z)
-
-    @T.prim_func
-    def expected(
-        B: T.Buffer((50,), "int32"),
-        i1: T.int32,
-        i2: T.int32,
-        x: T.int32,
-        y: T.int32,
-        z: T.int32,
-    ):
-        cse_v1 = T.Bind(x + y + z)
-        B[i1] = cse_v1
-        B[i2] = cse_v1
-
-    _check(before, expected, identify_equiv_terms=True)
+    _check(before, expected)
 
 
 # =====================================================================

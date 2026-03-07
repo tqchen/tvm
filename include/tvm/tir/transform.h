@@ -313,10 +313,9 @@ TVM_DLL Pass FlattenBuffer();
  * \brief Implements a Common Subexpression Elimination (CSE) for TIR
  *        which introduces let-in bindings for duplicated sub-expressions.
  * \param enable_cse_tir Whether common subexpression elimination is enabled.
- * \param identify_equiv_terms Whether equivalent terms should be identified.
  * \return The pass.
  */
-TVM_DLL Pass CommonSubexprElim(bool identify_equiv_terms = false);
+TVM_DLL Pass CommonSubexprElim();
 
 /*!
  * \brief This is the unified static memory planner pass that will

@@ -111,93 +111,6 @@ using InsertBeforeTable =
 // ============================================================================
 
 /*!
- * \brief One node in the scope tree.
- *
- * The scope tree mirrors the nesting structure of the TIR program.
- * Each scope-creating statement (For, IfThenElse branch, While, AttrStmt)
- * gets its own ScopeEntry. The root scope (depth 0) represents the function
- * body itself.
- */
-struct ScopeEntry {
-  /*! \brief Parent scope ID (-1 for root). */
-  int parent;
-  /*! \brief Distance from root (root = 0). */
-  int depth;
-  /*!
-   * \brief The statement that created this scope (e.g. ForNode).
-   *
-   * Null for the root scope. Used as the insertion point when a CSE
-   * binding must be placed before the scope.
-   */
-  Stmt creator_stmt;
-};
-
-/*!
- * \brief Node in the expression DAG built during the bottom-up scan.
- *
- * The planner maintains one ExprEntry per structurally-unique eligible
- * expression (keyed by ExprDeepEqual). Since expressions are recorded
- * bottom-up (children before parents), the DAG children are naturally
- * discovered when a node is first added. Fields like expr_depth are
- * computed incrementally from children — no separate traversal needed.
- */
-struct ExprEntry {
-  /*! \brief Total number of occurrences across all scopes. */
-  int count{0};
-  /*!
-   * \brief Nesting depth of eligible sub-expressions (leaf eligible = 1).
-   *
-   * Computed from children: `1 + max(child.expr_depth)`, or 1 if no children.
-   * Used to sort entries so that shallower expressions are processed first.
-   */
-  int expr_depth{0};
-  /*! \brief The expression itself (first occurrence). */
-  PrimExpr repr;
-  /*!
-   * \brief Scope ID of the Lowest Common Ancestor of all scopes containing an occurrence.
-   *
-   * Determines the outermost valid insertion point.
-   */
-  int lca_scope{-1};
-  /*!
-   * \brief Scope ID where the first occurrence was found.
-   *
-   * When lca_scope == first_use_scope, the binding is inserted before first_use_stmt.
-   */
-  int first_use_scope{-1};
-  /*!
-   * \brief The SeqStmt child (or body statement) containing the first occurrence.
-   *
-   * Used as the insertion point when the LCA equals the first-use scope.
-   */
-  Stmt first_use_stmt;
-  /*!
-   * \brief Direct children in the expression DAG: (child_expr, multiplicity).
-   *
-   * A "direct child" is an eligible table entry reachable from this expression
-   * without passing through another table entry. Multiplicity counts how many
-   * times the child appears (e.g., 2 for `(x+y) * (x+y)` with child `x+y`).
-   * Populated during RecordExpr (bottom-up: children already in table).
-   */
-  std::vector<std::pair<PrimExpr, int>> children;
-  /*!
-   * \brief Number of occurrences consumed by parent expressions' CSE bindings.
-   *
-   * Computed after the DAG is fully built, before plan generation.
-   * An occurrence is "consumed" when a parent expression with count >= 2
-   * is CSE'd — the Bind value retains one copy, so (parent.count - 1) *
-   * multiplicity occurrences of this child become part of the parent's
-   * binding rather than independent uses.
-   * Independent count = count - consumed; only entries with independent >= 2
-   * are CSE candidates.
-   */
-  int consumed{0};
-};
-
-/*! \brief Expression table keyed by structural equality (ExprDeepEqual). */
-using ExprTable = std::unordered_map<PrimExpr, ExprEntry, ffi::StructuralHash, ExprDeepEqual>;
-
-/*!
  * \brief Phase 1 of the two-phase CSE pass.
  *
  * CSEPlanner is a read-only visitor that scans the TIR tree bottom-up and builds:
@@ -247,6 +160,89 @@ class CSEPlanner : public StmtExprVisitor {
   }
 
  private:
+  /*!
+   * \brief One node in the scope tree.
+   *
+   * The scope tree mirrors the nesting structure of the TIR program.
+   * Each scope-creating statement (For, IfThenElse branch, While, AttrStmt)
+   * gets its own ScopeEntry. The root scope (depth 0) represents the function
+   * body itself.
+   */
+  struct ScopeEntry {
+    /*! \brief Parent scope ID (-1 for root). */
+    int parent;
+    /*! \brief Distance from root (root = 0). */
+    int depth;
+    /*!
+     * \brief The statement that created this scope (e.g. ForNode).
+     *
+     * Null for the root scope. Used as the insertion point when a CSE
+     * binding must be placed before the scope.
+     */
+    Stmt creator_stmt;
+  };
+
+  /*!
+   * \brief Node in the expression DAG built during the bottom-up scan.
+   *
+   * The planner maintains one ExprEntry per structurally-unique eligible
+   * expression (keyed by ExprDeepEqual). Since expressions are recorded
+   * bottom-up (children before parents), the DAG children are naturally
+   * discovered when a node is first added. Fields like expr_depth are
+   * computed incrementally from children — no separate traversal needed.
+   */
+  struct ExprEntry {
+    /*! \brief Total number of occurrences across all scopes. */
+    int count{0};
+    /*!
+     * \brief Nesting depth of eligible sub-expressions (leaf eligible = 1).
+     *
+     * Computed from children: `1 + max(child.expr_depth)`, or 1 if no children.
+     * Used to sort entries so that shallower expressions are processed first.
+     */
+    int expr_depth{0};
+    /*! \brief The expression itself (first occurrence). */
+    PrimExpr repr;
+    /*!
+     * \brief Scope ID of the Lowest Common Ancestor of all scopes containing an occurrence.
+     *
+     * Determines the outermost valid insertion point.
+     */
+    int lca_scope{-1};
+    /*!
+     * \brief Scope ID where the first occurrence was found.
+     *
+     * When lca_scope == first_use_scope, the binding is inserted before first_use_stmt.
+     */
+    int first_use_scope{-1};
+    /*!
+     * \brief The SeqStmt child (or body statement) containing the first occurrence.
+     *
+     * Used as the insertion point when the LCA equals the first-use scope.
+     */
+    Stmt first_use_stmt;
+    /*!
+     * \brief Direct children in the expression DAG: (child_expr, multiplicity).
+     *
+     * A "direct child" is an eligible table entry reachable from this expression
+     * without passing through another table entry. Multiplicity counts how many
+     * times the child appears (e.g., 2 for `(x+y) * (x+y)` with child `x+y`).
+     * Populated during RecordExpr (bottom-up: children already in table).
+     */
+    std::vector<std::pair<PrimExpr, int>> children;
+    /*!
+     * \brief Number of occurrences consumed by parent expressions' CSE bindings.
+     *
+     * Computed after the DAG is fully built, before plan generation.
+     * Independent count = count - consumed; only entries with independent >= 2
+     * are CSE candidates.
+     */
+    int consumed{0};
+  };
+
+  /*! \brief Expression table keyed by structural equality (ExprDeepEqual). */
+  using ExprTable = std::unordered_map<PrimExpr, ExprEntry, ffi::StructuralHash, ExprDeepEqual>;
+
   // ------------------------------------------------------------------
   // Eligibility predicates
   // ------------------------------------------------------------------
@@ -740,11 +736,10 @@ namespace transform {
  * Plans all CSE opportunities in a single pass (shallower-first with repr
  * propagation), then rewrites the tree once.
  *
- * \param identify_equiv_terms Reserved for future semantic equivalence support.
  * \return The pass.
  */
-Pass CommonSubexprElim(bool identify_equiv_terms) {
-  auto pass_func = [identify_equiv_terms](PrimFunc f, IRModule m, PassContext ctx) {
+Pass CommonSubexprElim() {
+  auto pass_func = [](PrimFunc f, IRModule m, PassContext ctx) {
     auto [insert_before, expr_remap] = CSEPlanner::Plan(f->body, f->params);
     if (!insert_before.empty()) {
       auto* n = f.CopyOnWrite();
