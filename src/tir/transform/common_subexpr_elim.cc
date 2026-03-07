@@ -180,6 +180,18 @@ struct ExprEntry {
    * Populated during RecordExpr (bottom-up: children already in table).
    */
   std::vector<std::pair<PrimExpr, int>> children;
+  /*!
+   * \brief Number of occurrences consumed by parent expressions' CSE bindings.
+   *
+   * Computed after the DAG is fully built, before plan generation.
+   * An occurrence is "consumed" when a parent expression with count >= 2
+   * is CSE'd — the Bind value retains one copy, so (parent.count - 1) *
+   * multiplicity occurrences of this child become part of the parent's
+   * binding rather than independent uses.
+   * Independent count = count - consumed; only entries with independent >= 2
+   * are CSE candidates.
+   */
+  int consumed{0};
 };
 
 /*! \brief Expression table keyed by structural equality (ExprDeepEqual). */
@@ -574,17 +586,16 @@ class CSEPlanner : public StmtExprVisitor {
           return hasher(a.first) < hasher(b.first);
         });
 
-    // Step 2: Compute consumed counts from the DAG (parent → children).
+    // Step 2: Compute consumed counts in ExprEntry from the DAG.
     // For each parent P with count >= 2, each child's consumed count is
     // incremented by (P.count - 1) * multiplicity. Only direct children
     // are affected — no double-counting through grandparents.
-    std::unordered_map<ExprEntry*, int> consumed;
     for (auto& [expr, entry] : all_entries) {
       if (entry->count < 2) continue;
       for (const auto& [child_expr, mult] : entry->children) {
         auto cit = table_.find(child_expr);
         if (cit != table_.end()) {
-          consumed[&cit->second] += (entry->count - 1) * mult;
+          cit->second.consumed += (entry->count - 1) * mult;
         }
       }
     }
@@ -595,7 +606,7 @@ class CSEPlanner : public StmtExprVisitor {
 
     // Step 3: Process each candidate (shallower first)
     for (auto& [expr, entry] : all_entries) {
-      if (entry->count - consumed[entry] < 2) continue;
+      if (entry->count - entry->consumed < 2) continue;
 
       // Step 3a: Determine where to insert the Bind
       Stmt insert_at = FindInsertionStmt(*entry);
