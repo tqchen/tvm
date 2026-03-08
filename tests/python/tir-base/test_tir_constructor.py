@@ -131,11 +131,10 @@ def test_expr_constructor():
 def test_stmt_constructor():
     v = tvm.tir.Var("aa", "int32")
     nop = tvm.tir.Evaluate(1)
-    x = tvm.tir.LetStmt(v, 1, tvm.tir.Evaluate(1))
-    assert isinstance(x, tvm.tir.LetStmt)
+    x = tvm.tir.Bind(v, 1)
+    assert isinstance(x, tvm.tir.Bind)
     assert x.var == v
     assert x.value.value == 1
-    assert isinstance(x.body, tvm.tir.Evaluate)
 
     x = tvm.tir.AttrStmt(v == 1, "xx", 1, tvm.tir.Evaluate(1))
     assert isinstance(x, tvm.tir.AttrStmt)
@@ -166,21 +165,10 @@ def test_stmt_constructor():
     assert list(x.indices) == [10]
     assert x.value.value == 1
 
-    buffer_var = tvm.tir.Var("buf", tvm.ir.PointerType(tvm.ir.PrimType("float32")))
-    x = tvm.tir.Allocate(buffer_var, "float32", [10], tvm.tir.const(1, "bool"), nop)
-    assert isinstance(x, tvm.tir.Allocate)
-    assert x.dtype == "float32"
-    assert x.buffer_var == buffer_var
-    assert x.body == nop
-
-    storage_scope = "global.texture"
-    buffer_var = tvm.tir.Var("buf", tvm.ir.PointerType(tvm.ir.PrimType("float32"), storage_scope))
-    x = tvm.tir.Allocate(buffer_var, "float32", [10], tvm.tir.const(1, "bool"), nop)
-    assert isinstance(x, tvm.tir.Allocate)
-    assert x.dtype == "float32"
-    assert x.buffer_var == buffer_var
-    assert x.buffer_var.type_annotation.storage_scope == storage_scope
-    assert x.body == nop
+    buf = tvm.tir.decl_buffer([10], "float32")
+    x = tvm.tir.AllocBuffer(buf)
+    assert isinstance(x, tvm.tir.AllocBuffer)
+    assert x.buffer == buf
 
     x = tvm.tir.AttrStmt(buffer_var, "xyz", 1, nop)
     assert isinstance(x, tvm.tir.AttrStmt)
