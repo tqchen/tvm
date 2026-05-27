@@ -79,16 +79,6 @@ class Attrs(Object):
 class DictAttrs(Attrs):
     """Dictionary attributes."""
 
-    @property
-    def __dict__(self):
-        """Return the underlying key-value map as a Python dict.
-
-        Defined explicitly so that tvm_ffi's _add_class_attrs skips registering
-        the C++ reflection field named '__dict__' (Python forbids adding a class
-        attribute named '__dict__' via setattr on extension-type subclasses).
-        """
-        return dict(self._dict())
-
     def _dict(self):
         """Get internal dict"""
         return _ffi_api.DictAttrsGetDict(self)
@@ -161,8 +151,8 @@ def make_node(type_key, **kwargs):
     """
     if type_key == "ir.DictAttrs":
         # DictAttrs stores kwargs as a key-value dict, not as named fields.
-        # MakeObjectFromPackedArgs would look for a field named "__dict__".
-        return _tvm_ffi_api.MakeObjectFromPackedArgs("ir.DictAttrs", "__dict__", kwargs)
+        # MakeObjectFromPackedArgs uses the reflection key "dict" for the field.
+        return _tvm_ffi_api.MakeObjectFromPackedArgs("ir.DictAttrs", "dict", kwargs)
     args = [type_key]
     for k, v in kwargs.items():
         args += [k, v]
