@@ -25,6 +25,14 @@ add_definitions(-DNDEBUG=1)
 # TODO(@jroesch, @tkonolige): if we actually use targets we can do this.
 # target_compile_definitions(tvm_compiler PRIVATE NDEBUG=1)
 
+# Precondition: USE_STATIC_LIBXML2_FROM_SOURCE=ON is only supported with a static LLVM
+# link (i.e. USE_LLVM must contain "--link-static"). Catch the mismatch early.
+if(USE_STATIC_LIBXML2_FROM_SOURCE AND NOT (USE_LLVM MATCHES "--link-static"))
+  message(FATAL_ERROR
+    "USE_STATIC_LIBXML2_FROM_SOURCE=ON requires USE_LLVM to use --link-static "
+    "(e.g. set(USE_LLVM \"llvm-config --link-static\"))")
+endif()
+
 # Test if ${USE_LLVM} is not an explicit boolean false
 # It may be a boolean or a string
 if(NOT ${USE_LLVM} MATCHES ${IS_FALSE_PATTERN})
@@ -48,6 +56,20 @@ if(NOT ${USE_LLVM} MATCHES ${IS_FALSE_PATTERN})
     src/target/rocm/llvm/*.cc
     src/target/hexagon/llvm/*.cc
   )
+
+  # When USE_STATIC_LIBXML2_FROM_SOURCE=ON, fetch libxml2 in-tree (no submodule) and
+  # replace any system libxml2 reference that llvm-config emitted with the
+  # in-tree static target. This keeps libtvm.so free of a runtime libxml2 dep.
+  if(USE_STATIC_LIBXML2_FROM_SOURCE)
+    include(${CMAKE_CURRENT_SOURCE_DIR}/cmake/utils/CompileStaticLibXml2.cmake)
+    _libxml2compile()
+    # Drop any -lxml2 / *libxml2* / *xml2* entries llvm-config injected.
+    list(FILTER LLVM_LIBS EXCLUDE REGEX "[Xx][Mm][Ll]2")
+    # Link the in-tree static target instead.
+    list(APPEND LLVM_LIBS LibXml2)
+    message(STATUS "USE_STATIC_LIBXML2_FROM_SOURCE=ON: replaced system xml2 with in-tree LibXml2")
+  endif()
+
   list(APPEND TVM_LINKER_LIBS ${LLVM_LIBS})
   list(APPEND COMPILER_SRCS ${COMPILER_LLVM_SRCS})
   if(NOT MSVC)
