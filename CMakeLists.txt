@@ -1,6 +1,15 @@
 cmake_minimum_required(VERSION 3.18)
 project(tvm C CXX)
 
+if(CMAKE_SYSTEM_NAME STREQUAL "Linux")
+  execute_process(
+    COMMAND ${CMAKE_CXX_COMPILER} -print-file-name=libstdc++.so
+    OUTPUT_VARIABLE TVM_CXX_LIBSTDCXX
+    OUTPUT_STRIP_TRAILING_WHITESPACE
+  )
+  message(STATUS "CXX libstdc++: ${TVM_CXX_LIBSTDCXX}")
+endif()
+
 # --- TVM version (no dependency on version.py) ---
 # When built via scikit-build-core the version is resolved by setuptools_scm and
 # passed in as SKBUILD_PROJECT_VERSION_FULL; bake it into the C++ TVM_VERSION macro.
@@ -623,6 +632,13 @@ set_target_properties(tvm_runtime PROPERTIES
   LIBRARY_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/lib"
   RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/lib"
 )
+if(CMAKE_SYSTEM_NAME STREQUAL "Linux" AND NOT BUILD_STATIC_RUNTIME)
+  add_custom_command(TARGET tvm_runtime POST_BUILD
+    COMMAND sh -c "ldd '$<TARGET_FILE:tvm_runtime>' || true"
+    COMMAND sh -c "ldd -r '$<TARGET_FILE:tvm_runtime>' || true"
+    VERBATIM
+  )
+endif()
 set_target_properties(tvm_compiler PROPERTIES
   ARCHIVE_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/lib"
   LIBRARY_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/lib"

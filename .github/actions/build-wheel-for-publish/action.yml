@@ -133,6 +133,24 @@ runs:
         CIBW_ENVIRONMENT_LINUX: >-
           CMAKE_PREFIX_PATH="/opt/llvm"
           CMAKE_ARGS="-DUSE_LLVM='/opt/llvm/bin/llvm-config --link-static' -DZLIB_USE_STATIC_LIBS=ON -DCMAKE_PREFIX_PATH=/opt/llvm ${{ inputs.cmake_defines }} -DTVM_PACKAGE_EXTRA_LIBS=/project/build-wheel-cuda/lib/libtvm_runtime_cuda.so"
+        CIBW_TEST_COMMAND_LINUX: |
+          TVM_WHEEL_LIBS="$(python - <<'PY'
+          import pathlib
+          import tvm
+
+          root = pathlib.Path(tvm.__file__).resolve().parent
+          for lib in sorted(root.rglob("*.so")):
+              if lib.name == "libtvm_runtime.so" or "tvm" in lib.name:
+                  print(lib)
+          PY
+          )"
+          for lib in ${TVM_WHEEL_LIBS}; do
+            echo "ldd ${lib}"
+            ldd "${lib}" || true
+            echo "ldd -r ${lib}"
+            ldd -r "${lib}" || true
+          done
+          pytest -vvs {project}/tests/python/all-platform-minimal-test
         CIBW_ENVIRONMENT_WINDOWS: >-
           CMAKE_PREFIX_PATH="C:/opt/llvm/Library"
           PATH="C:/opt/llvm/Library/bin;$PATH"
