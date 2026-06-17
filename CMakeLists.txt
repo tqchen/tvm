@@ -79,6 +79,7 @@ tvm_option(INSTALL_DEV "Install compiler infrastructure" OFF)
 tvm_option(HIDE_PRIVATE_SYMBOLS "Compile with -fvisibility=hidden." ON)
 tvm_option(INDEX_DEFAULT_I64 "Defaults the index datatype to int64" ON)
 tvm_option(BUILD_STATIC_RUNTIME "Build static version of libtvm_runtime" OFF)
+tvm_option(BUILD_TVM_COMPILER "Build libtvm_compiler" ON)
 tvm_option(USE_GTEST "Use GoogleTest for C++ sanity tests" AUTO)
 tvm_option(USE_CUSTOM_LOGGING "Use user-defined custom logging, tvm::runtime::detail::LogFatalImpl and tvm::runtime::detail::LogMessageImpl must be implemented" OFF)
 tvm_option(USE_ALTERNATIVE_LINKER "Use 'mold' or 'lld' if found when invoking compiler to link artifact" AUTO)
@@ -548,7 +549,11 @@ endif()
 
 tvm_configure_target_library(tvm_runtime_extra RUNTIME_MODULE)
 
-add_library(tvm_objs OBJECT ${COMPILER_SRCS})
+if(BUILD_TVM_COMPILER)
+  add_library(tvm_objs OBJECT ${COMPILER_SRCS})
+else()
+  add_library(tvm_objs OBJECT EXCLUDE_FROM_ALL ${COMPILER_SRCS})
+endif()
 add_library(tvm_runtime_objs OBJECT ${RUNTIME_SRCS})
 target_link_libraries(tvm_objs PUBLIC tvm_ffi_header)
 target_link_libraries(tvm_runtime_objs PUBLIC tvm_ffi_header)
@@ -595,9 +600,15 @@ endif()
 # Compiler library: built from compiler-only sources.
 # Links against tvm_runtime (and tvm_ffi_shared transitively). Loaded with
 # RTLD_LOCAL so compiler-internal symbols don't leak into the global namespace.
-add_library(tvm_compiler SHARED
-  $<TARGET_OBJECTS:tvm_objs>
-)
+if(BUILD_TVM_COMPILER)
+  add_library(tvm_compiler SHARED
+    $<TARGET_OBJECTS:tvm_objs>
+  )
+else()
+  add_library(tvm_compiler SHARED EXCLUDE_FROM_ALL
+    $<TARGET_OBJECTS:tvm_objs>
+  )
+endif()
 target_link_libraries(tvm_compiler PUBLIC tvm_runtime tvm_ffi_shared)
 target_include_directories(tvm_compiler PUBLIC "$<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}>")
 set_property(TARGET tvm_compiler APPEND PROPERTY LINK_OPTIONS "${TVM_NO_UNDEFINED_SYMBOLS}")
@@ -886,7 +897,9 @@ if(TVM_BUILD_PYTHON_MODULE)
   # Install compiled shared libraries into <project>/lib so that
   # tvm_ffi.libinfo.load_lib_ctypes(package="tvm", target_name=...) can find
   # them via the package RECORD or the project's lib/ fallback dir.
-  install(TARGETS tvm_compiler DESTINATION "lib")
+  if(BUILD_TVM_COMPILER)
+    install(TARGETS tvm_compiler DESTINATION "lib")
+  endif()
   install(TARGETS tvm_runtime DESTINATION "lib")
 
   # Install third-party compiled dependencies into the same lib/ dir.
