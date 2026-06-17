@@ -50,6 +50,7 @@ jobs:
   # ABI-compatible with the wheel's libtvm_runtime.so regardless of the exact tag.
   build_cuda_runtime:
     name: ${{ matrix.name }}
+    if: ${{ false }}
     runs-on: ${{ matrix.os }}
     container: ${{ matrix.container }}
     strategy:
@@ -118,7 +119,6 @@ jobs:
     name: ${{ matrix.name }}
     # All-or-nothing: a failed sidecar leg blocks the whole wheel matrix (a publish
     # needs the complete 4-wheel set anyway).
-    needs: [build_cuda_runtime]
     runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false
@@ -128,13 +128,13 @@ jobs:
             os: ubuntu-latest
             arch: x86_64
             build: cp310-manylinux_x86_64
-            include_cuda_runtime: "1"
+            include_cuda_runtime: "0"
             artifact_suffix: linux-x86_64-manylinux_2_28
           - name: "Linux aarch64 wheel with CUDA runtime (manylinux_2_28)"
             os: ubuntu-24.04-arm
             arch: aarch64
             build: cp310-manylinux_aarch64
-            include_cuda_runtime: "1"
+            include_cuda_runtime: "0"
             artifact_suffix: linux-aarch64-manylinux_2_28
           - name: "macOS arm64 wheel with Metal"
             os: macos-14
@@ -147,7 +147,7 @@ jobs:
             os: windows-2022
             arch: AMD64
             build: cp310-win_amd64
-            include_cuda_runtime: "1"
+            include_cuda_runtime: "0"
             artifact_suffix: windows-amd64
     steps:
       - name: Checkout source

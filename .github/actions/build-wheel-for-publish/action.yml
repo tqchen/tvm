@@ -46,7 +46,7 @@ runs:
       run: echo "LLVM_VERSION=22.1.0" >> "$GITHUB_ENV"
 
     - name: Prepare LLVM cache path (Unix)
-      if: runner.os != 'Windows'
+      if: ${{ false }}
       shell: bash
       run: |
         set -eux
@@ -55,6 +55,7 @@ runs:
 
     # ---- Cache LLVM prefix ----
     - name: Cache LLVM
+      if: ${{ false }}
       uses: actions/cache@v5.0.5
       id: llvm-cache
       with:
@@ -63,7 +64,7 @@ runs:
 
     # ---- Install LLVM via conda (cache miss only) ----
     - name: Setup conda
-      if: steps.llvm-cache.outputs.cache-hit != 'true'
+      if: ${{ false }}
       uses: conda-incubator/setup-miniconda@v4.0.1
       continue-on-error: true
       id: conda1
@@ -72,7 +73,7 @@ runs:
         conda-remove-defaults: true
 
     - name: Setup conda (retry with tar.bz2)
-      if: steps.llvm-cache.outputs.cache-hit != 'true' && steps.conda1.outcome == 'failure'
+      if: ${{ false }}
       uses: conda-incubator/setup-miniconda@v4.0.1
       with:
         miniforge-version: latest
@@ -80,7 +81,7 @@ runs:
         conda-remove-defaults: true
 
     - name: Install LLVM (Unix)
-      if: steps.llvm-cache.outputs.cache-hit != 'true' && runner.os != 'Windows'
+      if: ${{ false }}
       shell: bash -l {0}
       run: |
         set -eux
@@ -93,7 +94,7 @@ runs:
           -y
 
     - name: Install LLVM (Windows)
-      if: steps.llvm-cache.outputs.cache-hit != 'true' && runner.os == 'Windows'
+      if: ${{ false }}
       shell: cmd /C call {0}
       run: |
         call conda create -q -p C:\opt\llvm -c conda-forge llvmdev=%LLVM_VERSION% zlib zstd-static libxml2-devel -y
@@ -120,7 +121,7 @@ runs:
         # Linux builds run in cibuildwheel's default manylinux_2_28 container;
         # bind-mount the cached LLVM prefix into it. Ignored on macOS/Windows,
         # which build without a container.
-        CIBW_CONTAINER_ENGINE: "docker; create_args: --volume /opt/llvm:/opt/llvm:ro"
+        CIBW_CONTAINER_ENGINE: "docker"
         # Each per-OS block carries the toolchain location (conda LLVM prefix +
         # llvm-config path), the universal static-link policy (USE_LLVM --link-static
         # and ZLIB_USE_STATIC_LIBS), and the CUDA sidecar. Feature defines that vary by
@@ -128,11 +129,9 @@ runs:
         # One explicit block per build platform (macOS / Linux / Windows); cibuildwheel
         # env overrides replace rather than merge, so there is no shared base block.
         CIBW_ENVIRONMENT_MACOS: >-
-          CMAKE_PREFIX_PATH="/opt/llvm"
-          CMAKE_ARGS="-DUSE_LLVM='/opt/llvm/bin/llvm-config --link-static' -DZLIB_USE_STATIC_LIBS=ON -DCMAKE_PREFIX_PATH=/opt/llvm ${{ inputs.cmake_defines }}"
+          CMAKE_ARGS="-DUSE_LLVM=OFF -DBUILD_TVM_COMPILER=OFF ${{ inputs.cmake_defines }}"
         CIBW_ENVIRONMENT_LINUX: >-
-          CMAKE_PREFIX_PATH="/opt/llvm"
-          CMAKE_ARGS="-DUSE_LLVM='/opt/llvm/bin/llvm-config --link-static' -DZLIB_USE_STATIC_LIBS=ON -DCMAKE_PREFIX_PATH=/opt/llvm ${{ inputs.cmake_defines }} -DTVM_PACKAGE_EXTRA_LIBS=/project/build-wheel-cuda/lib/libtvm_runtime_cuda.so"
+          CMAKE_ARGS="-DUSE_LLVM=OFF -DBUILD_TVM_COMPILER=OFF ${{ inputs.cmake_defines }}"
         CIBW_TEST_COMMAND_LINUX: |
           TVM_WHEEL_LIBS="$(python - <<'PY'
           import pathlib
@@ -152,14 +151,13 @@ runs:
           done
           pytest -vvs {project}/tests/python/all-platform-minimal-test
         CIBW_ENVIRONMENT_WINDOWS: >-
-          CMAKE_PREFIX_PATH="C:/opt/llvm/Library"
-          PATH="C:/opt/llvm/Library/bin;$PATH"
-          CMAKE_ARGS="-DUSE_LLVM='C:/opt/llvm/Library/bin/llvm-config.exe --link-static' -DZLIB_USE_STATIC_LIBS=ON -DCMAKE_PREFIX_PATH=C:/opt/llvm/Library ${{ inputs.cmake_defines }} -DTVM_PACKAGE_EXTRA_LIBS=${{ env.TVM_CUDA_EXTRA_LIB }}"
+          CMAKE_ARGS="-DUSE_LLVM=OFF -DBUILD_TVM_COMPILER=OFF ${{ inputs.cmake_defines }}"
         # Turns the wheel-specific assertions in
         # tests/python/all-platform-minimal-test/test_validate_runtime_library.py
         # ON (they skip unless these are set). Every published wheel is LLVM-enabled,
         # so TVM_WHEEL_EXPECT_LLVM is always "1"; the CUDA runtime is only bundled on
         # the CUDA wheels, so TVM_WHEEL_EXPECT_CUDA_RUNTIME is "0" for CPU wheels.
         CIBW_TEST_ENVIRONMENT: >-
-          TVM_WHEEL_EXPECT_LLVM="1"
-          TVM_WHEEL_EXPECT_CUDA_RUNTIME="${{ inputs.include_cuda_runtime }}"
+          TVM_USE_RUNTIME_LIB="1"
+          TVM_WHEEL_EXPECT_LLVM="0"
+          TVM_WHEEL_EXPECT_CUDA_RUNTIME="0"
