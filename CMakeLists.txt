@@ -780,7 +780,9 @@ endif()
 add_custom_target(runtime DEPENDS tvm_runtime)
 
 # Installation rules
-install(TARGETS tvm_compiler DESTINATION lib${LIB_SUFFIX})
+if(BUILD_TVM_COMPILER)
+  install(TARGETS tvm_compiler DESTINATION lib${LIB_SUFFIX})
+endif()
 install(TARGETS tvm_runtime DESTINATION lib${LIB_SUFFIX})
 
 if (INSTALL_DEV)
