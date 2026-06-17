@@ -129,9 +129,9 @@ runs:
         # One explicit block per build platform (macOS / Linux / Windows); cibuildwheel
         # env overrides replace rather than merge, so there is no shared base block.
         CIBW_ENVIRONMENT_MACOS: >-
-          CMAKE_ARGS="-DUSE_LLVM=OFF -DBUILD_TVM_COMPILER=OFF ${{ inputs.cmake_defines }}"
+          CMAKE_ARGS="-DUSE_LLVM=OFF -DBUILD_TVM_COMPILER=OFF -DUSE_INSTALLED_TVM_FFI=ON ${{ inputs.cmake_defines }}"
         CIBW_ENVIRONMENT_LINUX: >-
-          CMAKE_ARGS="-DUSE_LLVM=OFF -DBUILD_TVM_COMPILER=OFF ${{ inputs.cmake_defines }}"
+          CMAKE_ARGS="-DUSE_LLVM=OFF -DBUILD_TVM_COMPILER=OFF -DUSE_INSTALLED_TVM_FFI=ON ${{ inputs.cmake_defines }}"
         CIBW_TEST_COMMAND_LINUX: |
           TVM_WHEEL_LIBS="$(python - <<'PY'
           import pathlib
@@ -151,7 +151,7 @@ runs:
           done
           pytest -vvs {project}/tests/python/all-platform-minimal-test
         CIBW_ENVIRONMENT_WINDOWS: >-
-          CMAKE_ARGS="-DUSE_LLVM=OFF -DBUILD_TVM_COMPILER=OFF ${{ inputs.cmake_defines }}"
+          CMAKE_ARGS="-DUSE_LLVM=OFF -DBUILD_TVM_COMPILER=OFF -DUSE_INSTALLED_TVM_FFI=ON ${{ inputs.cmake_defines }}"
         # Turns the wheel-specific assertions in
         # tests/python/all-platform-minimal-test/test_validate_runtime_library.py
         # ON (they skip unless these are set). Every published wheel is LLVM-enabled,

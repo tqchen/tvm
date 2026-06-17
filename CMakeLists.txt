@@ -89,6 +89,7 @@ tvm_option(HIDE_PRIVATE_SYMBOLS "Compile with -fvisibility=hidden." ON)
 tvm_option(INDEX_DEFAULT_I64 "Defaults the index datatype to int64" ON)
 tvm_option(BUILD_STATIC_RUNTIME "Build static version of libtvm_runtime" OFF)
 tvm_option(BUILD_TVM_COMPILER "Build libtvm_compiler" ON)
+tvm_option(USE_INSTALLED_TVM_FFI "Use the installed tvm-ffi CMake package" OFF)
 tvm_option(USE_GTEST "Use GoogleTest for C++ sanity tests" AUTO)
 tvm_option(USE_CUSTOM_LOGGING "Use user-defined custom logging, tvm::runtime::detail::LogFatalImpl and tvm::runtime::detail::LogMessageImpl must be implemented" OFF)
 tvm_option(USE_ALTERNATIVE_LINKER "Use 'mold' or 'lld' if found when invoking compiler to link artifact" AUTO)
@@ -686,7 +687,31 @@ if(USE_IOS_RPC)
   add_subdirectory("apps/ios_rpc")
 endif()
 
-add_subdirectory(3rdparty/tvm-ffi)
+if(USE_INSTALLED_TVM_FFI)
+  if(BUILD_STATIC_RUNTIME)
+    message(FATAL_ERROR "USE_INSTALLED_TVM_FFI does not support BUILD_STATIC_RUNTIME")
+  endif()
+  find_package(
+    Python
+    COMPONENTS Interpreter
+    REQUIRED
+  )
+  execute_process(
+    COMMAND "${Python_EXECUTABLE}" -m tvm_ffi.config --cmakedir
+    OUTPUT_STRIP_TRAILING_WHITESPACE
+    OUTPUT_VARIABLE tvm_ffi_ROOT
+    RESULT_VARIABLE TVM_FFI_CONFIG_RESULT
+  )
+  if(NOT TVM_FFI_CONFIG_RESULT EQUAL 0)
+    message(FATAL_ERROR "Failed to locate installed tvm-ffi CMake package")
+  endif()
+  message(STATUS "Using installed tvm-ffi package: ${tvm_ffi_ROOT}")
+  find_package(tvm_ffi CONFIG REQUIRED)
+  add_library(tvm_ffi_header ALIAS tvm_ffi::header)
+  add_library(tvm_ffi_shared ALIAS tvm_ffi::shared)
+else()
+  add_subdirectory(3rdparty/tvm-ffi)
+endif()
 
 if(TVM_DEBUG_WITH_ABI_CHANGE)
   message(STATUS "Building with debug code that may cause ABI changes...")
