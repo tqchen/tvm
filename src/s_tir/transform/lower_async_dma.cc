@@ -80,7 +80,7 @@ class AsyncDMALowerer : public arith::IRMutatorWithAnalyzer {
         Call(DataType::Int(32), builtin::dma_copy(),
              {async_queue_id_.value(), Call(DataType::Handle(), builtin::address_of(), {dst}),
               Call(DataType::Handle(), builtin::address_of(), {src}),
-              dst_extent * src->dtype.bytes(), dma_bypass_cache_}));
+              dst_extent * src.dtype().bytes(), dma_bypass_cache_}));
   }
 
   Stmt VisitStmt_(const AttrStmtNode* op) final {

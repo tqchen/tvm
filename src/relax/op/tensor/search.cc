@@ -230,7 +230,7 @@ Type InferTypeArgmaxArgmin(const Call& call, const BlockBuilder& ctx) {
   }
 
   if (data_ty->ndim > 0) {
-    out_dtype = data_shape->values[0]->dtype;
+    out_dtype = data_shape->values[0].dtype();
   }
 
   ffi::Array<PrimExpr> out_shape;

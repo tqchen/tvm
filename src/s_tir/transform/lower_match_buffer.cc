@@ -252,7 +252,7 @@ class MatchBufferLower : public StmtExprMutator {
         value = cast(arg.dtype(), value);
       } else {
         TVM_FFI_ICHECK_EQ(arg.dtype(), value.dtype())
-            << "The data type mismatched: " << arg->dtype << " vs. " << value->dtype;
+            << "The data type mismatched: " << arg.dtype() << " vs. " << value.dtype();
       }
     }
     // Handle recursive case

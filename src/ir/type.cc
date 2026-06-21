@@ -26,6 +26,65 @@
 #include <tvm/ir/type.h>
 namespace tvm {
 
+namespace {
+
+ffi::ObjectPtr<PrimTypeNode> MakePrimTypeNode(runtime::DataType dtype, Span span = Span()) {
+  ffi::ObjectPtr<PrimTypeNode> n = ffi::make_object<PrimTypeNode>();
+  n->dtype = dtype;
+  n->span = std::move(span);
+  return n;
+}
+
+ffi::ObjectPtr<PrimTypeNode> GetCachedPrimTypeNode(const runtime::DataType& dtype) {
+  if (dtype == DataType::Bool()) {
+    static ffi::ObjectPtr<PrimTypeNode> value = MakePrimTypeNode(DataType::Bool());
+    return value;
+  }
+  if (dtype == DataType::Int(32)) {
+    static ffi::ObjectPtr<PrimTypeNode> value = MakePrimTypeNode(DataType::Int(32));
+    return value;
+  }
+  if (dtype == DataType::Int(64)) {
+    static ffi::ObjectPtr<PrimTypeNode> value = MakePrimTypeNode(DataType::Int(64));
+    return value;
+  }
+  if (dtype == DataType::UInt(32)) {
+    static ffi::ObjectPtr<PrimTypeNode> value = MakePrimTypeNode(DataType::UInt(32));
+    return value;
+  }
+  if (dtype == DataType::UInt(64)) {
+    static ffi::ObjectPtr<PrimTypeNode> value = MakePrimTypeNode(DataType::UInt(64));
+    return value;
+  }
+  if (dtype == DataType::Float(16)) {
+    static ffi::ObjectPtr<PrimTypeNode> value = MakePrimTypeNode(DataType::Float(16));
+    return value;
+  }
+  if (dtype == DataType::Float(32)) {
+    static ffi::ObjectPtr<PrimTypeNode> value = MakePrimTypeNode(DataType::Float(32));
+    return value;
+  }
+  if (dtype == DataType::Float(64)) {
+    static ffi::ObjectPtr<PrimTypeNode> value = MakePrimTypeNode(DataType::Float(64));
+    return value;
+  }
+  if (dtype == DataType::BFloat(16)) {
+    static ffi::ObjectPtr<PrimTypeNode> value = MakePrimTypeNode(DataType::BFloat(16));
+    return value;
+  }
+  if (dtype == DataType::Handle()) {
+    static ffi::ObjectPtr<PrimTypeNode> value = MakePrimTypeNode(DataType::Handle());
+    return value;
+  }
+  if (dtype == DataType::Void()) {
+    static ffi::ObjectPtr<PrimTypeNode> value = MakePrimTypeNode(DataType::Void());
+    return value;
+  }
+  return ffi::ObjectPtr<PrimTypeNode>();
+}
+
+}  // namespace
+
 TVM_FFI_STATIC_INIT_BLOCK() {
   TypeNode::RegisterReflection();
   PrimTypeNode::RegisterReflection();
@@ -36,11 +95,32 @@ TVM_FFI_STATIC_INIT_BLOCK() {
 }
 
 PrimType::PrimType(runtime::DataType dtype, Span span) {
-  ffi::ObjectPtr<PrimTypeNode> n = ffi::make_object<PrimTypeNode>();
-  n->dtype = dtype;
-  n->span = std::move(span);
-  data_ = std::move(n);
+  if (!span.defined()) {
+    if (auto cached = GetCachedPrimTypeNode(dtype)) {
+      data_ = std::move(cached);
+      return;
+    }
+  }
+  data_ = MakePrimTypeNode(dtype, std::move(span));
 }
+
+PrimType PrimType::Int(int bits, int lanes) { return PrimType(DataType::Int(bits, lanes)); }
+
+PrimType PrimType::UInt(int bits, int lanes, bool is_scalable) {
+  return PrimType(DataType::UInt(bits, lanes, is_scalable));
+}
+
+PrimType PrimType::Float(int bits, int lanes) { return PrimType(DataType::Float(bits, lanes)); }
+
+PrimType PrimType::BFloat(int bits, int lanes) { return PrimType(DataType::BFloat(bits, lanes)); }
+
+PrimType PrimType::Bool(int lanes, bool is_scalable) {
+  return PrimType(DataType::Bool(lanes, is_scalable));
+}
+
+PrimType PrimType::Handle(int bits, int lanes) { return PrimType(DataType::Handle(bits, lanes)); }
+
+PrimType PrimType::Void() { return PrimType(DataType::Void()); }
 
 TVM_FFI_STATIC_INIT_BLOCK() {
   namespace refl = tvm::ffi::reflection;

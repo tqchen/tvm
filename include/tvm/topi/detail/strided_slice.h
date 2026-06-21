@@ -142,7 +142,7 @@ inline ffi::Array<PrimExpr> StridedSliceOutputShape(
           << ": Input [Begin=" << begin[i] << ", End=" << end[i] << "] is invalid for axis=" << i;
       out_shape.Set(ax, cast(out_shape[i].dtype(), PrimExpr(slice_size)));
     } else {
-      out_shape.Set(ax, tvm::tirx::Var("dim", out_shape[i]->dtype));
+      out_shape.Set(ax, tvm::tirx::Var("dim", out_shape[i].dtype()));
     }
   }
 

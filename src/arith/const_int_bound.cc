@@ -151,7 +151,7 @@ class ConstIntBoundAnalyzer::Impl
 
   // Override visitor behaviors
   Entry VisitExprDefault_(const ffi::Object* op) final {
-    return Everything(static_cast<const PrimExprNode*>(op)->dtype);
+    return Everything(static_cast<const PrimExprNode*>(op)->dtype());
   }
 
   Entry VisitExpr(const PrimExpr& expr) final {
@@ -167,7 +167,7 @@ class ConstIntBoundAnalyzer::Impl
     if (bound_) {
       auto val = bound_->find(expr);
       if (val != bound_->end()) {
-        auto everything = Everything(expr->dtype);
+        auto everything = Everything(expr->dtype());
         TVM_FFI_ICHECK(
             (val->second->min_value == res.min_value && val->second->max_value == res.max_value) ||
             (val->second->min_value == everything.min_value &&
@@ -203,7 +203,7 @@ class ConstIntBoundAnalyzer::Impl
       a = VisitExpr(op->value);
     }
 
-    Entry b = Everything(op->dtype);
+    Entry b = Everything(op->dtype());
     return Intersect(a, b);
   }
 
@@ -263,7 +263,7 @@ class ConstIntBoundAnalyzer::Impl
   Entry VisitExpr_(const DivNode* op) final {
     Entry a = VisitExpr(op->a);
     Entry b = AssumeNoZeroDivisor(VisitExpr(op->b));
-    return HandleDivision(a, b, op->dtype, InfAwareDiv);
+    return HandleDivision(a, b, op->dtype(), InfAwareDiv);
   }
 
   Entry VisitExpr_(const ModNode* op) final {
@@ -312,14 +312,14 @@ class ConstIntBoundAnalyzer::Impl
       TVM_FFI_ICHECK(!b.is_const(0)) << "mod by zero";
       // mod by negative value is rare,
       // and we just use the simpliest rule.
-      return Everything(op->dtype);
+      return Everything(op->dtype());
     }
   }
 
   Entry VisitExpr_(const FloorDivNode* op) final {
     Entry a = VisitExpr(op->a);
     Entry b = AssumeNoZeroDivisor(VisitExpr(op->b));
-    return HandleDivision(a, b, op->dtype, InfAwareFloorDiv);
+    return HandleDivision(a, b, op->dtype(), InfAwareFloorDiv);
   }
 
   Entry VisitExpr_(const FloorModNode* op) final {
@@ -385,7 +385,7 @@ class ConstIntBoundAnalyzer::Impl
       int64_t b_max_cap = InfAwareAdd(b.max_value, -1);
       return Intersect(MakeBound(std::min(static_cast<int64_t>(0), b_min_cap),
                                  std::max(static_cast<int64_t>(0), b_max_cap)),
-                       Everything(op->dtype));
+                       Everything(op->dtype()));
     }
   }
 
@@ -424,7 +424,7 @@ class ConstIntBoundAnalyzer::Impl
     } else if (op->op.same_as(tirx::builtin::bitwise_and())) {
       return VisitBitwiseAnd(op);
     } else {
-      return Everything(op->dtype);
+      return Everything(op->dtype());
     }
   }
 
@@ -434,7 +434,7 @@ class ConstIntBoundAnalyzer::Impl
     if (it != var_map_.end()) {
       return it->second;
     } else {
-      return Everything(op->dtype);
+      return Everything(op->dtype());
     }
   }
 
@@ -456,7 +456,7 @@ class ConstIntBoundAnalyzer::Impl
       // If either operand can negative, we may run into undefined
       // behavior for some targets.  In these cases, avoid making any
       // assumptions about the result.
-      return Everything(op->dtype);
+      return Everything(op->dtype());
     }
 
     return BinaryOpBoundary(a, b, InfAwareLeftShift);
@@ -481,7 +481,7 @@ class ConstIntBoundAnalyzer::Impl
       if (a.min_value >= 0) {
         return MakeBound(0, a.max_value);
       }
-      return Everything(op->dtype);
+      return Everything(op->dtype());
     }
   }
 
@@ -800,7 +800,7 @@ class ConstIntBoundAnalyzer::Impl
   static ffi::Optional<PrimExpr> FindCeilLog2Arg(const CastNode* op) {
     static const Op& ceil_op = Op::Get("tirx.ceil");
     static const Op& log2_op = Op::Get("tirx.log2");
-    if (op->dtype.is_int()) {
+    if (op->dtype().is_int()) {
       if (auto as_call = op->value.as<CallNode>()) {
         if (as_call->op.same_as(ceil_op)) {
           PrimExpr ceil_arg = as_call->args[0];

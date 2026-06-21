@@ -155,8 +155,8 @@ inline ffi::Optional<PrimExpr> TryConstFold<tirx::Add>(PrimExpr a, PrimExpr b) {
 template <>
 inline ffi::Optional<PrimExpr> TryConstFold<tirx::Sub>(PrimExpr a, PrimExpr b) {
   TVM_ARITH_CONST_PROPAGATION({
-    TVM_FFI_ICHECK(!((pa && pa->dtype.is_uint() && pa->value == 0U) &&
-                     (pb && pb->dtype.is_uint() && pb->value > 0U)))
+    TVM_FFI_ICHECK(!((pa && pa->dtype().is_uint() && pa->value == 0U) &&
+                     (pb && pb->dtype().is_uint() && pb->value > 0U)))
         << "Checked failed. Minuend 's value is 0U and it's dtype is uint "
         << "while Subtrahend's dtype is uint; which will cause a negative uint";
     const DataType& rtype = a.dtype();

@@ -84,6 +84,8 @@ class Type : public ffi::ObjectRef {
   TVM_FFI_DEFINE_OBJECT_REF_METHODS_NULLABLE(Type, ffi::ObjectRef, TypeNode);
 };
 
+class PrimType;
+
 /*!
  * \brief Base type of all the expressions.
  * \sa Expr
@@ -158,11 +160,25 @@ class PrimExprNode : public BaseExprNode {
    * When dtype is DataType::Handle(), the expression could corresponds to
    * a more fine-grained Type, and we can get the type by running lazy type inference.
    */
-  DataType dtype;
+  DataType dtype_;
+
+  /*!
+   * \brief Return the runtime dtype represented by `ty`.
+   *
+   * The `dtype` field is retained as a transition cache for reflected
+   * compatibility. New C++ code should use this method or `PrimExpr::dtype()`.
+   */
+  TVM_DLL DataType dtype() const;
+
+  /*! \brief Set `ty` from a runtime dtype and synchronize the dtype cache. */
+  TVM_DLL void SetDType(DataType dtype);
+
+  /*! \brief Set the expression type and synchronize the runtime dtype cache. */
+  TVM_DLL void SetType(Type ty);
 
   static void RegisterReflection() {
     namespace refl = tvm::ffi::reflection;
-    refl::ObjectDef<PrimExprNode>().def_ro("dtype", &PrimExprNode::dtype);
+    refl::ObjectDef<PrimExprNode>().def_ro("dtype", &PrimExprNode::dtype_);
   }
 
   static constexpr const uint32_t _type_child_slots = 40;
@@ -187,7 +203,7 @@ class PrimExpr : public BaseExpr {
   TVM_DLL PrimExpr(float value);  // NOLINT(*)
 
   /*! \return the data type of this expression. */
-  DataType dtype() const { return static_cast<const PrimExprNode*>(get())->dtype; }
+  DataType dtype() const { return static_cast<const PrimExprNode*>(get())->dtype(); }
 
   TVM_FFI_DEFINE_OBJECT_REF_METHODS_NULLABLE(PrimExpr, BaseExpr, PrimExprNode);
 
@@ -561,6 +577,14 @@ class IntImm : public PrimExpr {
   TVM_DLL IntImm(DataType dtype, int64_t value, Span span = Span());
 
   /*!
+   * \brief Constructor.
+   * \param dtype The primitive type of the value.
+   * \param value The internal value.
+   * \param span The location of this object in the source code.
+   */
+  TVM_DLL IntImm(PrimType dtype, int64_t value, Span span = Span());
+
+  /*!
    * \brief Construct a scalar boolean constant.
    * \param value The boolean value.
    * \param span The location of this object in the source code.
@@ -621,6 +645,14 @@ class FloatImm : public PrimExpr {
    * \param span The location in the source code.
    */
   TVM_DLL FloatImm(DataType dtype, double value, Span span = Span());
+
+  /*!
+   * \brief Constructor.
+   * \param dtype The primitive type of the value.
+   * \param value The internal value.
+   * \param span The location in the source code.
+   */
+  TVM_DLL FloatImm(PrimType dtype, double value, Span span = Span());
 
   TVM_FFI_DEFINE_OBJECT_REF_METHODS_NULLABLE(FloatImm, PrimExpr, FloatImmNode);
   TVM_DEFINE_OBJECT_REF_COW_METHOD(FloatImmNode);

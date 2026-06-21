@@ -500,7 +500,7 @@ class SharedMemoryRewriter : public StmtExprMutator {
 
       PrimExpr offset = this->VisitExpr(op->args[2]);
       PrimExpr extent = this->VisitExpr(op->args[3]);
-      return Call(op->dtype, op->op,
+      return Call(op->dtype(), op->op,
                   {op->args[0], scope_stack_.back().merged_buf_var, extra_offset + offset, extent,
                    op->args[4]});
     } else if (op->op.same_as(ptx_cp_async_op)) {
