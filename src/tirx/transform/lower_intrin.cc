@@ -22,6 +22,8 @@
  * \file lower_intrin.cc
  */
 #include <tvm/ffi/cast.h>
+#include <tvm/ffi/container/tuple.h>
+#include <tvm/ffi/container/variant.h>
 #include <tvm/ffi/function.h>
 #include <tvm/ffi/reflection/registry.h>
 #include <tvm/ir/op.h>
@@ -47,6 +49,8 @@ class IntrinInjecter : public tvm::arith::IRMutatorWithAnalyzer {
   using IRMutatorWithAnalyzer::VisitExpr_;
   using IRMutatorWithAnalyzer::VisitStmt_;
   using FLowerGeneral = ffi::TypedFunction<PrimExpr(PrimExpr)>;
+  using BindingAwareExpr = ffi::Variant<PrimExpr, ffi::Tuple<ffi::Array<Stmt>, PrimExpr>>;
+  using BindingAwareExprTuple = ffi::Tuple<ffi::Array<Stmt>, PrimExpr>;
 
   IntrinInjecter(const arith::Analyzer& analyzer, const Target& tgt, bool enable_fast_math)
       : IRMutatorWithAnalyzer(analyzer) {
@@ -111,54 +115,15 @@ class IntrinInjecter : public tvm::arith::IRMutatorWithAnalyzer {
   }
 
   Stmt VisitStmt_(const BindNode* op) final {
-    std::vector<Stmt> bindings;
-    PrimExpr value = VisitExprWithBindings(op->value, &bindings);
-    if (SideEffect(value) <= CallEffectKind::kPure) {
-      analyzer_->Bind(op->var, value);
-    }
-    Stmt stmt;
-    if (value.same_as(op->value)) {
-      stmt = ffi::GetRef<Stmt>(op);
-    } else {
-      auto n = this->CopyOnWrite(op);
-      n->value = std::move(value);
-      stmt = Stmt(n);
-    }
-    return PrependBindings(std::move(bindings), std::move(stmt));
+    return VisitStmtWithPrependedBindings([&]() { return IRMutatorWithAnalyzer::VisitStmt_(op); });
   }
 
   Stmt VisitStmt_(const BufferStoreNode* op) final {
-    std::vector<Stmt> bindings;
-    Buffer new_buf = this->VisitBufferUse(op->buffer);
-    PrimExpr value = VisitExprWithBindings(op->value, &bindings);
-    ffi::Array<PrimExpr> indices =
-        op->indices.Map([&](const PrimExpr& e) { return VisitExprWithBindings(e, &bindings); });
-
-    Stmt stmt;
-    if (new_buf.same_as(op->buffer) && value.same_as(op->value) && indices.same_as(op->indices)) {
-      stmt = ffi::GetRef<Stmt>(op);
-    } else {
-      auto n = this->CopyOnWrite(op);
-      n->buffer = std::move(new_buf);
-      n->value = std::move(value);
-      n->indices = std::move(indices);
-      stmt = Stmt(n);
-    }
-    return PrependBindings(std::move(bindings), std::move(stmt));
+    return VisitStmtWithPrependedBindings([&]() { return StmtExprMutator::VisitStmt_(op); });
   }
 
   Stmt VisitStmt_(const EvaluateNode* op) final {
-    std::vector<Stmt> bindings;
-    PrimExpr value = VisitExprWithBindings(op->value, &bindings);
-    Stmt stmt;
-    if (value.same_as(op->value)) {
-      stmt = ffi::GetRef<Stmt>(op);
-    } else {
-      auto n = this->CopyOnWrite(op);
-      n->value = std::move(value);
-      stmt = Stmt(n);
-    }
-    return PrependBindings(std::move(bindings), std::move(stmt));
+    return VisitStmtWithPrependedBindings([&]() { return StmtExprMutator::VisitStmt_(op); });
   }
 
   PrimExpr VisitExpr_(const AddNode* op) final {
@@ -226,8 +191,10 @@ class IntrinInjecter : public tvm::arith::IRMutatorWithAnalyzer {
         // b < 0  => (rmod <= 0 ? rdiv : rdiv - 1)
         PrimExpr body = tirx::Select((op->b >= 0 && rmod >= 0) || (op->b < 0 && rmod <= 0), rdiv,
                                      rdiv - MakeConst(dtype, 1));
-        return EmitBinding(rmod, truncmod(op->a, op->b),
-                           EmitBinding(rdiv, truncdiv(op->a, op->b), body));
+        return FinalizeBindingAwareExpr(
+            BindingAwareExprTuple(ffi::Array<Stmt>{Bind(rmod, truncmod(op->a, op->b)),
+                                                   Bind(rdiv, truncdiv(op->a, op->b))},
+                                  body));
       }
     }
   }
@@ -288,7 +255,8 @@ class IntrinInjecter : public tvm::arith::IRMutatorWithAnalyzer {
         // b < 0 && rmod > 0 -> rmod + b
         PrimExpr body =
             Select((op->b >= 0 && rmod >= 0) || (op->b < 0 && rmod <= 0), rmod, rmod + op->b);
-        return EmitBinding(rmod, truncmod(op->a, op->b), body);
+        return FinalizeBindingAwareExpr(
+            BindingAwareExprTuple(ffi::Array<Stmt>{Bind(rmod, truncmod(op->a, op->b))}, body));
       }
     }
   }
@@ -326,23 +294,41 @@ class IntrinInjecter : public tvm::arith::IRMutatorWithAnalyzer {
   }
 
  private:
-  PrimExpr VisitExprWithBindings(const PrimExpr& expr, std::vector<Stmt>* bindings) {
+  template <typename F>
+  Stmt VisitStmtWithPrependedBindings(F f) {
+    std::vector<Stmt> bindings;
     std::vector<Stmt>* saved_bindings = pending_bindings_;
-    pending_bindings_ = bindings;
-    PrimExpr result = this->VisitExpr(expr);
+    pending_bindings_ = &bindings;
+    Stmt result = f();
     pending_bindings_ = saved_bindings;
-    return result;
+    return PrependBindings(std::move(bindings), std::move(result));
   }
 
-  PrimExpr EmitBinding(const Var& var, const PrimExpr& value, const PrimExpr& body) {
+  PrimExpr FinalizeBindingAwareExpr(BindingAwareExpr result) {
+    if (auto tuple = result.as<BindingAwareExprTuple>()) {
+      return EmitBindings(tuple.value().get<0>(), tuple.value().get<1>());
+    }
+    return result.get<PrimExpr>();
+  }
+
+  PrimExpr EmitBindings(const ffi::Array<Stmt>& bindings, PrimExpr body) {
     if (pending_bindings_ != nullptr && expression_local_control_depth_ == 0) {
-      pending_bindings_->push_back(Bind(var, value));
-      if (SideEffect(value) <= CallEffectKind::kPure) {
-        analyzer_->Bind(var, value);
+      for (const Stmt& binding : bindings) {
+        pending_bindings_->push_back(binding);
+        if (const auto* op = binding.as<BindNode>()) {
+          if (SideEffect(op->value) <= CallEffectKind::kPure) {
+            analyzer_->Bind(op->var, op->value);
+          }
+        }
       }
       return body;
     }
-    return Let(var, value, body);
+    for (auto it = bindings.rbegin(); it != bindings.rend(); ++it) {
+      const auto* op = (*it).as<BindNode>();
+      TVM_FFI_ICHECK(op != nullptr) << "expression-local fallback only supports Bind statements";
+      body = Let(op->var, op->value, body);
+    }
+    return body;
   }
 
   Stmt PrependBindings(std::vector<Stmt> bindings, Stmt stmt) {
