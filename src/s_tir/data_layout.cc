@@ -256,7 +256,7 @@ IterVar SLayout::PackIterVar(ffi::Array<IterVar> iter_vars) {
   std::stringstream name;
   size_t extent = 1;
 
-  DataType dtype = iter_vars[0]->dom->extent.as<PrimExpr>().value()->dtype;
+  DataType dtype = iter_vars[0]->dom->extent.as<PrimExpr>().value().dtype();
   for (auto itvar : iter_vars) {
     TVM_FFI_ICHECK(itvar->dom->extent.as<IntImm>())
         << "Packed Axis can contain only Subordinate Axes";
@@ -357,7 +357,7 @@ inline bool GetStoreRule(ffi::Array<PrimExpr>* index_rule, ffi::Array<PrimExpr>*
             if (axis == sub_axis) {
               const auto* sub_extent = inter_unpacked_axes[l]->dom->extent.as<IntImmNode>();
               TVM_FFI_ICHECK(sub_extent) << "Expected Integer Extents for Offset Calculation";
-              factor_ij = factor_ij * IntImm(sub_extent->dtype, sub_extent->value);
+              factor_ij = factor_ij * IntImm(sub_extent->dtype(), sub_extent->value);
             }
           }
         }
@@ -498,11 +498,11 @@ inline ffi::Array<PrimExpr> TransformShape(const ffi::Array<PrimExpr>& src_shape
               << ", get " << orig_shape;
         }
       }
-      bind_map[orig_axis->var.get()] = IntImm(orig_axis->var->dtype, 0);
+      bind_map[orig_axis->var.get()] = IntImm(orig_axis->var.dtype(), 0);
     } else {
-      bind_map[orig_axis->var.get()] = orig_axis->var->dtype == orig_shape->dtype
+      bind_map[orig_axis->var.get()] = orig_axis->var.dtype() == orig_shape.dtype()
                                            ? orig_shape
-                                           : cast(orig_axis->var->dtype, orig_shape);
+                                           : cast(orig_axis->var.dtype(), orig_shape);
     }
   }
   // infer the target shape,

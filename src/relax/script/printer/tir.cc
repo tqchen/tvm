@@ -43,9 +43,9 @@ RelaxFrameNode* GetRelaxFrame(IRDocsifier d) {
 }
 
 Doc PrintTIRVar(tirx::Var n, AccessPath n_p, IRDocsifier d) {
-  TVM_FFI_CHECK(n->dtype.is_scalar(), TypeError)
+  TVM_FFI_CHECK(n->dtype().is_scalar(), TypeError)
       << "Relax only uses scalar TIR variables,"
-      << "but received TIR variable " << n << " with dtype " << n->dtype;
+      << "but received TIR variable " << n << " with dtype " << n->dtype();
 
   if (!d->IsVarDefined(n)) {
     RelaxFrameNode* f = GetRelaxFrame(d);
@@ -77,7 +77,7 @@ TVM_STATIC_IR_FUNCTOR(IRDocsifier, vtable)
     .set_dispatch<tvm::IntImm>(                                             //
         "relax", [](tvm::IntImm n, AccessPath n_p, IRDocsifier d) -> Doc {  //
           // TODO(@junrushao): support non-int64 cases
-          if (n->dtype.is_bool()) {
+          if (n->dtype().is_bool()) {
             return LiteralDoc::Boolean(n->value, n_p);
           } else {
             return LiteralDoc::Int(n->value, n_p);

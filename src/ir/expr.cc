@@ -26,6 +26,7 @@
 #include <tvm/ffi/reflection/registry.h>
 #include <tvm/ir/expr.h>
 #include <tvm/ir/function.h>
+#include <tvm/ir/type.h>
 #include <tvm/te/tensor.h>
 #include <tvm/tirx/expr.h>
 
@@ -52,29 +53,64 @@ PrimExpr::PrimExpr(float value) : PrimExpr(FloatImm(DataType::Float(32), value))
 
 PrimExpr PrimExpr::ConvertFallbackValue(ffi::String value) { return tirx::StringImm(value); }
 
-IntImm::IntImm(DataType dtype, int64_t value, Span span) {
-  TVM_FFI_CHECK(dtype.is_scalar(), ValueError)
-      << "IntImm can only take scalar, but " << dtype << " was supplied.";
-  TVM_FFI_CHECK(dtype.is_int() || dtype.is_uint() || dtype.is_bool(), ValueError)
-      << "IntImm supports only int or uint or bool type, but " << dtype << " was supplied.";
-  if (dtype.is_uint()) {
+DataType PrimExprNode::dtype() const {
+  if (const auto* prim_type = this->ty.as<PrimTypeNode>()) {
+    return prim_type->dtype;
+  }
+  if (this->ty.as<PointerTypeNode>()) {
+    return DataType::Handle();
+  }
+  if (this->ty.defined() && IsVoidType(this->ty)) {
+    return DataType::Void();
+  }
+  TVM_FFI_ICHECK(this->ty.defined()) << "PrimExpr is missing its type";
+  TVM_FFI_THROW(InternalError) << "Cannot derive runtime dtype from PrimExpr type " << this->ty;
+}
+
+void PrimExprNode::SetDType(DataType dtype) { this->SetType(PrimType(dtype)); }
+
+void PrimExprNode::SetType(Type ty) {
+  if (const auto* prim_type = ty.as<PrimTypeNode>()) {
+    this->dtype_ = prim_type->dtype;
+  } else if (ty.as<PointerTypeNode>()) {
+    this->dtype_ = DataType::Handle();
+  } else if (IsVoidType(ty)) {
+    this->dtype_ = DataType::Void();
+  } else {
+    TVM_FFI_THROW(InternalError) << "Cannot derive runtime dtype from PrimExpr type " << ty;
+  }
+  this->ty = std::move(ty);
+}
+
+IntImm::IntImm(DataType dtype, int64_t value, Span span) : IntImm(PrimType(dtype), value, span) {}
+
+IntImm::IntImm(PrimType dtype, int64_t value, Span span) {
+  DataType runtime_dtype = dtype->dtype;
+  TVM_FFI_CHECK(runtime_dtype.is_scalar(), ValueError)
+      << "IntImm can only take scalar, but " << runtime_dtype << " was supplied.";
+  TVM_FFI_CHECK(runtime_dtype.is_int() || runtime_dtype.is_uint() || runtime_dtype.is_bool(),
+                ValueError)
+      << "IntImm supports only int or uint or bool type, but " << runtime_dtype
+      << " was supplied.";
+  if (runtime_dtype.is_uint()) {
     TVM_FFI_CHECK_GE(value, 0U, ValueError)
-        << "Literal value " << value << " is negative for unsigned integer type " << dtype;
-    if (dtype.bits() < 64) {
-      TVM_FFI_CHECK_LT(value, 1LL << dtype.bits(), ValueError)
-          << "Literal value " << value << " exceeds maximum of " << dtype;
+        << "Literal value " << value << " is negative for unsigned integer type " << runtime_dtype;
+    if (runtime_dtype.bits() < 64) {
+      TVM_FFI_CHECK_LT(value, 1LL << runtime_dtype.bits(), ValueError)
+          << "Literal value " << value << " exceeds maximum of " << runtime_dtype;
     }
-  } else if (dtype.bits() == 1 || dtype.is_bool()) {
+  } else if (runtime_dtype.bits() == 1 || runtime_dtype.is_bool()) {
     // int(1)
-    TVM_FFI_CHECK(value == 0 || value == 1, ValueError) << value << " exceeds range of " << dtype;
-  } else if (dtype.bits() < 64) {
-    TVM_FFI_CHECK_GE(value, -(1LL << (dtype.bits() - 1)), ValueError)
-        << "Literal value " << value << " exceeds minimum of " << dtype;
-    TVM_FFI_CHECK_LT(value, 1LL << (dtype.bits() - 1), ValueError)
-        << "Literal value " << value << " exceeds maximum of " << dtype;
+    TVM_FFI_CHECK(value == 0 || value == 1, ValueError)
+        << value << " exceeds range of " << runtime_dtype;
+  } else if (runtime_dtype.bits() < 64) {
+    TVM_FFI_CHECK_GE(value, -(1LL << (runtime_dtype.bits() - 1)), ValueError)
+        << "Literal value " << value << " exceeds minimum of " << runtime_dtype;
+    TVM_FFI_CHECK_LT(value, 1LL << (runtime_dtype.bits() - 1), ValueError)
+        << "Literal value " << value << " exceeds maximum of " << runtime_dtype;
   }
   ffi::ObjectPtr<IntImmNode> node = ffi::make_object<IntImmNode>();
-  node->dtype = dtype;
+  node->SetType(std::move(dtype));
   node->value = value;
   node->span = span;
   data_ = std::move(node);
@@ -87,38 +123,44 @@ TVM_FFI_STATIC_INIT_BLOCK() {
   });
 }
 
-FloatImm::FloatImm(DataType dtype, double value, Span span) {
-  TVM_FFI_CHECK_EQ(dtype.lanes(), 1, ValueError) << "FloatImm can only take scalar.";
+FloatImm::FloatImm(DataType dtype, double value, Span span)
+    : FloatImm(PrimType(dtype), value, span) {}
 
-  TVM_FFI_CHECK(dtype.is_float() || dtype.is_bfloat16() || dtype.is_float8() || dtype.is_float6() ||
-                    dtype.is_float4() || dtype.code() >= DataType::kCustomBegin,
+FloatImm::FloatImm(PrimType dtype, double value, Span span) {
+  DataType runtime_dtype = dtype->dtype;
+  TVM_FFI_CHECK_EQ(runtime_dtype.lanes(), 1, ValueError) << "FloatImm can only take scalar.";
+
+  TVM_FFI_CHECK(runtime_dtype.is_float() || runtime_dtype.is_bfloat16() ||
+                    runtime_dtype.is_float8() || runtime_dtype.is_float6() ||
+                    runtime_dtype.is_float4() || runtime_dtype.code() >= DataType::kCustomBegin,
                 ValueError)
-      << "FloatImm supports only float, but " << dtype << " was supplied.";
+      << "FloatImm supports only float, but " << runtime_dtype << " was supplied.";
 
   // check range for float32 and float16 since they have specified range.
   if (!std::isinf(value) && !std::isnan(value)) {
-    if (dtype.bits() == 32) {
+    if (runtime_dtype.bits() == 32) {
       TVM_FFI_CHECK_GE(value, std::numeric_limits<float>::lowest(), ValueError)
-          << "Literal value " << value << " exceeds minimum of " << dtype;
+          << "Literal value " << value << " exceeds minimum of " << runtime_dtype;
       TVM_FFI_CHECK_LE(value, std::numeric_limits<float>::max(), ValueError)
-          << "Literal value " << value << " exceeds maximum of " << dtype;
-    } else if (dtype.is_float16()) {
+          << "Literal value " << value << " exceeds maximum of " << runtime_dtype;
+    } else if (runtime_dtype.is_float16()) {
       TVM_FFI_CHECK_GE(value, -support::kMaxFloat16, ValueError)
-          << "Literal value " << value << " exceeds minimum of " << dtype;
+          << "Literal value " << value << " exceeds minimum of " << runtime_dtype;
       TVM_FFI_CHECK_LE(value, support::kMaxFloat16, ValueError)
-          << "Literal value " << value << " exceeds maximum of " << dtype;
-    } else if (dtype.is_bfloat16()) {
+          << "Literal value " << value << " exceeds maximum of " << runtime_dtype;
+    } else if (runtime_dtype.is_bfloat16()) {
       TVM_FFI_CHECK_GE(value, -support::kMaxBFloat16, ValueError)
-          << "Literal value " << value << " exceeds minimum of " << dtype;
+          << "Literal value " << value << " exceeds minimum of " << runtime_dtype;
       TVM_FFI_CHECK_LE(value, support::kMaxBFloat16, ValueError)
-          << "Literal value " << value << " exceeds maximum of " << dtype;
-    } else if (dtype.is_float8_e3m4() || dtype.is_float8_e4m3() || dtype.is_float8_e4m3b11fnuz() ||
-               dtype.is_float8_e4m3fn() || dtype.is_float8_e4m3fnuz() || dtype.is_float8_e5m2() ||
-               dtype.is_float8_e5m2fnuz() || dtype.is_float8_e8m0fnu()) {
+          << "Literal value " << value << " exceeds maximum of " << runtime_dtype;
+    } else if (runtime_dtype.is_float8_e3m4() || runtime_dtype.is_float8_e4m3() ||
+               runtime_dtype.is_float8_e4m3b11fnuz() || runtime_dtype.is_float8_e4m3fn() ||
+               runtime_dtype.is_float8_e4m3fnuz() || runtime_dtype.is_float8_e5m2() ||
+               runtime_dtype.is_float8_e5m2fnuz() || runtime_dtype.is_float8_e8m0fnu()) {
       double bound = 0.0;
       bool nonneg = false;
 
-      switch (dtype.code()) {
+      switch (runtime_dtype.code()) {
         case DataType::TypeCode::kFloat8_e3m4:
           bound = support::kMaxE3M4;
           break;
@@ -148,37 +190,38 @@ FloatImm::FloatImm(DataType dtype, double value, Span span) {
           nonneg = true;
           break;
         default:
-          TVM_FFI_THROW(InternalError) << "Unhandled float8 type: " << dtype;
+          TVM_FFI_THROW(InternalError) << "Unhandled float8 type: " << runtime_dtype;
       }
 
       if (nonneg) {
         TVM_FFI_CHECK_GE(value, 0, ValueError)
-            << "Literal value " << value << " below zero for unsigned " << dtype;
+            << "Literal value " << value << " below zero for unsigned " << runtime_dtype;
       } else {
         TVM_FFI_CHECK_GE(value, -bound, ValueError)
-            << "Literal value " << value << " below minimum of " << dtype;
+            << "Literal value " << value << " below minimum of " << runtime_dtype;
       }
       TVM_FFI_CHECK_LE(value, bound, ValueError)
-          << "Literal value " << value << " exceeds maximum of " << dtype;
+          << "Literal value " << value << " exceeds maximum of " << runtime_dtype;
 
-    } else if (dtype.is_float6_e2m3fn() || dtype.is_float6_e3m2fn()) {
-      double bound = (dtype.code() == DataType::TypeCode::kFloat6_e2m3fn) ? support::kMaxE2M3FN
-                                                                          : support::kMaxE3M2FN;
+    } else if (runtime_dtype.is_float6_e2m3fn() || runtime_dtype.is_float6_e3m2fn()) {
+      double bound = (runtime_dtype.code() == DataType::TypeCode::kFloat6_e2m3fn)
+                         ? support::kMaxE2M3FN
+                         : support::kMaxE3M2FN;
       TVM_FFI_CHECK_GE(value, -bound, ValueError)
-          << "Literal value " << value << " below minimum of " << dtype;
+          << "Literal value " << value << " below minimum of " << runtime_dtype;
       TVM_FFI_CHECK_LE(value, bound, ValueError)
-          << "Literal value " << value << " exceeds maximum of " << dtype;
+          << "Literal value " << value << " exceeds maximum of " << runtime_dtype;
 
-    } else if (dtype.is_float4_e2m1fn()) {
+    } else if (runtime_dtype.is_float4_e2m1fn()) {
       double bound = support::kMaxE2M1FN;
       TVM_FFI_CHECK_GE(value, -bound, ValueError)
-          << "Literal value " << value << " below minimum of " << dtype;
+          << "Literal value " << value << " below minimum of " << runtime_dtype;
       TVM_FFI_CHECK_LE(value, bound, ValueError)
-          << "Literal value " << value << " exceeds maximum of " << dtype;
+          << "Literal value " << value << " exceeds maximum of " << runtime_dtype;
     }
   }
   ffi::ObjectPtr<FloatImmNode> node = ffi::make_object<FloatImmNode>();
-  node->dtype = dtype;
+  node->SetType(std::move(dtype));
   node->value = value;
   node->span = span;
   data_ = std::move(node);
@@ -206,7 +249,7 @@ TVM_FFI_STATIC_INIT_BLOCK() {
         if (end.defined()) {
           return Range(begin, end.value(), span);
         } else {
-          return Range(IntImm(begin->dtype, 0), begin, span);
+          return Range(IntImm(begin.dtype(), 0), begin, span);
         }
       });
 }

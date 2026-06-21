@@ -100,7 +100,7 @@ class TextureFlattener : public TextureLoweringBase {
     if (IsTextureStorage(storage_scope)) {
       ffi::Array<PrimExpr> args = GetTextureAccessArgs(op, op->buffer);
       args.push_back(op->value);
-      stmt = Evaluate(Call(args[0]->dtype, builtin::texture2d_store(), args));
+      stmt = Evaluate(Call(args[0].dtype(), builtin::texture2d_store(), args));
     }
 
     return stmt;

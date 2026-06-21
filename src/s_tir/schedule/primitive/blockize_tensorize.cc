@@ -37,7 +37,7 @@ bool UsesVar(const T& x, const Var& var) {
 }
 
 Range RangeFromExtent(const PrimExpr& extent) {
-  return Range::FromMinExtent(IntImm(extent->dtype, 0), extent);
+  return Range::FromMinExtent(IntImm(extent.dtype(), 0), extent);
 }
 
 template <class T>

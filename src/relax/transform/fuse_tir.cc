@@ -121,7 +121,8 @@ class SymbolicMatcher : ExprFunctor<void(const PrimExpr& n, const PrimExpr& othe
     const auto* rhs = other.as<CastNode>();
     if (!rhs) {
       TVM_FFI_THROW(InternalError) << "Parameter expression " << ffi::GetRef<PrimExpr>(op)
-                                   << " expected an cast to " << op->dtype << " as the argument, "
+                                   << " expected an cast to " << op->dtype()
+                                   << " as the argument, "
                                    << "but was provided with the argument " << other;
     }
     VisitExpr(op->value, rhs->value);
@@ -132,9 +133,9 @@ class SymbolicMatcher : ExprFunctor<void(const PrimExpr& n, const PrimExpr& othe
 
     if (lhs.same_as(rhs)) {
       // Reference identity, no further checks needed.
-    } else if (op->dtype.code() != rhs->dtype.code()) {
+    } else if (op->dtype().code() != rhs.dtype().code()) {
       TVM_FFI_THROW(InternalError)
-          << "Parameter expression " << ffi::GetRef<PrimExpr>(op) << " with dtype " << op->dtype
+          << "Parameter expression " << ffi::GetRef<PrimExpr>(op) << " with dtype " << op->dtype()
           << " cannot match to argument " << rhs << " with dtype " << rhs.dtype();
     } else if (auto it = var_remap_->find(lhs); it != var_remap_->end()) {
       VisitExpr((*it).second, rhs);
@@ -855,9 +856,9 @@ class FusedTIRConstructor : public ExprVisitor {
     for (int64_t idx : output_indices) {
       int i = static_cast<int>(idx);
       const tirx::Var& param = func->params[static_cast<size_t>(i)];
-      if (param->dtype.is_int() || param->dtype.is_uint()) {
+      if (param->dtype().is_int() || param->dtype().is_uint()) {
         if (symbolic_var_index == -1) symbolic_var_index = i;
-      } else if (param->dtype.is_handle()) {
+      } else if (param->dtype().is_handle()) {
         TVM_FFI_ICHECK(symbolic_var_index == -1)
             << "The scalar input should be at the ending of the "
                "parameter list.";
@@ -865,7 +866,7 @@ class FusedTIRConstructor : public ExprVisitor {
       } else {
         TVM_FFI_THROW(InternalError)
             << "The params of PrimFunc are expected to be Buffer handle or scalar, but got: "
-            << param->dtype;
+            << param->dtype();
       }
     }
 

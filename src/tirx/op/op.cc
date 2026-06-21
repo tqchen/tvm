@@ -94,7 +94,7 @@ Type GetType(const PrimExpr& expr) {
       TVM_FFI_ICHECK(type_annotation->op.same_as(type_annotation_op))
           << "Expected the first argument of builtin tvm_access_ptr() "
           << "to be a type annotation, but found " << type_annotation->op;
-      return PointerType(PrimType(type_annotation->dtype));
+      return PointerType(PrimType(type_annotation.dtype()));
     }
     if (access->op.same_as(builtin::ptr_byte_offset())) {
       TVM_FFI_ICHECK_EQ(access->args.size(), 3U);
@@ -102,7 +102,7 @@ Type GetType(const PrimExpr& expr) {
       TVM_FFI_ICHECK(type_annotation->op.same_as(type_annotation_op))
           << "Expected the third argument of builtin ptr_byte_offset() "
           << "to be a type annotation, but found " << type_annotation->op;
-      return PointerType(PrimType(type_annotation->dtype));
+      return PointerType(PrimType(type_annotation.dtype()));
     }
   }
 
@@ -113,7 +113,7 @@ Type GetType(const PrimExpr& expr) {
           << address_of->args;
       auto* address = address_of->args[0].as<BufferLoadNode>();
       if (address) {
-        return PointerType(PrimType(address->dtype));
+        return PointerType(PrimType(address->dtype()));
       }
 
       if (auto* var = address_of->args[0].as<VarNode>()) {
@@ -122,7 +122,7 @@ Type GetType(const PrimExpr& expr) {
             return PrimType(DataType::UInt(64));
           }
         }
-        return PointerType(PrimType(var->dtype));
+        return PointerType(PrimType(var->dtype()));
       }
 
       TVM_FFI_ICHECK(false)
@@ -130,9 +130,10 @@ Type GetType(const PrimExpr& expr) {
           << "received argument " << address_of->args[0];
     }
   }
-  // Default: return the type indicated by the dtype.
-  runtime::DataType dtype = expr.dtype();
-  return GetTypeFromRuntimeDataType(dtype);
+  if (expr->ty.defined()) {
+    return expr->ty;
+  }
+  return GetTypeFromRuntimeDataType(expr.dtype());
 }
 
 Type GetTypeFromRuntimeDataType(const DataType& dtype) {

@@ -109,11 +109,11 @@ bool TensorizeComparator::VisitExpr(const PrimExpr& n, const PrimExpr& other) {
 bool TensorizeComparator::VisitExpr_(const CallNode* op, const PrimExpr& other) {
   const auto* rhs = other.as<CallNode>();
   if (!rhs->op.same_as(op->op)) return false;
-  if (op->dtype.code() != rhs->dtype.code()) {
+  if (op->dtype().code() != rhs->dtype().code()) {
     if (assert_mode_) {
       std::ostringstream os;
-      os << "CallNode data type codes do not match: op->dtype.code()=" << op->dtype.code()
-         << " vs rhs->dtype.code()=" << rhs->dtype.code();
+      os << "CallNode data type codes do not match: op->dtype.code()=" << op->dtype().code()
+         << " vs rhs->dtype.code()=" << rhs->dtype().code();
       EmitError(os.str());
     }
     return false;
@@ -330,11 +330,11 @@ bool TensorizeComparator::VisitExpr_(const VarNode* op, const PrimExpr& other) {
   const auto* rhs = other.as<VarNode>();
   auto lhs = ffi::GetRef<Var>(op);
   if (lhs.same_as(other)) return true;
-  if (op->dtype.code() != rhs->dtype.code()) {
+  if (op->dtype().code() != rhs->dtype().code()) {
     if (assert_mode_) {
       std::ostringstream os;
-      os << "VarNode data type codes do not match: op->dtype.code()=" << op->dtype.code()
-         << " vs rhs->dtype.code()=" << rhs->dtype.code();
+      os << "VarNode data type codes do not match: op->dtype.code()=" << op->dtype().code()
+         << " vs rhs->dtype.code()=" << rhs->dtype().code();
       EmitError(os.str());
     }
     return false;
