@@ -53,35 +53,6 @@ PrimExpr::PrimExpr(float value) : PrimExpr(FloatImm(DataType::Float(32), value))
 
 PrimExpr PrimExpr::ConvertFallbackValue(ffi::String value) { return tirx::StringImm(value); }
 
-DataType PrimExprNode::dtype() const {
-  if (const auto* prim_type = this->ty.as<PrimTypeNode>()) {
-    return prim_type->dtype;
-  }
-  if (this->ty.as<PointerTypeNode>()) {
-    return DataType::Handle();
-  }
-  if (this->ty.defined() && IsVoidType(this->ty)) {
-    return DataType::Void();
-  }
-  TVM_FFI_ICHECK(this->ty.defined()) << "PrimExpr is missing its type";
-  TVM_FFI_THROW(InternalError) << "Cannot derive runtime dtype from PrimExpr type " << this->ty;
-}
-
-void PrimExprNode::SetDType(DataType dtype) { this->SetType(PrimType(dtype)); }
-
-void PrimExprNode::SetType(Type ty) {
-  if (const auto* prim_type = ty.as<PrimTypeNode>()) {
-    this->dtype_ = prim_type->dtype;
-  } else if (ty.as<PointerTypeNode>()) {
-    this->dtype_ = DataType::Handle();
-  } else if (IsVoidType(ty)) {
-    this->dtype_ = DataType::Void();
-  } else {
-    TVM_FFI_THROW(InternalError) << "Cannot derive runtime dtype from PrimExpr type " << ty;
-  }
-  this->ty = std::move(ty);
-}
-
 IntImm::IntImm(DataType dtype, int64_t value, Span span) : IntImm(PrimType(dtype), value, span) {}
 
 IntImm::IntImm(PrimType dtype, int64_t value, Span span) {
@@ -90,8 +61,7 @@ IntImm::IntImm(PrimType dtype, int64_t value, Span span) {
       << "IntImm can only take scalar, but " << runtime_dtype << " was supplied.";
   TVM_FFI_CHECK(runtime_dtype.is_int() || runtime_dtype.is_uint() || runtime_dtype.is_bool(),
                 ValueError)
-      << "IntImm supports only int or uint or bool type, but " << runtime_dtype
-      << " was supplied.";
+      << "IntImm supports only int or uint or bool type, but " << runtime_dtype << " was supplied.";
   if (runtime_dtype.is_uint()) {
     TVM_FFI_CHECK_GE(value, 0U, ValueError)
         << "Literal value " << value << " is negative for unsigned integer type " << runtime_dtype;
@@ -110,7 +80,7 @@ IntImm::IntImm(PrimType dtype, int64_t value, Span span) {
         << "Literal value " << value << " exceeds maximum of " << runtime_dtype;
   }
   ffi::ObjectPtr<IntImmNode> node = ffi::make_object<IntImmNode>();
-  node->SetType(std::move(dtype));
+  node->ty = std::move(dtype);
   node->value = value;
   node->span = span;
   data_ = std::move(node);
@@ -221,7 +191,7 @@ FloatImm::FloatImm(PrimType dtype, double value, Span span) {
     }
   }
   ffi::ObjectPtr<FloatImmNode> node = ffi::make_object<FloatImmNode>();
-  node->SetType(std::move(dtype));
+  node->ty = std::move(dtype);
   node->value = value;
   node->span = span;
   data_ = std::move(node);

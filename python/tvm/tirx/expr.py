@@ -1332,6 +1332,8 @@ class Call(PrimExprWithOp):
             op = Op.get(op)
         if isinstance(attrs, dict):
             attrs = ir.make_node("ir.DictAttrs", **attrs)
+        if not isinstance(dtype, ir.PrimType):
+            dtype = DataType(dtype)
         if attrs:
             self.__init_handle_by_constructor__(  # type: ignore
                 _ffi_api.CallWithAttrs, dtype, op, args, attrs, span

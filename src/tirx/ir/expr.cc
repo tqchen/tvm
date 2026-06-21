@@ -117,28 +117,28 @@ TVM_FFI_STATIC_INIT_BLOCK() {
     TVM_FFI_CHECK(a.dtype() == b.dtype(), TypeError)                          \
         << "mismatched types. " << a.dtype() << " vs. " << b.dtype() << "\n"; \
     ffi::ObjectPtr<T> node = ffi::make_object<T>();                           \
-    node->SetDType(a.dtype());                                                \
+    node->ty = a->ty;                                                         \
     node->a = std::move(a);                                                   \
     node->b = std::move(b);                                                   \
     node->span = std::move(span);                                             \
     data_ = std::move(node);                                                  \
   }
 
-#define TVM_DEFINE_CMPOP_CONSTRUCTOR(Name)                                                  \
-  Name::Name(PrimExpr a, PrimExpr b, Span span) {                                           \
-    using T = Name::ContainerType;                                                          \
-    TVM_FFI_CHECK(a.defined(), ValueError) << "a is undefined\n";                           \
-    TVM_FFI_CHECK(b.defined(), ValueError) << "b is undefined\n";                           \
-    TVM_FFI_CHECK(a.dtype() == b.dtype(), TypeError)                                        \
-        << "mismatched types. " << a.dtype() << " vs. " << b.dtype() << "\n";               \
-    ffi::ObjectPtr<T> node = ffi::make_object<T>();                                         \
-    DataType a_dtype = a.dtype();                                                           \
-    node->SetDType(                                                                         \
+#define TVM_DEFINE_CMPOP_CONSTRUCTOR(Name)                                                   \
+  Name::Name(PrimExpr a, PrimExpr b, Span span) {                                            \
+    using T = Name::ContainerType;                                                           \
+    TVM_FFI_CHECK(a.defined(), ValueError) << "a is undefined\n";                            \
+    TVM_FFI_CHECK(b.defined(), ValueError) << "b is undefined\n";                            \
+    TVM_FFI_CHECK(a.dtype() == b.dtype(), TypeError)                                         \
+        << "mismatched types. " << a.dtype() << " vs. " << b.dtype() << "\n";                \
+    ffi::ObjectPtr<T> node = ffi::make_object<T>();                                          \
+    DataType a_dtype = a.dtype();                                                            \
+    node->ty = PrimType(                                                                     \
         DataType::Bool(a_dtype.get_lanes_or_vscale_factor(), a_dtype.is_scalable_vector())); \
-    node->a = std::move(a);                                                                 \
-    node->b = std::move(b);                                                                 \
-    node->span = std::move(span);                                                           \
-    data_ = std::move(node);                                                                \
+    node->a = std::move(a);                                                                  \
+    node->b = std::move(b);                                                                  \
+    node->span = std::move(span);                                                            \
+    data_ = std::move(node);                                                                 \
   }
 
 // Var
@@ -146,7 +146,7 @@ Var::Var(ffi::String name_hint, DataType dtype, Span span) {
   auto n = ffi::make_object<VarNode>();
   n->name_hint = std::move(name_hint);
   n->type_annotation = GetTypeFromRuntimeDataType(dtype);
-  n->SetType(n->type_annotation);
+  n->ty = n->type_annotation;
   n->span = std::move(span);
   data_ = std::move(n);
 }
@@ -155,7 +155,7 @@ Var::Var(ffi::String name_hint, Type type_annotation, Span span) {
   auto n = ffi::make_object<VarNode>();
   n->name_hint = std::move(name_hint);
   n->type_annotation = std::move(type_annotation);
-  n->SetType(n->type_annotation);
+  n->ty = PrimType(GetRuntimeDataType(n->type_annotation));
   n->span = std::move(span);
   data_ = std::move(n);
 }
@@ -185,7 +185,7 @@ Var Var::copy_with_dtype(DataType dtype) const {
     new_ptr = ffi::make_object<VarNode>(*node);
   }
   new_ptr->type_annotation = GetTypeFromRuntimeDataType(dtype);
-  new_ptr->SetType(new_ptr->type_annotation);
+  new_ptr->ty = new_ptr->type_annotation;
   return Var(new_ptr);
 }
 
@@ -205,7 +205,7 @@ SizeVar::SizeVar(ffi::String name_hint, DataType dtype, Span span) {
   auto n = ffi::make_object<SizeVarNode>();
   n->name_hint = std::move(name_hint);
   n->type_annotation = GetTypeFromRuntimeDataType(dtype);
-  n->SetType(n->type_annotation);
+  n->ty = n->type_annotation;
   n->span = std::move(span);
   data_ = std::move(n);
 }
@@ -214,7 +214,7 @@ SizeVar::SizeVar(ffi::String name_hint, Type type_annotation, Span span) {
   auto n = ffi::make_object<SizeVarNode>();
   n->name_hint = std::move(name_hint);
   n->type_annotation = std::move(type_annotation);
-  n->SetType(n->type_annotation);
+  n->ty = PrimType(GetRuntimeDataType(n->type_annotation));
   n->span = std::move(span);
   data_ = std::move(n);
 }
@@ -256,7 +256,7 @@ TVM_FFI_STATIC_INIT_BLOCK() {
 // StringImm
 StringImm::StringImm(ffi::String value, Span span) {
   ffi::ObjectPtr<StringImmNode> node = ffi::make_object<StringImmNode>();
-  node->SetDType(DataType::Handle());
+  node->ty = PrimType::Handle();
   node->value = std::move(value);
   node->span = std::move(span);
   data_ = std::move(node);
@@ -274,7 +274,7 @@ Cast::Cast(DataType t, PrimExpr value, Span span) {
   TVM_FFI_ICHECK_EQ(t.get_lanes_or_vscale_factor(), value.dtype().get_lanes_or_vscale_factor());
   TVM_FFI_ICHECK(t.is_scalable_vector() == value.dtype().is_scalable_vector());
   ffi::ObjectPtr<CastNode> node = ffi::make_object<CastNode>();
-  node->SetDType(t);
+  node->ty = PrimType(t);
   node->value = std::move(value);
   node->span = std::move(span);
   data_ = std::move(node);
@@ -431,7 +431,7 @@ And::And(PrimExpr a, PrimExpr b, Span span) {
   TVM_FFI_CHECK(a.dtype() == b.dtype(), TypeError) << "mismatched types";
 
   ffi::ObjectPtr<AndNode> node = ffi::make_object<AndNode>();
-  node->SetDType(
+  node->ty = PrimType(
       DataType::Bool(a.dtype().get_lanes_or_vscale_factor(), a.dtype().is_scalable_vector()));
   node->a = std::move(a);
   node->b = std::move(b);
@@ -454,7 +454,7 @@ Or::Or(PrimExpr a, PrimExpr b, Span span) {
   TVM_FFI_CHECK(a.dtype() == b.dtype(), TypeError) << "mismatched types";
 
   ffi::ObjectPtr<OrNode> node = ffi::make_object<OrNode>();
-  node->SetDType(
+  node->ty = PrimType(
       DataType::Bool(a.dtype().get_lanes_or_vscale_factor(), a.dtype().is_scalable_vector()));
   node->a = std::move(a);
   node->b = std::move(b);
@@ -475,8 +475,8 @@ Not::Not(PrimExpr a, Span span) {
 
   ffi::ObjectPtr<NotNode> node = ffi::make_object<NotNode>();
   DataType a_dtype = a.dtype();
-  node->SetDType(
-      DataType::Bool(a_dtype.get_lanes_or_vscale_factor(), a_dtype.is_scalable_vector()));
+  node->ty =
+      PrimType(DataType::Bool(a_dtype.get_lanes_or_vscale_factor(), a_dtype.is_scalable_vector()));
   node->a = std::move(a);
   node->span = std::move(span);
   data_ = std::move(node);
@@ -501,7 +501,7 @@ Select::Select(PrimExpr condition, PrimExpr true_value, PrimExpr false_value, Sp
       << "False type: " << false_value.dtype() << "; True type: " << true_value.dtype();
 
   ffi::ObjectPtr<SelectNode> node = ffi::make_object<SelectNode>();
-  node->SetDType(true_value.dtype());
+  node->ty = true_value->ty;
   node->condition = std::move(condition);
   node->true_value = std::move(true_value);
   node->false_value = std::move(false_value);
@@ -532,14 +532,14 @@ Ramp::Ramp(PrimExpr base, PrimExpr stride, PrimExpr lanes, Span span) {
   if (lanes_as_int) {
     int lanes = static_cast<int>(lanes_as_int->value);
     TVM_FFI_ICHECK_GT(lanes, 1);
-    node->SetDType(base.dtype().with_lanes(lanes));
+    node->ty = PrimType(base.dtype().with_lanes(lanes));
     // Stick to int32 lanes for fixed length vectors
     node->lanes = lanes;
   } else { /* scalable vector */
     std::optional<int> vscale_factor = ExtractVscaleFactor(lanes);
     TVM_FFI_ICHECK(vscale_factor) << "Invalid expression for scalable lanes " << lanes;
 
-    node->SetDType(base.dtype().with_scalable_vscale_factor(vscale_factor.value()));
+    node->ty = PrimType(base.dtype().with_scalable_vscale_factor(vscale_factor.value()));
     lanes = Mul(Call(DataType::Int(32), tirx::builtin::vscale(), {}), vscale_factor.value());
     node->lanes = lanes;
   }
@@ -566,14 +566,14 @@ Broadcast::Broadcast(PrimExpr value, PrimExpr lanes, Span span) {
   if (lanes_int) {
     int lanes = static_cast<int>(lanes_int->value);
     TVM_FFI_ICHECK_GT(lanes, 1);
-    node->SetDType(value.dtype().with_lanes(lanes));
+    node->ty = PrimType(value.dtype().with_lanes(lanes));
     // Stick to int32 lanes for fixed length vectors
     node->lanes = lanes;
   } else { /* scalable vector */
     std::optional<int> vscale_factor = ExtractVscaleFactor(lanes);
     TVM_FFI_ICHECK(vscale_factor) << "Invalid expression for scalable lanes " << lanes;
 
-    node->SetDType(value.dtype().with_scalable_vscale_factor(vscale_factor.value()));
+    node->ty = PrimType(value.dtype().with_scalable_vscale_factor(vscale_factor.value()));
     lanes = Mul(Call(DataType::Int(32), tirx::builtin::vscale(), {}), vscale_factor.value());
     node->lanes = lanes;
   }
@@ -596,7 +596,7 @@ Let::Let(Var var, PrimExpr value, PrimExpr body, Span span) {
   TVM_FFI_ICHECK_EQ(value.dtype(), var.dtype());
 
   ffi::ObjectPtr<LetNode> node = ffi::make_object<LetNode>();
-  node->SetDType(body.dtype());
+  node->ty = body->ty;
   node->var = std::move(var);
   node->value = std::move(value);
   node->body = std::move(body);
@@ -643,19 +643,25 @@ static ffi::Array<PrimExpr> ConvertCallArgs(ffi::Array<CallArg> args) {
   return prim_expr_args;
 }
 
-Call::Call(DataType dtype, RelaxExpr op, ffi::Array<PrimExpr> args, Attrs attrs, Span span) {
+Call::Call(PrimType dtype, RelaxExpr op, ffi::Array<PrimExpr> args, Attrs attrs, Span span) {
   for (size_t i = 0; i < args.size(); ++i) {
     TVM_FFI_ICHECK(args[i].defined()) << "arg " << i << " is not defined()";
   }
 
   ffi::ObjectPtr<CallNode> node = ffi::make_object<CallNode>();
-  node->SetDType(dtype);
+  node->ty = std::move(dtype);
   node->op = std::move(op);
   node->args = std::move(args);
   node->attrs = std::move(attrs);
   node->span = std::move(span);
   data_ = std::move(node);
 }
+
+Call::Call(DataType dtype, RelaxExpr op, ffi::Array<PrimExpr> args, Attrs attrs, Span span)
+    : Call(PrimType(dtype), std::move(op), std::move(args), std::move(attrs), std::move(span)) {}
+
+Call::Call(PrimType dtype, RelaxExpr op, ffi::Array<PrimExpr> args, Span span)
+    : Call(std::move(dtype), std::move(op), std::move(args), Attrs(), std::move(span)) {}
 
 Call::Call(DataType dtype, RelaxExpr op, ffi::Array<PrimExpr> args, Span span)
     : Call(dtype, std::move(op), std::move(args), Attrs(), std::move(span)) {}
@@ -664,14 +670,14 @@ TVM_FFI_STATIC_INIT_BLOCK() {
   namespace refl = tvm::ffi::reflection;
   refl::GlobalDef()
       .def("tirx.Call",
-           [](ffi::Optional<DataType> dtype, RelaxExpr op, ffi::Array<CallArg> args, Span span) {
-             return Call(dtype.value_or(DataType::Void()), op, ConvertCallArgs(args), Attrs(),
+           [](ffi::Optional<PrimType> dtype, RelaxExpr op, ffi::Array<CallArg> args, Span span) {
+             return Call(dtype.value_or(PrimType::Void()), op, ConvertCallArgs(args), Attrs(),
                          span);
            })
       .def("tirx.CallWithAttrs",
-           [](ffi::Optional<DataType> dtype, RelaxExpr op, ffi::Array<CallArg> args,
+           [](ffi::Optional<PrimType> dtype, RelaxExpr op, ffi::Array<CallArg> args,
               ffi::Optional<Attrs> attrs, Span span) {
-             return Call(dtype.value_or(DataType::Void()), op, ConvertCallArgs(args),
+             return Call(dtype.value_or(PrimType::Void()), op, ConvertCallArgs(args),
                          attrs.value_or(Attrs()), span);
            });
 }
@@ -691,7 +697,7 @@ Shuffle::Shuffle(ffi::Array<PrimExpr> vectors, ffi::Array<PrimExpr> indices, Spa
   TVM_FFI_ICHECK_LE(indices.size(), static_cast<size_t>(total_lanes));
 
   ffi::ObjectPtr<ShuffleNode> node = ffi::make_object<ShuffleNode>();
-  node->SetDType(base_type.with_lanes(static_cast<int>(indices.size())));
+  node->ty = PrimType(base_type.with_lanes(static_cast<int>(indices.size())));
   node->vectors = std::move(vectors);
   node->indices = std::move(indices);
   node->span = std::move(span);
@@ -816,7 +822,7 @@ Reduce::Reduce(CommReducer combiner, ffi::Array<PrimExpr> source, ffi::Array<Ite
           << "but received " << init[i] << " of type " << init[i]->GetTypeKey();
     }
   }
-  n->SetDType(source[value_index].dtype());
+  n->ty = source[value_index]->ty;
   n->combiner = std::move(combiner);
   n->source = std::move(source);
   n->init = std::move(init);
@@ -844,7 +850,7 @@ void BufferLoadNode::LegalizeDType() {
   }
 
   if (indices.empty()) {
-    this->SetDType(buffer->dtype);
+    this->ty = PrimType(buffer->dtype);
   } else {
     auto index_dtype = indices.back().dtype();
     bool is_buffer_dtype_scalable = buffer->dtype.is_scalable_vector();
@@ -854,13 +860,13 @@ void BufferLoadNode::LegalizeDType() {
         << "Index dtype and buffer dtype can't both be scalable.";
 
     if (is_index_scalable) {
-      this->SetDType(buffer->dtype.with_scalable_vscale_factor(index_dtype.vscale_factor() *
-                                                               buffer->dtype.lanes()));
+      this->ty = PrimType(buffer->dtype.with_scalable_vscale_factor(index_dtype.vscale_factor() *
+                                                                    buffer->dtype.lanes()));
     } else if (is_buffer_dtype_scalable) {
-      this->SetDType(buffer->dtype.with_scalable_vscale_factor(buffer->dtype.vscale_factor() *
-                                                               index_dtype.lanes()));
+      this->ty = PrimType(buffer->dtype.with_scalable_vscale_factor(buffer->dtype.vscale_factor() *
+                                                                    index_dtype.lanes()));
     } else {
-      this->SetDType(buffer->dtype.with_lanes(index_dtype.lanes() * buffer->dtype.lanes()));
+      this->ty = PrimType(buffer->dtype.with_lanes(index_dtype.lanes() * buffer->dtype.lanes()));
     }
   }
 }
@@ -914,7 +920,7 @@ TVM_FFI_STATIC_INIT_BLOCK() {
 // ProducerLoad
 ProducerLoad::ProducerLoad(DataProducer producer, ffi::Array<PrimExpr> indices, Span span) {
   ffi::ObjectPtr<ProducerLoadNode> node = ffi::make_object<ProducerLoadNode>();
-  node->SetDType(producer->GetDataType());
+  node->ty = PrimType(producer->GetDataType());
   node->producer = std::move(producer);
   node->indices = std::move(indices);
   node->span = std::move(span);

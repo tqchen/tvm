@@ -43,7 +43,10 @@ class PrimExpr(BaseExpr):
     optimizations and integer analysis.
     """
 
-    dtype: str
+    @property
+    def dtype(self):
+        """Return the runtime dtype represented by this expression's PrimType."""
+        return self.ty.dtype
 
 
 @tvm_ffi.register_object("ir.RelaxExpr")
