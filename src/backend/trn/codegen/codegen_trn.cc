@@ -589,7 +589,7 @@ void CodeGenTrainium::VisitExpr_(const VarNode* op, std::ostream& os) {  // NOLI
 }
 
 void CodeGenTrainium::VisitExpr_(const CastNode* op, std::ostream& os) {
-  ctx_.dst_dtype = op->dtype;
+  ctx_.dst_dtype = op->dtype();
   CodeGenTrainium::VisitExpr(op->value, os);
 }
 

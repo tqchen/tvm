@@ -478,7 +478,7 @@ PrimExpr BufferRegionNode::ToPrimExpr() const {
     if (tvm::tirx::is_one(r->extent)) {
       indices.push_back(r->min);
     } else if (r->extent.as<IntImmNode>()) {
-      indices.push_back(tirx::Ramp(r->min, tvm::tirx::MakeConst(r->min->dtype, 1), r->extent));
+      indices.push_back(tirx::Ramp(r->min, tvm::tirx::MakeConst(r->min.dtype(), 1), r->extent));
     } else {
       TVM_FFI_THROW(ValueError) << "Cannot convert to BufferLoad: "
                                 << ffi::GetRef<BufferRegion>(this);

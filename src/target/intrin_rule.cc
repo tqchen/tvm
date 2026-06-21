@@ -131,7 +131,7 @@ TVM_REGISTER_OP("tirx.tvm_access_ptr")
       DataType dtype = call->args[0].dtype();
       Var buffer_var = Downcast<Var>(call->args[1]);
       PrimExpr offset = call->args[2];
-      TVM_FFI_ICHECK(call->dtype.is_handle());
+      TVM_FFI_ICHECK(call->dtype().is_handle());
       if (dtype.lanes() != 1) {
         offset = offset * MakeConst(offset.dtype(), dtype.lanes());
         offset = Ramp(offset, MakeConst(offset.dtype(), 1), dtype.lanes());

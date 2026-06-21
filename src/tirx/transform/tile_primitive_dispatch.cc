@@ -664,8 +664,8 @@ class TilePrimitiveDispatcher : public StmtExprMutator {
         // to map Vars back to their ScopeBinding.
         Var bind_var = def->def_ids[i];
         PrimExpr value = resolved[i];
-        if (bind_var->dtype != value.dtype()) {
-          value = Cast(bind_var->dtype, value);
+        if (bind_var.dtype() != value.dtype()) {
+          value = Cast(bind_var.dtype(), value);
         }
         scope_binds->push_back({bind_var, value});
         if (is_implicit(bind_var)) {
@@ -1399,7 +1399,7 @@ class TilePrimitiveDispatcher : public StmtExprMutator {
         args.push_back(new_arg);
       }
       if (changed) {
-        return tirx::Call(call->dtype, call->op, args, call->attrs, call->span);
+        return tirx::Call(call->dtype(), call->op, args, call->attrs, call->span);
       }
     }
     return pred;

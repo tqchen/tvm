@@ -191,9 +191,9 @@ void CodeGenCHost::PrintType(DataType t, std::ostream& os) {  // NOLINT(*)
 
 void CodeGenCHost::VisitExpr_(const BroadcastNode* op, std::ostream& os) {  // NOLINT(*)
   std::string v = PrintExpr(op->value);
-  int lanes = op->dtype.lanes();
+  int lanes = op->dtype().lanes();
   os << "((";
-  PrintType(op->dtype, os);
+  PrintType(op->dtype(), os);
   os << ")(";
   for (int i = 0; i < lanes; ++i) {
     if (i != 0) os << ", ";

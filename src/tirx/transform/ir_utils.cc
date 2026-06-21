@@ -459,7 +459,7 @@ class IRConvertSSA final : public StmtExprMutator {
           if (var->type_annotation.defined()) {
             return Var(var->name_hint, var->type_annotation);
           } else {
-            return Var(var->name_hint, var->dtype);
+            return Var(var->name_hint, var.dtype());
           }
         }();
 
@@ -542,9 +542,9 @@ class IRConvertSSA final : public StmtExprMutator {
       }
     } else {
       if (is_size_var) {
-        return SizeVar(old_var->name_hint, old_var->dtype);
+        return SizeVar(old_var->name_hint, old_var.dtype());
       } else {
-        return Var(old_var->name_hint, old_var->dtype);
+        return Var(old_var->name_hint, old_var.dtype());
       }
     }
   }
@@ -750,7 +750,7 @@ ffi::Optional<arith::IntConstraints> ConditionalBoundsContext::TrySolveCondition
         if (obj.same_as(e)) {
           return;
         } else if (const VarNode* var = obj.as<VarNode>()) {
-          if (var->dtype.is_int() || var->dtype.is_uint()) {
+          if (var->dtype().is_int() || var->dtype().is_uint()) {
             cand_vars.push_back(ffi::GetRef<Var>(var));
           }
         } else {

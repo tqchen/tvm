@@ -389,7 +389,7 @@ class BuiltinLower : public StmtExprMutator {
     } else if (op->op.same_as(builtin::tvm_stack_make_array())) {
       return MakeArray(op);
     } else if (op->op.same_as(builtin::tvm_context_id())) {
-      return IntImm(op->dtype, 0);
+      return IntImm(op->dtype(), 0);
     } else if (op->op.same_as(builtin::dma_copy())) {
       return MakeDMACopy(op);
     } else if (op->op.same_as(builtin::dma_wait())) {
@@ -651,7 +651,7 @@ class BuiltinLower : public StmtExprMutator {
       // used by call_packed_traced
       packed_args.push_back(op->args[op->args.size() - 1]);
     }
-    return Call(op->dtype, lowered_packed_op, packed_args);
+    return Call(op->dtype(), lowered_packed_op, packed_args);
   }
 
   Stmt MakeNdMemAllocWithScope(const BindNode* let, const CallNode* call) {

@@ -205,7 +205,7 @@ class TrainiumLayoutApplier : public arith::IRMutatorWithAnalyzer {
   }
 
   PrimExpr VisitExpr_(const BufferLoadNode* op) final {
-    bool load_returns_bool = (op->dtype == DataType::Bool());
+    bool load_returns_bool = (op->dtype() == DataType::Bool());
     BufferLoad load = Downcast<BufferLoad>(StmtExprMutator::VisitExpr_(op));
     load = VisitBufferAccess(load);
     if (load_returns_bool) {

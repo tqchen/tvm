@@ -228,7 +228,7 @@ class VTInjector : public arith::IRMutatorWithAnalyzer {
       PrimExpr stride = it->second / MakeConst(offset.dtype(), dtype.lanes());
       offset = RewriteIndex(offset, stride);
 
-      return Call(op->dtype, op->op, {op->args[0], op->args[1], offset, extent, op->args[4]});
+      return Call(op->dtype(), op->op, {op->args[0], op->args[1], offset, extent, op->args[4]});
     } else if (op->op.same_as(builtin::tvm_context_id())) {
       return allow_share_ ? ffi::GetRef<PrimExpr>(op) : var_;
     } else {
@@ -470,7 +470,7 @@ class VTInjector : public arith::IRMutatorWithAnalyzer {
       return SeqStmt::Flatten(seq);
     } else {
       // insert a for loop
-      Var idx(var_->name_hint + ".s", var_->dtype);
+      Var idx(var_->name_hint + ".s", var_.dtype());
       stmt = Substitute(stmt, {{var_, idx}});
       return For(idx, IntImm(idx.dtype(), 0), MakeConst(idx.dtype(), num_threads_),
                  ForKind::kSerial, stmt);

@@ -384,8 +384,8 @@ void CodeGenWebGPU::PrintVecElemStore(const std::string& vec, DataType t, int i,
 
 void CodeGenWebGPU::VisitExpr_(const BroadcastNode* op, std::ostream& os) {  // NOLINT(*)
   std::string v = PrintExpr(op->value);
-  int lanes = op->dtype.lanes();
-  PrintType(op->dtype, os);
+  int lanes = op->dtype().lanes();
+  PrintType(op->dtype(), os);
   os << "(";
   for (int i = 0; i < lanes; ++i) {
     if (i != 0) os << ", ";
@@ -402,7 +402,7 @@ void CodeGenWebGPU::VisitExpr_(const CallNode* op, std::ostream& os) {  // NOLIN
   if (op->op.same_as(builtin::reinterpret())) {
     // generate bitcast<TYPE>(ARG)
     os << "bitcast<";
-    this->PrintType(op->dtype, os);
+    this->PrintType(op->dtype(), os);
     os << ">(";
     this->PrintExpr(op->args[0], os);
     os << ")";
@@ -426,7 +426,7 @@ void CodeGenWebGPU::VisitExpr_(const CallNode* op, std::ostream& os) {  // NOLIN
     std::string cond = PrintExpr(op->args[0]);
     this->PrintIndent();
     this->stream << "var " << result << " : ";
-    PrintType(op->dtype, this->stream);
+    PrintType(op->dtype(), this->stream);
     this->stream << ";\n";
     this->PrintIndent();
     this->stream << "if (" << cond << ") {\n";
@@ -459,7 +459,7 @@ void CodeGenWebGPU::VisitExpr_(const CallNode* op, std::ostream& os) {  // NOLIN
 }
 
 void CodeGenWebGPU::VisitExpr_(const CastNode* op, std::ostream& os) {  // NOLINT(*)
-  PrintType(op->dtype, os);
+  PrintType(op->dtype(), os);
   os << "(" << PrintExpr(op->value) << ")";
 }
 
@@ -490,18 +490,18 @@ void CodeGenWebGPU::VisitExpr_(const LetNode* op, std::ostream& os) {  // NOLINT
 }
 
 void CodeGenWebGPU::VisitExpr_(const IntImmNode* op, std::ostream& os) {  // NOLINT(*)
-  if (op->dtype.bits() == 32) {
+  if (op->dtype().bits() == 32) {
     std::ostringstream temp;
-    if (op->dtype.is_int()) {
+    if (op->dtype().is_int()) {
       temp << op->value << "i";
     } else {
-      TVM_FFI_ICHECK(op->dtype.is_uint());
+      TVM_FFI_ICHECK(op->dtype().is_uint());
       temp << op->value << "u";
     }
     this->MarkConst(temp.str());
     os << temp.str();
   } else {
-    this->PrintType(op->dtype, os);
+    this->PrintType(op->dtype(), os);
     os << "(" << op->value << ")";
   }
 }
@@ -509,14 +509,14 @@ void CodeGenWebGPU::VisitExpr_(const IntImmNode* op, std::ostream& os) {  // NOL
 void CodeGenWebGPU::VisitExpr_(const FloatImmNode* op, std::ostream& os) {  // NOLINT(*)
   std::ostringstream temp;
   temp << std::scientific << op->value;
-  if (op->dtype.bits() == 32) {
+  if (op->dtype().bits() == 32) {
     temp << 'f';
-  } else if (op->dtype.bits() == 16) {
+  } else if (op->dtype().bits() == 16) {
     // Using f16 requires enable directive
     enable_fp16_ = true;
     temp << 'h';
   } else {
-    TVM_FFI_THROW(InternalError) << "Unsupported floating point bits " << op->dtype.bits();
+    TVM_FFI_THROW(InternalError) << "Unsupported floating point bits " << op->dtype().bits();
   }
   MarkConst(temp.str());
   os << temp.str();
@@ -530,12 +530,12 @@ void CodeGenWebGPU::VisitExpr_(const BufferLoadNode* op, std::ostream& os) {  //
   TVM_FFI_ICHECK_EQ(op->indices.size(), 1) << "Load from non-flat memory not supported.";
   TVM_FFI_ICHECK(!op->predicate.defined()) << "Predicated buffer load is not supported.";
 
-  DataType value_dtype = op->dtype;
+  DataType value_dtype = op->dtype();
   PrimExpr index = op->indices[0];
   Var buffer_var = op->buffer->data;
   DataType element_dtype = op->buffer->dtype;
 
-  int lanes = op->dtype.lanes();
+  int lanes = op->dtype().lanes();
   std::string buffer_vid = GetVarID(buffer_var.get());
 
   if (value_dtype.lanes() == element_dtype.lanes()) {
@@ -559,7 +559,7 @@ void CodeGenWebGPU::VisitExpr_(const BufferLoadNode* op, std::ostream& os) {  //
     TVM_FFI_ICHECK(value_dtype.element_of() == element_dtype)
         << "WebGPU vector loading requires base type to match";
     arith::PVar<PrimExpr> base;
-    if (arith::ramp(base, 1, op->dtype.lanes()).Match(index)) {
+    if (arith::ramp(base, 1, op->dtype().lanes()).Match(index)) {
       // vec3<f32>(buf[base + 0], buf[base + 1], buf[base + 2]);
       std::string base_vid = SSAGetID(PrintExpr(base.Eval()), base.Eval().dtype());
       PrintType(element_dtype.with_lanes(value_dtype.lanes()), os);
