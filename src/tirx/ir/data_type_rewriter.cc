@@ -251,7 +251,8 @@ PrimExpr DataTypeLegalizer::VisitExpr_(const CallNode* op) {
   if (op->op.same_as(pow_op)) {
     return pow(op->args[0], op->args[1]);
   } else if (op->op.same_as(builtin::if_then_else())) {
-    return Call(op->dtype(), op->op, {op->args[0], op->args[1], op->args[2]}, op->attrs, op->span);
+    return Call(ffi::GetRef<PrimExpr>(op).ty(), op->op, {op->args[0], op->args[1], op->args[2]},
+                op->attrs, op->span);
   } else if (op->op.same_as(clz_op)) {
     DataType before_dtype = before->args[0].dtype();
     DataType after_dtype = op->args[0].dtype();
@@ -567,8 +568,8 @@ PrimExpr IndexDataTypeRewriter::VisitExpr_(const CallNode* op) {
     is_condition_ = true;
     PrimExpr cond = VisitExpr(op->args[0]);
     is_condition_ = is_condition;
-    return Call(op->dtype(), op->op, {cond, VisitExpr(op->args[1]), VisitExpr(op->args[2])},
-                op->attrs, op->span);
+    return Call(ffi::GetRef<PrimExpr>(op).ty(), op->op,
+                {cond, VisitExpr(op->args[1]), VisitExpr(op->args[2])}, op->attrs, op->span);
   }
   return Parent::VisitExpr_(op);
 }
@@ -653,7 +654,7 @@ PrimExpr IndexDataTypeNormalizer::VisitExpr_(const CastNode* op) {
   // has some other purpose, and we should not unwrap the cast.
   if (is_enabled_ && CanRewriteDType(op->dtype())) {
     PrimExpr value = IndexDataTypeNormalizer::VisitExpr(op->value);
-    return value.dtype() == target_data_type_ ? value : Cast(target_data_type_, value);
+    return value.dtype() == target_data_type_ ? value : Cast(PrimType(target_data_type_), value);
   }
   return IndexDataTypeRewriter::VisitExpr_(op);
 }

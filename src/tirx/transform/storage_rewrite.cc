@@ -496,8 +496,8 @@ class StoragePlanRewriter : public StmtExprMutator {
       if (se->bits_offset != 0) {
         offset = MakeConst(offset.dtype(), se->bits_offset / elem_bits) + offset;
       }
-      return Call(op->dtype(), op->op, {op->args[0], se->alloc_var, offset, extent, op->args[4]},
-                  op->attrs, op->span);
+      return Call(ffi::GetRef<PrimExpr>(op).ty(), op->op,
+                  {op->args[0], se->alloc_var, offset, extent, op->args[4]}, op->attrs, op->span);
     } else {
       return StmtExprMutator::VisitExpr_(op);
     }
@@ -1654,7 +1654,7 @@ class VectorTypeRewriter : public StmtExprMutator {
       // tvm_access_ptr produces a pointer; its Call.dtype must be handle
       // (the lowering rule in src/target/intrin_rule.cc ICHECKs this).
       // The element dtype is conveyed via the first arg (e_dtype marker).
-      return Call(DataType::Handle(), builtin::tvm_access_ptr(), acc_args);
+      return Call(PrimType::Handle(), builtin::tvm_access_ptr(), acc_args);
 
     } else {
       return StmtExprMutator::VisitExpr_(op);

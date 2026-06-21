@@ -130,7 +130,7 @@ class SplitExprNode : public CanonicalExprNode {
     PrimExpr res = this->index;
     DataType dtype = this->dtype();
     if (this->scale == 0) {
-      return IntImm(dtype, 0);
+      return IntImm(PrimType(dtype), 0);
     }
     if (this->upper_factor != SplitExprNode::kPosInf) {
       res = ModImpl(res, MakeConst(dtype, this->upper_factor), div_mode);
@@ -344,7 +344,7 @@ class SumExprNode : public CanonicalExprNode {
     if (dtype.bits() >= this->dtype().bits()) {
       return true;  // upcast is safe
     }
-    PrimExpr res = IntImm(dtype, 0);
+    PrimExpr res = IntImm(PrimType(dtype), 0);
     for (size_t i = 0; i < args.size(); ++i) {
       if (args[i]->scale > 0) {
         res = res + args[i]->Normalize();
@@ -500,7 +500,7 @@ class SumExprNode : public CanonicalExprNode {
     bool is_min_value = dtype.bits() == 64 ? base == std::numeric_limits<int64_t>::lowest()
                                            : base == -(1LL << (dtype.bits() - 1));
     // Positive scales first
-    PrimExpr res = IntImm(dtype, 0);
+    PrimExpr res = IntImm(PrimType(dtype), 0);
     for (size_t i = 0; i < args.size(); ++i) {
       if (args[i]->scale > 0) {
         res = res + args[i]->Normalize();
@@ -834,7 +834,7 @@ SplitExpr CanonicalSimplifier::Impl::SplitDivConst(SplitExpr lhs, int64_t cval, 
       return lhs;
     } else if (lhs->upper_factor <= (lhs->lower_factor * scaled_cval)) {
       // (x % c1) / c2  => 0 when c2 >= c1
-      return ToSplitExpr(IntImm(lhs.dtype(), 0));
+      return ToSplitExpr(IntImm(lhs.ty(), 0));
     } else {
       // move the upper_factor modular into index.
       lhs.CopyOnWrite()->index =
@@ -958,7 +958,7 @@ PrimExpr CanonicalSimplifier::Impl::VisitExpr_(const DivNode* op) {
       // if a >= 0 && a < cval, then result == 0
       auto cbound = analyzer_->const_int_bound(Normalize(a));
       if (cbound->min_value >= 0 && cbound->max_value < cval) {
-        return IntImm(a.dtype(), 0);
+        return IntImm(a.ty(), 0);
       }
     }
     return SplitDivConst(ToSplitExpr(std::move(a)), cval, kTruncDiv);
@@ -1019,7 +1019,7 @@ PrimExpr CanonicalSimplifier::Impl::VisitExpr_(const FloorDivNode* op) {
       // if a >= 0 && a < cval, then result == 0
       auto cbound = analyzer_->const_int_bound(Normalize(a));
       if (cbound->min_value >= 0 && cbound->max_value < cval) {
-        return IntImm(a.dtype(), 0);
+        return IntImm(a.ty(), 0);
       }
     }
     // Identity: floordiv(floormod(index, m*n), n) = floormod(floordiv(index, n), m)
@@ -1144,7 +1144,7 @@ PrimExpr CanonicalSimplifier::Impl::VisitExpr_(const ModNode* op) {
       SumExpr lhs, extra;
       SeparateDivisibleParts(psum, cval, &lhs, &extra);
       if (extra->IsZero()) {
-        return IntImm(a.dtype(), 0);
+        return IntImm(a.ty(), 0);
       }
       // both lhs and extra are non-negative
       if (analyzer_->CanProveGreaterEqual(lhs->Normalize(), 0) &&
@@ -1415,10 +1415,10 @@ PrimExpr CanonicalSimplifier::Impl::VisitExpr_(const LTNode* op) {
     TVM_FFI_ICHECK(extra->dtype() == dtype);
     PrimExpr normal_extra = extra->Normalize();
     if (this->analyzer_->CanProve(normal_extra < MakeConst(dtype, gcd)) &&
-        this->analyzer_->CanProve(normal_extra >= IntImm(dtype, 0))) {
+        this->analyzer_->CanProve(normal_extra >= IntImm(PrimType(dtype), 0))) {
       // Case 1. 0 <= xn < d
       divisible.CopyOnWrite()->DivideBy(gcd);
-      return Rewriter::VisitExpr(divisible->Normalize() < IntImm(dtype, 0));
+      return Rewriter::VisitExpr(divisible->Normalize() < IntImm(PrimType(dtype), 0));
     } else if (extra->args.size() == 1 && extra->args[0]->scale == 1 &&
                extra->args[0]->upper_factor != ConstIntBoundNode::kPosInf &&
                extra->args[0]->upper_factor % (gcd * extra->args[0]->lower_factor) == 0) {
@@ -1435,7 +1435,7 @@ PrimExpr CanonicalSimplifier::Impl::VisitExpr_(const LTNode* op) {
       int64_t lower_factor = gcd * extra->args[0]->lower_factor;
       PrimExpr extra_expr = floormod(floordiv(split_expr->index, lower_factor),
                                      floordiv(split_expr->upper_factor, lower_factor));
-      return Rewriter::VisitExpr(divisible->Normalize() + extra_expr < IntImm(dtype, 0));
+      return Rewriter::VisitExpr(divisible->Normalize() + extra_expr < IntImm(PrimType(dtype), 0));
     }
   }
 

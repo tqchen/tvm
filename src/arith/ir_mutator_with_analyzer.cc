@@ -260,7 +260,7 @@ Stmt IRMutatorWithAnalyzer::VisitStmt_(const AttrStmtNode* op) {
     if (op->attr_key == tirx::attr::thread_extent || op->attr_key == s_tir::attr::virtual_thread) {
       IterVar iv = Downcast<IterVar>(op->node);
       TVM_FFI_ICHECK_NE(iv->thread_tag.length(), 0U);
-      Range dom = Range::FromMinExtent(IntImm(op->value.dtype(), 0), op->value);
+      Range dom = Range::FromMinExtent(IntImm(op->value.ty(), 0), op->value);
       analyzer_->Bind(iv->var, dom);
       iter_vars_.Set(iv->var, dom);
     }
@@ -313,7 +313,8 @@ PrimExpr IRMutatorWithAnalyzer::VisitExpr_(const CallNode* op) {
         false_value.same_as(op->args[2])) {
       return ffi::GetRef<PrimExpr>(op);
     } else {
-      return Call(op->dtype(), op->op, {cond, true_value, false_value}, op->attrs, op->span);
+      return Call(ffi::GetRef<PrimExpr>(op).ty(), op->op, {cond, true_value, false_value},
+                  op->attrs, op->span);
     }
   }
   return StmtExprMutator::VisitExpr_(op);

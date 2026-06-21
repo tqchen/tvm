@@ -212,7 +212,7 @@ class MatchBufferLower : public StmtExprMutator {
         // Non-zero elem_offset is ill-defined for non-flat memory.
         // If needed in the future, will require `ffi::Array<PrimExpr>
         // elem_offsets`, with one offset for each flattened index.
-        Bind(buffer->elem_offset, IntImm(buffer->elem_offset.dtype(), 0));
+        Bind(buffer->elem_offset, IntImm(buffer->elem_offset.ty(), 0));
       }
     }
 

@@ -216,6 +216,9 @@ class PrimExpr : public BaseExpr {
     return static_cast<const PrimTypeNode*>(node->ty.get())->dtype;
   }
 
+  /*! \return the primitive type of this expression. */
+  PrimType ty() const;
+
   TVM_FFI_DEFINE_OBJECT_REF_METHODS_NULLABLE(PrimExpr, BaseExpr, PrimExprNode);
 
   /*!
@@ -581,14 +584,6 @@ class IntImm : public PrimExpr {
  public:
   /*!
    * \brief Constructor.
-   * \param dtype The data type of the value.
-   * \param value The internal value.
-   * \param span The location of this object in the source code.
-   */
-  TVM_DLL IntImm(DataType dtype, int64_t value, Span span = Span());
-
-  /*!
-   * \brief Constructor.
    * \param dtype The primitive type of the value.
    * \param value The internal value.
    * \param span The location of this object in the source code.
@@ -600,27 +595,21 @@ class IntImm : public PrimExpr {
    * \param value The boolean value.
    * \param span The location of this object in the source code.
    */
-  static IntImm Bool(bool value, Span span = Span()) {
-    return IntImm(DataType::Bool(), value, span);
-  }
+  TVM_DLL static IntImm Bool(bool value, Span span = Span());
 
   /*!
    * \brief Construct a scalar int32 constant.
    * \param value The integer value.
    * \param span The location of this object in the source code.
    */
-  static IntImm Int32(int64_t value, Span span = Span()) {
-    return IntImm(DataType::Int(32), value, span);
-  }
+  TVM_DLL static IntImm Int32(int64_t value, Span span = Span());
 
   /*!
    * \brief Construct a scalar int64 constant.
    * \param value The integer value.
    * \param span The location of this object in the source code.
    */
-  static IntImm Int64(int64_t value, Span span = Span()) {
-    return IntImm(DataType::Int(64), value, span);
-  }
+  TVM_DLL static IntImm Int64(int64_t value, Span span = Span());
 
   TVM_FFI_DEFINE_OBJECT_REF_METHODS_NULLABLE(IntImm, PrimExpr, IntImmNode);
   TVM_DEFINE_OBJECT_REF_COW_METHOD(IntImmNode);
@@ -649,14 +638,6 @@ class FloatImmNode : public PrimExprNode {
  */
 class FloatImm : public PrimExpr {
  public:
-  /*!
-   * \brief Constructor.
-   * \param dtype The data type of the value.
-   * \param value The internal value.
-   * \param span The location in the source code.
-   */
-  TVM_DLL FloatImm(DataType dtype, double value, Span span = Span());
-
   /*!
    * \brief Constructor.
    * \param dtype The primitive type of the value.
@@ -730,13 +711,7 @@ inline constexpr bool use_default_type_traits_v<IntImm> = false;
 // specialize to enable implicit conversion from const char*
 template <>
 struct TypeTraits<IntImm> : public ObjectRefWithFallbackTraitsBase<IntImm, int64_t> {
-  TVM_FFI_INLINE static IntImm ConvertFallbackValue(int64_t value) {
-    auto dtype =
-        (value > std::numeric_limits<int>::max() || value < std::numeric_limits<int>::min())
-            ? DataType::Int(64)
-            : DataType::Int(32);
-    return IntImm(dtype, value);
-  }
+  TVM_DLL static IntImm ConvertFallbackValue(int64_t value);
 };
 
 template <>
@@ -744,9 +719,7 @@ inline constexpr bool use_default_type_traits_v<FloatImm> = false;
 
 template <>
 struct TypeTraits<FloatImm> : public ObjectRefWithFallbackTraitsBase<FloatImm, double> {
-  TVM_FFI_INLINE static FloatImm ConvertFallbackValue(double value) {
-    return FloatImm(runtime::DataType::Float(32), value);
-  }
+  TVM_DLL static FloatImm ConvertFallbackValue(double value);
 };
 
 // define automatic conversion from bool, int64_t, double to PrimExpr

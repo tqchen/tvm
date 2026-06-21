@@ -132,7 +132,7 @@ inline IntervalSet Combine(AnalyzerObj* analyzer, IntervalSet a, IntervalSet b, 
     return IntervalSet::SinglePoint(expr);
   }
   if (is_logical_op<Op>::value) {
-    return IntervalSet(IntImm(dtype, 0), IntImm(dtype, 1));
+    return IntervalSet(IntImm(PrimType(dtype), 0), IntImm(PrimType(dtype), 1));
   }
   if (a->IsEmpty()) return a;
   if (b->IsEmpty()) return b;
@@ -195,7 +195,7 @@ inline IntervalSet Combine<tirx::Mul>(AnalyzerObj* analyzer, IntervalSet a, Inte
       return IntervalSet(min_value, max_value);
     } else if (a->HasUpperBound() && a->HasLowerBound()) {
       using tirx::Select;
-      PrimExpr sign = b->min_value >= IntImm(b->min_value.dtype().element_of(), 0);
+      PrimExpr sign = b->min_value >= IntImm(PrimType(b->min_value.dtype().element_of()), 0);
       PrimExpr e1 = a->min_value * b->min_value;
       PrimExpr e2 = a->max_value * b->min_value;
       return IntervalSet(Select(sign, e1, e2), Select(sign, e2, e1));
@@ -229,7 +229,7 @@ inline IntervalSet Combine<tirx::Div>(AnalyzerObj* analyzer, IntervalSet a, Inte
       return IntervalSet(min_value, max_value);
     } else if (a->HasUpperBound() && a->HasLowerBound()) {
       using tirx::Select;
-      PrimExpr sign = b->min_value >= IntImm(b->min_value.dtype().element_of(), 0);
+      PrimExpr sign = b->min_value >= IntImm(PrimType(b->min_value.dtype().element_of()), 0);
       PrimExpr e1 = a->min_value / b->min_value;
       PrimExpr e2 = a->max_value / b->min_value;
       return IntervalSet(Select(sign, e1, e2), Select(sign, e2, e1));
@@ -258,7 +258,7 @@ inline IntervalSet Combine<tirx::Mod>(AnalyzerObj* analyzer, IntervalSet a, Inte
     // is the case of our application.
     // TODO(tqchen): add bound constraints for a.
     if (analyzer->CanProveGreaterEqual(divisor, 0)) {
-      return IntervalSet(IntImm(divisor.dtype(), 0), divisor - 1);
+      return IntervalSet(IntImm(divisor.ty(), 0), divisor - 1);
     } else {
       PrimExpr bound = abs(divisor) - 1;
       return IntervalSet(-bound, bound);
@@ -292,7 +292,7 @@ inline IntervalSet Combine<tirx::FloorDiv>(AnalyzerObj* analyzer, IntervalSet a,
       return IntervalSet(min_value, max_value);
     } else if (a->HasUpperBound() && a->HasLowerBound()) {
       using tirx::Select;
-      PrimExpr sign = b->min_value >= IntImm(b->min_value.dtype().element_of(), 0);
+      PrimExpr sign = b->min_value >= IntImm(PrimType(b->min_value.dtype().element_of()), 0);
       PrimExpr e1 = floordiv(a->min_value, b->min_value);
       PrimExpr e2 = floordiv(a->max_value, b->min_value);
       return IntervalSet(Select(sign, e1, e2), Select(sign, e2, e1));
@@ -348,12 +348,13 @@ inline IntervalSet Combine<tirx::FloorMod>(AnalyzerObj* analyzer, IntervalSet a,
             int64_t max_mod_result = max_quotient * gcd + (dividend_mod->base % gcd);
 
             if (max_mod_result >= 0 && max_mod_result < div_val) {
-              return IntervalSet(IntImm(op->dtype(), 0), IntImm(op->dtype(), max_mod_result));
+              PrimType result_type = ffi::GetRef<PrimExpr>(op).ty();
+              return IntervalSet(IntImm(result_type, 0), IntImm(result_type, max_mod_result));
             }
           }
         }
       }
-      return IntervalSet(IntImm(divisor.dtype(), 0), divisor - 1);
+      return IntervalSet(IntImm(divisor.ty(), 0), divisor - 1);
     } else {
       PrimExpr bound = abs(divisor) - 1;
       return IntervalSet(-bound, bound);
@@ -530,22 +531,26 @@ class IntervalSetEvaluator : public ExprFunctor<IntervalSet(const PrimExpr&)> {
           PrimExpr stride_expr = MakeConst(t, vstride * (lanes - 1));
           auto add_op = tirx::Add(op->base, stride_expr);
           auto add_node = add_op.as<tirx::AddNode>();
-          return Combine<Add>(analyzer_, base, IntervalSet(IntImm(t, 0), stride_expr), add_node);
+          return Combine<Add>(analyzer_, base, IntervalSet(IntImm(PrimType(t), 0), stride_expr),
+                              add_node);
         } else {
           PrimExpr stride_expr = MakeConst(t, vstride * (lanes - 1));
           auto add_op = tirx::Add(op->base, stride_expr);
           auto add_node = add_op.as<tirx::AddNode>();
-          return Combine<Add>(analyzer_, base, IntervalSet(stride_expr, IntImm(t, 0)), add_node);
+          return Combine<Add>(analyzer_, base, IntervalSet(stride_expr, IntImm(PrimType(t), 0)),
+                              add_node);
         }
       } else { /* Scalable vector */
         if (vstride > 0) {
-          auto add_op = tirx::Add(op->base, IntImm(t, 0));
+          auto add_op = tirx::Add(op->base, IntImm(PrimType(t), 0));
           auto add_node = add_op.as<tirx::AddNode>();
-          return Combine<Add>(analyzer_, base, IntervalSet(IntImm(t, 0), pos_inf()), add_node);
+          return Combine<Add>(analyzer_, base, IntervalSet(IntImm(PrimType(t), 0), pos_inf()),
+                              add_node);
         } else {
-          auto add_op = tirx::Add(op->base, IntImm(t, 0));
+          auto add_op = tirx::Add(op->base, IntImm(PrimType(t), 0));
           auto add_node = add_op.as<tirx::AddNode>();
-          return Combine<Add>(analyzer_, base, IntervalSet(neg_inf(), IntImm(t, 0)), add_node);
+          return Combine<Add>(analyzer_, base, IntervalSet(neg_inf(), IntImm(PrimType(t), 0)),
+                              add_node);
         }
       }
     }

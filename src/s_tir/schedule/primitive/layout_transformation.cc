@@ -315,7 +315,7 @@ class TransformLayoutPlanner : private StmtExprVisitor {
         PrimExpr dim = new_buffer->shape[i];
         new_iter_values.push_back(var);
         new_iter_vars.push_back(
-            IterVar(Range::FromMinExtent(IntImm(dim.dtype(), 0), dim), virtual_var, kDataPar));
+            IterVar(Range::FromMinExtent(IntImm(dim.ty(), 0), dim), virtual_var, kDataPar));
         loop_var_to_virtual_var.Set(var, virtual_var);
       }
 
@@ -489,7 +489,7 @@ class TransformLayoutPlanner : private StmtExprVisitor {
     PrimExpr pad_value_at_index =
         pad_value.value()->MapIndices(indices, ffi::GetRef<arith::Analyzer>(analyzer))[0];
     PrimExpr expr = (!padding_predicate) || (BufferLoad(new_buffer, indices) == pad_value_at_index);
-    Stmt stmt = Evaluate(Call(DataType::Bool(), builtin::assume(), {expr}));
+    Stmt stmt = Evaluate(Call(PrimType::Bool(), builtin::assume(), {expr}));
 
     std::stringstream block_name;
     block_name << "buffer_" << new_buffer->name << "_assumptions";
@@ -1195,7 +1195,7 @@ void TransformLayout(ScheduleState self, const StmtSRef& block_sref, int buffer_
     std::tie(opt_inverse, padding_predicate) = [&]() {
       ffi::Array<Range> region;
       for (const auto& dim : old_buffer->shape) {
-        region.push_back(Range::FromMinExtent(IntImm(dim.dtype(), 0), dim));
+        region.push_back(Range::FromMinExtent(IntImm(dim.ty(), 0), dim));
       }
       return index_map.NonSurjectiveInverse(region, analyzer);
     }();
@@ -1427,7 +1427,8 @@ void TransformBlockLayout(ScheduleState self, const StmtSRef& block_sref,
     }
     auto dtype = new_block_var.dtype();
     new_block_iters.push_back(IterVar(
-        /*dom=*/Range::FromMinExtent(IntImm(dtype, 0), cast(dtype, new_block_iter_range[i])),
+        /*dom=*/Range::FromMinExtent(IntImm(PrimType(dtype), 0),
+                                     cast(dtype, new_block_iter_range[i])),
         /*var=*/std::move(new_block_var), /*iter_type=*/iter_type));
   }
 
@@ -1438,7 +1439,7 @@ void TransformBlockLayout(ScheduleState self, const StmtSRef& block_sref,
   {
     ffi::Array<Range> initial_ranges;
     for (const PrimExpr& extent : block_iter_range_array) {
-      initial_ranges.push_back(Range::FromMinExtent(IntImm(extent.dtype(), 0), extent));
+      initial_ranges.push_back(Range::FromMinExtent(IntImm(extent.ty(), 0), extent));
     }
     IndexMap inverse_index_map{nullptr};
     try {

@@ -665,7 +665,7 @@ class TilePrimitiveDispatcher : public StmtExprMutator {
         Var bind_var = def->def_ids[i];
         PrimExpr value = resolved[i];
         if (bind_var.dtype() != value.dtype()) {
-          value = Cast(bind_var.dtype(), value);
+          value = Cast(bind_var.ty(), value);
         }
         scope_binds->push_back({bind_var, value});
         if (is_implicit(bind_var)) {
@@ -1157,8 +1157,8 @@ class TilePrimitiveDispatcher : public StmtExprMutator {
         << "TIRxError: tirx.filter expects (var, cond); got " << call->args.size() << " args";
     auto target = ResolveScopeIdTarget(call->args[0]);
     if (target && ElectSyncFinder::Contains(call->args[1])) {
-      PrimExpr selector = tirx::Call(call->args[0].dtype(), tirx::builtin::selector(),
-                                     {call->args[0], call->args[1]});
+      PrimExpr selector =
+          tirx::Call(call->args[0].ty(), tirx::builtin::selector(), {call->args[0], call->args[1]});
       int pushed = TryPushSelectorForTarget(*target, selector) ? 1 : 0;
       return pushed + PushPredicateCtx(call->args[1]);
     }
@@ -1269,7 +1269,7 @@ class TilePrimitiveDispatcher : public StmtExprMutator {
         auto lane = FindLaneScopeVar();
         if (!lane) return -1;
         ScopeIdTarget target{ScopeBinding::kWarpThread, 0, 1};
-        PrimExpr selector = tirx::Call(lane->dtype(), tirx::builtin::selector(), {*lane, cond});
+        PrimExpr selector = tirx::Call(lane->ty(), tirx::builtin::selector(), {*lane, cond});
         return TryPushSelectorForTarget(target, selector) ? 1 : 0;
       }
       return -1;
@@ -1337,7 +1337,7 @@ class TilePrimitiveDispatcher : public StmtExprMutator {
     if (!lane) return false;
     ScopeIdTarget target{ScopeBinding::kWarpThread, 0, 1};
     PrimExpr selector =
-        tirx::Call(lane->dtype(), tirx::builtin::selector(), {*lane, atom.elect_sync_call});
+        tirx::Call(lane->ty(), tirx::builtin::selector(), {*lane, atom.elect_sync_call});
     return TryPushSelectorForTarget(target, selector);
   }
 
@@ -1399,7 +1399,8 @@ class TilePrimitiveDispatcher : public StmtExprMutator {
         args.push_back(new_arg);
       }
       if (changed) {
-        return tirx::Call(call->dtype(), call->op, args, call->attrs, call->span);
+        return tirx::Call(ffi::GetRef<PrimExpr>(call).ty(), call->op, args, call->attrs,
+                          call->span);
       }
     }
     return pred;
@@ -1409,7 +1410,7 @@ class TilePrimitiveDispatcher : public StmtExprMutator {
     if (pred.dtype().is_bool()) {
       return pred;
     }
-    return pred != IntImm(pred.dtype(), 0);
+    return pred != IntImm(pred.ty(), 0);
   }
 
   ffi::Map<Var, Range> var_range_map_;

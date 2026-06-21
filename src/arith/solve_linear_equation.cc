@@ -416,7 +416,7 @@ IntConstraintsTransform SolveLinearEquations(const IntConstraints& system_to_sol
 
   // V V^{-1} x = x
   for (size_t i = 0; i < num_vars; ++i) {
-    PrimExpr e = IntImm(system_to_solve->variables[i].dtype(), 0);
+    PrimExpr e = IntImm(system_to_solve->variables[i].ty(), 0);
     for (size_t j = 0; j < num_vars; ++j) {
       e = e + tirx::MakeConst(e.dtype(), V[i][j]) * solution_for_V_inv_x[j];
     }

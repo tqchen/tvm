@@ -198,7 +198,7 @@ class LayoutApplier : public arith::IRMutatorWithAnalyzer {
       TVM_FFI_ICHECK_EQ(store->buffer->dtype, DataType::Int(8))
           << "Expected int8 backing array for boolean tensor";
       auto writer = store.CopyOnWrite();
-      writer->value = tvm::cast(DataType::Int(8), store->value);
+      writer->value = tvm::cast(PrimType::Int(8), store->value);
       return std::move(store);
     }
     return std::move(store);
@@ -215,7 +215,7 @@ class LayoutApplier : public arith::IRMutatorWithAnalyzer {
       TVM_FFI_ICHECK_EQ(load->buffer->dtype, DataType::Int(8))
           << "Expected int8 backing array for boolean tensor";
       load.CopyOnWrite()->ty = PrimType::Int(8);
-      return tvm::cast(DataType::Bool(), load);
+      return tvm::cast(PrimType::Bool(), load);
     } else {
       return std::move(load);
     }

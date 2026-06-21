@@ -189,7 +189,7 @@ bool AnalyzerObj::CanProveLessEqualThanSymbolicShapeValue(const PrimExpr& lhs,
     }
   };
   UnpackReduction<tirx::MulNode>(shape, fcollect);
-  PrimExpr const_shape_bound = IntImm(shape.dtype(), std::abs(cscale));
+  PrimExpr const_shape_bound = IntImm(shape.ty(), std::abs(cscale));
   if (this->CanProve(lhs <= const_shape_bound, ProofStrength::kSymbolicBound)) return true;
   return false;
 }

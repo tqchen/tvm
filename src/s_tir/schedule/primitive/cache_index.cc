@@ -297,8 +297,8 @@ ffi::Array<SBlock> MakeIndexCacheStage(IndexInfo* info, const ffi::String& stora
     for (size_t i = 0; i < info->origin_block_vars[expr_index].size(); i++) {
       const Var& block_var = info->origin_block_vars[expr_index][i];
       Var var("v" + std::to_string(access_indices.size()), block_var.dtype());
-      Range range = Range::FromMinExtent(IntImm(block_var.dtype(), 0),
-                                         info->range_map.at(iter_vars[i])->extent);
+      Range range =
+          Range::FromMinExtent(IntImm(block_var.ty(), 0), info->range_map.at(iter_vars[i])->extent);
       block_vars.push_back(IterVar(/*dom=*/range,
                                    /*var=*/var,
                                    /*IterVarType=*/kDataPar));

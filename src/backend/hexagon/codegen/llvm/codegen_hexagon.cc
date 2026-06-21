@@ -333,7 +333,7 @@ llvm::Value* CodeGenHexagon::VectorLookupLoad(Buffer buffer, DataType buffer_typ
   auto native_vector_bytes = native_vector_bits_ / 8;
 
   // Indexes
-  llvm::Value* trunc = MakeValue(Cast(index.dtype().with_bits(8), index));
+  llvm::Value* trunc = MakeValue(Cast(PrimType(index.dtype().with_bits(8)), index));
   llvm::Value* index_pad = CreateVecPad(trunc, native_vector_bytes);
 
   // Values

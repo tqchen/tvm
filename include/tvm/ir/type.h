@@ -94,6 +94,13 @@ class PrimType : public Type {
   TVM_FFI_DEFINE_OBJECT_REF_METHODS_NOTNULLABLE(PrimType, Type, PrimTypeNode);
 };
 
+inline PrimType PrimExpr::ty() const {
+  const auto* node = static_cast<const PrimExprNode*>(get());
+  TVM_FFI_DCHECK(node->ty.defined());
+  TVM_FFI_DCHECK(node->ty->IsInstance<PrimTypeNode>());
+  return ffi::GetRef<PrimType>(static_cast<const PrimTypeNode*>(node->ty.get()));
+}
+
 namespace ffi {
 template <>
 inline constexpr bool use_default_type_traits_v<PrimType> = false;

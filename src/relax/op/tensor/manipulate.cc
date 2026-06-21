@@ -1105,7 +1105,7 @@ Type InferTypeSplit(const Call& call, const BlockBuilder& ctx) {
 
     TVM_FFI_ICHECK_NE(axis, -1);
 
-    IntImm zero(DataType::Int(64), /*value=*/0);
+    IntImm zero(tvm::PrimType::Int(64), /*value=*/0);
 
     std::vector<Type> output_ty;
     for (size_t i = 0; i < p_indices.size() + 1; i++) {

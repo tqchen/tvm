@@ -126,7 +126,7 @@ inline Tensor group_norm(const Tensor& data, const Tensor& gamma, const Tensor& 
 
   auto temp_x = temp_x_x2[0];
   auto temp_x2 = temp_x_x2[1];
-  PrimExpr reduce_extent = FloatImm(DataType::Float(32), 1);
+  PrimExpr reduce_extent = FloatImm(PrimType::Float(32), 1);
   for (auto axis : new_axes) {
     reduce_extent *= data_reshaped->shape[axis];
   }
@@ -145,7 +145,7 @@ inline Tensor group_norm(const Tensor& data, const Tensor& gamma, const Tensor& 
     PrimExpr group_norm =
         (data_reshaped(indices) - mean) * tvm::rsqrt(var + MakeConst(data->dtype, epsilon));
     if (is_float16) {
-      group_norm = Cast(DataType::Float(16), group_norm);
+      group_norm = Cast(PrimType::Float(16), group_norm);
     }
     if (gamma.defined()) {
       group_norm = topi::multiply(group_norm, gamma_reshaped(gamma_indices));

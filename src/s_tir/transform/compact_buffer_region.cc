@@ -322,7 +322,7 @@ class BufferAccessRegionCollector : public StmtExprVisitor {
       ancestor_iters_.push_back(iter);
       Range dom = iter->dom;
       if (!dom.defined()) {  // dom is empty for legacy te schedule
-        dom = Range::FromMinExtent(IntImm(op->value.dtype(), 0), op->value);
+        dom = Range::FromMinExtent(IntImm(op->value.ty(), 0), op->value);
       }
       dom_analyzer_->Bind(iter->var, dom);
       dom_map_.emplace(iter->var.get(), arith::IntSet::FromRange(dom));
@@ -368,7 +368,7 @@ class BufferAccessRegionCollector : public StmtExprVisitor {
       // Step 2. Relax the access region
       auto normalize_pred = [](const PrimExpr& pred) {
         if (pred.dtype().is_bool()) return pred;
-        return pred != IntImm(pred.dtype(), 0);
+        return pred != IntImm(pred.ty(), 0);
       };
       PrimExpr predicate = dom_analyzer_->Simplify(std::accumulate(
           pending_conditions_.begin(), pending_conditions_.end(), PrimExpr(IntImm::Bool(true)),
@@ -439,7 +439,7 @@ class BufferAccessRegionCollector : public StmtExprVisitor {
     for (size_t i = 0; i < nd_int_set.size(); ++i) {
       const arith::IntSet& int_set = nd_int_set[i];
       Range original =
-          Range(/*begin=*/IntImm(original_shape[i].dtype(), 0), /*end=*/original_shape[i]);
+          Range(/*begin=*/IntImm(original_shape[i].ty(), 0), /*end=*/original_shape[i]);
       Range range = int_set.CoverRange(original);
       PrimExpr min, extent;
       if (collect_inbound_) {

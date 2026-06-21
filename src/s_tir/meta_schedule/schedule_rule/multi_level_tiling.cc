@@ -396,7 +396,7 @@ void MultiLevelTilingNode::AnnotateCooperativeFetching(Schedule* sch,
     valid_vector_lens_arr.reserve(valid_vector_lens.size());
     for (int v : valid_vector_lens) valid_vector_lens_arr.push_back(static_cast<int64_t>(v));
     s_tir::ExprRV vector_load_len = (*sch)->SampleCategorical(
-        valid_vector_lens_arr, ffi::Array<FloatImm>(n, FloatImm(DataType::Float(32), prob)));
+        valid_vector_lens_arr, ffi::Array<FloatImm>(n, FloatImm(PrimType::Float(32), prob)));
     (*sch)->Annotate(block, s_tir::attr::meta_schedule_cooperative_fetch, vector_load_len);
   }
 }

@@ -97,7 +97,6 @@ class CastNode : public PrimExprNode {
 class Cast : public PrimExpr {
  public:
   TVM_DLL Cast(PrimType dtype, PrimExpr value, Span span = Span());
-  TVM_DLL Cast(DataType dtype, PrimExpr value, Span span = Span());
   TVM_FFI_DEFINE_OBJECT_REF_METHODS_NULLABLE(Cast, PrimExpr, CastNode);
   TVM_DEFINE_OBJECT_REF_COW_METHOD(CastNode);
 };
@@ -756,9 +755,6 @@ class Call : public PrimExpr {
   TVM_DLL Call(PrimType dtype, RelaxExpr op, ffi::Array<PrimExpr> args, Attrs attrs = Attrs(),
                Span span = Span());
   TVM_DLL Call(PrimType dtype, RelaxExpr op, ffi::Array<PrimExpr> args, Span span);
-  TVM_DLL Call(DataType dtype, RelaxExpr op, ffi::Array<PrimExpr> args, Attrs attrs = Attrs(),
-               Span span = Span());
-  TVM_DLL Call(DataType dtype, RelaxExpr op, ffi::Array<PrimExpr> args, Span span);
   TVM_FFI_DEFINE_OBJECT_REF_METHODS_NULLABLE(Call, PrimExpr, CallNode);
   TVM_DEFINE_OBJECT_REF_COW_METHOD(CallNode);
 };

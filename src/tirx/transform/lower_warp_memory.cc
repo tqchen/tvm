@@ -294,7 +294,7 @@ class WarpAccessRewriter : protected StmtExprMutator {
         new_args.Set(i + 1, local_index);
       }
     }
-    return Call(op->dtype(), op->op, new_args, op->attrs, op->span);
+    return Call(ffi::GetRef<PrimExpr>(op).ty(), op->op, new_args, op->attrs, op->span);
   }
 
   PrimExpr VisitExpr_(const CallNode* op) override {
@@ -390,8 +390,8 @@ class WarpAccessRewriter : protected StmtExprMutator {
       return load;
     }
 
-    PrimExpr mask = Call(DataType::UInt(32), builtin::tvm_warp_activemask(), {});
-    return Call(load.dtype(), builtin::tvm_warp_shuffle(), {mask, load, group, width_, warp_size_});
+    PrimExpr mask = Call(PrimType::UInt(32), builtin::tvm_warp_activemask(), {});
+    return Call(load.ty(), builtin::tvm_warp_shuffle(), {mask, load, group, width_, warp_size_});
   }
 
   // Split the index to the two component

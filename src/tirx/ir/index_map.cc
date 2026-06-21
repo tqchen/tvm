@@ -275,7 +275,7 @@ ffi::Array<PrimExpr> IndexMapNode::MapShape(const ffi::Array<PrimExpr>& shape,
 
   ffi::Array<Range> ranges;
   for (auto& dim : shape) {
-    ranges.push_back(Range(IntImm(dim.dtype(), 0), dim));
+    ranges.push_back(Range(IntImm(dim.ty(), 0), dim));
   }
   ffi::Array<Range> mapped = MapRanges(std::move(ranges), analyzer);
 
