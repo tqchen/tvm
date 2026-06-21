@@ -521,8 +521,8 @@ class Vectorizer : public StmtMutator, public ExprFunctor<PrimExpr(const PrimExp
     if (var.same_as(var_)) {
       return ramp_;
     }
-    auto it = bind_binding_.find(var);
-    if (it != bind_binding_.end()) {
+    auto it = bind_map_.find(var);
+    if (it != bind_map_.end()) {
       return it->second;
     } else {
       return var;
@@ -844,16 +844,16 @@ class Vectorizer : public StmtMutator, public ExprFunctor<PrimExpr(const PrimExp
       need_scalarize_ = false;
       return Scalarize(ffi::GetRef<Stmt>(op));
     }
-    TVM_FFI_ICHECK(!bind_binding_.count(op->var)) << "SSA violation, a single var is binded twice";
-    bind_binding_[op->var] = value;
+    TVM_FFI_ICHECK(!bind_map_.count(op->var)) << "SSA violation, a single var is binded twice";
+    bind_map_[op->var] = value;
 
     if (value.dtype().get_lanes_or_vscale_factor() !=
         op->value.dtype().get_lanes_or_vscale_factor()) {
       Var new_var(op->var->name_hint, value.dtype());
-      bind_binding_[op->var] = new_var;
+      bind_map_[op->var] = new_var;
       return Bind(new_var, value);
     } else {
-      bind_binding_[op->var] = op->var;
+      bind_map_[op->var] = op->var;
       if (value.same_as(op->value)) {
         return ffi::GetRef<Stmt>(op);
       } else {
@@ -882,7 +882,7 @@ class Vectorizer : public StmtMutator, public ExprFunctor<PrimExpr(const PrimExp
   // flag to mark requirment of scalarization.
   bool need_scalarize_{false};
   // Bind remapping
-  std::unordered_map<Var, PrimExpr> bind_binding_;
+  std::unordered_map<Var, PrimExpr> bind_map_;
   // vectorizable property
   OpAttrMap<TVectorizable> op_vectorizable_ = Op::GetAttrMap<TVectorizable>("TVectorizable");
   /*! \brief The current target context. */

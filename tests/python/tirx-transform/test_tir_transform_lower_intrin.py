@@ -202,6 +202,36 @@ def test_lower_floordiv_select_branch_keeps_expression_scope():
     assert isinstance(body.value.true_value, tvm.tirx.FloorDiv)
 
 
+def test_lower_intrin_accepts_binding_aware_hook_result():
+    x = tvm.tirx.Var("x", "float32")
+    out = tvm.tirx.decl_buffer((1,), dtype="float32", name="out")
+    tmp = tvm.tirx.Var("hook_tmp", "float32")
+    op = tvm.ir.Op.get("tirx.erf")
+    attr_name = "llvm.FLowerIntrinsic"
+    had_attr = op.has_attr(attr_name)
+    old_attr = op.get_attr(attr_name) if had_attr else None
+
+    def lower_with_binding(call):
+        one = tvm.tirx.const(1, "float32")
+        two = tvm.tirx.const(2, "float32")
+        return [tvm.tirx.Bind(tmp, call.args[0] + one)], tmp * two
+
+    try:
+        tvm.ir.register_intrin_lowering("tirx.erf", "llvm", f=lower_with_binding, level=1000)
+        body = lower_intrin([x, out], tvm.tirx.BufferStore(out, tvm.tirx.erf(x), [0]))
+    finally:
+        op.reset_attr(attr_name)
+        if had_attr:
+            op.set_attr(attr_name, old_attr)
+
+    assert isinstance(body, tvm.tirx.SeqStmt)
+    assert len(body.seq) == 2
+    assert isinstance(body.seq[0], tvm.tirx.Bind)
+    assert body.seq[0].var.same_as(tmp)
+    assert isinstance(body.seq[1], tvm.tirx.BufferStore)
+    assert isinstance(body.seq[1].value, tvm.tirx.Mul)
+
+
 @pytest.mark.skipif(not env.has_llvm(), reason="need llvm")
 def test_lower_floordiv_overflow_checks():
     """

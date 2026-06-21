@@ -30,6 +30,7 @@
 #include <tvm/tirx/builtin.h>
 #include <tvm/tirx/expr.h>
 #include <tvm/tirx/op.h>
+#include <tvm/tirx/op_attr_types.h>
 #include <tvm/tirx/transform.h>
 
 #include <limits>
@@ -47,7 +48,6 @@ class IntrinInjecter : public tvm::arith::IRMutatorWithAnalyzer {
  public:
   using IRMutatorWithAnalyzer::VisitExpr_;
   using IRMutatorWithAnalyzer::VisitStmt_;
-  using FLowerGeneral = ffi::TypedFunction<PrimExpr(PrimExpr)>;
 
   IntrinInjecter(const arith::Analyzer& analyzer, const Target& tgt, bool enable_fast_math)
       : IRMutatorWithAnalyzer(analyzer) {
@@ -85,7 +85,8 @@ class IntrinInjecter : public tvm::arith::IRMutatorWithAnalyzer {
   PrimExpr VisitExpr_(const CallNode* op) final {
     static const Op& if_then_else_op = Op::Get("tirx.if_then_else");
     if (op->op.same_as(if_then_else_op)) {
-      return WithoutBindingEmission([&]() { return IRMutatorWithAnalyzer::VisitExpr_(op); });
+      PendingBindingScope binding_scope(&pending_binding_begin_, std::nullopt);
+      return IRMutatorWithAnalyzer::VisitExpr_(op);
     }
 
     if (auto* ptr_op = op->op.as<OpNode>()) {
@@ -93,10 +94,12 @@ class IntrinInjecter : public tvm::arith::IRMutatorWithAnalyzer {
         FLowerGeneral f = f_attr_map.get(ffi::GetRef<Op>(ptr_op), nullptr);
         if (f != nullptr) {
           PrimExpr e = ffi::GetRef<PrimExpr>(op);
-          PrimExpr r = f(e);
-          TVM_FFI_ICHECK(r.defined()) << "intrinsic rule must always return valid Expr";
-          if (!r.same_as(e)) {
-            r = this->VisitExpr(r);
+          std::optional<LowerResult> opt_r = NormalizeLowerResult(f(e));
+          if (opt_r && !opt_r.value().expr.same_as(e)) {
+            for (const Bind& binding : opt_r.value().bindings) {
+              pending_bindings_.push_back(binding);
+            }
+            PrimExpr r = this->VisitExpr(opt_r.value().expr);
             if (r.defined()) {
               return r;
             }
@@ -108,26 +111,21 @@ class IntrinInjecter : public tvm::arith::IRMutatorWithAnalyzer {
   }
 
   PrimExpr VisitExpr_(const SelectNode* op) final {
-    return WithoutBindingEmission([&]() { return IRMutatorWithAnalyzer::VisitExpr_(op); });
+    PendingBindingScope binding_scope(&pending_binding_begin_, std::nullopt);
+    return IRMutatorWithAnalyzer::VisitExpr_(op);
   }
 
   Stmt VisitStmt(const Stmt& stmt) final {
-    struct ScopedBindingBuffer {
-      ScopedBindingBuffer(std::vector<Stmt>** slot, std::vector<Stmt>* bindings)
-          : slot(slot), saved_bindings(*slot) {
-        *slot = bindings;
-      }
-
-      ~ScopedBindingBuffer() { *slot = saved_bindings; }
-
-      std::vector<Stmt>** slot;
-      std::vector<Stmt>* saved_bindings;
-    };
-
-    std::vector<Stmt> bindings;
-    ScopedBindingBuffer binding_scope(&pending_bindings_, &bindings);
+    size_t binding_begin = pending_bindings_.size();
+    PendingBindingScope binding_scope(&pending_binding_begin_, binding_begin);
     Stmt result = IRMutatorWithAnalyzer::VisitStmt(stmt);
-    return PrependBindings(std::move(bindings), std::move(result));
+    if (pending_bindings_.size() == binding_begin) {
+      return result;
+    }
+    ffi::Array<Stmt> seq(pending_bindings_.begin() + binding_begin, pending_bindings_.end());
+    seq.push_back(std::move(result));
+    pending_bindings_.resize(binding_begin);
+    return SeqStmt(seq);
   }
 
   PrimExpr VisitExpr_(const AddNode* op) final {
@@ -195,9 +193,10 @@ class IntrinInjecter : public tvm::arith::IRMutatorWithAnalyzer {
         // b < 0  => (rmod <= 0 ? rdiv : rdiv - 1)
         PrimExpr body = tirx::Select((op->b >= 0 && rmod >= 0) || (op->b < 0 && rmod <= 0), rdiv,
                                      rdiv - MakeConst(dtype, 1));
-        if (auto result = TryEmitBindings(
-                {Bind(rmod, truncmod(op->a, op->b)), Bind(rdiv, truncdiv(op->a, op->b))}, body)) {
-          return result.value();
+        if (pending_binding_begin_) {
+          pending_bindings_.push_back(Bind(rmod, truncmod(op->a, op->b)));
+          pending_bindings_.push_back(Bind(rdiv, truncdiv(op->a, op->b)));
+          return body;
         }
         return ret;
       }
@@ -260,8 +259,9 @@ class IntrinInjecter : public tvm::arith::IRMutatorWithAnalyzer {
         // b < 0 && rmod > 0 -> rmod + b
         PrimExpr body =
             Select((op->b >= 0 && rmod >= 0) || (op->b < 0 && rmod <= 0), rmod, rmod + op->b);
-        if (auto result = TryEmitBindings({Bind(rmod, truncmod(op->a, op->b))}, body)) {
-          return result.value();
+        if (pending_binding_begin_) {
+          pending_bindings_.push_back(Bind(rmod, truncmod(op->a, op->b)));
+          return body;
         }
         return ret;
       }
@@ -301,29 +301,40 @@ class IntrinInjecter : public tvm::arith::IRMutatorWithAnalyzer {
   }
 
  private:
-  std::optional<PrimExpr> TryEmitBindings(const ffi::Array<Stmt>& bindings, PrimExpr body) {
-    if (pending_bindings_ == nullptr || expression_local_control_depth_ != 0) {
+  using BindingAwareResult = ffi::Tuple<ffi::Array<Bind>, PrimExpr>;
+
+  struct LowerResult {
+    ffi::Array<Bind> bindings;
+    PrimExpr expr;
+  };
+
+  struct PendingBindingScope {
+    PendingBindingScope(std::optional<size_t>* slot, std::optional<size_t> binding_begin)
+        : slot(slot), saved_binding_begin(*slot) {
+      *slot = binding_begin;
+    }
+    ~PendingBindingScope() { *slot = saved_binding_begin; }
+
+    std::optional<size_t>* slot;
+    std::optional<size_t> saved_binding_begin;
+  };
+
+  std::optional<LowerResult> NormalizeLowerResult(const FLowerGeneralResult& result) {
+    if (auto expr = result.as<PrimExpr>()) {
+      if (expr.value().defined()) {
+        return LowerResult{{}, expr.value()};
+      }
       return std::nullopt;
     }
-    for (const Stmt& binding : bindings) {
-      pending_bindings_->push_back(binding);
+    if (auto binding_result = result.as<BindingAwareResult>()) {
+      ffi::Array<Bind> bindings = binding_result.value().template get<0>();
+      PrimExpr expr = binding_result.value().template get<1>();
+      if (!expr.defined() || !pending_binding_begin_) {
+        return std::nullopt;
+      }
+      return LowerResult{bindings, expr};
     }
-    return body;
-  }
-
-  Stmt PrependBindings(std::vector<Stmt> bindings, Stmt stmt) {
-    if (bindings.empty()) return stmt;
-    ffi::Array<Stmt> seq(bindings.begin(), bindings.end());
-    seq.push_back(std::move(stmt));
-    return SeqStmt(seq);
-  }
-
-  template <typename F>
-  PrimExpr WithoutBindingEmission(F f) {
-    ++expression_local_control_depth_;
-    PrimExpr result = f();
-    --expression_local_control_depth_;
-    return result;
+    return std::nullopt;
   }
 
   PrimExpr SwapBroadcastCast(const PrimExpr& e) {
@@ -364,8 +375,14 @@ class IntrinInjecter : public tvm::arith::IRMutatorWithAnalyzer {
     PrimExpr rhs = SwapBroadcastCast(b);
 
     if (fma_ != nullptr && op->dtype.is_float()) {
-      PrimExpr r = fma_(Call(op->dtype, builtin::fma(), {lhs, rhs, c}));
-      if (r.defined()) return this->VisitExpr(r);
+      PrimExpr call = Call(op->dtype, builtin::fma(), {lhs, rhs, c});
+      auto opt_r = NormalizeLowerResult(fma_(call));
+      if (opt_r && !opt_r.value().expr.same_as(call)) {
+        for (const Bind& binding : opt_r.value().bindings) {
+          pending_bindings_.push_back(binding);
+        }
+        return this->VisitExpr(opt_r.value().expr);
+      }
     } else {
       if (!lhs.same_as(a) || !rhs.same_as(b)) {
         PrimExpr mul = this->VisitExpr(Mul(lhs, rhs));
@@ -420,9 +437,9 @@ class IntrinInjecter : public tvm::arith::IRMutatorWithAnalyzer {
 
   // attribute maps, shared only when FLegalize == FLowerIntrinsic
   std::vector<OpAttrMap<FLowerGeneral>> attr_maps_;
-  std::vector<Stmt>* pending_bindings_{nullptr};
+  std::vector<Stmt> pending_bindings_;
+  std::optional<size_t> pending_binding_begin_;
   FLowerGeneral fma_{nullptr};
-  int expression_local_control_depth_{0};
   bool support_bitwise_op_{true};
 };
 
