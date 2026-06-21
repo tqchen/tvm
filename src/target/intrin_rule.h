@@ -74,7 +74,7 @@ inline PrimExpr DispatchPureExtern(const PrimExpr& e) {
     TVM_FFI_ICHECK_EQ(call->args.size(), 1U);
     dtype = call->args[0].dtype();
   } else {
-    dtype = call->dtype;
+    dtype = call->dtype();
   }
   name = T()(dtype, name.substr(5));
 
@@ -83,7 +83,7 @@ inline PrimExpr DispatchPureExtern(const PrimExpr& e) {
     for (auto arg : call->args) {
       new_args.push_back(arg);
     }
-    return Call(call->dtype, builtin::call_pure_extern(), new_args);
+    return Call(call->dtype(), builtin::call_pure_extern(), new_args);
   } else {
     return e;
   }

@@ -323,7 +323,7 @@ void PythonDocPrinter::PrintTypedDoc(const LiteralDoc& doc) {
   if (value == nullptr) {
     output_ << "None";
   } else if (const auto* int_imm = value.as<IntImmNode>()) {
-    if (int_imm->dtype.is_bool()) {
+    if (int_imm->dtype().is_bool()) {
       output_ << (int_imm->value ? "True" : "False");
     } else {
       output_ << int_imm->value;

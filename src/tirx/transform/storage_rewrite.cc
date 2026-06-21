@@ -356,7 +356,7 @@ class InplaceOpVerifier : public StmtExprVisitor {
       return;
     }
     if (src_ == buf) {
-      if (store_ == nullptr || store_->value.dtype() != op->dtype) {
+      if (store_ == nullptr || store_->value.dtype() != op->dtype()) {
         result_ = false;
         return;
       }
@@ -496,7 +496,7 @@ class StoragePlanRewriter : public StmtExprMutator {
       if (se->bits_offset != 0) {
         offset = MakeConst(offset.dtype(), se->bits_offset / elem_bits) + offset;
       }
-      return Call(op->dtype, op->op, {op->args[0], se->alloc_var, offset, extent, op->args[4]},
+      return Call(op->dtype(), op->op, {op->args[0], se->alloc_var, offset, extent, op->args[4]},
                   op->attrs, op->span);
     } else {
       return StmtExprMutator::VisitExpr_(op);
@@ -1226,7 +1226,7 @@ class VectorTypeAccessChecker : public StmtExprVisitor {
   }
 
   void VisitExpr_(const BufferLoadNode* op) final {
-    OnArrayAccess(op->dtype, op->buffer->data.get(), op->indices, /*is_buffer_load=*/true);
+    OnArrayAccess(op->dtype(), op->buffer->data.get(), op->indices, /*is_buffer_load=*/true);
     StmtExprVisitor::VisitExpr_(op);
   }
 
@@ -1248,7 +1248,8 @@ class VectorTypeAccessChecker : public StmtExprVisitor {
       }
     } else if (op->op.same_as(builtin::address_of())) {
       BufferLoad load = op->args[0].as_or_throw<BufferLoad>();
-      OnArrayAccess(load->dtype, load->buffer->data.get(), load->indices, /*is_buffer_load=*/false);
+      OnArrayAccess(load->dtype(), load->buffer->data.get(), load->indices,
+                    /*is_buffer_load=*/false);
     }
     StmtExprVisitor::VisitExpr_(op);
   }
@@ -1273,12 +1274,12 @@ class VectorTypeAccessChecker : public StmtExprVisitor {
   }
 
   void HandleLetNode(Var let_var) {
-    if (let_var->dtype.is_handle()) {
+    if (let_var.dtype().is_handle()) {
       auto pointer_type = GetPointerType(let_var->type_annotation);
       if (pointer_type.has_value()) {
         OnArrayDeclaration(let_var, pointer_type.value(), 0, BufferVarInfo::kLetNode);
       } else if (allow_untyped_pointers_) {
-        OnArrayDeclaration(let_var, let_var->dtype, 0, BufferVarInfo::kLetNode);
+        OnArrayDeclaration(let_var, let_var.dtype(), 0, BufferVarInfo::kLetNode);
       } else {
         TVM_FFI_THROW(InternalError) << "Let statement of variable " << let_var->name_hint
                                      << " is missing a type annotation, "

@@ -181,7 +181,7 @@ class BufferAccessRegionCollector : public StmtExprVisitor {
 
   void VisitStmt_(const BindNode* op) final {
     StmtExprVisitor::VisitExpr(op->value);
-    if (arith::IsIndexType(op->value->dtype)) {
+    if (arith::IsIndexType(op->value.dtype())) {
       dom_analyzer_->Bind(op->var, op->value);
       dom_map_.emplace(op->var.get(), arith::IntSet::SinglePoint(op->value));
     }
@@ -189,12 +189,12 @@ class BufferAccessRegionCollector : public StmtExprVisitor {
 
   void VisitExpr_(const LetNode* op) final {
     StmtExprVisitor::VisitExpr(op->value);
-    if (arith::IsIndexType(op->value->dtype)) {
+    if (arith::IsIndexType(op->value.dtype())) {
       dom_analyzer_->Bind(op->var, op->value);
       dom_map_.emplace(op->var.get(), arith::IntSet::SinglePoint(op->value));
     }
     StmtExprVisitor::VisitExpr(op->body);
-    if (arith::IsIndexType(op->value->dtype)) {
+    if (arith::IsIndexType(op->value.dtype())) {
       dom_map_.erase(op->var.get());
     }
   }
@@ -322,7 +322,7 @@ class BufferAccessRegionCollector : public StmtExprVisitor {
       ancestor_iters_.push_back(iter);
       Range dom = iter->dom;
       if (!dom.defined()) {  // dom is empty for legacy te schedule
-        dom = Range::FromMinExtent(IntImm(op->value->dtype, 0), op->value);
+        dom = Range::FromMinExtent(IntImm(op->value.dtype(), 0), op->value);
       }
       dom_analyzer_->Bind(iter->var, dom);
       dom_map_.emplace(iter->var.get(), arith::IntSet::FromRange(dom));
@@ -367,8 +367,8 @@ class BufferAccessRegionCollector : public StmtExprVisitor {
       }
       // Step 2. Relax the access region
       auto normalize_pred = [](const PrimExpr& pred) {
-        if (pred->dtype.is_bool()) return pred;
-        return pred != IntImm(pred->dtype, 0);
+        if (pred.dtype().is_bool()) return pred;
+        return pred != IntImm(pred.dtype(), 0);
       };
       PrimExpr predicate = dom_analyzer_->Simplify(std::accumulate(
           pending_conditions_.begin(), pending_conditions_.end(), PrimExpr(IntImm::Bool(true)),
@@ -439,7 +439,7 @@ class BufferAccessRegionCollector : public StmtExprVisitor {
     for (size_t i = 0; i < nd_int_set.size(); ++i) {
       const arith::IntSet& int_set = nd_int_set[i];
       Range original =
-          Range(/*begin=*/IntImm(original_shape[i]->dtype, 0), /*end=*/original_shape[i]);
+          Range(/*begin=*/IntImm(original_shape[i].dtype(), 0), /*end=*/original_shape[i]);
       Range range = int_set.CoverRange(original);
       PrimExpr min, extent;
       if (collect_inbound_) {
@@ -470,7 +470,7 @@ class BufferAccessRegionCollector : public StmtExprVisitor {
         // try estimate a constant upperbound on region's extent
         int64_t upperbound = dom_analyzer_->const_int_bound(extent)->max_value;
         if (upperbound != arith::ConstIntBound::kPosInf) {
-          extent = MakeConst(extent->dtype, upperbound);
+          extent = MakeConst(extent.dtype(), upperbound);
         } else {
           result_region.Set(i, original);
           continue;

@@ -178,7 +178,7 @@ class BufferFlattener : public arith::IRMutatorWithAnalyzer {
   }
 
   PrimExpr VisitExpr_(const BufferLoadNode* op) final {
-    bool load_returns_bool = (op->dtype == DataType::Bool());
+    bool load_returns_bool = (op->dtype() == DataType::Bool());
     BufferLoad load = StmtExprMutator::VisitExpr_(op).as_or_throw<BufferLoad>();
     load = VisitBufferAccess(load);
     // Handle casts from dtype of the backing array to value's dtype.
