@@ -548,7 +548,7 @@ class PCastExpr : public Pattern<PCastExpr<DType, TA>> {
     }
   }
 
-  PrimExpr Eval() const { return tirx::Cast(dtype_.Eval(), value_.Eval()); }
+  PrimExpr Eval() const { return tirx::Cast(PrimType(dtype_.Eval()), value_.Eval()); }
 
  private:
   typename DType::Nested dtype_;
@@ -780,7 +780,7 @@ class PCallExpr : public Pattern<PCallExpr<Op, TArgs...>> {
 #define TVM_PATTERN_BINARY_INTRIN(FuncName, OpName, IntrinOpName)                         \
   struct OpName {                                                                         \
     static PrimExpr Eval(ffi::Array<PrimExpr> args) {                                     \
-      return tirx::Call(args[0].dtype(), GetOp(), args);                                  \
+      return tirx::Call(args[0].ty(), GetOp(), args);                                     \
     }                                                                                     \
     static const Op& GetOp() { return tirx::builtin::IntrinOpName(); }                    \
   };                                                                                      \
@@ -799,7 +799,7 @@ TVM_PATTERN_BINARY_INTRIN(operator^, PBitwiseXorOp, bitwise_xor);
 #define TVM_PATTERN_UNARY_INTRIN(FuncName, OpName, IntrinOpName)       \
   struct OpName {                                                      \
     static PrimExpr Eval(ffi::Array<PrimExpr> args) {                  \
-      return tirx::Call(args[0].dtype(), GetOp(), args);               \
+      return tirx::Call(args[0].ty(), GetOp(), args);                  \
     }                                                                  \
     static const Op& GetOp() { return tirx::builtin::IntrinOpName(); } \
   };                                                                   \
@@ -813,7 +813,7 @@ TVM_PATTERN_UNARY_INTRIN(operator~, PBitwiseNotOp, bitwise_not);
 // if_then_else
 struct PIfThenElseOp {
   static PrimExpr Eval(ffi::Array<PrimExpr> args) {
-    return tirx::Call(args[1].dtype(), GetOp(), args);
+    return tirx::Call(args[1].ty(), GetOp(), args);
   }
   static const Op& GetOp() { return tirx::builtin::if_then_else(); }
 };
@@ -841,7 +841,7 @@ inline PCallExpr<PIfThenElseOp, TCond, TA, TB> if_then_else(const Pattern<TCond>
 
 // vscale
 struct PVscaleOp {
-  static PrimExpr Eval() { return tirx::Call(DataType::Int(32), GetOp(), {}); }
+  static PrimExpr Eval() { return tirx::Call(PrimType::Int(32), GetOp(), {}); }
   static const Op& GetOp() { return tirx::builtin::vscale(); }
 };
 

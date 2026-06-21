@@ -679,7 +679,7 @@ inline PrimExpr CanonicalizeIndex(PrimExpr index, PrimExpr extent, PrimExpr stri
   if (index->IsInstance<tvm::IntImmNode>() && extent->IsInstance<tvm::IntImmNode>() &&
       stride->IsInstance<tvm::IntImmNode>()) {
     return tvm::IntImm(
-        tvm::DataType::Int(64),
+        tvm::PrimType::Int(64),
         StaticCanonicalizeIndex(GetConstInt(index), GetConstInt(extent), GetConstInt(stride)));
   }
   return DynamicCanonicalizeIndex(index, extent, stride);
@@ -974,8 +974,8 @@ inline Tensor strided_slice(const Tensor& x, const ffi::Array<ffi::Optional<IntI
 
   DataType index_dtype =
       (begin.size() > 0 && begin[0].defined()) ? begin[0].value().dtype() : DataType::Int(64);
-  const IntImm one = IntImm(index_dtype, 1);
-  const IntImm zero = IntImm(index_dtype, 0);
+  const IntImm one = IntImm(PrimType(index_dtype), 1);
+  const IntImm zero = IntImm(PrimType(index_dtype), 0);
   const IntImm max_range = max_value(index_dtype).as_or_throw<IntImm>();
 
   for (size_t i = strides.size(); i < src_tensor_dim; ++i) {
@@ -1073,7 +1073,8 @@ inline Tensor take(const Tensor& a, const Tensor& indices, int batch_dims,
         [&](const ffi::Array<Var>& out_index) {
           auto idx = tvm::if_then_else(
               indices(out_index) < 0 || indices(out_index) >= a_size,
-              tvm::FloatImm(a->dtype, std::numeric_limits<float>::quiet_NaN()), indices(out_index));
+              tvm::FloatImm(tvm::PrimType(a->dtype), std::numeric_limits<float>::quiet_NaN()),
+              indices(out_index));
           return a(UnravelIndex(idx, a_shape));
         },
         name, tag);
@@ -1960,7 +1961,7 @@ inline Tensor meta_schedule_layout_transform(
   ffi::Array<Range> iter_domain;
   iter_domain.reserve(src->shape.size());
   for (const PrimExpr& e : src->shape) {
-    iter_domain.push_back(Range::FromMinExtent(IntImm(e.dtype(), 0), e));
+    iter_domain.push_back(Range::FromMinExtent(IntImm(e.ty(), 0), e));
   }
   ffi::Array<PrimExpr> post_transform_shape = index_map->MapShape(src->shape, analyzer);
   return compute(

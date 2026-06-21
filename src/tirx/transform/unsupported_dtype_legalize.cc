@@ -238,19 +238,19 @@ class ComputeLegalizer : public StmtExprMutator {
     auto fmutate = [this](const PrimExpr& e) { return PromoteToTarget(this->VisitExpr(e)); };
     ffi::Array<PrimExpr> args = op->args.Map(fmutate);
     if (MatchDType(op->dtype())) {
-      return Call(promote_dtype_.with_lanes(op->dtype().lanes()), op->op, args, op->attrs,
+      return Call(PrimType(promote_dtype_.with_lanes(op->dtype().lanes())), op->op, args, op->attrs,
                   op->span);
     }
     if (args.same_as(op->args)) {
       return ffi::GetRef<PrimExpr>(op);
     } else {
-      return Call(op->dtype(), op->op, args, op->attrs, op->span);
+      return Call(ffi::GetRef<PrimExpr>(op).ty(), op->op, args, op->attrs, op->span);
     }
   }
 
   PrimExpr VisitExpr_(const FloatImmNode* op) final {
     if (MatchDType(op->dtype())) {
-      return FloatImm(promote_dtype_, op->value);
+      return FloatImm(PrimType(promote_dtype_), op->value);
     }
     return ffi::GetRef<PrimExpr>(op);
   }

@@ -147,7 +147,7 @@ struct BufferPadding {
       PrimExpr pos = buffer_region->region[i]->min;
       TVM_FFI_ICHECK(pos->IsInstance<IntImmNode>() || pos->IsInstance<VarNode>());
       if (pos->IsInstance<IntImmNode>()) {
-        shape.push_back(IntImm(pos.dtype(), 1));
+        shape.push_back(IntImm(pos.ty(), 1));
       } else if (ffi::Optional<PrimExpr> extent = iter_extents.Get(Downcast<Var>(pos))) {
         shape.push_back(extent.value());
       } else {
@@ -173,11 +173,11 @@ struct BufferPadding {
       } else {
         dim = buffer->shape[i];
       }
-      Range dom = Range::FromMinExtent(IntImm(dim.dtype(), 0), dim);
+      Range dom = Range::FromMinExtent(IntImm(dim.ty(), 0), dim);
       loop_vars.push_back(Var("i" + std::to_string(i), dim.dtype()));
       loop_doms.push_back(dom);
       IterVar iter_var(dom, Var("v" + std::to_string(i), dim.dtype()), kDataPar);
-      instance_dom.push_back(Range::FromMinExtent(iter_var->var, IntImm(dim.dtype(), 1)));
+      instance_dom.push_back(Range::FromMinExtent(iter_var->var, IntImm(dim.ty(), 1)));
       iter_vars.push_back(iter_var);
       indices.push_back(iter_var->var);
     }
@@ -389,7 +389,7 @@ void PadEinsum(ScheduleState self, const StmtSRef& block_sref, const ffi::Array<
   for (int i = 0, n = padding.size(); i < n; ++i) {
     const IterVar& iter = block->iter_vars[i];
     PrimExpr dom = iter->dom->extent;
-    PrimExpr pad_imm = IntImm(dom.dtype(), padding[i]);
+    PrimExpr pad_imm = IntImm(dom.ty(), padding[i]);
     PrimExpr new_dom = analyzer->Simplify(ceildiv(dom, pad_imm) * pad_imm);
     if (!analyzer->CanProveEqual(new_dom, dom)) {
       replacer.iter2padded_extents.Set(iter->var, new_dom);

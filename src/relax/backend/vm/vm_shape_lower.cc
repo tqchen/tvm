@@ -229,7 +229,7 @@ class VMShapeLowerMutator
     slot_map_.clear();
     current_gvar_ = gvar;
     PrimExprSlotCollector::Collect(func, &slot_vec_, &slot_map_);
-    heap_size_ = IntImm(ShapeDType(), static_cast<int64_t>(slot_vec_.size()));
+    heap_size_ = IntImm(tvm::PrimType(ShapeDType()), static_cast<int64_t>(slot_vec_.size()));
     VarBinding shape_heap_binding = this->AllocShapeHeapBinding(heap_size_);
     shape_heap_ = shape_heap_binding->var;
 
@@ -575,7 +575,7 @@ class VMShapeLowerMutator
     auto var_map = [&](const tirx::Var& var) -> ffi::Optional<PrimExpr> {
       auto it = slot_map_.find(var);
       TVM_FFI_ICHECK(it != slot_map_.end());
-      return tirx::BufferLoad(buffer, {IntImm(ShapeDType(), it->second->index)});
+      return tirx::BufferLoad(buffer, {IntImm(tvm::PrimType(ShapeDType()), it->second->index)});
     };
 
     ffi::Array<tirx::Stmt> seq;
@@ -583,7 +583,8 @@ class VMShapeLowerMutator
       TVM_FFI_ICHECK(!slot->value_computed);
       slot->value_computed = true;
       PrimExpr value = tirx::Substitute(slot->expr, var_map);
-      seq.push_back(tirx::BufferStore(buffer, value, {IntImm(ShapeDType(), slot->index)}));
+      seq.push_back(
+          tirx::BufferStore(buffer, value, {IntImm(tvm::PrimType(ShapeDType()), slot->index)}));
     }
 
     tirx::Stmt body = tirx::SeqStmt::Flatten(seq);

@@ -500,7 +500,7 @@ class SharedMemoryRewriter : public StmtExprMutator {
 
       PrimExpr offset = this->VisitExpr(op->args[2]);
       PrimExpr extent = this->VisitExpr(op->args[3]);
-      return Call(op->dtype(), op->op,
+      return Call(ffi::GetRef<PrimExpr>(op).ty(), op->op,
                   {op->args[0], scope_stack_.back().merged_buf_var, extra_offset + offset, extent,
                    op->args[4]});
     } else if (op->op.same_as(ptx_cp_async_op)) {
@@ -523,12 +523,12 @@ class SharedMemoryRewriter : public StmtExprMutator {
       int index_factor = dtype.bytes();
       if (op->args.size() == 5)
         return Call(
-            dtype, op->op,
+            ffi::GetRef<PrimExpr>(op).ty(), op->op,
             {scope_stack_.back().merged_buf_var, mul(extra_offset + offset, PrimExpr(index_factor)),
              op->args[2], op->args[3], op->args[4]});
       else
         return Call(
-            dtype, op->op,
+            ffi::GetRef<PrimExpr>(op).ty(), op->op,
             {scope_stack_.back().merged_buf_var, mul(extra_offset + offset, PrimExpr(index_factor)),
              op->args[2], op->args[3], op->args[4], op->args[5]});
     } else {

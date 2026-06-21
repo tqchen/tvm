@@ -91,7 +91,7 @@ class PTXAsyncCopyInjector : public StmtMutator {
             args.push_back(predicate_value);
           }
           static const Op& ptx_cp_async_op = Op::Get("tirx.ptx.cp_async_raw");
-          return Evaluate(Call(store->buffer->dtype, ptx_cp_async_op, args));
+          return Evaluate(Call(PrimType(store->buffer->dtype), ptx_cp_async_op, args));
         }
 
         // Predicated load don't support vectorized indexing.
@@ -120,7 +120,7 @@ class PTXAsyncCopyInjector : public StmtMutator {
           }();
           if (src_offset.defined() && dst_offset.defined()) {
             static const Op& ptx_cp_async_op = Op::Get("tirx.ptx.cp_async_raw");
-            return Evaluate(Call(store->buffer->dtype, ptx_cp_async_op,
+            return Evaluate(Call(PrimType(store->buffer->dtype), ptx_cp_async_op,
                                  {store->buffer->data, mul(dst_offset, PrimExpr(index_factor)),
                                   load->buffer->data, src_offset, PrimExpr(bytes)}));
           }
@@ -151,7 +151,7 @@ class PTXAsyncCopyInjector : public StmtMutator {
           if (src_offset.defined() && dst_offset.defined()) {
             static const Op& ptx_cp_async_op = Op::Get("tirx.ptx.cp_async_raw");
             return Evaluate(
-                Call(store->buffer->dtype, ptx_cp_async_op,
+                Call(PrimType(store->buffer->dtype), ptx_cp_async_op,
                      {store->buffer->data, mul(dst_offset, PrimExpr(index_factor)),
                       load->buffer->data, src_offset, PrimExpr(bytes), predicate_value}));
           }

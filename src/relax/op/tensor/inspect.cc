@@ -96,7 +96,7 @@ tirx::PrimFunc GetDLTensorField(tirx::builtin::TVMStructFieldKind field, DataTyp
   tirx::Var value("value", field_dtype);
 
   tirx::Stmt body = tirx::SeqStmt(
-      {tirx::Bind(value, tirx::Call(field_dtype, tirx::builtin::tvm_struct_get(),
+      {tirx::Bind(value, tirx::Call(tvm::PrimType(field_dtype), tirx::builtin::tvm_struct_get(),
                                     {dlpack_handle, IntImm::Int32(0), IntImm::Int32(field)})),
        tirx::Evaluate(tvm::ret(value))});
 
@@ -127,7 +127,7 @@ Type InferTypeTensorDtypeCode(const Call& call, const BlockBuilder&) {
   if (dtype.is_void()) {
     return PrimType(dlpack_type);
   } else {
-    return PrimType(dlpack_type);
+    return PrimType(IntImm(tvm::PrimType(dlpack_type), dtype.code()));
   }
 }
 
@@ -165,7 +165,7 @@ Type InferTypeTensorDtypeBits(const Call& call, const BlockBuilder&) {
   if (dtype.is_void()) {
     return PrimType(dlpack_type);
   } else {
-    return PrimType(dlpack_type);
+    return PrimType(IntImm(tvm::PrimType(dlpack_type), dtype.bits()));
   }
 }
 
@@ -203,7 +203,7 @@ Type InferTypeTensorDtypeLanes(const Call& call, const BlockBuilder&) {
   if (dtype.is_void()) {
     return PrimType(dlpack_type);
   } else {
-    return PrimType(dlpack_type);
+    return PrimType(IntImm(tvm::PrimType(dlpack_type), dtype.lanes()));
   }
 }
 
@@ -241,7 +241,7 @@ Type InferTypeTensorNDim(const Call& call, const BlockBuilder&) {
   if (ty->IsUnknownNdim()) {
     return PrimType(dlpack_type);
   } else {
-    return PrimType(dlpack_type);
+    return PrimType(IntImm(tvm::PrimType(dlpack_type), ty->ndim));
   }
 }
 
@@ -303,7 +303,7 @@ Expr LegalizeTensorShape(const BlockBuilder& bb, const Call& call) {
         {tirx::AssertStmt(0 <= axis, tirx::StringImm("RuntimeError"),
                           {tirx::StringImm("Specified axis may not be negative")}),
          tirx::Bind(ndim,
-                    tirx::Call(ndim->dtype(), tirx::builtin::tvm_struct_get(),
+                    tirx::Call(ndim.ty(), tirx::builtin::tvm_struct_get(),
                                {dlpack_handle, IntImm::Int32(0),
                                 IntImm::Int32(tirx::builtin::TVMStructFieldKind::kDLTensorNDim)})),
          tirx::AssertStmt(
@@ -311,7 +311,7 @@ Expr LegalizeTensorShape(const BlockBuilder& bb, const Call& call) {
              {tirx::StringImm(
                  "Specified axis may not be larger than the tensor's dimensionality")}),
          tirx::Bind(shape_buffer->data,
-                    tirx::Call(DataType::Handle(), tirx::builtin::tvm_struct_get(),
+                    tirx::Call(tvm::PrimType::Handle(), tirx::builtin::tvm_struct_get(),
                                {dlpack_handle, IntImm::Int32(0),
                                 IntImm::Int32(tirx::builtin::TVMStructFieldKind::kDLTensorShape)})),
          tirx::DeclBuffer(shape_buffer), tirx::Bind(extent, tirx::BufferLoad(shape_buffer, {axis})),
@@ -405,7 +405,7 @@ Type InferTypeTensorByteOffset(const Call& call, const BlockBuilder&) {
     // Relax implicitly requires that the byte offset is zero for any
     // legalizable tensor.  See InferTypeTensorStride for full
     // explanation.
-    return PrimType(dlpack_type);
+    return PrimType(IntImm(tvm::PrimType(dlpack_type), 0));
   } else {
     return PrimType(dlpack_type);
   }
@@ -436,7 +436,7 @@ Type InferTypeTensorElemOffset(const Call& call, const BlockBuilder&) {
     // Relax implicitly requires that the element offset is zero for
     // any legalizable tensor.  See InferTypeTensorStride for
     // full explanation.
-    return PrimType(dlpack_type);
+    return PrimType(IntImm(tvm::PrimType(dlpack_type), 0));
   } else {
     return PrimType(dlpack_type);
   }

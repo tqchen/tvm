@@ -22,6 +22,7 @@
 #include <tvm/ffi/reflection/access_path.h>
 #include <tvm/ffi/reflection/registry.h>
 #include <tvm/ir/expr.h>
+#include <tvm/ir/type.h>
 #include <tvm/runtime/data_type.h>
 #include <tvm/runtime/device_api.h>
 #include <tvm/script/printer/config.h>
@@ -293,7 +294,7 @@ class LiteralDoc : public ExprDoc {
    * \param p The object path
    */
   static LiteralDoc Float(double v, const ffi::Optional<AccessPath>& p) {
-    return LiteralDoc(FloatImm(DataType::Float(64), v), p);
+    return LiteralDoc(FloatImm(PrimType::Float(64), v), p);
   }
   /*!
    * \brief Create a LiteralDoc to represent string.

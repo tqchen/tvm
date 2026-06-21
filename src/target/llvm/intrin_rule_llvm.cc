@@ -172,11 +172,11 @@ TVM_REGISTER_OP("tirx.clz")
       TVM_FFI_ICHECK(call != nullptr);
       TVM_FFI_ICHECK_EQ(call->args.size(), 1);
       ffi::Array<PrimExpr> cargs;
-      cargs.push_back(IntImm(DataType::UInt(32), ::llvm::Intrinsic::ctlz));
+      cargs.push_back(IntImm(PrimType::UInt(32), ::llvm::Intrinsic::ctlz));
       cargs.push_back(call->args[0]);
-      cargs.push_back(IntImm(DataType::Int(1), 1));  // is_zero_undef
+      cargs.push_back(IntImm(PrimType::Int(1), 1));  // is_zero_undef
       // LLVM requires that the return type must match the first argument type
-      auto clz = tirx::Call(call->args[0]->dtype, tirx::builtin::call_llvm_intrin(), cargs);
+      auto clz = tirx::Call(call->args[0].ty(), tirx::builtin::call_llvm_intrin(), cargs);
       return cast(call->dtype, clz);
     });
 

@@ -98,7 +98,7 @@ inline ffi::Array<T> UpdateArray(ffi::Array<T> arr, F fupdate) {
 inline PrimExpr TVMStructGet(DataType dtype, Var handle, int index,
                              builtin::TVMStructFieldKind kind) {
   ffi::Array<PrimExpr> args = {handle, IntImm::Int32(index), IntImm::Int32(static_cast<int>(kind))};
-  return Call(dtype, builtin::tvm_struct_get(), args);
+  return Call(PrimType(dtype), builtin::tvm_struct_get(), args);
 }
 
 /*!
@@ -114,7 +114,7 @@ inline PrimExpr AddressOffset(Var handle, DataType dtype, int offset) {
                    std::nullopt);
   BufferLoad buf_load(dummy_buf, {offset_expr});
 
-  return Call(DataType::Handle(), builtin::address_of(), {buf_load});
+  return Call(PrimType::Handle(), builtin::address_of(), {buf_load});
 }
 
 /*!
@@ -134,7 +134,7 @@ inline PrimExpr AddressOffset(Var handle, DataType dtype, PrimExpr offset) {
                    Span(), std::nullopt);
   BufferLoad buf_load(dummy_buf, {offset});
 
-  return Call(DataType::Handle(), builtin::address_of(), {buf_load});
+  return Call(PrimType::Handle(), builtin::address_of(), {buf_load});
 }
 
 /*!
@@ -148,7 +148,7 @@ inline PrimExpr AddressOffset(Var handle, DataType dtype, PrimExpr offset) {
 inline Stmt TVMStructSet(Var handle, int index, builtin::TVMStructFieldKind kind, PrimExpr value) {
   ffi::Array<PrimExpr> args = {handle, IntImm::Int32(index), IntImm::Int32(static_cast<int>(kind)),
                                value};
-  return Evaluate(Call(DataType::Int(32), builtin::tvm_struct_set(), args));
+  return Evaluate(Call(PrimType::Int(32), builtin::tvm_struct_set(), args));
 }
 
 /*!
@@ -200,7 +200,7 @@ inline PrimExpr ConstInt32(size_t index) {
  */
 inline PrimExpr StackAlloca(std::string type, size_t num) {
   ffi::Array<PrimExpr> args = {StringImm(type), ConstInt32(num)};
-  return Call(DataType::Handle(), builtin::tvm_stack_alloca(), args);
+  return Call(PrimType::Handle(), builtin::tvm_stack_alloca(), args);
 }
 
 /*!

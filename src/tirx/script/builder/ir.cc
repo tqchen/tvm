@@ -551,7 +551,7 @@ ForFrame Grid(ffi::Array<ffi::Variant<PrimExpr, ffi::Tuple<PrimExpr, PrimExpr>>>
       // extent is a single PrimExpr
       DataType dtype = prim_expr.value().dtype();
       n->vars.push_back(Var("v", dtype));
-      n->doms.push_back(Range(tvm::IntImm(dtype, 0), prim_expr.value()));
+      n->doms.push_back(Range(tvm::IntImm(PrimType(dtype), 0), prim_expr.value()));
     } else if (auto tuple = extent.as<ffi::Tuple<PrimExpr, PrimExpr>>()) {
       // extent is a tuple of two PrimExpr (start, extent)
       DataType dtype = tuple.value().get<0>().dtype();
@@ -621,7 +621,7 @@ LaunchThreadFrame LaunchThread(Var var, PrimExpr extent) {
   ffi::ObjectPtr<LaunchThreadFrameNode> n = ffi::make_object<LaunchThreadFrameNode>();
   if (!iter_var->dom.defined()) {
     const_cast<tvm::tirx::IterVarNode*>(iter_var.get())->dom =
-        Range(tvm::IntImm(extent.dtype(), 0), extent);
+        Range(tvm::IntImm(extent.ty(), 0), extent);
   } else if (!arith::Analyzer()->CanProveEqual(iter_var->dom->extent, extent)) {
     TVM_FFI_THROW(InternalError) << "ValueError: Inconsistent extents of environment thread. "
                                  << iter_var->dom->extent << " vs " << extent;

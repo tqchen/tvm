@@ -45,7 +45,7 @@ tvm::Type InferType(const PrimFunc& prim_func) {
       if (auto opt_buf = prim_func->buffer_map.Get(param)) {
         auto buf = opt_buf.value();
         relax::ShapeExpr shape(
-            buf->shape.Map([](PrimExpr dim) { return cast(DataType::Int(64), dim); }));
+            buf->shape.Map([](PrimExpr dim) { return cast(PrimType::Int(64), dim); }));
         return relax::TensorType(shape, buf->dtype);
       }
 

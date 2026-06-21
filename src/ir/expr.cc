@@ -49,11 +49,9 @@ TVM_FFI_STATIC_INIT_BLOCK() {
 
 PrimExpr::PrimExpr(int32_t value) : PrimExpr(IntImm::Int32(value)) {}
 
-PrimExpr::PrimExpr(float value) : PrimExpr(FloatImm(DataType::Float(32), value)) {}
+PrimExpr::PrimExpr(float value) : PrimExpr(FloatImm(PrimType::Float(32), value)) {}
 
 PrimExpr PrimExpr::ConvertFallbackValue(ffi::String value) { return tirx::StringImm(value); }
-
-IntImm::IntImm(DataType dtype, int64_t value, Span span) : IntImm(PrimType(dtype), value, span) {}
 
 IntImm::IntImm(PrimType dtype, int64_t value, Span span) {
   DataType runtime_dtype = dtype->dtype;
@@ -86,15 +84,18 @@ IntImm::IntImm(PrimType dtype, int64_t value, Span span) {
   data_ = std::move(node);
 }
 
+IntImm IntImm::Bool(bool value, Span span) { return IntImm(PrimType::Bool(), value, span); }
+
+IntImm IntImm::Int32(int64_t value, Span span) { return IntImm(PrimType::Int(32), value, span); }
+
+IntImm IntImm::Int64(int64_t value, Span span) { return IntImm(PrimType::Int(64), value, span); }
+
 TVM_FFI_STATIC_INIT_BLOCK() {
   namespace refl = tvm::ffi::reflection;
   refl::GlobalDef().def("ir.IntImm", [](DataType dtype, int64_t value, Span span) {
-    return IntImm(dtype, value, span);
+    return IntImm(PrimType(dtype), value, span);
   });
 }
-
-FloatImm::FloatImm(DataType dtype, double value, Span span)
-    : FloatImm(PrimType(dtype), value, span) {}
 
 FloatImm::FloatImm(PrimType dtype, double value, Span span) {
   DataType runtime_dtype = dtype->dtype;
@@ -197,10 +198,25 @@ FloatImm::FloatImm(PrimType dtype, double value, Span span) {
   data_ = std::move(node);
 }
 
+namespace ffi {
+
+IntImm TypeTraits<IntImm>::ConvertFallbackValue(int64_t value) {
+  auto dtype = (value > std::numeric_limits<int>::max() || value < std::numeric_limits<int>::min())
+                   ? DataType::Int(64)
+                   : DataType::Int(32);
+  return IntImm(PrimType(dtype), value);
+}
+
+FloatImm TypeTraits<FloatImm>::ConvertFallbackValue(double value) {
+  return FloatImm(PrimType::Float(32), value);
+}
+
+}  // namespace ffi
+
 TVM_FFI_STATIC_INIT_BLOCK() {
   namespace refl = tvm::ffi::reflection;
   refl::GlobalDef().def("ir.FloatImm", [](DataType dtype, double value, Span span) {
-    return FloatImm(dtype, value, span);
+    return FloatImm(PrimType(dtype), value, span);
   });
 }
 
@@ -219,7 +235,7 @@ TVM_FFI_STATIC_INIT_BLOCK() {
         if (end.defined()) {
           return Range(begin, end.value(), span);
         } else {
-          return Range(IntImm(begin.dtype(), 0), begin, span);
+          return Range(IntImm(begin.ty(), 0), begin, span);
         }
       });
 }

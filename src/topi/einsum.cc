@@ -127,7 +127,7 @@ PrimExpr GetIndexForBroadcastedDim(const Var& index, const PrimExpr& extent,
   // Check if current dimension is being broadcasted to `broadcasted_extent` (symbolic shape is
   // handled)
   if (is_one(extent) && !is_one(broadcasted_extent)) {
-    return IntImm(index.dtype(), 0);
+    return IntImm(index.ty(), 0);
   }
   return index;
 }

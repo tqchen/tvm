@@ -131,7 +131,7 @@ SLayout::SLayout(const std::string& name, DataType dtype) {  // NOLINT(*)
     if (c >= 'A' && c <= 'Z') {
       TVM_FFI_ICHECK_EQ(factor, 0) << "Invalid layout " << name << ": invalid factor size "
                                    << factor << " before dimension " << c;
-      IterVar axis(Range(IntImm(dtype, 0), Var(std::string(1, c), dtype)),
+      IterVar axis(Range(IntImm(PrimType(dtype), 0), Var(std::string(1, c), dtype)),
                    Var(std::string(1, c), dtype), tirx::kDataPar);
       if (!in_packing) {
         node->axes.push_back(axis);
@@ -143,8 +143,8 @@ SLayout::SLayout(const std::string& name, DataType dtype) {  // NOLINT(*)
                                    << factor << " for dimension " << c;
       std::stringstream name;
       name << factor << c;
-      IterVar axis(Range(IntImm(dtype, 0), IntImm(dtype, factor)), Var(name.str(), dtype),
-                   tirx::kDataPar);
+      IterVar axis(Range(IntImm(PrimType(dtype), 0), IntImm(PrimType(dtype), factor)),
+                   Var(name.str(), dtype), tirx::kDataPar);
       if (!in_packing) {
         node->axes.push_back(axis);
       } else {
@@ -174,8 +174,8 @@ SLayout::SLayout(const std::string& name, DataType dtype) {  // NOLINT(*)
         extent = extent * factor->value;
       }
       std::string grouped_name = ss.str();
-      IterVar grouped_axis(Range(IntImm(dtype, 0), IntImm(dtype, extent)), Var(grouped_name, dtype),
-                           tirx::kDataPar);
+      IterVar grouped_axis(Range(IntImm(PrimType(dtype), 0), IntImm(PrimType(dtype), extent)),
+                           Var(grouped_name, dtype), tirx::kDataPar);
       node->axes.push_back(grouped_axis);
 
       in_packing = false;
@@ -238,13 +238,13 @@ ffi::Array<IterVar> SLayout::UnpackIterVar(IterVar packed_iter) {
       factor = factor * 10 + (ch - '0');
     } else if (ch >= 'a' && ch <= 'z') {
       TVM_FFI_ICHECK(factor != 0) << "Invalid Factor Size";
-      result.push_back(IterVar(Range(IntImm(dtype, 0), IntImm(dtype, factor)),
+      result.push_back(IterVar(Range(IntImm(PrimType(dtype), 0), IntImm(PrimType(dtype), factor)),
                                Var(std::string(1, ch), dtype), tirx::kDataPar));
       final_factor *= factor;
       factor = 0;
     } else if (ch >= 'A' && ch <= 'Z') {
       TVM_FFI_ICHECK(factor == 0) << "Can't have non-zero factors for primal axis";
-      result.push_back(IterVar(Range(IntImm(dtype, 0), Var(std::string(1, ch), dtype)),
+      result.push_back(IterVar(Range(IntImm(PrimType(dtype), 0), Var(std::string(1, ch), dtype)),
                                Var(std::string(1, ch), dtype), tirx::kDataPar));
     }
   }
@@ -264,8 +264,8 @@ IterVar SLayout::PackIterVar(ffi::Array<IterVar> iter_vars) {
     extent = extent * itvar->dom->extent.as<IntImm>().value()->value;
   }
 
-  return IterVar(Range(IntImm(dtype, 0), IntImm(dtype, extent)), Var(name.str(), dtype),
-                 tirx::kDataPar);
+  return IterVar(Range(IntImm(PrimType(dtype), 0), IntImm(PrimType(dtype), extent)),
+                 Var(name.str(), dtype), tirx::kDataPar);
 }
 
 int32_t SLayout::FactorOf(const SLayoutAxis& axis) const {
@@ -357,7 +357,8 @@ inline bool GetStoreRule(ffi::Array<PrimExpr>* index_rule, ffi::Array<PrimExpr>*
             if (axis == sub_axis) {
               const auto* sub_extent = inter_unpacked_axes[l]->dom->extent.as<IntImmNode>();
               TVM_FFI_ICHECK(sub_extent) << "Expected Integer Extents for Offset Calculation";
-              factor_ij = factor_ij * IntImm(sub_extent->dtype(), sub_extent->value);
+              factor_ij =
+                  factor_ij * IntImm(ffi::GetRef<PrimExpr>(sub_extent).ty(), sub_extent->value);
             }
           }
         }
@@ -498,7 +499,7 @@ inline ffi::Array<PrimExpr> TransformShape(const ffi::Array<PrimExpr>& src_shape
               << ", get " << orig_shape;
         }
       }
-      bind_map[orig_axis->var.get()] = IntImm(orig_axis->var.dtype(), 0);
+      bind_map[orig_axis->var.get()] = IntImm(orig_axis->var.ty(), 0);
     } else {
       bind_map[orig_axis->var.get()] = orig_axis->var.dtype() == orig_shape.dtype()
                                            ? orig_shape

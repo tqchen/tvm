@@ -160,7 +160,7 @@ Stmt RewriteWmmaLoad(Stmt stmt) {
           /*name_hint=*/"wmma_load",
           /*body=*/
           Evaluate(Call(
-              /*data=*/runtime::DataType::Handle(),
+              /*data=*/PrimType::Handle(),
               /*op=*/tvm_load_matrix_sync_op,
               {
                   /*0:*/ new_tgt_buffer->data,
@@ -171,7 +171,7 @@ Stmt RewriteWmmaLoad(Stmt stmt) {
                       floordiv(floormod(new_tgt_buffer->elem_offset, 256), 16),
                   /*5:*/
                   Call(
-                      /*dtype=*/runtime::DataType::Handle(),
+                      /*dtype=*/PrimType::Handle(),
                       /*op=*/builtin::tvm_access_ptr(),
                       /*args=*/
                       {
@@ -268,7 +268,7 @@ Stmt RewriteWmmaStore(Stmt stmt) {
              /*writes=*/{BufferRegion(tgt_buffer, write_region)},
              /*name_hint=*/"wmma_store",
              Evaluate(Call(
-                 /*data=*/runtime::DataType::Handle(),
+                 /*data=*/PrimType::Handle(),
                  /*op=*/tvm_store_matrix_sync_op,
                  {/*0:*/ new_src_buffer->data,
                   /*1:*/ 16,
@@ -278,7 +278,7 @@ Stmt RewriteWmmaStore(Stmt stmt) {
                       floordiv(floormod(new_src_buffer->elem_offset, 256), 16),
                   /*5:*/
                   Call(
-                      /*data=*/runtime::DataType::Handle(),
+                      /*data=*/PrimType::Handle(),
                       /*op=*/builtin::tvm_access_ptr(),
                       {
                           /*0:*/ TypeAnnotation(new_tgt_buffer->dtype),

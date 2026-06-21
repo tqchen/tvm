@@ -78,7 +78,7 @@ bool ContainsCallNode(const Stmt& stmt) {
 
 inline PrimExpr CreateNewLanes(bool is_scalable, int lanes_or_vscale_factor) {
   if (is_scalable) {
-    return Mul(Call(DataType::Int(32), builtin::vscale(), {}), lanes_or_vscale_factor);
+    return Mul(Call(PrimType::Int(32), builtin::vscale(), {}), lanes_or_vscale_factor);
   } else {
     return lanes_or_vscale_factor;
   }
@@ -222,7 +222,8 @@ class TryPredicateBufferAccesses : public StmtExprMutator {
     DataType buf_predicate_dtype =
         DataType(DataType::kUInt, 1, ramp->dtype().get_lanes_or_vscale_factor(),
                  ramp->dtype().is_scalable_vector());
-    Call lane_mask = Call(buf_predicate_dtype, builtin::get_active_lane_mask(), {base_, limit_});
+    Call lane_mask =
+        Call(PrimType(buf_predicate_dtype), builtin::get_active_lane_mask(), {base_, limit_});
 
     num_accesses_rewritten_ += 1;
     auto writer = node.CopyOnWrite();
@@ -354,7 +355,7 @@ class Vectorizer : public StmtMutator, public ExprFunctor<PrimExpr(const PrimExp
 
   Vectorizer(Var var, PrimExpr var_lanes, Target target)
       : var_(var), var_lanes_(var_lanes), target_(target) {
-    ramp_ = Ramp(IntImm(var.dtype(), 0), IntImm(var.dtype(), 1), var_lanes);
+    ramp_ = Ramp(IntImm(var.ty(), 0), IntImm(var.ty(), 1), var_lanes);
   }
 
   Stmt VisitStmt(const Stmt& stmt) final {
@@ -501,9 +502,11 @@ class Vectorizer : public StmtMutator, public ExprFunctor<PrimExpr(const PrimExp
       return ffi::GetRef<PrimExpr>(op);
     } else {
       if (value.dtype().is_scalable_vector()) {
-        return Cast(op->dtype().with_scalable_vscale_factor(value.dtype().vscale_factor()), value);
+        return Cast(
+            PrimType(op->dtype().with_scalable_vscale_factor(value.dtype().vscale_factor())),
+            value);
       } else {
-        return Cast(op->dtype().with_lanes(value.dtype().lanes()), value);
+        return Cast(PrimType(op->dtype().with_lanes(value.dtype().lanes())), value);
       }
     }
   }
@@ -547,10 +550,11 @@ class Vectorizer : public StmtMutator, public ExprFunctor<PrimExpr(const PrimExp
       t = BroadcastTo(t, lanes, is_scalable);
       f = BroadcastTo(f, lanes, is_scalable);
       if (is_scalable) {
-        return Call(op->dtype().with_scalable_vscale_factor(lanes), op->op, {cond, t, f}, op->attrs,
-                    op->span);
+        return Call(PrimType(op->dtype().with_scalable_vscale_factor(lanes)), op->op, {cond, t, f},
+                    op->attrs, op->span);
       } else {
-        return Call(op->dtype().with_lanes(lanes), op->op, {cond, t, f}, op->attrs, op->span);
+        return Call(PrimType(op->dtype().with_lanes(lanes)), op->op, {cond, t, f}, op->attrs,
+                    op->span);
       }
     }
   }
@@ -563,14 +567,15 @@ class Vectorizer : public StmtMutator, public ExprFunctor<PrimExpr(const PrimExp
     } else {
       int lanes = value.dtype().get_lanes_or_vscale_factor();
       if (value.dtype().is_scalable_vector()) {
-        return Call(op->dtype().with_scalable_vscale_factor(lanes), op->op, {value}, op->attrs,
-                    op->span);
+        return Call(PrimType(op->dtype().with_scalable_vscale_factor(lanes)), op->op, {value},
+                    op->attrs, op->span);
       } else {
         int new_lanes = (op->dtype() != DataType::Float4E2M1FN() &&
                          op->args[0].dtype() != DataType::Float4E2M1FN())
                             ? (value.dtype().bits() * value.dtype().lanes()) / op->dtype().bits()
                             : value.dtype().lanes();
-        return Call(op->dtype().with_lanes(new_lanes), op->op, {value}, op->attrs, op->span);
+        return Call(PrimType(op->dtype().with_lanes(new_lanes)), op->op, {value}, op->attrs,
+                    op->span);
       }
     }
   }
@@ -592,7 +597,7 @@ class Vectorizer : public StmtMutator, public ExprFunctor<PrimExpr(const PrimExp
       auto new_args = op->args;
       new_args.pop_back();
       new_args.push_back(fcd[0]);
-      return Call(op->dtype().with_lanes(lane), op->op, new_args, op->attrs, op->span);
+      return Call(PrimType(op->dtype().with_lanes(lane)), op->op, new_args, op->attrs, op->span);
     } else if (op->op.same_as(builtin::texture2d_store())) {
       int lane = 0;
       // Vectorize the value to store
@@ -607,7 +612,7 @@ class Vectorizer : public StmtMutator, public ExprFunctor<PrimExpr(const PrimExp
           << "Expected Data to be Written equal to Texture Store length";
       ffi::Array<PrimExpr> new_args{op->args[0], op->args[1], op->args[2],
                                     op->args[3], op->args[4], mutated_value[0]};
-      return Call(op->dtype().with_lanes(lane), op->op, new_args, op->attrs, op->span);
+      return Call(PrimType(op->dtype().with_lanes(lane)), op->op, new_args, op->attrs, op->span);
     } else if (op->op.same_as(builtin::reinterpret())) {
       return MutateReinterpretExpr_(op);
     }
@@ -629,7 +634,7 @@ class Vectorizer : public StmtMutator, public ExprFunctor<PrimExpr(const PrimExp
       if (op->args.same_as(new_args)) {
         return ffi::GetRef<PrimExpr>(op);
       } else {
-        return Call(op->dtype(), op->op, new_args, op->attrs, op->span);
+        return Call(ffi::GetRef<PrimExpr>(op).ty(), op->op, new_args, op->attrs, op->span);
       }
     } else {
       int lane = 0;
@@ -655,7 +660,7 @@ class Vectorizer : public StmtMutator, public ExprFunctor<PrimExpr(const PrimExp
       if (op->args.same_as(new_args)) {
         return ffi::GetRef<PrimExpr>(op);
       } else {
-        return Call(op->dtype().with_lanes(lane), op->op, new_args, op->attrs, op->span);
+        return Call(PrimType(op->dtype().with_lanes(lane)), op->op, new_args, op->attrs, op->span);
       }
     }
   }
@@ -756,12 +761,12 @@ class Vectorizer : public StmtMutator, public ExprFunctor<PrimExpr(const PrimExp
     TVM_FFI_ICHECK(f_check_index(updated_index));
 
     if (new_vec_length == 1) {
-      return tirx::Substitute(op->vectors[0], {{var_, tvm::IntImm(var_.dtype(), 0)}});
+      return tirx::Substitute(op->vectors[0], {{var_, tvm::IntImm(var_.ty(), 0)}});
     } else {
       PrimExpr prev_ramp = ramp_;
       PrimExpr prev_var_lanes = var_lanes_;
-      ramp_ = Ramp(IntImm(var_.dtype(), 0), IntImm(var_.dtype(), 2), new_vec_length);
-      var_lanes_ = tvm::IntImm(var_lanes_.dtype(), new_vec_length);
+      ramp_ = Ramp(IntImm(var_.ty(), 0), IntImm(var_.ty(), 2), new_vec_length);
+      var_lanes_ = tvm::IntImm(var_lanes_.ty(), new_vec_length);
       lane_vectors = 0;
       vectors = MutateArray(op->vectors, &lane_vectors);
       ramp_ = prev_ramp;
@@ -914,7 +919,7 @@ class Vectorizer : public StmtMutator, public ExprFunctor<PrimExpr(const PrimExp
   Stmt Scalarize(Stmt stmt) {
     Var idx(var_->name_hint + ".s", var_.dtype());
     stmt = Substitute(stmt, {{var_, idx}});
-    return For(idx, IntImm(var_.dtype(), 0), var_lanes_, ForKind::kSerial, stmt);
+    return For(idx, IntImm(var_.ty(), 0), var_lanes_, ForKind::kSerial, stmt);
   }
 
  private:
@@ -991,7 +996,7 @@ class Vectorizer : public StmtMutator, public ExprFunctor<PrimExpr(const PrimExp
         const RampNode* a_ramp = a.as<RampNode>();
         if (a.dtype().is_scalar() && b_ramp) {
           return Ramp(fcompute(a, b_ramp->base),
-                      fcompute(IntImm(b_ramp->stride.dtype(), 0), b_ramp->stride), b_ramp->lanes);
+                      fcompute(IntImm(b_ramp->stride.ty(), 0), b_ramp->stride), b_ramp->lanes);
         }
         if (b.dtype().is_scalar() && a_ramp) {
           return Ramp(fcompute(a_ramp->base, b), a_ramp->stride, a_ramp->lanes);
@@ -1051,13 +1056,13 @@ class LoopVectorizer : public StmtMutator {
     // selects the runtime vector length with vsetvli.
     static constexpr int kDefaultVScaleFactor = 4;
     DataType index_dtype = op->loop_var.dtype();
-    PrimExpr zero = IntImm(index_dtype, 0);
-    PrimExpr fixed_extent = IntImm(index_dtype, extent);
+    PrimExpr zero = IntImm(PrimType(index_dtype), 0);
+    PrimExpr fixed_extent = IntImm(PrimType(index_dtype), extent);
     PrimExpr scalable_lanes = CreateNewLanes(/*is_scalable=*/true, kDefaultVScaleFactor);
     DataType lane_dtype = scalable_lanes.dtype();
     PrimExpr scalable_lanes_index = scalable_lanes;
     if (scalable_lanes_index.dtype() != index_dtype) {
-      scalable_lanes_index = Cast(index_dtype, scalable_lanes_index);
+      scalable_lanes_index = Cast(PrimType(index_dtype), scalable_lanes_index);
     }
     PrimExpr num_chunks = ceildiv(fixed_extent, scalable_lanes_index);
 
@@ -1065,13 +1070,14 @@ class LoopVectorizer : public StmtMutator {
     Var inner(op->loop_var->name_hint + ".vla.i", lane_dtype);
     PrimExpr inner_index = inner;
     if (inner_index.dtype() != index_dtype) {
-      inner_index = Cast(index_dtype, inner_index);
+      inner_index = Cast(PrimType(index_dtype), inner_index);
     }
     PrimExpr index = outer * scalable_lanes_index + inner_index;
     Stmt body = Substitute(op->body, {{op->loop_var, index}});
     Stmt guarded_body = IfThenElse(index < fixed_extent, body, std::nullopt, op->span);
-    Stmt vector_loop = For(inner, IntImm(lane_dtype, 0), scalable_lanes, ForKind::kVectorized,
-                           guarded_body, std::nullopt, op->annotations, std::nullopt, op->span);
+    Stmt vector_loop =
+        For(inner, IntImm(PrimType(lane_dtype), 0), scalable_lanes, ForKind::kVectorized,
+            guarded_body, std::nullopt, op->annotations, std::nullopt, op->span);
     Stmt loop = For(outer, zero, num_chunks, ForKind::kSerial, vector_loop, std::nullopt, {},
                     std::nullopt, op->span);
 

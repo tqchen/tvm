@@ -726,7 +726,7 @@ class ReverseComputeInliner : public BaseInliner {
     if (producer_block->annotations.count(s_tir::attr::auto_copy) != 0) {
       auto bind = [&](const ForNode* loop) {
         analyzer_->Bind(loop->loop_var,
-                        Range::FromMinExtent(IntImm(loop->extent.dtype(), 0), loop->extent));
+                        Range::FromMinExtent(IntImm(loop->extent.ty(), 0), loop->extent));
       };
       const ForNode* producer_inner_loop = producer_block->body.as<ForNode>();
       while (producer_inner_loop->body.as<ForNode>()) {

@@ -291,7 +291,7 @@ class IntrinInjecter : public tvm::arith::IRMutatorWithAnalyzer {
 
         if (should_swap()) {
           PrimExpr new_bcast = Broadcast(cast->value, bcast->lanes);
-          return Cast(bcast->dtype(), new_bcast);
+          return Cast(ffi::GetRef<PrimExpr>(bcast).ty(), new_bcast);
         }
       }
     }
@@ -304,7 +304,7 @@ class IntrinInjecter : public tvm::arith::IRMutatorWithAnalyzer {
     PrimExpr rhs = SwapBroadcastCast(b);
 
     if (fma_ != nullptr && op->dtype().is_float()) {
-      PrimExpr r = fma_(Call(op->dtype(), builtin::fma(), {lhs, rhs, c}));
+      PrimExpr r = fma_(Call(ffi::GetRef<PrimExpr>(op).ty(), builtin::fma(), {lhs, rhs, c}));
       if (r.defined()) return this->VisitExpr(r);
     } else {
       if (!lhs.same_as(a) || !rhs.same_as(b)) {

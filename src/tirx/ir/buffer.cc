@@ -405,7 +405,7 @@ Buffer Buffer::GetFlattenedBuffer() const {
   ffi::Array<IntImm> output_axis_separators;
   for (size_t i = 0; i < self->axis_separators.size(); i++) {
     auto dtype = self->axis_separators[i].dtype();
-    output_axis_separators.push_back(IntImm(dtype, i + 1));
+    output_axis_separators.push_back(IntImm(PrimType(dtype), i + 1));
   }
 
   if (output_shape.size() == self->shape.size() && self->strides.empty()) {
@@ -567,7 +567,7 @@ PrimExpr Buffer::access_ptr(int access_mask, DataType ptr_type, int content_lane
   }
   ffi::Array<PrimExpr> acc_args{e_dtype, self->data, elem_offset, extent,
                                 IntImm::Int32(access_mask)};
-  return tirx::Call(ptr_type, tirx::builtin::tvm_access_ptr(), acc_args);
+  return tirx::Call(PrimType(ptr_type), tirx::builtin::tvm_access_ptr(), acc_args);
 }
 
 Buffer::Buffer(Var data, DataType dtype, ffi::Array<PrimExpr> shape, ffi::Array<PrimExpr> strides,
@@ -606,7 +606,7 @@ Buffer::Buffer(Var data, DataType dtype, ffi::Array<PrimExpr> shape, ffi::Array<
   n->axis_separators = std::move(axis_separators);
   n->name = std::move(name);
   if (!elem_offset.defined()) {
-    elem_offset = IntImm(n->DefaultIndexType(), 0);
+    elem_offset = IntImm(PrimType(n->DefaultIndexType()), 0);
   }
   if (data_alignment <= 0) {
     data_alignment = runtime::kAllocAlignment;
@@ -682,7 +682,7 @@ Buffer Buffer::with_data(Var data) const {
 }
 
 PrimExpr Buffer::OffsetOf_p(const Array<PrimExpr>& indices) const {
-  return tirx::Call(DataType::Int(32), tirx::builtin::buffer_offset(),
+  return tirx::Call(PrimType::Int(32), tirx::builtin::buffer_offset(),
                     {BufferLoad(*this, indices)});
 }
 

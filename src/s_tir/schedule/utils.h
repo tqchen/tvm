@@ -241,7 +241,7 @@ inline ffi::Optional<Var> AnalyzeVarWithShift(const PrimExpr& expr,
   // match: "var - shift"
   if ((var - shift).Match(expr)) {
     IntImm result = shift.Eval();
-    *constant = IntImm(result.dtype(), -result->value);
+    *constant = IntImm(result.ty(), -result->value);
     return var.Eval();
   }
   return std::nullopt;

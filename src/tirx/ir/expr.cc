@@ -280,13 +280,10 @@ Cast::Cast(PrimType t, PrimExpr value, Span span) {
   data_ = std::move(node);
 }
 
-Cast::Cast(DataType t, PrimExpr value, Span span)
-    : Cast(PrimType(t), std::move(value), std::move(span)) {}
-
 TVM_FFI_STATIC_INIT_BLOCK() {
   namespace refl = tvm::ffi::reflection;
   refl::GlobalDef().def("tirx.Cast", [](DataType dtype, PrimExpr value, Span span) {
-    return Cast(dtype, value, span);
+    return Cast(PrimType(dtype), value, span);
   });
 }
 
@@ -540,7 +537,7 @@ Ramp::Ramp(PrimExpr base, PrimExpr stride, PrimExpr lanes, Span span) {
     TVM_FFI_ICHECK(vscale_factor) << "Invalid expression for scalable lanes " << lanes;
 
     node->ty = PrimType(base.dtype().with_scalable_vscale_factor(vscale_factor.value()));
-    lanes = Mul(Call(DataType::Int(32), tirx::builtin::vscale(), {}), vscale_factor.value());
+    lanes = Mul(Call(PrimType::Int(32), tirx::builtin::vscale(), {}), vscale_factor.value());
     node->lanes = lanes;
   }
   node->base = base;
@@ -574,7 +571,7 @@ Broadcast::Broadcast(PrimExpr value, PrimExpr lanes, Span span) {
     TVM_FFI_ICHECK(vscale_factor) << "Invalid expression for scalable lanes " << lanes;
 
     node->ty = PrimType(value.dtype().with_scalable_vscale_factor(vscale_factor.value()));
-    lanes = Mul(Call(DataType::Int(32), tirx::builtin::vscale(), {}), vscale_factor.value());
+    lanes = Mul(Call(PrimType::Int(32), tirx::builtin::vscale(), {}), vscale_factor.value());
     node->lanes = lanes;
   }
   node->value = std::move(value);
@@ -657,14 +654,8 @@ Call::Call(PrimType dtype, RelaxExpr op, ffi::Array<PrimExpr> args, Attrs attrs,
   data_ = std::move(node);
 }
 
-Call::Call(DataType dtype, RelaxExpr op, ffi::Array<PrimExpr> args, Attrs attrs, Span span)
-    : Call(PrimType(dtype), std::move(op), std::move(args), std::move(attrs), std::move(span)) {}
-
 Call::Call(PrimType dtype, RelaxExpr op, ffi::Array<PrimExpr> args, Span span)
     : Call(std::move(dtype), std::move(op), std::move(args), Attrs(), std::move(span)) {}
-
-Call::Call(DataType dtype, RelaxExpr op, ffi::Array<PrimExpr> args, Span span)
-    : Call(dtype, std::move(op), std::move(args), Attrs(), std::move(span)) {}
 
 TVM_FFI_STATIC_INIT_BLOCK() {
   namespace refl = tvm::ffi::reflection;

@@ -37,7 +37,7 @@ bool UsesVar(const T& x, const Var& var) {
 }
 
 Range RangeFromExtent(const PrimExpr& extent) {
-  return Range::FromMinExtent(IntImm(extent.dtype(), 0), extent);
+  return Range::FromMinExtent(IntImm(extent.ty(), 0), extent);
 }
 
 template <class T>
@@ -256,7 +256,7 @@ ffi::Map<Var, PrimExpr> DeriveBlockBinding(
       // substitution
       if (is_one(outer_mark->extent) && !preserve_unit_iters) {
         // Simplify outer if not preserve_unit_iters
-        sub = IntImm(outer_mark->extent.dtype(), 0);
+        sub = IntImm(outer_mark->extent.ty(), 0);
       } else {
         sub = outer_iter;
       }

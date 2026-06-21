@@ -92,9 +92,9 @@ class NormalizeComparisons : public ExprMutator {
   PrimExpr Make(const PrimExpr& a, const PrimExpr& b) {
     // rewrite LT to LE for ints
     if (std::is_same<T, LT>::value && (a.dtype().is_int() || a.dtype().is_uint())) {
-      return LE(analyzer_->Simplify(a - b + 1), IntImm(a.dtype(), 0));
+      return LE(analyzer_->Simplify(a - b + 1), IntImm(a.ty(), 0));
     }
-    return T(analyzer_->Simplify(a - b), IntImm(a.dtype(), 0));
+    return T(analyzer_->Simplify(a - b), IntImm(a.ty(), 0));
   }
   arith::Analyzer analyzer_;
 };
@@ -252,7 +252,7 @@ PartialSolvedInequalities SolveLinearInequalities(const IntConstraints& system_t
         PrimExpr c_neg = MakeConst(v.dtype(), pos.first / first_gcd);
         // eliminate the current variable
         PrimExpr new_lhs = c_neg * neg.second - c_pos * pos.second;
-        PrimExpr new_ineq = LE(new_lhs, IntImm(pos.second.dtype(), 0));
+        PrimExpr new_ineq = LE(new_lhs, IntImm(pos.second.ty(), 0));
         // we need rewrite_simplify -> canonical_simplify -> rewrite_simplify
         // to help simplify things like (((y + 10) - (-1*(y - 20))) <= 0) => y - 5 <= 0
         // with steps = 2 it's (y*2) - 10 <= 0
@@ -509,7 +509,7 @@ IntConstraintsTransform SolveInequalitiesDeskewRange(const IntConstraints& inequ
                            analyzer->Simplify(var - Substitute(best_range->min, res_dst_to_src)));
 
         // Add the new var to the resulting axis
-        auto range = Range(IntImm(new_var.dtype(), 0), best_range->extent);
+        auto range = Range(IntImm(new_var.ty(), 0), best_range->extent);
         res_variables.push_back(new_var);
         res_ranges.Set(new_var, range);
 

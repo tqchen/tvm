@@ -305,11 +305,11 @@ class ThreadAllreduceBuilder final : public StmtExprMutator {
     // In the second stage we use the first 16 lanes of the first warp to reduce
     // the remaining elements, and this reduction can also be optimized by
     // shuffle_down warp-level primitives.
-    PrimExpr zero_index = IntImm(reduce_index.dtype(), 0);
+    PrimExpr zero_index = IntImm(reduce_index.ty(), 0);
     if (IsWarpReduction(types, group_extent, reduce_extent, contiguous_reduce_extent)) {
       std::vector<PrimExpr> reduce_results;
       DataType mask_dtype = DataType::UInt(32);
-      PrimExpr mask = Call(mask_dtype, builtin::tvm_warp_activemask(), {});
+      PrimExpr mask = Call(PrimType(mask_dtype), builtin::tvm_warp_activemask(), {});
 
       if (reduce_extent <= warp_size_) {
         std::tie(reduce_results, new_alloc_bufs) =
@@ -418,7 +418,7 @@ class ThreadAllreduceBuilder final : public StmtExprMutator {
       // previous iteration on the same buffer.
       seq.emplace_back(SyncThread("shared"));
       for (size_t idx = 0; idx < size; ++idx) {
-        shared_bufs[idx] = decl_buffer({IntImm(group_index.dtype(), group_extent * reduce_extent)},
+        shared_bufs[idx] = decl_buffer({IntImm(group_index.ty(), group_extent * reduce_extent)},
                                        types[idx], "red_buf" + std::to_string(idx), "shared");
         seq.emplace_back(BufferStore(shared_bufs[idx], values[idx],
                                      {BufIndex(reduce_index, group_index, reduce_extent)}));
@@ -430,7 +430,7 @@ class ThreadAllreduceBuilder final : public StmtExprMutator {
         TVM_FFI_ICHECK(!load_remap_.count(buffers[idx]->data.get()));
         PrimExpr pred = MakeConst(DataType::Bool(types[idx].lanes()), true);
         BufferLoad load(shared_bufs[idx],
-                        {BufIndex(IntImm(reduce_index.dtype(), 0), group_index, reduce_extent)});
+                        {BufIndex(IntImm(reduce_index.ty(), 0), group_index, reduce_extent)});
         TVM_FFI_ICHECK_EQ(load->dtype(), types[idx]);
         load_remap_[buffers[idx]->data.get()] = load;
         alloc_remap_[buffers[idx]->data.get()] = shared_bufs[idx];
@@ -717,7 +717,7 @@ class ThreadAllreduceBuilder final : public StmtExprMutator {
   }
   // sync thread op.
   static Stmt SyncThread(const std::string& sync) {
-    return Evaluate(Call(DataType::Int(32), builtin::tvm_storage_sync(), {StringImm(sync)}));
+    return Evaluate(Call(PrimType::Int(32), builtin::tvm_storage_sync(), {StringImm(sync)}));
   }
 
   // Emit warp shuffle  calls.
@@ -732,7 +732,7 @@ class ThreadAllreduceBuilder final : public StmtExprMutator {
     }
     PrimExpr width = IntImm::Int32(warp_size_);
     ffi::Array<PrimExpr> args{mask, val, delta_or_lane, width, width};
-    return Call(val.dtype(), op, args);
+    return Call(val.ty(), op, args);
   }
 
   // Check if we can use warp level reduction.
