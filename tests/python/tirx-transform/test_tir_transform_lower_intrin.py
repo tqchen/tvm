@@ -38,18 +38,16 @@ def lower_intrin(params, stmt):
     if not lower_expr:
         return stmt
     if isinstance(stmt, tvm.tirx.Evaluate):
-        return stmt.value
+        return stmt.value, []
 
     assert isinstance(stmt, tvm.tirx.SeqStmt)
     assert isinstance(stmt.seq[-1], tvm.tirx.Evaluate)
-    result = stmt.seq[-1].value
-    for binding in reversed(stmt.seq[:-1]):
+    for binding in stmt.seq[:-1]:
         assert isinstance(binding, tvm.tirx.Bind)
-        result = tvm.tirx.Let(binding.var, binding.value, result)
-    return result
+    return stmt.seq[-1].value, list(stmt.seq[:-1])
 
 
-def check_value(expr, variables, data, fref):
+def check_value(lowered, variables, data, fref):
     """
     Check that expr evaluates to fref(*row) for each row in data.
     variables: list of TIR vars [x] or [x, y] bound to the columns of data.
@@ -60,6 +58,7 @@ def check_value(expr, variables, data, fref):
     assert num_vars >= 1 and all(len(row) == num_vars for row in data)
 
     # Build input and output buffers
+    expr, prepended_bindings = lowered
     input_bufs = [
         tvm.tirx.decl_buffer((n,), dtype=variables[i].dtype, name=f"v{i}") for i in range(num_vars)
     ]
@@ -69,11 +68,13 @@ def check_value(expr, variables, data, fref):
     loop_var = tvm.tirx.Var("i", "int32")
 
     def make_store(i_var):
-        # Build the expression with each variable bound to the corresponding buffer load
-        result = expr
-        for j in range(num_vars - 1, -1, -1):
-            result = tvm.tirx.Let(variables[j], tvm.tirx.BufferLoad(input_bufs[j], [i_var]), result)
-        return tvm.tirx.BufferStore(out_buf, result, [i_var])
+        stmts = [
+            tvm.tirx.Bind(variables[j], tvm.tirx.BufferLoad(input_bufs[j], [i_var]))
+            for j in range(num_vars)
+        ]
+        stmts.extend(prepended_bindings)
+        stmts.append(tvm.tirx.BufferStore(out_buf, expr, [i_var]))
+        return tvm.tirx.SeqStmt(stmts)
 
     loop = tvm.tirx.For(
         loop_var,
@@ -182,7 +183,7 @@ def test_lower_floordiv_emits_statement_bindings():
     assert isinstance(body.seq[0], tvm.tirx.Bind)
     assert isinstance(body.seq[1], tvm.tirx.Bind)
     assert isinstance(body.seq[2], tvm.tirx.BufferStore)
-    assert not isinstance(body.seq[2].value, tvm.tirx.Let)
+    assert isinstance(body.seq[2].value, tvm.tirx.Select)
 
 
 def test_lower_floordiv_select_branch_keeps_expression_scope():

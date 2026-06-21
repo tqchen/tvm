@@ -670,47 +670,46 @@ def test_nested_let_no_extraction():
 
 
 # =====================================================================
-# T21: Let with lowered floordiv pattern
-# Simulates the pattern produced by LowerIntrin for floordiv:
-# Let(rmod, truncmod(a,b), Let(rdiv, div(a,b), Select(...)))
-# wrapped in Let(x, load, Let(y, load, ...))
-# This is the regression test for the CI failure in lower_intrin tests.
+# T21: Bind sequence with lowered floordiv pattern
+# Simulates the current pattern produced by LowerIntrin for floordiv:
+# Bind(x, load), Bind(y, load), Bind(rmod, truncmod(a,b)),
+# Bind(rdiv, div(a,b)), BufferStore(Select(...)).
 # =====================================================================
-def test_let_floordiv_pattern():
-    """CSE must handle the Let pattern from LowerIntrin's floordiv lowering."""
+def test_bind_floordiv_pattern():
+    """CSE must handle the Bind pattern from LowerIntrin's floordiv lowering."""
     x = tvm.tirx.Var("x", "int32")
     y = tvm.tirx.Var("y", "int32")
     rmod = tvm.tirx.Var("rmod", "int32")
     rdiv = tvm.tirx.Var("rdiv", "int32")
-    # Simulate lowered floordiv: Let(rmod, x%y, Let(rdiv, x/y, Select(...)))
+    # Simulate lowered floordiv: Bind rmod and rdiv before the owning store.
     select_cond = tvm.tirx.And(y >= 0, rmod >= 0) | tvm.tirx.And(y < 0, rmod <= 0)
     select_expr = tvm.tirx.Select(select_cond, rdiv, rdiv - 1)
-    inner_let = tvm.tirx.Let(rdiv, tvm.tirx.Div(x, y), select_expr)
-    outer_let = tvm.tirx.Let(rmod, tvm.tirx.Mod(x, y), inner_let)
-    # Wrap in Let(x, load, Let(y, load, ...))
     buf_a = tvm.tirx.decl_buffer((10,), "int32", name="A")
     buf_b = tvm.tirx.decl_buffer((10,), "int32", name="B")
     buf_c = tvm.tirx.decl_buffer((10,), "int32", name="C")
     i = tvm.tirx.Var("i", "int32")
-    full_expr = tvm.tirx.Let(
-        x,
-        tvm.tirx.BufferLoad(buf_a, [i]),
-        tvm.tirx.Let(y, tvm.tirx.BufferLoad(buf_b, [i]), outer_let),
+    body = tvm.tirx.SeqStmt(
+        [
+            tvm.tirx.Bind(x, tvm.tirx.BufferLoad(buf_a, [i])),
+            tvm.tirx.Bind(y, tvm.tirx.BufferLoad(buf_b, [i])),
+            tvm.tirx.Bind(rmod, tvm.tirx.Mod(x, y)),
+            tvm.tirx.Bind(rdiv, tvm.tirx.Div(x, y)),
+            tvm.tirx.BufferStore(buf_c, select_expr, [i]),
+        ]
     )
-    store = tvm.tirx.BufferStore(buf_c, full_expr, [i])
     loop = tvm.tirx.For(
         i,
         tvm.tirx.const(0, "int32"),
         tvm.tirx.const(10, "int32"),
         tvm.tirx.ForKind.SERIAL,
-        store,
+        body,
     )
     func = tvm.tirx.PrimFunc([buf_a, buf_b, buf_c], loop)
     mod = tvm.IRModule({"main": func})
     # Should not crash and should not extract Let-bound vars
     mod_after = tvm.tirx.transform.CommonSubexprElim()(mod)
     script = mod_after["main"].script()
-    assert "cse_v" not in script, f"CSE incorrectly extracted from Let body:\n{script}"
+    assert "cse_v" not in script, f"CSE incorrectly extracted from Bind sequence:\n{script}"
 
 
 # =====================================================================
@@ -775,6 +774,6 @@ if __name__ == "__main__":
     test_let_body_no_extraction()
     test_let_value_cse()
     test_nested_let_no_extraction()
-    test_let_floordiv_pattern()
+    test_bind_floordiv_pattern()
     test_no_lift_bool_predicate()
     test_no_lift_bool_logical()
