@@ -265,7 +265,7 @@ SBlock MakeCacheStage(const BufferRegion& cache_region, CacheStageInfo* info,
     Var var("v" + std::to_string(read_access_indices.size()), axis_range->extent.dtype());
     if (cache_full_region) {
       PrimExpr dim = cache_region->buffer->shape[i];
-      block_vars.push_back(IterVar(/*dom=*/Range::FromMinExtent(IntImm(dim->dtype, 0), dim),
+      block_vars.push_back(IterVar(/*dom=*/Range::FromMinExtent(IntImm(dim.dtype(), 0), dim),
                                    /*var=*/var,
                                    /*IterVarType=*/kDataPar));
       read_access_indices.push_back(var);
@@ -361,7 +361,7 @@ SBlock MakeReIndexStage(const SBlock& block, CacheStageInfo* info,
   std::unordered_set<int> skipped_block_iters;
   for (int i = 0, n = block->iter_vars.size(); i < n; ++i) {
     const IterVar& iter = block->iter_vars[i];
-    Var var("v" + std::to_string(new_block_iters.size()), iter->var->dtype);
+    Var var("v" + std::to_string(new_block_iters.size()), iter->var.dtype());
     bool used = covered.count(iter->var);
     if (used) {
       new_block_iters.push_back(IterVar(/*dom=*/iter->dom,
@@ -415,7 +415,7 @@ SBlock MakeReIndexStage(const SBlock& block, CacheStageInfo* info,
     if (skipped_block_iters.count(i)) {
       continue;
     }
-    Var loop_var("ax" + std::to_string(loop_vars.size()), block->iter_vars[i]->var->dtype);
+    Var loop_var("ax" + std::to_string(loop_vars.size()), block->iter_vars[i]->var.dtype());
     loop_vars.push_back(loop_var);
     iter_values.push_back(loop_var);
   }
@@ -1620,7 +1620,7 @@ class ReIndexRewriter : public StmtExprMutator {
       for (const IterVar& iter : block->iter_vars) {
         if (covered_.count(iter->var)) {
           indices_.push_back(iter->var);
-          region_.push_back(Range::FromMinExtent(iter->var, IntImm(iter->var->dtype, 1)));
+          region_.push_back(Range::FromMinExtent(iter->var, IntImm(iter->var.dtype(), 1)));
         }
       }
       SBlock stmt = StmtExprMutator::VisitStmt_(block).as_or_throw<SBlock>();

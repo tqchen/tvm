@@ -507,7 +507,7 @@ Stmt TransformReductionBlock(const SBlockRealizeNode* realize,                  
     if (wb_buffers[0].scope() != "local") {
       for (const ForNode* loop : reduction_loops) {
         if (loop->thread_binding.defined()) {
-          wb_predicate = wb_predicate && (loop->loop_var == IntImm(loop->loop_var->dtype, 0));
+          wb_predicate = wb_predicate && (loop->loop_var == IntImm(loop->loop_var.dtype(), 0));
         }
       }
     }
@@ -862,7 +862,7 @@ class CrossThreadReductionTransformer : public StmtMutator {
     loop_vars.reserve(unbound_thread2range.size());
     for (auto [scope, range] : unbound_thread2range) {
       std::string dim_index(1, static_cast<char>(scope.dim_index + 'x'));
-      Var loop_var("t" + dim_index, range->min->dtype);
+      Var loop_var("t" + dim_index, range->min.dtype());
       loop_vars.push_back(loop_var);
       predicate = (loop_var == range->min) && predicate;
     }
@@ -882,7 +882,7 @@ class CrossThreadReductionTransformer : public StmtMutator {
           /*kind=*/ForKind::kThreadBinding,                   //
           /*body=*/body,                                      //
           /*thread_binding=*/
-          IterVar(Range(), Var("", loop_vars[i]->dtype), IterVarType::kThreadIndex,
+          IterVar(Range(), Var("", loop_vars[i].dtype()), IterVarType::kThreadIndex,
                   "threadIdx." + dim_index),
           /*annotations=*/{},
           /*step=*/std::nullopt);

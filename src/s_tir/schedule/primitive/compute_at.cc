@@ -578,7 +578,7 @@ bool UpdateBlockVarDomainAffine(const BufferNode* buffer, const ffi::Array<IterV
   NDIntSet required_bound;
   for (size_t i = 0; i < ndim; ++i) {
     required_bound.push_back(
-        arith::IntSet::Interval(IntImm(buffer->shape[i]->dtype, 0), max(buffer->shape[i] - 1, 0)));
+        arith::IntSet::Interval(IntImm(buffer->shape[i].dtype(), 0), max(buffer->shape[i] - 1, 0)));
   }
   ffi::Map<Var, arith::IntSet> var_dom =
       InverseAffineIterMap(res->indices, required_region, analyzer);

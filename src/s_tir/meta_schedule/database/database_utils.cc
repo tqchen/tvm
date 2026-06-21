@@ -32,7 +32,7 @@ void JSONDumps(Any json_obj, std::ostringstream& os) {
     os << "null";
   } else if (auto opt_int_imm = json_obj.try_cast<IntImm>()) {
     IntImm int_imm = *std::move(opt_int_imm);
-    if (int_imm->dtype == DataType::Bool()) {
+    if (int_imm.dtype() == DataType::Bool()) {
       if (int_imm->value) {
         os << "true";
       } else {

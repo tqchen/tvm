@@ -43,7 +43,7 @@ class PrimValueComputeInjector : public ExprMutator {
       return node;
     }
 
-    auto ret_dtype = node->value->dtype;
+    auto ret_dtype = node->value.dtype();
     auto param_vars = tirx::UndefinedVars(node->value);
     tirx::Stmt body = tirx::Evaluate(tirx::Call(ret_dtype, tirx::builtin::ret(), {node->value}));
 

@@ -223,7 +223,7 @@ ffi::Optional<IndexMap> SuggestIndexMap(const Buffer& buffer, const ffi::Array<P
     }
 
     // Step 6.2: Fuse all the indices. This is the inverse of Step 5.2.
-    PrimExpr flattened_index = IntImm(indices[0]->dtype, 0);
+    PrimExpr flattened_index = IntImm(indices[0].dtype(), 0);
     int64_t stride = 1;
     for (int i = static_cast<int>(split_exprs.size()) - 1; i >= 0; --i) {
       flattened_index = inv_permuted_indices[i] * IntImm::Int32(stride) + flattened_index;

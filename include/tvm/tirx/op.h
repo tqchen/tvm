@@ -58,8 +58,8 @@ namespace tvm {
 /*!
  * \brief Get the type of the expression under the unified type system.
  *
- * This function could return a more refined type than
- * the runtime type provided by expr->dtype
+ * This function could return a more refined type than the runtime dtype
+ * implied by PrimExpr::dtype().
  *
  * \param expr The input parameter.
  * \return The result type.

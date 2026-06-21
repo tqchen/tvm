@@ -101,7 +101,7 @@ class LinearEqDetector : public ExprFunctor<LinearEqEntry(const PrimExpr&, const
   LinearEqEntry VisitExpr_(const VarNode* op, const PrimExpr& e) final {
     LinearEqEntry ret;
     if (op == var_.get()) {
-      auto dtype = op->dtype;
+      auto dtype = op->dtype();
       ret.coeff = MakeConst(DataType::Int(dtype.bits(), dtype.lanes()), 1);
     } else {
       ret.base = e;

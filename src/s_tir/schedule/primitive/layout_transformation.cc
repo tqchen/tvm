@@ -476,7 +476,7 @@ class TransformLayoutPlanner : private StmtExprVisitor {
     for (size_t i = 0; i < inverse->initial_indices.size(); i++) {
       const auto& loop_var = inverse->initial_indices[i];
       const auto& dim = new_buffer->shape[i];
-      Var block_var("v_" + loop_var->name_hint, loop_var->dtype);
+      Var block_var("v_" + loop_var->name_hint, loop_var.dtype());
       IterVar iter_var(Range(0, dim), block_var, kDataPar);
       loop_indices_to_block_indices.Set(loop_var, block_var);
       indices.push_back(iter_var->var);
@@ -571,7 +571,7 @@ class TransformLayoutPlanner : private StmtExprVisitor {
     for (size_t i = 0; i < inverse->initial_indices.size(); i++) {
       const auto& loop_var = inverse->initial_indices[i];
       const auto& dim = new_buffer->shape[i];
-      Var block_var("v_" + loop_var->name_hint, loop_var->dtype);
+      Var block_var("v_" + loop_var->name_hint, loop_var.dtype());
       IterVar iter_var(Range(0, dim), block_var, kDataPar);
       indices.push_back(iter_var->var);
       iter_vars.push_back(iter_var);
@@ -1120,15 +1120,15 @@ IndexMap LegalizeIndexMapDType(const IndexMap& index_map, const ffi::Array<PrimE
 
   for (size_t i = 0; i < args.size(); ++i) {
     if (index_dtype.has_value()) {
-      TVM_FFI_ICHECK_EQ(*index_dtype, args[i]->dtype)
-          << "Buffer index " << args[i] << " has dtype " << args[i]->dtype
+      TVM_FFI_ICHECK_EQ(*index_dtype, args[i].dtype())
+          << "Buffer index " << args[i] << " has dtype " << args[i].dtype()
           << ", but previous index for the same buffer access used index type " << *index_dtype;
     } else {
-      index_dtype = args[i]->dtype;
+      index_dtype = args[i].dtype();
     }
 
-    if (args[i]->dtype != initial_indices_orig[i].dtype()) {
-      auto new_idx = Var(initial_indices_orig[i]->name_hint, args[i]->dtype);
+    if (args[i].dtype() != initial_indices_orig[i].dtype()) {
+      auto new_idx = Var(initial_indices_orig[i]->name_hint, args[i].dtype());
       initial_indices.push_back(new_idx);
       var_map.Set(initial_indices_orig[i], new_idx);
     } else {
@@ -1176,7 +1176,7 @@ void TransformLayout(ScheduleState self, const StmtSRef& block_sref, int buffer_
     if (pad_value.value()->final_indices.size() != 1) {
       throw TransformationPaddingIndexMapError(self->mod, pad_value.value());
     }
-    if (pad_value.value()->final_indices[0]->dtype != old_buffer->dtype) {
+    if (pad_value.value()->final_indices[0].dtype() != old_buffer->dtype) {
       throw TransformationPaddingTypeError(self->mod, old_buffer, pad_value.value());
     }
 
@@ -1412,7 +1412,7 @@ void TransformBlockLayout(ScheduleState self, const StmtSRef& block_sref,
   ffi::Array<IterVar> new_block_iters;  // new block iters
   ffi::Array<PrimExpr> new_block_vars;  // iter_var->var of new block iters
   for (size_t i = 0; i < transformed_block_iters.size(); ++i) {
-    Var new_block_var{"v" + std::to_string(i), transformed_block_iters[i]->dtype};
+    Var new_block_var{"v" + std::to_string(i), transformed_block_iters[i].dtype()};
     new_block_vars.push_back(new_block_var);
     IterVarType iter_type;
     if (is_one(new_block_iter_range[i])) {

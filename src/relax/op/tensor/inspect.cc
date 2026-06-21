@@ -303,11 +303,11 @@ Expr LegalizeTensorShape(const BlockBuilder& bb, const Call& call) {
         {tirx::AssertStmt(0 <= axis, tirx::StringImm("RuntimeError"),
                           {tirx::StringImm("Specified axis may not be negative")}),
          tirx::Bind(ndim,
-                    tirx::Call(ndim->dtype, tirx::builtin::tvm_struct_get(),
+                    tirx::Call(ndim->dtype(), tirx::builtin::tvm_struct_get(),
                                {dlpack_handle, IntImm::Int32(0),
                                 IntImm::Int32(tirx::builtin::TVMStructFieldKind::kDLTensorNDim)})),
          tirx::AssertStmt(
-             axis < tvm::cast(axis->dtype, ndim), tirx::StringImm("RuntimeError"),
+             axis < tvm::cast(axis->dtype(), ndim), tirx::StringImm("RuntimeError"),
              {tirx::StringImm(
                  "Specified axis may not be larger than the tensor's dimensionality")}),
          tirx::Bind(shape_buffer->data,
@@ -321,7 +321,7 @@ Expr LegalizeTensorShape(const BlockBuilder& bb, const Call& call) {
 
     tirx::PrimFunc func({dlpack_handle, axis}, body, tvm::PrimType(field_dtype), {}, attrs);
 
-    FuncType ty({TensorType(DataType::Void(), kUnknownNDim), PrimType(axis->dtype)},
+    FuncType ty({TensorType(DataType::Void(), kUnknownNDim), PrimType(axis->dtype())},
                 PrimType(field_dtype));
     func->ty = ty;
     return func;

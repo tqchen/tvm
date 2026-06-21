@@ -56,9 +56,9 @@ class PTXAsyncCopyInjector : public StmtMutator {
                  PrimExpr predicate_value = PrimExpr()) {
     if (load->buffer.scope() == "global") {
       TVM_FFI_ICHECK(load->indices.size() == 1 && store->indices.size() == 1);
-      TVM_FFI_ICHECK(load->indices[0]->dtype.lanes() == store->indices[0]->dtype.lanes());
+      TVM_FFI_ICHECK(load->indices[0].dtype().lanes() == store->indices[0].dtype().lanes());
 
-      const int indices_lanes = load->indices[0]->dtype.lanes();
+      const int indices_lanes = load->indices[0].dtype().lanes();
       const int bytes = indices_lanes * load->buffer->dtype.bytes();
 
       if (bytes == 4 || bytes == 8 || bytes == 16) {
