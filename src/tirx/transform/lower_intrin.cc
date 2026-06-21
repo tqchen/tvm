@@ -22,8 +22,6 @@
  * \file lower_intrin.cc
  */
 #include <tvm/ffi/cast.h>
-#include <tvm/ffi/container/tuple.h>
-#include <tvm/ffi/container/variant.h>
 #include <tvm/ffi/function.h>
 #include <tvm/ffi/reflection/registry.h>
 #include <tvm/ir/op.h>
@@ -35,6 +33,7 @@
 #include <tvm/tirx/transform.h>
 
 #include <limits>
+#include <optional>
 #include <unordered_set>
 #include <vector>
 
@@ -49,8 +48,6 @@ class IntrinInjecter : public tvm::arith::IRMutatorWithAnalyzer {
   using IRMutatorWithAnalyzer::VisitExpr_;
   using IRMutatorWithAnalyzer::VisitStmt_;
   using FLowerGeneral = ffi::TypedFunction<PrimExpr(PrimExpr)>;
-  using BindingAwareExpr = ffi::Variant<PrimExpr, ffi::Tuple<ffi::Array<Stmt>, PrimExpr>>;
-  using BindingAwareExprTuple = ffi::Tuple<ffi::Array<Stmt>, PrimExpr>;
 
   IntrinInjecter(const arith::Analyzer& analyzer, const Target& tgt, bool enable_fast_math)
       : IRMutatorWithAnalyzer(analyzer) {
@@ -114,16 +111,23 @@ class IntrinInjecter : public tvm::arith::IRMutatorWithAnalyzer {
     return WithoutBindingEmission([&]() { return IRMutatorWithAnalyzer::VisitExpr_(op); });
   }
 
-  Stmt VisitStmt_(const BindNode* op) final {
-    return VisitStmtWithPrependedBindings([&]() { return IRMutatorWithAnalyzer::VisitStmt_(op); });
-  }
+  Stmt VisitStmt(const Stmt& stmt) final {
+    struct ScopedBindingBuffer {
+      ScopedBindingBuffer(std::vector<Stmt>** slot, std::vector<Stmt>* bindings)
+          : slot(slot), saved_bindings(*slot) {
+        *slot = bindings;
+      }
 
-  Stmt VisitStmt_(const BufferStoreNode* op) final {
-    return VisitStmtWithPrependedBindings([&]() { return StmtExprMutator::VisitStmt_(op); });
-  }
+      ~ScopedBindingBuffer() { *slot = saved_bindings; }
 
-  Stmt VisitStmt_(const EvaluateNode* op) final {
-    return VisitStmtWithPrependedBindings([&]() { return StmtExprMutator::VisitStmt_(op); });
+      std::vector<Stmt>** slot;
+      std::vector<Stmt>* saved_bindings;
+    };
+
+    std::vector<Stmt> bindings;
+    ScopedBindingBuffer binding_scope(&pending_bindings_, &bindings);
+    Stmt result = IRMutatorWithAnalyzer::VisitStmt(stmt);
+    return PrependBindings(std::move(bindings), std::move(result));
   }
 
   PrimExpr VisitExpr_(const AddNode* op) final {
@@ -191,10 +195,11 @@ class IntrinInjecter : public tvm::arith::IRMutatorWithAnalyzer {
         // b < 0  => (rmod <= 0 ? rdiv : rdiv - 1)
         PrimExpr body = tirx::Select((op->b >= 0 && rmod >= 0) || (op->b < 0 && rmod <= 0), rdiv,
                                      rdiv - MakeConst(dtype, 1));
-        return FinalizeBindingAwareExpr(
-            BindingAwareExprTuple(ffi::Array<Stmt>{Bind(rmod, truncmod(op->a, op->b)),
-                                                   Bind(rdiv, truncdiv(op->a, op->b))},
-                                  body));
+        if (auto result = TryEmitBindings(
+                {Bind(rmod, truncmod(op->a, op->b)), Bind(rdiv, truncdiv(op->a, op->b))}, body)) {
+          return result.value();
+        }
+        return ret;
       }
     }
   }
@@ -255,8 +260,10 @@ class IntrinInjecter : public tvm::arith::IRMutatorWithAnalyzer {
         // b < 0 && rmod > 0 -> rmod + b
         PrimExpr body =
             Select((op->b >= 0 && rmod >= 0) || (op->b < 0 && rmod <= 0), rmod, rmod + op->b);
-        return FinalizeBindingAwareExpr(
-            BindingAwareExprTuple(ffi::Array<Stmt>{Bind(rmod, truncmod(op->a, op->b))}, body));
+        if (auto result = TryEmitBindings({Bind(rmod, truncmod(op->a, op->b))}, body)) {
+          return result.value();
+        }
+        return ret;
       }
     }
   }
@@ -294,39 +301,17 @@ class IntrinInjecter : public tvm::arith::IRMutatorWithAnalyzer {
   }
 
  private:
-  template <typename F>
-  Stmt VisitStmtWithPrependedBindings(F f) {
-    std::vector<Stmt> bindings;
-    std::vector<Stmt>* saved_bindings = pending_bindings_;
-    pending_bindings_ = &bindings;
-    Stmt result = f();
-    pending_bindings_ = saved_bindings;
-    return PrependBindings(std::move(bindings), std::move(result));
-  }
-
-  PrimExpr FinalizeBindingAwareExpr(BindingAwareExpr result) {
-    if (auto tuple = result.as<BindingAwareExprTuple>()) {
-      return EmitBindings(tuple.value().get<0>(), tuple.value().get<1>());
+  std::optional<PrimExpr> TryEmitBindings(const ffi::Array<Stmt>& bindings, PrimExpr body) {
+    if (pending_bindings_ == nullptr || expression_local_control_depth_ != 0) {
+      return std::nullopt;
     }
-    return result.get<PrimExpr>();
-  }
-
-  PrimExpr EmitBindings(const ffi::Array<Stmt>& bindings, PrimExpr body) {
-    if (pending_bindings_ != nullptr && expression_local_control_depth_ == 0) {
-      for (const Stmt& binding : bindings) {
-        pending_bindings_->push_back(binding);
-        if (const auto* op = binding.as<BindNode>()) {
-          if (SideEffect(op->value) <= CallEffectKind::kPure) {
-            analyzer_->Bind(op->var, op->value);
-          }
+    for (const Stmt& binding : bindings) {
+      pending_bindings_->push_back(binding);
+      if (const auto* op = binding.as<BindNode>()) {
+        if (SideEffect(op->value) <= CallEffectKind::kPure) {
+          analyzer_->Bind(op->var, op->value);
         }
       }
-      return body;
-    }
-    for (auto it = bindings.rbegin(); it != bindings.rend(); ++it) {
-      const auto* op = (*it).as<BindNode>();
-      TVM_FFI_ICHECK(op != nullptr) << "expression-local fallback only supports Bind statements";
-      body = Let(op->var, op->value, body);
     }
     return body;
   }

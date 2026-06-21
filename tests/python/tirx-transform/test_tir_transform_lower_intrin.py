@@ -198,7 +198,7 @@ def test_lower_floordiv_select_branch_keeps_expression_scope():
 
     assert isinstance(body, tvm.tirx.BufferStore)
     assert isinstance(body.value, tvm.tirx.Select)
-    assert isinstance(body.value.true_value, tvm.tirx.Let)
+    assert isinstance(body.value.true_value, tvm.tirx.FloorDiv)
 
 
 @pytest.mark.skipif(not env.has_llvm(), reason="need llvm")
