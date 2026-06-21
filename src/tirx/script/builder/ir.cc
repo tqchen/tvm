@@ -66,7 +66,7 @@ Buffer BufferDecl(ffi::Array<PrimExpr> shape, DataType dtype, ffi::String buffer
     buffer_data = data.value();
   }
   if (!elem_offset.defined() && offset_factor) {
-    DataType shape_dtype = shape.empty() ? DataType::Int(32) : shape[0]->dtype;
+    DataType shape_dtype = shape.empty() ? DataType::Int(32) : shape[0].dtype();
     elem_offset = tvm::tirx::Var("elem_offset", shape_dtype);
   }
   return Buffer(buffer_data, dtype, shape, strides.value_or(ffi::Array<PrimExpr>()),
@@ -462,7 +462,7 @@ ffi::Array<Var> Remap(ffi::String kinds, ffi::Array<PrimExpr> bindings, DataType
     }
     TVM_FFI_ICHECK(dom.defined()) << "TypeError: Variable is not in the loop: "
                                   << ffi::GetRef<Var>(v);
-    DataType dtype = v->dtype;
+    DataType dtype = v->dtype();
     if (c == 'S') {
       results.push_back(PushBlockVar(IterVar(/*dom=*/dom,
                                              /*var=*/Var("", dtype),
@@ -760,7 +760,7 @@ void BufferStore(Buffer buffer, PrimExpr value, ffi::Array<PrimExpr> indices,
     lhs_dtype = buffer_dtype.with_lanes(buffer_dtype.lanes() * index_lanes);
   }
 
-  runtime::DataType rhs_dtype = value->dtype;
+  runtime::DataType rhs_dtype = value.dtype();
 
   if (lhs_dtype != rhs_dtype) {
     TVM_FFI_ICHECK(lhs_dtype.is_scalable_vector() == rhs_dtype.is_scalable_vector())

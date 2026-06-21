@@ -187,14 +187,14 @@ class ComputeLegalizer : public StmtExprMutator {
     auto op_val = PromoteToTarget(this->VisitExpr(op->value));
 
     // all casts to matched data type (fp8/bf16) becomes f32
-    if (MatchDType(op->dtype)) {
-      return cast(promote_dtype_.with_lanes(op->dtype.lanes()), op_val);
+    if (MatchDType(op->dtype())) {
+      return cast(promote_dtype_.with_lanes(op->dtype().lanes()), op_val);
     }
 
     if (op_val.same_as(op->value)) {
       return ffi::GetRef<PrimExpr>(op);
     } else {
-      return cast(op->dtype, op_val);
+      return cast(op->dtype(), op_val);
     }
   }
 
@@ -237,18 +237,19 @@ class ComputeLegalizer : public StmtExprMutator {
     // update normal computations to return f32 instead.
     auto fmutate = [this](const PrimExpr& e) { return PromoteToTarget(this->VisitExpr(e)); };
     ffi::Array<PrimExpr> args = op->args.Map(fmutate);
-    if (MatchDType(op->dtype)) {
-      return Call(promote_dtype_.with_lanes(op->dtype.lanes()), op->op, args, op->attrs, op->span);
+    if (MatchDType(op->dtype())) {
+      return Call(promote_dtype_.with_lanes(op->dtype().lanes()), op->op, args, op->attrs,
+                  op->span);
     }
     if (args.same_as(op->args)) {
       return ffi::GetRef<PrimExpr>(op);
     } else {
-      return Call(op->dtype, op->op, args, op->attrs, op->span);
+      return Call(op->dtype(), op->op, args, op->attrs, op->span);
     }
   }
 
   PrimExpr VisitExpr_(const FloatImmNode* op) final {
-    if (MatchDType(op->dtype)) {
+    if (MatchDType(op->dtype())) {
       return FloatImm(promote_dtype_, op->value);
     }
     return ffi::GetRef<PrimExpr>(op);
@@ -330,7 +331,7 @@ class ComputeLegalizer : public StmtExprMutator {
       if (value.dtype() != new_buf->dtype) {
         // this happens when buffer get rewritten to f32
         // but values remain as fp8/bf16
-        TVM_FFI_ICHECK(MatchDType(value->dtype));
+        TVM_FFI_ICHECK(MatchDType(value->dtype()));
         value = DTypeConversion(value, new_buf->dtype.with_lanes(value.dtype().lanes()));
       }
       TVM_FFI_ICHECK(!op->predicate.defined())
@@ -647,14 +648,14 @@ class StorageLegalizer : public StmtExprMutator {
     if (op->op.same_as(builtin::reinterpret())) {
       PrimExpr value = VisitExpr(op->args[0]);
       // sometimes the input dtype can change and we can skip.
-      if (value.dtype() == op->dtype) return value;
-      if (MatchDType(op->dtype)) {
-        return reinterpret(GetStorageUIntDType(op->dtype), value);
+      if (value.dtype() == op->dtype()) return value;
+      if (MatchDType(op->dtype())) {
+        return reinterpret(GetStorageUIntDType(op->dtype()), value);
       }
       if (op->args[0].same_as(value)) {
         return ffi::GetRef<PrimExpr>(op);
       } else {
-        return reinterpret(op->dtype, value);
+        return reinterpret(op->dtype(), value);
       }
     }
     return StmtExprMutator::VisitExpr_(op);
@@ -669,10 +670,10 @@ class StorageLegalizer : public StmtExprMutator {
    * \return The converted value.
    */
   PrimExpr ChangeToUInt(PrimExpr value) {
-    if (!MatchDType(value->dtype)) return value;
+    if (!MatchDType(value->dtype())) return value;
     auto* call = value.as<CallNode>();
     if (call && call->op.same_as(builtin::reinterpret())) {
-      return reinterpret(GetStorageUIntDType(value->dtype), call->args[0]);
+      return reinterpret(GetStorageUIntDType(value->dtype()), call->args[0]);
     } else {
       return value;
     }

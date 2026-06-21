@@ -55,7 +55,7 @@ class ThreadBindingUnifier : public StmtExprMutator {
     }
     IterVar old_iter_var = op->node.as_or_throw<IterVar>();
     return UnifyThreadBindingImpl(op, old_iter_var->var, old_iter_var,
-                                  Range::FromMinExtent(IntImm(op->value->dtype, 0), op->value));
+                                  Range::FromMinExtent(IntImm(op->value.dtype(), 0), op->value));
   }
 
   Stmt VisitStmt_(const ForNode* op) final {
@@ -76,7 +76,7 @@ class ThreadBindingUnifier : public StmtExprMutator {
 
     } else {
       // Create a new unit loop with the annotation.
-      DataType dtype = op->loop_var->dtype;
+      DataType dtype = op->loop_var.dtype();
       return For(/*loop_var=*/Var("var", dtype),   //
                  /*min=*/IntImm(dtype, 0),         //
                  /*extent=*/IntImm(dtype, 1),      //

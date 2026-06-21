@@ -404,7 +404,7 @@ Buffer Buffer::GetFlattenedBuffer() const {
   // The axis_separators for the output buffer.
   ffi::Array<IntImm> output_axis_separators;
   for (size_t i = 0; i < self->axis_separators.size(); i++) {
-    auto dtype = self->axis_separators[i]->dtype;
+    auto dtype = self->axis_separators[i].dtype();
     output_axis_separators.push_back(IntImm(dtype, i + 1));
   }
 

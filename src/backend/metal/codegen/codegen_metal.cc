@@ -360,8 +360,8 @@ void CodeGenMetal::VisitExpr_(const SelectNode* op, std::ostream& os) {  // NOLI
 
 void CodeGenMetal::VisitExpr_(const BroadcastNode* op, std::ostream& os) {  // NOLINT(*)
   std::string v = PrintExpr(op->value);
-  int lanes = op->dtype.lanes();
-  PrintType(op->dtype, os);
+  int lanes = op->dtype().lanes();
+  PrintType(op->dtype(), os);
   os << "(";
   for (int i = 0; i < lanes; ++i) {
     if (i != 0) os << ", ";
@@ -422,7 +422,7 @@ void CodeGenMetal::VisitExpr_(const CallNode* op, std::ostream& os) {  // NOLINT
   } else if (op->op.same_as(builtin::reinterpret())) {
     // generate as_type<TYPE>(ARG)
     os << "(as_type<";
-    this->PrintType(op->dtype, os);
+    this->PrintType(op->dtype(), os);
     os << ">(";
     this->PrintExpr(op->args[0], os);
     os << "))";
@@ -442,9 +442,9 @@ void CodeGenMetal::VisitExpr_(const FloatImmNode* op, std::ostream& os) {  // NO
     temp << "NAN";
   } else {
     temp << std::scientific << op->value;
-    if (op->dtype.bits() == 32)
+    if (op->dtype().bits() == 32)
       temp << 'f';
-    else if (op->dtype.bits() == 16)
+    else if (op->dtype().bits() == 16)
       temp << 'h';
   }
   MarkConst(temp.str());

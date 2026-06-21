@@ -54,7 +54,7 @@ tvm::Type InferType(const PrimFunc& prim_func) {
         return relax::ObjectType();
       }
 
-      return PrimType(param->dtype);
+      return relax::PrimType(param.dtype());
     }();
     params.push_back(param_ty);
   }
@@ -119,10 +119,10 @@ TensorIntrin::TensorIntrin(PrimFunc desc, PrimFunc impl) {
       << "The number of parameters of the description and the implementation of the "
          "tensor intrinsic doesn't match.";
   for (size_t i = 0; i < desc->params.size(); i++) {
-    TVM_FFI_CHECK(desc->params[i]->dtype.is_handle(), ValueError)
+    TVM_FFI_CHECK(desc->params[i].dtype().is_handle(), ValueError)
         << "Parameters of the description of the "
            "tensor intrinsic should be handle only.";
-    TVM_FFI_CHECK(impl->params[i]->dtype.is_handle(), ValueError)
+    TVM_FFI_CHECK(impl->params[i].dtype().is_handle(), ValueError)
         << "Parameters of the implementation of "
            "the tensor intrinsic should be handle only.";
   }

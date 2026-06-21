@@ -43,7 +43,7 @@ void StorageAccessVisitor::VisitExpr_(const BufferLoadNode* op) {
     AccessEntry e;
     e.threads = env_threads();
     e.buffer = buf;
-    e.dtype = op->dtype.element_of();
+    e.dtype = op->dtype().element_of();
     for (const auto& index : op->indices) {
       e.touched.push_back(arith::IntSet::Vector(index));
     }

@@ -366,7 +366,7 @@ IndexMap IndexMap::RenameVariables(
           ffi::String name = opt_name.value();
           TVM_FFI_ICHECK(!name_supply->ContainsName(name, /*add_prefix=*/false));
           name_supply->ReserveName(name, /*add_prefix=*/false);
-          var_remap.Set(var, Var(name, var->dtype));
+          var_remap.Set(var, Var(name, var.dtype()));
         }
       });
     });

@@ -149,38 +149,38 @@ class DataTypeVisitor final : public StmtExprVisitor {
       // is upperbounded by its original dtype before rewrite.
       int bits = std::min(vextent_[op].bits(), bits_);
       if (vmap.find(op) == vmap.end()) {
-        vmap[op] = op->dtype.with_bits(bits);
+        vmap[op] = op->dtype().with_bits(bits);
       } else {
         // We take maximum bits for all the possible Expr where a var occurs
-        vmap[op] = op->dtype.with_bits(std::max(vmap[op].bits(), bits));
+        vmap[op] = op->dtype().with_bits(std::max(vmap[op].bits(), bits));
       }
     }
     StmtExprVisitor::VisitExpr_(op);
   }
 
   void VisitExpr_(const IntImmNode* op) {
-    if (op->dtype.is_int()) {
+    if (op->dtype().is_int()) {
       // We only narrow and never promote, so the result dtype
       // is upperbounded by its original dtype before rewrite.
-      int bits = std::min(op->dtype.bits(), bits_);
+      int bits = std::min(op->dtype().bits(), bits_);
       if (vmap.find(op) == vmap.end()) {
-        vmap[op] = op->dtype.with_bits(bits);
+        vmap[op] = op->dtype().with_bits(bits);
       } else {
-        vmap[op] = op->dtype.with_bits(std::max(vmap[op].bits(), bits));
+        vmap[op] = op->dtype().with_bits(std::max(vmap[op].bits(), bits));
       }
     }
     StmtExprVisitor::VisitExpr_(op);
   }
 
   void VisitExpr_(const CastNode* op) {
-    if (op->dtype.is_int()) {
+    if (op->dtype().is_int()) {
       // We only narrow and never promote, so the result dtype
       // is upperbounded by its original dtype before rewrite.
-      int bits = std::min(op->dtype.bits(), bits_);
+      int bits = std::min(op->dtype().bits(), bits_);
       if (vmap.find(op) == vmap.end()) {
-        vmap[op] = op->dtype.with_bits(bits);
+        vmap[op] = op->dtype().with_bits(bits);
       } else {
-        vmap[op] = op->dtype.with_bits(std::max(vmap[op].bits(), bits));
+        vmap[op] = op->dtype().with_bits(std::max(vmap[op].bits(), bits));
       }
     }
     StmtExprVisitor::VisitExpr_(op);

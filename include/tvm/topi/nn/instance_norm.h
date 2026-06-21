@@ -124,7 +124,7 @@ inline Tensor instance_norm(const Tensor& data, const Tensor& gamma, const Tenso
     channel = indices[channel_axis];
     auto mean = temp_x(non_reduce_indices) / reduce_extent;
     auto var = temp_x2(non_reduce_indices) / reduce_extent - mean * mean;
-    auto instance_norm = (data(indices) - mean) * tvm::rsqrt(var + MakeConst(var->dtype, epsilon));
+    auto instance_norm = (data(indices) - mean) * tvm::rsqrt(var + MakeConst(var.dtype(), epsilon));
     if (is_float16) {
       instance_norm = Cast(DataType::Float(16), instance_norm);
     }
