@@ -264,24 +264,6 @@ class ComputeLegalizer : public StmtExprMutator {
       return var;
     }
   }
-
-  PrimExpr VisitExpr_(const LetNode* op) final {
-    PrimExpr value = PromoteToTarget(op->value);
-    Var var = op->var;
-    if (value.dtype() != op->value.dtype()) {
-      var = op->var.copy_with_dtype(op->value.dtype());
-      var_remap_[op->var] = var;
-    }
-
-    PrimExpr body = VisitExpr(op->body);
-
-    if (value.same_as(op->value) && var.same_as(op->var) && body.same_as(op->body)) {
-      return ffi::GetRef<PrimExpr>(op);
-    } else {
-      return Let(var, value, body);
-    }
-  }
-
   DEFINE_BIOP_EXPR_LEGALIZE(AddNode, operator+);
   DEFINE_BIOP_EXPR_LEGALIZE(SubNode, operator-);
   DEFINE_BIOP_EXPR_LEGALIZE(MulNode, operator*);
@@ -569,19 +551,6 @@ class StorageLegalizer : public StmtExprMutator {
       return DeclBuffer(buf, op->span);
     }
   }
-
-  PrimExpr VisitExpr_(const LetNode* op) final {
-    PrimExpr value = VisitExpr(op->value);
-    Var var = RemapVarDef(op->var);
-    PrimExpr body = VisitExpr(op->body);
-
-    if (value.same_as(op->value) && var.same_as(op->var) && body.same_as(op->body)) {
-      return ffi::GetRef<PrimExpr>(op);
-    } else {
-      return Let(var, value, body);
-    }
-  }
-
   Stmt VisitStmt_(const BindNode* op) final {
     PrimExpr value = VisitExpr(op->value);
     Var var = RemapVarDef(op->var);

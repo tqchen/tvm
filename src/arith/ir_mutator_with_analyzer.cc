@@ -318,22 +318,6 @@ PrimExpr IRMutatorWithAnalyzer::VisitExpr_(const CallNode* op) {
   }
   return StmtExprMutator::VisitExpr_(op);
 }
-
-PrimExpr IRMutatorWithAnalyzer::VisitExpr_(const LetNode* op) {
-  PrimExpr value = this->VisitExpr(op->value);
-  if (SideEffect(value) <= CallEffectKind::kPure) {
-    analyzer_->Bind(op->var, value);
-  }
-  // We keep the let-binding here
-  // as sub-class may or maynot choose to replace it.
-  PrimExpr body = this->VisitExpr(op->body);
-  if (value.same_as(op->value) && body.same_as(op->body)) {
-    return ffi::GetRef<PrimExpr>(op);
-  } else {
-    return Let(op->var, value, body);
-  }
-}
-
 PrimExpr IRMutatorWithAnalyzer::VisitExpr_(const SelectNode* op) {
   PrimExpr cond = this->VisitExpr(op->condition);
   PrimExpr true_value, false_value;

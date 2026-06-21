@@ -54,7 +54,6 @@ class VarUseDefAnalyzer : public StmtExprVisitor {
 
  private:
   ExprDeepEqual deep_equal_;
-  std::unordered_map<const VarNode*, const LetNode*> let_binding_;
   void VisitStmt_(const AttrStmtNode* op) final;
 
   void VisitStmt_(const BindNode* op) final;
@@ -62,8 +61,6 @@ class VarUseDefAnalyzer : public StmtExprVisitor {
   void VisitStmt_(const ForNode* op) final;
 
   void VisitStmt_(const AllocBufferNode* op) final;
-
-  void VisitExpr_(const LetNode* op) final;
 
   void VisitExpr_(const VarNode* op) final;
 

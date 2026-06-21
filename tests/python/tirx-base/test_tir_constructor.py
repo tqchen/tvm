@@ -187,12 +187,6 @@ def test_expr_constructor():
     )["main"].body.value
     assert simplified.attrs["keep"] is True
 
-    v = tvm.tirx.Var("aa", "int32")
-    x = tvm.tirx.Let(v, 1, v)
-    assert x.var == v
-    assert x.value.value == 1
-    assert x.body == v
-
 
 def test_stmt_constructor():
     v = tvm.tirx.Var("aa", "int32")

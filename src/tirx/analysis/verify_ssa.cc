@@ -49,25 +49,6 @@ class SSAVerifier final : public StmtExprVisitor {
     if (!is_ssa_) return;
     StmtExprVisitor::VisitStmt(n);
   }
-  void VisitExpr_(const LetNode* op) final {
-    // Weaker SSA condition
-    // A single var can be binded in multiple lets
-    // but they have to bind to the same value.
-    // This is used to enable cases when we reuse a single let
-    // expression to cosntruct a nested expr.
-    // (let x = 1 in x + 1) * (let x = 1 in x + 1)
-    auto it = def_map_.find(op->var);
-    if (it != def_map_.end()) {
-      if (!deep_equal_(it->second, op->value)) {
-        is_ssa_ = false;
-        return;
-      }
-    } else {
-      MarkDef(op->var, op->value);
-    }
-    StmtExprVisitor::VisitExpr_(op);
-  }
-
   void VisitStmt_(const BindNode* op) final {
     MarkDef(op->var, op->value);
     StmtExprVisitor::VisitStmt_(op);

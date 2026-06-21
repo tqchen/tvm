@@ -53,7 +53,6 @@ class ExprFunctor:
             "tirx.SizeVar": self.visit_size_var_,
             "tirx.BufferLoad": self.visit_buffer_load_,
             "tirx.ProducerLoad": self.visit_producer_load_,
-            "tirx.Let": self.visit_let_,
             "tirx.Call": self.visit_call_,
             "tirx.Add": self.visit_add_,
             "tirx.Sub": self.visit_sub_,
@@ -124,10 +123,6 @@ class ExprFunctor:
 
     def visit_producer_load_(self, op):
         """Default visitor for ProducerLoad node."""
-        return self.visit_expr_default_(op)
-
-    def visit_let_(self, op):
-        """Default visitor for Let node."""
         return self.visit_expr_default_(op)
 
     def visit_call_(self, op):
@@ -292,11 +287,6 @@ class ExprVisitor(ExprFunctor):
             self.visit_expr(index)
 
         _visit_array(op.indices, _visit_indices)
-
-    def visit_let_(self, op):
-        """Visitor implementation for Let."""
-        self.visit_expr(op.value)
-        self.visit_expr(op.body)
 
     def visit_call_(self, op):
         """Visitor implementation for Call."""
@@ -476,17 +466,6 @@ class ExprMutator(ExprFunctor):
             return op
         else:
             return tvm.tirx.ProducerLoad(op.producer, indices)
-
-    def visit_let_(self, op):
-        """Mutator implementation for Let."""
-        var = self.visit_var_(op.var)
-        value = self.visit_expr(op.value)
-        body = self.visit_expr(op.body)
-
-        if var is op.var and value is op.value and body is op.body:
-            return op
-        else:
-            return tvm.tirx.Let(var, value, body)
 
     def visit_call_(self, op):
         """Mutator implementation for Call."""

@@ -26,7 +26,7 @@ def test_ir_transform():
         def main(n: T.int32):
             for i in T.serial(n):
                 for j in T.serial(10):
-                    # Inline call_extern to avoid Let binding (x must be the Call node itself)
+                    # Inline call_extern to avoid a Bind (x must be the Call node itself)
                     T.evaluate(
                         T.call_extern(
                             "int32", "TestB", T.call_extern("int32", "TestA", i * 3 + j * 1)

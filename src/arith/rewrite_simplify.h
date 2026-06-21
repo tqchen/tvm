@@ -115,7 +115,6 @@ class RewriteSimplifier::Impl : public IRMutatorWithAnalyzer {
   PrimExpr VisitExpr_(const CallNode* op) override;
   PrimExpr VisitExpr_(const VarNode* op) override;
   PrimExpr VisitExpr_(const CastNode* op) override;
-  PrimExpr VisitExpr_(const LetNode* op) override;
 
   std::function<void()> EnterConstraint(const PrimExpr& constraint);
 
@@ -187,13 +186,6 @@ class RewriteSimplifier::Impl : public IRMutatorWithAnalyzer {
    * \return comparison result.
    */
   CompareResult TryCompare(const PrimExpr& x, const PrimExpr& y);
-
-  /*!
-   * \brief Internal function to check whether or not to inline let.
-   * \param op The let expr.
-   * \return The inline decision.
-   */
-  bool CanInlineLet(const LetNode* op);
 
   /*! \brief Internal function to apply constraints
    *

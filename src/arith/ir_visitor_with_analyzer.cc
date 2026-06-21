@@ -113,13 +113,6 @@ void IRVisitorWithAnalyzer::VisitExpr_(const CallNode* op) {
     StmtExprVisitor::VisitExpr_(op);
   }
 }
-
-void IRVisitorWithAnalyzer::VisitExpr_(const LetNode* op) {
-  this->VisitExpr(op->value);
-  analyzer_->Bind(op->var, op->value);
-  this->VisitExpr(op->body);
-}
-
 void IRVisitorWithAnalyzer::VisitExpr_(const ReduceNode* op) {
   for (const IterVar& iv : op->axis) {
     analyzer_->Bind(iv->var, iv->dom);

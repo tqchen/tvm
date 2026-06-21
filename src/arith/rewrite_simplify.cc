@@ -2402,31 +2402,6 @@ PrimExpr RewriteSimplifier::Impl::VisitExpr_(const CastNode* op) {
   op = ret.as<CastNode>();
   return cast(op->dtype, op->value);
 }
-
-bool RewriteSimplifier::Impl::CanInlineLet(const LetNode* op) {
-  // Only inline trivial bindings to avoid deep expression explosion
-  // when we need let to construct complicated expressions.
-  if (is_const_number(op->value)) return true;
-  if (op->value.as<VarNode>()) return true;
-  return false;
-}
-
-PrimExpr RewriteSimplifier::Impl::VisitExpr_(const LetNode* op) {
-  PrimExpr value = this->VisitExpr(op->value);
-  if (CanInlineLet(op)) {
-    // it is fine to discard the let binding
-    // because the value will always be inlined in the simplifier.
-    analyzer_->Bind(op->var, value);
-    return this->VisitExpr(op->body);
-  }
-  PrimExpr body = this->VisitExpr(op->body);
-  if (value.same_as(op->value) && body.same_as(op->body)) {
-    return ffi::GetRef<PrimExpr>(op);
-  } else {
-    return Let(op->var, value, body);
-  }
-}
-
 PrimExpr RewriteSimplifier::operator()(const PrimExpr& expr) {
   // Run simplification in post order
   PrimExpr res = expr;

@@ -2466,15 +2466,6 @@ def predicated_buffer_load_store():
     return func
 
 
-def let_expression():
-    @T.prim_func(s_tir=True)
-    def func():
-        x = T.int32()
-        T.evaluate(T.Let(x + 1, where={x: 1}))
-
-    return func
-
-
 def test_void_ptr_vs_handle():
     """Distinguish between void* and handle
 
@@ -3319,7 +3310,6 @@ ir_generator = tvm.testing.parameter(
     ramp_int64,
     scalable_vectors,
     predicated_buffer_load_store,
-    let_expression,
     void_ptr,
     decl_buffer,
     allocate_and_decl_buffer,

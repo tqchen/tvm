@@ -415,12 +415,12 @@ class HoistedConditionals(enum.Flag):
 class HoistedLetBindings(enum.Flag):
     """Flags for use in HoistExpressionConfig.let_binding_types
 
-    Each bitflag represents a type of let binding expression that should be
+    Each bitflag represents a type of statement binding that should be
     hoisted to the outermost loop possible.
     """
 
     Never = 0
-    """ No hoisting of let bindings """
+    """ No hoisting of bindings """
 
     RequiredByConditional = 1
     """ Bindings that are used by a hoisted conditional """
@@ -428,11 +428,8 @@ class HoistedLetBindings(enum.Flag):
     Bind = 2
     """ Bindings occurring in Bind nodes """
 
-    LetExpr = 4
-    """ Bindings occurring in Let expressions """
-
-    All = RequiredByConditional | Bind | LetExpr
-    """ Enable all hoisting of let bindings """
+    All = RequiredByConditional | Bind
+    """ Enable all hoisting of bindings """
 
 
 @_ffi.register_object("s_tir.transform.HoistExpressionConfig")

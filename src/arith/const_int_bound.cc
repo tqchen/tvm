@@ -131,20 +131,6 @@ class ConstIntBoundAnalyzer::Impl
     }
     var_map_[var] = info;
   }
-
-  Entry VisitExpr_(const LetNode* op) final {
-    auto it = var_map_.find(op->var);
-    // if the var has not been binded, update the info.
-    if (it == var_map_.end()) {
-      var_map_[op->var] = this->VisitExpr(op->value);
-      Entry ret = VisitExpr(op->body);
-      var_map_.erase(op->var);
-      return ret;
-    } else {
-      return VisitExpr(op->body);
-    }
-  }
-
   void Update(const Var& var, const ConstIntBound& info, bool allow_override) {
     Update(var, MakeBound(info->min_value, info->max_value), allow_override);
   }

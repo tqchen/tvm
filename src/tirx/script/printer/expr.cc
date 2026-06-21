@@ -249,14 +249,6 @@ TVM_STATIC_IR_FUNCTOR(IRDocsifier, vtable)
                                    });
 
 TVM_STATIC_IR_FUNCTOR(IRDocsifier, vtable)
-    .set_dispatch<tirx::Let>("", [](tirx::Let let, AccessPath p, IRDocsifier d) -> Doc {
-      DictDoc where({d->AsDoc<ExprDoc>(let->var, p->Attr("var"))},
-                    {d->AsDoc<ExprDoc>(let->value, p->Attr("value"))});
-      return TIR(d, "Let")->Call({d->AsDoc<ExprDoc>(let->body, p->Attr("body"))},  //
-                                 {"where"}, {where});
-    });
-
-TVM_STATIC_IR_FUNCTOR(IRDocsifier, vtable)
     .set_dispatch<tirx::Call>("", [](tirx::Call call, AccessPath call_p, IRDocsifier d) -> Doc {
       if (call->attrs.defined()) {
         ffi::Array<ExprDoc> call_args;
@@ -460,7 +452,6 @@ TVM_SCRIPT_REPR(tirx::NotNode, ReprPrintTIR);
 TVM_SCRIPT_REPR(tirx::SelectNode, ReprPrintTIR);
 TVM_SCRIPT_REPR(tirx::RampNode, ReprPrintTIR);
 TVM_SCRIPT_REPR(tirx::BroadcastNode, ReprPrintTIR);
-TVM_SCRIPT_REPR(tirx::LetNode, ReprPrintTIR);
 TVM_SCRIPT_REPR(tirx::CallNode, ReprPrintTIR);
 TVM_SCRIPT_REPR(tirx::ShuffleNode, ReprPrintTIR);
 TVM_SCRIPT_REPR(tirx::CommReducerNode, ReprPrintTIR);

@@ -57,23 +57,22 @@ def rope_freq_default(s: tirx.Var, d: tirx.Var, d_range: int, theta: float, dtyp
     sin_freq : Tensor
         The sine of the inverse frequency.
 
-    var_map: Dict[tirx.Var, tirx.PrimExpr]
-        The common expression map.
+    var_map : dict[tirx.Var, tirx.PrimExpr]
+        The common expression map.  RoPE helpers no longer construct
+        expression-level bindings, so this map is empty.
     """
     freq = s / tirx.power(theta, d * 2 % d_range / tirx.const(d_range, "float32"))
-    freq_var = tirx.Var("freq", "float32")
-    cos_freq = tirx.cos(freq_var).astype(dtype)
-    sin_freq = tirx.sin(freq_var).astype(dtype)
-    return cos_freq, sin_freq, {freq_var: freq}
+    cos_freq = tirx.cos(freq).astype(dtype)
+    sin_freq = tirx.sin(freq).astype(dtype)
+    return cos_freq, sin_freq, {}
 
 
 def rope_freq_gptj(s: tirx.Var, d: tirx.Var, d_range: int, theta: float, dtype: str):
     """Compute the inverse frequency of RoPE for gptj RoPE scaling."""
     freq = s / tirx.power(theta, 2 * (d // 2) % d_range / tirx.const(d_range, "float32"))
-    freq_var = tirx.Var("freq", "float32")
-    cos_freq = tirx.cos(freq_var).astype(dtype)
-    sin_freq = tirx.sin(freq_var).astype(dtype)
-    return cos_freq, sin_freq, {freq_var: freq}
+    cos_freq = tirx.cos(freq).astype(dtype)
+    sin_freq = tirx.sin(freq).astype(dtype)
+    return cos_freq, sin_freq, {}
 
 
 def rope_freq_llama4(  # pylint: disable=too-many-arguments,too-many-locals
@@ -91,18 +90,17 @@ def rope_freq_llama4(  # pylint: disable=too-many-arguments,too-many-locals
     orig_freq = tirx.const(1, "float32") / tirx.power(
         theta, 2 * (d // 2) / tirx.const(d_range, "float32")
     )
-    orig_freq_var = tirx.Var("orig_freq", "float32")
 
     llama4_inv_scaling_factor = 1.0 / factor
 
     if high_freq_factor == low_freq_factor:
-        wavelength = tirx.const(2 * math.pi, "float32") / orig_freq_var
+        wavelength = tirx.const(2 * math.pi, "float32") / orig_freq
         threshold_wavelen = tirx.const(
             original_max_position_embeddings / low_freq_factor, "float32"
         )
 
         scaled_freq = tirx.if_then_else(
-            wavelength > threshold_wavelen, orig_freq_var / factor, orig_freq_var
+            wavelength > threshold_wavelen, orig_freq / factor, orig_freq
         )
         smoothed_freq = s * scaled_freq
 
@@ -112,19 +110,14 @@ def rope_freq_llama4(  # pylint: disable=too-many-arguments,too-many-locals
 
         llama4_alpha = original_max_position_embeddings / (2 * math.pi) * inv_diff_freq_factor
         llama4_beta = low_freq_factor * inv_diff_freq_factor
-        smooth = tirx.max(0.0, tirx.min(1.0, llama4_alpha * orig_freq_var - llama4_beta))
+        smooth = tirx.max(0.0, tirx.min(1.0, llama4_alpha * orig_freq - llama4_beta))
         smoothed_freq = s * (
-            (1.0 - smooth) * orig_freq_var * llama4_inv_scaling_factor + smooth * orig_freq_var
+            (1.0 - smooth) * orig_freq * llama4_inv_scaling_factor + smooth * orig_freq
         )
 
-    smoothed_freq_var = tirx.Var("smoothed_freq", "float32")
-    cos_freq = tirx.cos(smoothed_freq_var).astype(dtype)
-    sin_freq = tirx.sin(smoothed_freq_var).astype(dtype)
-    return (
-        cos_freq,
-        sin_freq,
-        {smoothed_freq_var: smoothed_freq, orig_freq_var: orig_freq},
-    )
+    cos_freq = tirx.cos(smoothed_freq).astype(dtype)
+    sin_freq = tirx.sin(smoothed_freq).astype(dtype)
+    return cos_freq, sin_freq, {}
 
 
 def rope_freq_llama3(  # pylint: disable=too-many-arguments,too-many-locals
@@ -142,23 +135,17 @@ def rope_freq_llama3(  # pylint: disable=too-many-arguments,too-many-locals
     orig_freq = tirx.const(1, "float32") / tirx.power(
         theta, d * 2 % d_range / tirx.const(d_range, "float32")
     )
-    orig_freq_var = tirx.Var("orig_freq", "float32")
     inv_diff_freq_factor = 1.0 / (high_freq_factor - low_freq_factor)
     llama3_inv_scaling_factor = 1.0 / factor
     llama3_alpha = original_max_position_embeddings / (2 * math.pi) * inv_diff_freq_factor
     llama3_beta = low_freq_factor * inv_diff_freq_factor
-    smooth = tirx.max(0.0, tirx.min(1.0, llama3_alpha * orig_freq_var - llama3_beta))
+    smooth = tirx.max(0.0, tirx.min(1.0, llama3_alpha * orig_freq - llama3_beta))
     smoothed_freq = s * (
-        (1.0 - smooth) * orig_freq_var * llama3_inv_scaling_factor + smooth * orig_freq_var
+        (1.0 - smooth) * orig_freq * llama3_inv_scaling_factor + smooth * orig_freq
     )
-    smoothed_freq_var = tirx.Var("smoothed_freq", "float32")
-    cos_freq = tirx.cos(smoothed_freq_var).astype(dtype)
-    sin_freq = tirx.sin(smoothed_freq_var).astype(dtype)
-    return (
-        cos_freq,
-        sin_freq,
-        {smoothed_freq_var: smoothed_freq, orig_freq_var: orig_freq},
-    )
+    cos_freq = tirx.cos(smoothed_freq).astype(dtype)
+    sin_freq = tirx.sin(smoothed_freq).astype(dtype)
+    return cos_freq, sin_freq, {}
 
 
 def rope_freq_longrope(  # pylint: disable=too-many-arguments
@@ -182,10 +169,9 @@ def rope_freq_longrope(  # pylint: disable=too-many-arguments
     if ext_factors is not None:
         divisor = ext_factors[d % (d_range // 2)] * divisor
     freq = s / divisor
-    freq_var = tirx.Var("freq", "float32")
-    cos_freq = (tirx.cos(freq_var) * scaling_factor).astype(dtype)
-    sin_freq = (tirx.sin(freq_var) * scaling_factor).astype(dtype)
-    return cos_freq, sin_freq, {freq_var: freq}
+    cos_freq = (tirx.cos(freq) * scaling_factor).astype(dtype)
+    sin_freq = (tirx.sin(freq) * scaling_factor).astype(dtype)
+    return cos_freq, sin_freq, {}
 
 
 def yarn_find_correction_dim(
@@ -249,10 +235,9 @@ def rope_freq_yarn(
     ).astype("float32")
     inv_freq = freq_inter * (1 - inv_freq_mask) + freq_extra * inv_freq_mask
     freq = s * inv_freq
-    freq_var = tirx.Var("freq", "float32")
-    cos_freq = tirx.cos(freq_var).astype(dtype)
-    sin_freq = tirx.sin(freq_var).astype(dtype)
-    return cos_freq, sin_freq, {freq_var: freq}
+    cos_freq = tirx.cos(freq).astype(dtype)
+    sin_freq = tirx.sin(freq).astype(dtype)
+    return cos_freq, sin_freq, {}
 
 
 def switch_rope_freq_func(rope_scaling: dict[str, Any]) -> Callable:
@@ -369,7 +354,7 @@ def llama_rope(  # pylint: disable=too-many-arguments
         d: tirx.Var,
         offset: tirx.Var,
     ):
-        cos_freq, sin_freq, var_map = switch_rope_freq_func(rope_scaling)(
+        cos_freq, sin_freq, _ = switch_rope_freq_func(rope_scaling)(
             (s + offset) * scale, d, rotary_dim, theta, dtype
         )
         cos = cos_freq * x[b, s, h, d]
@@ -386,8 +371,6 @@ def llama_rope(  # pylint: disable=too-many-arguments
                 x[b, s, h, d - rotary_dim // 2],
             )
         expr = cos + sin
-        for var, value in var_map.items():
-            expr = tirx.Let(var, value, expr)
         return expr
 
     @T.prim_func(private=True, s_tir=True)
@@ -501,7 +484,7 @@ def llama_rope_with_position_map(  # pylint: disable=too-many-arguments
         kwargs = {}
         if ext_factors:
             kwargs["ext_factors"] = ext_factors
-        cos_freq, sin_freq, var_map = switch_rope_freq_func(rope_scaling)(
+        cos_freq, sin_freq, _ = switch_rope_freq_func(rope_scaling)(
             pos * scale, d, rotary_dim, theta, "float32", **kwargs
         )
         cos = cos_freq * x[s, h, d].astype("float32")
@@ -518,8 +501,6 @@ def llama_rope_with_position_map(  # pylint: disable=too-many-arguments
                 x[s, h, d - rotary_dim // 2],
             ).astype("float32")
         expr = (cos + sin).astype(dtype)
-        for var, value in var_map.items():
-            expr = tirx.Let(var, value, expr)
         return expr
 
     @T.prim_func(s_tir=True)
@@ -727,7 +708,7 @@ def llama4_rope_with_position_map(  # pylint: disable=too-many-arguments
         kwargs = {}
         if ext_factors:
             kwargs["ext_factors"] = ext_factors
-        cos_freq, sin_freq, var_map = switch_rope_freq_func(rope_scaling)(
+        cos_freq, sin_freq, _ = switch_rope_freq_func(rope_scaling)(
             pos * scale, d, rotary_dim, theta, "float32", **kwargs
         )
         cos = cos_freq * x[s, h, d].astype("float32")
@@ -745,8 +726,6 @@ def llama4_rope_with_position_map(  # pylint: disable=too-many-arguments
                 x[s, h, d - 1],
             ).astype("float32")
         expr = (cos + sin).astype(dtype)
-        for var, value in var_map.items():
-            expr = tirx.Let(var, value, expr)
         return expr
 
     @T.prim_func(private=True, s_tir=True)

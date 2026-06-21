@@ -38,7 +38,6 @@ from tvm.tirx.expr import (
     FloorDiv,
     FloorMod,
     IntImm,
-    Let,
     Max,
     Min,
     Mod,
@@ -114,14 +113,6 @@ class ASTPrinter(ExprVisitor):
         self.log.push_scope()
         for idx in op.indices:
             self.visit_expr(idx)
-        self.log.pop_scope()
-
-    def visit_let_(self, op: Let) -> None:
-        self.log.add("Let")
-        self.log.push_scope()
-        self.visit_expr(op.var)
-        self.visit_expr(op.value)
-        self.visit_expr(op.body)
         self.log.pop_scope()
 
     def visit_call_(self, op: Call) -> None:
@@ -347,11 +338,6 @@ class ASTPostPrinterMutator(ExprMutator):
     def visit_producer_load_(self, op: ProducerLoad) -> tir.PrimExpr:
         result = super().visit_producer_load_(op)
         self.log.add("ProducerLoad")
-        return result
-
-    def visit_let_(self, op: Let) -> tir.PrimExpr:
-        result = super().visit_let_(op)
-        self.log.add("Let")
         return result
 
     def visit_call_(self, op: Call) -> tir.PrimExpr:
@@ -656,15 +642,6 @@ def test_select():
 def test_cast():
     cast_node = tir.Cast("float32", n)
     basic_check(cast_node, "\n".join(["Cast", "\tVar"]), "\n".join(["Var", "Cast"]))
-
-
-def test_let():
-    let_node = tir.Let(n, tir.IntImm("int32", 10), n + 1)
-    basic_check(
-        let_node,
-        "\n".join(["Let", "\tVar", "\tIntImm", "\tAdd", "\t\tVar", "\t\tIntImm"]),
-        "\n".join(["Var", "IntImm", "Var", "IntImm", "Add", "Let"]),
-    )
 
 
 def test_ramp():

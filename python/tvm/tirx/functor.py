@@ -44,7 +44,6 @@ from .expr import (
     FloorDiv,
     FloorMod,
     IntImm,
-    Let,
     Max,
     Min,
     Mod,
@@ -149,7 +148,6 @@ class _PyStmtExprVisitor(tvm_ffi.core.Object):
         f_visit_size_var: Callable | None = None,
         f_visit_buffer_load: Callable | None = None,
         f_visit_producer_load: Callable | None = None,
-        f_visit_let: Callable | None = None,
         f_visit_call: Callable | None = None,
         f_visit_add: Callable | None = None,
         f_visit_sub: Callable | None = None,
@@ -203,7 +201,6 @@ class _PyStmtExprVisitor(tvm_ffi.core.Object):
             f_visit_size_var,
             f_visit_buffer_load,
             f_visit_producer_load,
-            f_visit_let,
             f_visit_call,
             f_visit_add,
             f_visit_sub,
@@ -266,7 +263,6 @@ class PyStmtExprVisitor:
             "visit_size_var_",
             "visit_buffer_load_",
             "visit_producer_load_",
-            "visit_let_",
             "visit_call_",
             "visit_add_",
             "visit_sub_",
@@ -535,19 +531,6 @@ class PyStmtExprVisitor:
         ----------
         op : ProducerLoad
             The ProducerLoad to be visited.
-        """
-        _ffi_api.PyStmtExprVisitorDefaultVisitExpr(self._outer(), op)  # type: ignore
-
-    def visit_let_(self, op: Let) -> None:
-        """Visit Let.
-
-        Users can customize this function to overwrite VisitLet_(const LetNode* op)
-        on the C++ side.
-
-        Parameters
-        ----------
-        op : Let
-            The Let to be visited.
         """
         _ffi_api.PyStmtExprVisitorDefaultVisitExpr(self._outer(), op)  # type: ignore
 
@@ -950,7 +933,6 @@ class _PyStmtExprMutator(tvm_ffi.core.Object):
         f_visit_size_var: Callable | None = None,
         f_visit_buffer_load: Callable | None = None,
         f_visit_producer_load: Callable | None = None,
-        f_visit_let: Callable | None = None,
         f_visit_call: Callable | None = None,
         f_visit_add: Callable | None = None,
         f_visit_sub: Callable | None = None,
@@ -1004,7 +986,6 @@ class _PyStmtExprMutator(tvm_ffi.core.Object):
             f_visit_size_var,
             f_visit_buffer_load,
             f_visit_producer_load,
-            f_visit_let,
             f_visit_call,
             f_visit_add,
             f_visit_sub,
@@ -1067,7 +1048,6 @@ class PyStmtExprMutator:
             "visit_size_var_",
             "visit_buffer_load_",
             "visit_producer_load_",
-            "visit_let_",
             "visit_call_",
             "visit_add_",
             "visit_sub_",
@@ -1418,24 +1398,6 @@ class PyStmtExprMutator:
         ----------
         op : ProducerLoad
             The ProducerLoad to be visited.
-
-        Returns
-        -------
-        result : PrimExpr
-            The mutated PrimExpr.
-        """
-        return _ffi_api.PyStmtExprMutatorDefaultVisitExpr(self._outer(), op)  # type: ignore
-
-    def visit_let_(self, op: Let) -> PrimExpr:
-        """Visit Let.
-
-        Users can customize this function to overwrite VisitLet_(const LetNode* op)
-        on the C++ side.
-
-        Parameters
-        ----------
-        op : Let
-            The Let to be visited.
 
         Returns
         -------

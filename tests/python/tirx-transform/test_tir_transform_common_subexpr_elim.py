@@ -578,98 +578,6 @@ def test_no_normalization_without_commoning():
 
 
 # =====================================================================
-# T18: Let-bound variable -- no extraction from Let body
-# Expressions inside a Let body that reference the Let-bound variable
-# must NOT be extracted, because the variable is only in scope inside
-# the Let body, not at the statement level where Bind would be placed.
-# =====================================================================
-def test_let_body_no_extraction():
-    """CSE must not extract expressions from Let bodies that use Let-bound vars."""
-    x = tvm.tirx.Var("x", "int32")
-    y = tvm.tirx.Var("y", "int32")
-    # Let(x, 1, (x+y) + (x+y)) -- x+y appears twice but x is Let-bound
-    let_expr = tvm.tirx.Let(x, tvm.tirx.IntImm("int32", 1), (x + y) + (x + y))
-    buf = tvm.tirx.decl_buffer((10,), "int32", name="B")
-    i = tvm.tirx.Var("i", "int32")
-    store = tvm.tirx.BufferStore(buf, let_expr, [i])
-    loop = tvm.tirx.For(
-        i,
-        tvm.tirx.const(0, "int32"),
-        tvm.tirx.const(10, "int32"),
-        tvm.tirx.ForKind.SERIAL,
-        store,
-    )
-    func = tvm.tirx.PrimFunc([buf, y], loop)
-    mod = tvm.IRModule({"main": func})
-    mod_after = tvm.tirx.transform.CommonSubexprElim()(mod)
-    # No CSE variables should be introduced
-    script = mod_after["main"].script()
-    assert "cse_v" not in script, f"CSE incorrectly extracted from Let body:\n{script}"
-
-
-# =====================================================================
-# T19: Let value -- CSE works for shared Let value expressions
-# The Let value is evaluated before the binding takes effect, so
-# expressions in the Let value CAN be CSE'd with expressions outside.
-# =====================================================================
-def test_let_value_cse():
-    """CSE can extract from Let values (computed before binding)."""
-    x = tvm.tirx.Var("x", "int32")
-    y = tvm.tirx.Var("y", "int32")
-    z = tvm.tirx.Var("z", "int32")
-    # Let(x, y+z, x+1) with y+z also appearing outside the Let
-    let_expr = tvm.tirx.Let(x, y + z, x + 1)
-    buf = tvm.tirx.decl_buffer((10,), "int32", name="B")
-    i = tvm.tirx.Var("i", "int32")
-    store = tvm.tirx.BufferStore(buf, (y + z) + let_expr, [i])
-    loop = tvm.tirx.For(
-        i,
-        tvm.tirx.const(0, "int32"),
-        tvm.tirx.const(10, "int32"),
-        tvm.tirx.ForKind.SERIAL,
-        store,
-    )
-    func = tvm.tirx.PrimFunc([buf, y, z], loop)
-    mod = tvm.IRModule({"main": func})
-    mod_after = tvm.tirx.transform.CommonSubexprElim()(mod)
-    # y+z should be extracted (appears in Let value AND outside)
-    script = mod_after["main"].script()
-    assert "cse_v" in script, f"CSE should extract y+z from Let value:\n{script}"
-
-
-# =====================================================================
-# T20: Nested Let -- both levels respected
-# Multiple nested Let expressions with common sub-expressions in the
-# innermost body. None should be extracted.
-# =====================================================================
-def test_nested_let_no_extraction():
-    """CSE must not extract from nested Let bodies."""
-    x = tvm.tirx.Var("x", "int32")
-    y = tvm.tirx.Var("y", "int32")
-    z = tvm.tirx.Var("z", "int32")
-    # Let(x, 1, Let(y, 2, (x+y+z) + (x+y+z)))
-    inner = (x + y + z) + (x + y + z)
-    nested_let = tvm.tirx.Let(
-        x, tvm.tirx.IntImm("int32", 1), tvm.tirx.Let(y, tvm.tirx.IntImm("int32", 2), inner)
-    )
-    buf = tvm.tirx.decl_buffer((10,), "int32", name="B")
-    i = tvm.tirx.Var("i", "int32")
-    store = tvm.tirx.BufferStore(buf, nested_let, [i])
-    loop = tvm.tirx.For(
-        i,
-        tvm.tirx.const(0, "int32"),
-        tvm.tirx.const(10, "int32"),
-        tvm.tirx.ForKind.SERIAL,
-        store,
-    )
-    func = tvm.tirx.PrimFunc([buf, z], loop)
-    mod = tvm.IRModule({"main": func})
-    mod_after = tvm.tirx.transform.CommonSubexprElim()(mod)
-    script = mod_after["main"].script()
-    assert "cse_v" not in script, f"CSE incorrectly extracted from nested Let body:\n{script}"
-
-
-# =====================================================================
 # T21: Bind sequence with lowered floordiv pattern
 # Simulates the current pattern produced by LowerIntrin for floordiv:
 # Bind(x, load), Bind(y, load), Bind(rmod, truncmod(a,b)),
@@ -706,7 +614,7 @@ def test_bind_floordiv_pattern():
     )
     func = tvm.tirx.PrimFunc([buf_a, buf_b, buf_c], loop)
     mod = tvm.IRModule({"main": func})
-    # Should not crash and should not extract Let-bound vars
+    # Should not crash and should not extract Bind-defined vars
     mod_after = tvm.tirx.transform.CommonSubexprElim()(mod)
     script = mod_after["main"].script()
     assert "cse_v" not in script, f"CSE incorrectly extracted from Bind sequence:\n{script}"
@@ -771,9 +679,6 @@ if __name__ == "__main__":
     test_for_extent_lift()
     test_loop_var_expr_stays_inside()
     test_no_normalization_without_commoning()
-    test_let_body_no_extraction()
-    test_let_value_cse()
-    test_nested_let_no_extraction()
     test_bind_floordiv_pattern()
     test_no_lift_bool_predicate()
     test_no_lift_bool_logical()

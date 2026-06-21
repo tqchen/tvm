@@ -1338,30 +1338,3 @@ class Call(PrimExprWithOp):
             )
         else:
             self.__init_handle_by_constructor__(_ffi_api.Call, dtype, op, args, span)  # type: ignore
-
-
-@tvm_ffi.register_object("tirx.Let")
-class Let(PrimExprWithOp):
-    """Let node.
-
-    Parameters
-    ----------
-    var : Var
-        The variable in the binding.
-
-    value : PrimExpr
-        The value in to be bound.
-
-    body : PrimExpr
-        The body expression.
-
-    span : Optional[Span]
-        The location of this expression in the source code.
-    """
-
-    var: Var
-    value: PrimExpr
-    body: PrimExpr
-
-    def __init__(self, var: Var, value: PrimExpr, body: PrimExpr, span: Span | None = None) -> None:
-        self.__init_handle_by_constructor__(_ffi_api.Let, var, value, body, span)  # type: ignore

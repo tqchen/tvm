@@ -286,20 +286,6 @@ spirv::Value CodeGenSPIRV::VisitExpr_(const SelectNode* op) {
   return builder_->Select(MakeValue(op->condition), MakeValue(op->true_value),
                           MakeValue(op->false_value));
 }
-
-spirv::Value CodeGenSPIRV::VisitExpr_(const LetNode* op) {
-  auto it = let_binding_.find(op->var);
-  if (it != let_binding_.end()) {
-    TVM_FFI_ICHECK(deep_equal_(it->second->value, op->value))
-        << "Let cannot bind the same var to two different values";
-  } else {
-    let_binding_[op->var] = op;
-  }
-  var_map_[op->var.get()] = MakeValue(op->value);
-  analyzer_->Bind(op->var, op->value);
-  return MakeValue(op->body);
-}
-
 spirv::Value CodeGenSPIRV::VisitExpr_(const CallNode* op) {
   if (op->op.same_as(builtin::call_spirv_pure_glsl450())) {
     TVM_FFI_ICHECK_GE(op->args.size(), 2U);

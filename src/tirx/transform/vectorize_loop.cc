@@ -521,8 +521,8 @@ class Vectorizer : public StmtMutator, public ExprFunctor<PrimExpr(const PrimExp
     if (var.same_as(var_)) {
       return ramp_;
     }
-    auto it = let_binding_.find(var);
-    if (it != let_binding_.end()) {
+    auto it = bind_binding_.find(var);
+    if (it != bind_binding_.end()) {
       return it->second;
     } else {
       return var;
@@ -674,35 +674,7 @@ class Vectorizer : public StmtMutator, public ExprFunctor<PrimExpr(const PrimExp
 
     return load;
   }
-  // Let
-  PrimExpr VisitExpr_(const LetNode* op) final {
-    PrimExpr value = this->VisitExpr(op->value);
-    // Weaker SSA condition
-    // A single var can be binded in multiple lets
-    // but they have to bind to the same value.
-    // This is used to allow cases when we reuse a single let
-    // expression to cosntruct a nested expr.
-    // (let x = 1 in x + 1) * (let x = 1 in x + 1)
-    auto it = let_binding_.find(op->var);
-    if (it != let_binding_.end()) {
-      TVM_FFI_ICHECK(deep_equal_(it->second, value))
-          << "Let cannot bind the same var to two different values";
-    }
-    if (value.dtype().get_lanes_or_vscale_factor() !=
-        op->value.dtype().get_lanes_or_vscale_factor()) {
-      Var new_var(op->var->name_hint, value.dtype());
-      let_binding_[op->var] = new_var;
-      return Let(new_var, value, this->VisitExpr(op->body));
-    } else {
-      let_binding_[op->var] = op->var;
-      PrimExpr body = this->VisitExpr(op->body);
-      if (value.same_as(op->value) && body.same_as(op->body)) {
-        return ffi::GetRef<PrimExpr>(op);
-      } else {
-        return Let(op->var, value, body);
-      }
-    }
-  }
+
   PrimExpr VisitExpr_(const ShuffleNode* op) final {
     TVM_FFI_ICHECK(op->vectors.size() == 1 && op->indices.size() == 1)
         << "Cannot vectorize ShuffleNode with multiple vectors or indices: the vector size is "
@@ -717,9 +689,7 @@ class Vectorizer : public StmtMutator, public ExprFunctor<PrimExpr(const PrimExp
 
     int new_vec_length = Downcast<IntImm>(var_lanes_)->value / op->vectors[0].dtype().lanes();
     PrimExpr updated_index = indices[0];
-    // Check that the indices satisfy the specific patterns.
     auto f_check_index = [this, op](const PrimExpr& index) {
-      // Allowing Ramp(0, 1, var_lanes_)
       if (const auto* ramp = index.as<RampNode>()) {
         if (ramp->base->IsInstance<IntImmNode>() && Downcast<IntImm>(ramp->base)->value == 0 &&
             ramp->stride->IsInstance<IntImmNode>() && Downcast<IntImm>(ramp->stride)->value == 1 &&
@@ -728,7 +698,6 @@ class Vectorizer : public StmtMutator, public ExprFunctor<PrimExpr(const PrimExp
           return true;
         }
       }
-      // Allowing FloorMod(Ramp(0, 1, var_lanes_), Broadcast(op->vectors[0]->lanes, var_lanes_))
       if (const auto* floordiv = index.as<FloorModNode>()) {
         if (const auto* ramp = floordiv->a.as<RampNode>()) {
           if (const auto* broadcast = floordiv->b.as<BroadcastNode>()) {
@@ -765,7 +734,7 @@ class Vectorizer : public StmtMutator, public ExprFunctor<PrimExpr(const PrimExp
       return vectors[0];
     }
   }
-  // BufferStore
+
   Stmt VisitStmt_(const BufferStoreNode* op) final {
     auto store = ffi::GetRef<BufferStore>(op);
 
@@ -777,24 +746,17 @@ class Vectorizer : public StmtMutator, public ExprFunctor<PrimExpr(const PrimExp
     if (!indices.same_as(op->indices) || !value.same_as(op->value)) {
       TVM_FFI_ICHECK(!op->buffer->dtype.is_scalable_vector())
           << "Vectorizing over scalable buffer elements is not supported in vectorizer.";
-      // How many lanes of indexing are present in the index and
-      // buffer element type, excluding the last index.
       int other_index_lanes = op->buffer->dtype.lanes();
       for (size_t i = 0; i < indices.size() - 1; i++) {
         other_index_lanes *= indices[i].dtype().lanes();
-        // Only allow the last index to be scalable
         TVM_FFI_ICHECK(!indices[i].dtype().is_scalable_vector())
             << "Only the last index can be scalable.";
       }
 
-      // The total number of lanes of indexing, including the last index.
       auto last_index_dtype = indices[indices.size() - 1].dtype();
       int lanes_in_last_index = last_index_dtype.get_lanes_or_vscale_factor();
       int index_lanes = other_index_lanes * lanes_in_last_index;
 
-      // The total number of lanes in this store operation.  Either
-      // the index or the value will be broadcast out to this number
-      // of lanes, depending on which has more lanes.
       int value_dtype_lanes = value.dtype().get_lanes_or_vscale_factor();
       bool is_last_index_scalable = last_index_dtype.is_scalable_vector();
       int total_lanes = std::max(index_lanes, value_dtype_lanes);
@@ -804,8 +766,6 @@ class Vectorizer : public StmtMutator, public ExprFunctor<PrimExpr(const PrimExp
           << " lanes of storage location by changing the last index.";
       int last_index_lanes = total_lanes / other_index_lanes;
 
-      // Broadcast the last index such that the total number of index
-      // lanes matches the desired number.
       indices.Set(indices.size() - 1, BroadcastTo(indices[indices.size() - 1], last_index_lanes,
                                                   is_last_index_scalable));
 
@@ -816,6 +776,7 @@ class Vectorizer : public StmtMutator, public ExprFunctor<PrimExpr(const PrimExp
 
     return store;
   }
+
   // For
   Stmt VisitStmt_(const ForNode* op) final {
     if (op->kind == ForKind::kVectorized) {
@@ -837,21 +798,18 @@ class Vectorizer : public StmtMutator, public ExprFunctor<PrimExpr(const PrimExp
       return For(n);
     }
   }
+
   // IfThenElse
   Stmt VisitStmt_(const IfThenElseNode* op) final {
     TVM_FFI_ICHECK(!op->condition.dtype().is_scalable_or_fixed_length_vector());
     PrimExpr condition = this->VisitExpr(op->condition);
-    // need scalarize can be marked as true during visit of condition
     bool cond_need_scalarize = false;
     std::swap(cond_need_scalarize, need_scalarize_);
-    // temp clear need_scalarize flag, so VisitStmt
-    // won't trigger an TVM_FFI_ICHECK eror
     Stmt then_case = this->VisitStmt(op->then_case);
     ffi::Optional<Stmt> else_case = std::nullopt;
     if (op->else_case) {
       else_case = this->VisitStmt(op->else_case.value());
     }
-    // Check if we can rewrite the condition with predicated buffers
     if (EnableBufferLevelPredication(target_) &&
         condition.dtype().is_scalable_or_fixed_length_vector() && !else_case.defined()) {
       std::pair<bool, Stmt> success_stmt_pair =
@@ -872,30 +830,30 @@ class Vectorizer : public StmtMutator, public ExprFunctor<PrimExpr(const PrimExp
       return IfThenElse(condition, then_case, else_case);
     }
   }
+
   // While
   Stmt VisitStmt_(const WhileNode* op) final {
     TVM_FFI_THROW(InternalError) << "A while loop inside a vectorized loop not supported.";
     TVM_FFI_UNREACHABLE();
   }
+
   // Bind
   Stmt VisitStmt_(const BindNode* op) final {
     PrimExpr value = this->VisitExpr(op->value);
-    // if visit of value triggers need scalarize
-    // we need to scalarize the let
     if (need_scalarize_) {
       need_scalarize_ = false;
-      Scalarize(ffi::GetRef<Stmt>(op));
+      return Scalarize(ffi::GetRef<Stmt>(op));
     }
-    TVM_FFI_ICHECK(!let_binding_.count(op->var)) << "SSA violation, a single var is binded twice";
-    let_binding_[op->var] = value;
+    TVM_FFI_ICHECK(!bind_binding_.count(op->var)) << "SSA violation, a single var is binded twice";
+    bind_binding_[op->var] = value;
 
     if (value.dtype().get_lanes_or_vscale_factor() !=
         op->value.dtype().get_lanes_or_vscale_factor()) {
       Var new_var(op->var->name_hint, value.dtype());
-      let_binding_[op->var] = new_var;
+      bind_binding_[op->var] = new_var;
       return Bind(new_var, value);
     } else {
-      let_binding_[op->var] = op->var;
+      bind_binding_[op->var] = op->var;
       if (value.same_as(op->value)) {
         return ffi::GetRef<Stmt>(op);
       } else {
@@ -903,10 +861,9 @@ class Vectorizer : public StmtMutator, public ExprFunctor<PrimExpr(const PrimExp
       }
     }
   }
-  // AllocBuffer: just visit the body (vectorization of AllocBuffer not yet implemented)
+
   Stmt VisitStmt_(const AllocBufferNode* op) final { return StmtMutator::VisitStmt_(op); }
 
-  // scalarize the statment
   Stmt Scalarize(Stmt stmt) {
     Var idx(var_->name_hint + ".s", var_->dtype);
     stmt = Substitute(stmt, {{var_, idx}});
@@ -916,8 +873,6 @@ class Vectorizer : public StmtMutator, public ExprFunctor<PrimExpr(const PrimExp
  private:
   // analyzer
   arith::Analyzer analyzer_;
-  // deep equal
-  ExprDeepEqual deep_equal_;
   // variable to be replaced
   Var var_;
   // the lanes.
@@ -926,8 +881,8 @@ class Vectorizer : public StmtMutator, public ExprFunctor<PrimExpr(const PrimExp
   PrimExpr ramp_;
   // flag to mark requirment of scalarization.
   bool need_scalarize_{false};
-  // Let binding
-  std::unordered_map<Var, PrimExpr> let_binding_;
+  // Bind remapping
+  std::unordered_map<Var, PrimExpr> bind_binding_;
   // vectorizable property
   OpAttrMap<TVectorizable> op_vectorizable_ = Op::GetAttrMap<TVectorizable>("TVectorizable");
   /*! \brief The current target context. */

@@ -205,15 +205,6 @@ def test_intersect():
                 assert m.base == 23
 
 
-def test_let():
-    analyzer = tvm.arith.Analyzer()
-    x = tvm.tirx.Var("x", "int32")
-    y = tvm.tirx.Var("y", "int32")
-    m = analyzer.modular_set(tvm.tirx.Let(x, y * 10, x + 1))
-    assert m.coeff == 10
-    assert m.base == 1
-
-
 def test_bitwise_and():
     analyzer = tvm.arith.Analyzer()
     x = tvm.tirx.Var("x", "int32")

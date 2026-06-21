@@ -1106,7 +1106,7 @@ struct BufferVarInfo {
     kPrimFuncParam = (1 << 0),
     kPrimFuncBufferMap = (1 << 1),
     kAllocBufferNode = (1 << 2),
-    kLetNode = (1 << 3),
+    kBindNode = (1 << 3),
   };
 
   // The tirx::Var that represents this buffer.
@@ -1262,25 +1262,20 @@ class VectorTypeAccessChecker : public StmtExprVisitor {
     StmtExprVisitor::VisitStmt_(op);
   }
 
-  void VisitExpr_(const LetNode* op) final {
-    HandleLetNode(op->var);
-    StmtExprVisitor::VisitExpr_(op);
-  }
-
   void VisitStmt_(const BindNode* op) final {
-    HandleLetNode(op->var);
+    HandleBindNode(op->var);
     StmtExprVisitor::VisitStmt_(op);
   }
 
-  void HandleLetNode(Var let_var) {
-    if (let_var->dtype.is_handle()) {
-      auto pointer_type = GetPointerType(let_var->type_annotation);
+  void HandleBindNode(Var bind_var) {
+    if (bind_var->dtype.is_handle()) {
+      auto pointer_type = GetPointerType(bind_var->type_annotation);
       if (pointer_type.has_value()) {
-        OnArrayDeclaration(let_var, pointer_type.value(), 0, BufferVarInfo::kLetNode);
+        OnArrayDeclaration(bind_var, pointer_type.value(), 0, BufferVarInfo::kBindNode);
       } else if (allow_untyped_pointers_) {
-        OnArrayDeclaration(let_var, let_var->dtype, 0, BufferVarInfo::kLetNode);
+        OnArrayDeclaration(bind_var, bind_var->dtype, 0, BufferVarInfo::kBindNode);
       } else {
-        TVM_FFI_THROW(InternalError) << "Let statement of variable " << let_var->name_hint
+        TVM_FFI_THROW(InternalError) << "Bind statement of variable " << bind_var->name_hint
                                      << " is missing a type annotation, "
                                      << "or type annotation is not a pointer to primitive";
       }
@@ -1483,7 +1478,7 @@ class VectorTypeRewriter : public StmtExprMutator {
       rewrite_mask |= BufferVarInfo::kAllocBufferNode;
     }
     if (rewrite_let_node) {
-      rewrite_mask |= BufferVarInfo::kLetNode;
+      rewrite_mask |= BufferVarInfo::kBindNode;
     }
     // Rewrite any buffer variables whose preferred type isn't their current type.
     for (const auto& pair : info_map) {

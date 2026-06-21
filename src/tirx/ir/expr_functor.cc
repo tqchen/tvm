@@ -41,11 +41,6 @@ void ExprVisitor::VisitExpr_(const ProducerLoadNode* op) {
   VisitArray(op->indices, [this](const PrimExpr& e) { this->VisitExpr(e); });
 }
 
-void ExprVisitor::VisitExpr_(const LetNode* op) {
-  this->VisitExpr(op->value);
-  this->VisitExpr(op->body);
-}
-
 void ExprVisitor::VisitExpr_(const CallNode* op) {
   VisitArray(op->args, [this](const PrimExpr& e) { this->VisitExpr(e); });
 }
@@ -135,16 +130,6 @@ PrimExpr ExprMutator::VisitExpr_(const ProducerLoadNode* op) {
     return ffi::GetRef<PrimExpr>(op);
   } else {
     return ProducerLoad(op->producer, indices);
-  }
-}
-
-PrimExpr ExprMutator::VisitExpr_(const LetNode* op) {
-  PrimExpr value = this->VisitExpr(op->value);
-  PrimExpr body = this->VisitExpr(op->body);
-  if (value.same_as(op->value) && body.same_as(op->body)) {
-    return ffi::GetRef<PrimExpr>(op);
-  } else {
-    return Let(op->var, value, body);
   }
 }
 

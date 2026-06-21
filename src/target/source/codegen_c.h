@@ -160,7 +160,6 @@ class CodeGenC : public ExprFunctor<void(const PrimExpr&, std::ostream&)>,
   // expression
   void VisitExpr_(const VarNode* op, std::ostream& os) override;         // NOLINT(*)
   void VisitExpr_(const BufferLoadNode* op, std::ostream& os) override;  // NOLINT(*)
-  void VisitExpr_(const LetNode* op, std::ostream& os) override;         // NOLINT(*)
   void VisitExpr_(const CallNode* op, std::ostream& os) override;        // NOLINT(*)
   void VisitExpr_(const AddNode* op, std::ostream& os) override;         // NOLINT(*)
   void VisitExpr_(const SubNode* op, std::ostream& os) override;         // NOLINT(*)
@@ -341,13 +340,6 @@ class CodeGenC : public ExprFunctor<void(const PrimExpr&, std::ostream&)>,
  private:
   /*! \brief set of volatile buf access */
   std::unordered_set<const VarNode*> volatile_buf_;
-
-  // deep comparison of PrimExpr
-  ExprDeepEqual deep_equal_;
-
-  // binding of let variables. Enables duplicate var defs that map to same value
-  std::unordered_map<Var, const LetNode*> let_binding_;
-
   /* \brief Map of GlobalVar to their symbol.
    *
    * For externally-exposed functions, this is given by the

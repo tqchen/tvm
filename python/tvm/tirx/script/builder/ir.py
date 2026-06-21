@@ -1461,16 +1461,6 @@ def Bind(  # pylint: disable=invalid-name
     return _ffi_api.Bind(value, type_annotation, var)  # type: ignore[attr-defined] # pylint: disable=no-member
 
 
-def Let(  # pylint: disable=invalid-name
-    expr: PrimExpr,
-    where: dict[Var, PrimExpr],  # pylint: disable=redefined-outer-name
-) -> PrimExpr:
-    """Create a Let expression binding"""
-    assert len(where) == 1, "T.Let only allows `where` to have exactly one element"
-    var, value = next(iter(where.items()))  # pylint: disable=redefined-outer-name
-    return tir.Let(var, value, expr)
-
-
 bind = Bind
 
 
@@ -3574,7 +3564,6 @@ __all__ = [
     "LetAnnotation",
     "LocalVectorAnnotation",
     "DtypeConstructor",
-    "Let",
     "IterVar",
     "CommReducer",
     "Range",

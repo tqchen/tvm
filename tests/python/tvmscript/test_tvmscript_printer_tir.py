@@ -654,18 +654,6 @@ T.Broadcast(0, {scripted_lanes})
     )
 
 
-def test_let_expr():
-    x = tirx.Var("x", "int32")
-    obj = tirx.Let(x, 1, x + 1)
-    _assert_print(
-        obj,
-        """
-x = T.int32()
-T.Let(x + 1, where={x: 1})
-""",
-    )
-
-
 def test_call():
     obj = tirx.atan(T.float32(1.0))
     _assert_print(

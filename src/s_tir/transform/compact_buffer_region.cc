@@ -187,18 +187,6 @@ class BufferAccessRegionCollector : public StmtExprVisitor {
     }
   }
 
-  void VisitExpr_(const LetNode* op) final {
-    StmtExprVisitor::VisitExpr(op->value);
-    if (arith::IsIndexType(op->value->dtype)) {
-      dom_analyzer_->Bind(op->var, op->value);
-      dom_map_.emplace(op->var.get(), arith::IntSet::SinglePoint(op->value));
-    }
-    StmtExprVisitor::VisitExpr(op->body);
-    if (arith::IsIndexType(op->value->dtype)) {
-      dom_map_.erase(op->var.get());
-    }
-  }
-
   void VisitStmt_(const IfThenElseNode* op) final {
     // Visit condition
     StmtExprVisitor::VisitExpr(op->condition);

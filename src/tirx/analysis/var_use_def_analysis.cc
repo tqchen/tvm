@@ -69,26 +69,6 @@ void VarUseDefAnalyzer::VisitStmt_(const AllocBufferNode* op) {
   // VisitBufferDef (called by base) defines buffer->data and the buffer itself.
   StmtExprVisitor::VisitStmt_(op);
 }
-
-void VarUseDefAnalyzer::VisitExpr_(const LetNode* op) {
-  // Weaker SSA condition
-  // A single var can be binded in multiple lets
-  // but they have to bind to the same value.
-  // This is used to allow cases when we reuse a single let
-  // expression to construct a nested expr.
-  // (let x = 1 in x + 1) * (let x = 1 in x + 1)
-  auto it = let_binding_.find(op->var.get());
-  this->VisitExpr(op->value);
-  if (it != let_binding_.end()) {
-    TVM_FFI_ICHECK(deep_equal_(it->second->value, op->value))
-        << "Let cannot bind the same var to two different values";
-  } else {
-    this->HandleDef(op->var);
-    let_binding_[op->var.get()] = op;
-  }
-  this->VisitExpr(op->body);
-}
-
 void VarUseDefAnalyzer::VisitExpr_(const VarNode* op) {
   this->HandleUse(ffi::GetRef<Var>(op));
   StmtExprVisitor::VisitExpr_(op);

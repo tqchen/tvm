@@ -588,12 +588,6 @@ class Z3Prover::Impl : ExprFunctor<z3::expr(const PrimExpr&)> {
     }
   }
 
-  z3::expr VisitExpr_(const LetNode* op) override {
-    if (IsValidDType(op->var->dtype)) {
-      memo_.emplace(op->var, VisitInt(op->value));
-    }
-    return VisitExpr(op->body);
-  }
   z3::expr VisitExpr_(const CastNode* op) override {
     // if the inner dtype is valid, we just visit it
     if (IsValidDType(op->value->dtype) && IsValidDType(op->dtype)) {

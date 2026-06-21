@@ -86,7 +86,6 @@ TVM_FFI_STATIC_INIT_BLOCK() {
   ProducerLoadNode::RegisterReflection();
   RampNode::RegisterReflection();
   BroadcastNode::RegisterReflection();
-  LetNode::RegisterReflection();
   CallNode::RegisterReflection();
   ShuffleNode::RegisterReflection();
   CommReducerNode::RegisterReflection();
@@ -585,28 +584,6 @@ TVM_FFI_STATIC_INIT_BLOCK() {
   namespace refl = tvm::ffi::reflection;
   refl::GlobalDef().def("tirx.Broadcast", [](PrimExpr value, PrimExpr lanes, Span span) {
     return Broadcast(value, lanes, span);
-  });
-}
-
-// Let
-Let::Let(Var var, PrimExpr value, PrimExpr body, Span span) {
-  TVM_FFI_ICHECK(value.defined());
-  TVM_FFI_ICHECK(body.defined());
-  TVM_FFI_ICHECK_EQ(value.dtype(), var.dtype());
-
-  ffi::ObjectPtr<LetNode> node = ffi::make_object<LetNode>();
-  node->dtype = body.dtype();
-  node->var = std::move(var);
-  node->value = std::move(value);
-  node->body = std::move(body);
-  node->span = std::move(span);
-  data_ = std::move(node);
-}
-
-TVM_FFI_STATIC_INIT_BLOCK() {
-  namespace refl = tvm::ffi::reflection;
-  refl::GlobalDef().def("tirx.Let", [](Var var, PrimExpr value, PrimExpr body, Span span) {
-    return Let(var, value, body, span);
   });
 }
 

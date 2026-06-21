@@ -134,19 +134,6 @@ class ModularSetAnalyzer::Impl : public ExprFunctor<ModularSetAnalyzer::Entry(co
   // Override visitor behaviors
   Entry VisitExprDefault_(const ffi::Object* op) final { return Everything(); }
 
-  Entry VisitExpr_(const LetNode* op) final {
-    auto it = var_map_.find(op->var);
-    // if the var has not been binded, update the info.
-    if (it == var_map_.end()) {
-      var_map_[op->var] = this->VisitExpr(op->value);
-      Entry ret = VisitExpr(op->body);
-      var_map_.erase(op->var);
-      return ret;
-    } else {
-      return VisitExpr(op->body);
-    }
-  }
-
   Entry VisitExpr_(const CastNode* op) final { return VisitExpr(op->value); }
 
   Entry VisitExpr_(const IntImmNode* op) final { return Entry(0, op->value); }

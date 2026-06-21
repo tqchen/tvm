@@ -358,13 +358,6 @@ void TIRVisitorWithPath::VisitExpr_(const BufferLoadNode* op, AccessPath path) {
 void TIRVisitorWithPath::VisitExpr_(const ProducerLoadNode* op, AccessPath path) {
   Visit(op->indices, path->Attr("indices"));
 }
-
-void TIRVisitorWithPath::VisitExpr_(const LetNode* op, AccessPath path) {
-  Visit(op->value, path->Attr("value"));
-  auto context = WithDef(op->var, path->Attr("var"));
-  Visit(op->body, path->Attr("body"));
-}
-
 void TIRVisitorWithPath::VisitExpr_(const CallNode* op, AccessPath path) {
   if (auto gvar = op->op.as<GlobalVar>()) {
     Visit(gvar.value(), path->Attr("op"));

@@ -241,13 +241,6 @@ class TestMixIndexBound(BaseCompare):
     )
 
 
-class TestLetBound(BaseCompare):
-    x = tvm.tirx.Var("x", "int32")
-    test_case = tvm.testing.parameter(
-        TestCase(tvm.tirx.Let(x, 1, x + 1), (2, 2)),
-    )
-
-
 class TestFloorModNegativeDivisor(BaseCompare):
     flm, fld = tvm.tirx.floormod, tvm.tirx.floordiv
     a, b = tvm.tirx.Var("a", "int32"), tvm.tirx.Var("b", "int32")

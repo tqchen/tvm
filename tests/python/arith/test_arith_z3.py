@@ -441,17 +441,6 @@ def test_z3_not_equal_from_strict_less():
     assert analyzer.can_prove(expr, SB)
 
 
-def test_z3_let_expression():
-    analyzer = Analyzer()
-    _require_z3(analyzer)
-
-    y = tirx.Var("y", "int32")
-    t = tirx.Var("t", "int32")
-    let = tirx.Let(t, y * 2, t)
-    assert not analyzer.can_prove(let == y * 2)
-    assert analyzer.can_prove(let == y * 2, SB)
-
-
 def test_z3_cast_preserves_bounds():
     analyzer = Analyzer()
     _require_z3(analyzer)

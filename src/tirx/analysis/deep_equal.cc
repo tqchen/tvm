@@ -115,13 +115,6 @@ class ExprDeepEqualChecker : private ExprFunctor<bool(const PrimExpr&, const Pri
     return plhs->dtype == prhs->dtype && plhs->producer.same_as(prhs->producer) &&
            ArrayDeepEqual(plhs->indices, prhs->indices);
   }
-
-  bool VisitExpr_(const LetNode* plhs, const PrimExpr& rhs) final {
-    const auto* prhs = rhs.as<LetNode>();
-    return plhs->dtype == prhs->dtype && VisitExpr(plhs->var, prhs->var) &&
-           VisitExpr(plhs->value, prhs->value) && VisitExpr(plhs->body, prhs->body);
-  }
-
   bool VisitExpr_(const CallNode* plhs, const PrimExpr& rhs) final {
     const auto* prhs = rhs.as<CallNode>();
     return plhs->dtype == prhs->dtype && plhs->op.same_as(prhs->op) &&

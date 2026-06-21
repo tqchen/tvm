@@ -114,7 +114,7 @@ class RopeMode(enum.IntEnum):
 
 def _rope(buffer: T.Buffer, offset: tirx.Var, rotary_dim: int, theta: tirx.Var, scale: tirx.Var, indices: tuple[tirx.Var, ...], qkv_dtype: str, rope_scaling: dict[str, Any]):
     d = indices[-1]
-    cos_freq, sin_freq, var_map = switch_rope_freq_func(rope_scaling)(offset * scale, d, rotary_dim, theta, "float32")
+    cos_freq, sin_freq, _ = switch_rope_freq_func(rope_scaling)(offset * scale, d, rotary_dim, theta, "float32")
     cos = cos_freq * buffer[indices].astype("float32")
     sin = sin_freq * tirx.if_then_else(
         d < rotary_dim // 2,
@@ -122,8 +122,6 @@ def _rope(buffer: T.Buffer, offset: tirx.Var, rotary_dim: int, theta: tirx.Var, 
         buffer[indices[:-1] + (d - rotary_dim // 2,)],
     ).astype("float32")
     expr = (cos + sin).astype(qkv_dtype)
-    for var, value in var_map.items():
-        expr = tirx.Let(var, value, expr)
     return expr
 
 

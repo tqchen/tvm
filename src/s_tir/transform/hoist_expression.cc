@@ -55,7 +55,6 @@ enum class HoistedLetBindings : int {
   kNone = 0,
   kRequiredByCondition = (1 << 0),
   kBind = (1 << 1),
-  kLetExpr = (1 << 2),
 };
 
 struct HoistExpressionConfigNode : public ffi::Object {
@@ -73,8 +72,7 @@ struct HoistExpressionConfigNode : public ffi::Object {
         .def_ro("hoisted_let_bindings", &HoistExpressionConfigNode::hoisted_let_bindings,
                 "Bitflags for the types of let bindings to hoist",
                 refl::DefaultValue(static_cast<int>(HoistedLetBindings::kRequiredByCondition) |
-                                   static_cast<int>(HoistedLetBindings::kBind) |
-                                   static_cast<int>(HoistedLetBindings::kLetExpr)));
+                                   static_cast<int>(HoistedLetBindings::kBind)));
   }
 
   bool FlagSet(HoistedConditionals flag) const {
@@ -352,16 +350,6 @@ class HoistInfoCollector : public StmtExprVisitor {
       let_var_to_let_vars.erase(var);
     }
   }
-
-  void VisitExpr_(const LetNode* op) final {
-    VisitBinding(op->var, op->value, HoistedLetBindings::kLetExpr);
-
-    Parent::VisitExpr_(op);
-
-    let_var_to_loop_vars.erase(op->var.get());
-    let_var_to_let_vars.erase(op->var.get());
-  }
-
   void VisitStmt_(const IfThenElseNode* op) final {
     AttemptHoistConditional(op->condition, HoistedConditionals::kIfElseStmt,
                             op->else_case.defined());
@@ -539,14 +527,6 @@ class ExpressionHoister : public arith::IRMutatorWithAnalyzer {
       return Evaluate(0);
     } else {
       return Parent::VisitStmt_(op);
-    }
-  }
-
-  PrimExpr VisitExpr_(const LetNode* op) final {
-    if (hoisted_let_bindings.count(op->var.get())) {
-      return this->VisitExpr(op->body);
-    } else {
-      return Parent::VisitExpr_(op);
     }
   }
 

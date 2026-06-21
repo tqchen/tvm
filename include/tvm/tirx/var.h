@@ -42,7 +42,6 @@ namespace tirx {
  * Each variable is only bound once in the following nodes:
  * - Allocate
  * - For
- * - Let
  * - Bind
  */
 class VarNode : public PrimExprNode {

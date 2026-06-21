@@ -124,7 +124,7 @@ TVM_DLL bool UsesVar(const PrimExpr& expr, std::function<bool(const VarNode*)> v
 
 /*!
  * \brief Verifies whether the IR stmt or Expr is in SSA form.
- *  That is: each Var is defined and assigned once(in Let/For)
+ *  That is: each Var is defined and assigned once(in Bind/For)
  *
  * \param func The function to be verified.
  * \return Whether IR is in SSA form.

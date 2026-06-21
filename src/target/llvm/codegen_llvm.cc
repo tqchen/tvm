@@ -1658,22 +1658,6 @@ llvm::Value* CodeGenLLVM::VisitExpr_(const SelectNode* op) {
   return builder_->CreateSelect(MakeValue(op->condition), MakeValue(op->true_value),
                                 MakeValue(op->false_value));
 }
-
-llvm::Value* CodeGenLLVM::VisitExpr_(const LetNode* op) {
-  auto it = let_binding_.find(op->var);
-  if (it != let_binding_.end()) {
-    TVM_FFI_ICHECK(deep_equal_(it->second->value, op->value))
-        << "Let cannot bind the same var to two different values";
-  } else {
-    let_binding_[op->var] = op;
-  }
-  auto var_value = MakeValue(op->value);
-  var_map_[op->var.get()] = var_value;
-  AddDebugInformation(var_value, op->var);
-  analyzer_->Bind(op->var, op->value);
-  return MakeValue(op->body);
-}
-
 bool CodeGenLLVM::HasAlignmentPadding(DataType dtype) {
   if (dtype.is_scalable_vector()) {
     return false;

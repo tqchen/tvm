@@ -967,40 +967,6 @@ void CodeGenC::VisitStmt_(const BufferStoreNode* op) {
     }
   }
 }
-
-void CodeGenC::VisitExpr_(const LetNode* op, std::ostream& os) {  // NOLINT(*)
-  auto it = let_binding_.find(op->var);
-  if (it != let_binding_.end()) {
-    TVM_FFI_ICHECK(deep_equal_(it->second->value, op->value))
-        << "Let cannot bind the same var to two different values";
-  } else {
-    let_binding_[op->var] = op;
-  }
-  RegisterHandleTypeFromPointer(op->var, &op->value);
-  std::string value = PrintExpr(op->value);
-  if (print_ssa_form_) {
-    TVM_FFI_ICHECK(!var_idmap_.count(op->var.get()));
-    var_idmap_[op->var.get()] = value;
-  } else {
-    PrintIndent();
-    if (op->var.dtype() == DataType::Handle() && handle_data_type_.count(op->var.get())) {
-      PrintType(handle_data_type_.at(op->var.get()), this->stream);
-      this->stream << "* " << AllocVarID(op->var.get()) << " = (";
-      PrintType(handle_data_type_.at(op->var.get()), this->stream);
-      this->stream << "*)" << value << ";\n";
-    } else {
-      PrintType(op->var.dtype(), this->stream);
-      this->stream << ' ' << AllocVarID(op->var.get()) << " = " << value << ";\n";
-    }
-  }
-  os << PrintExpr(op->body);
-  // Pop the defined var from var_idmap when exiting its scope.
-  // We do this because it is hard to completely avoid a same LetNode appearing
-  // at different places.
-  bool removed = var_idmap_.erase(op->var.get());
-  TVM_FFI_ICHECK(removed);
-}
-
 void CodeGenC::VisitExpr_(const RampNode* op, std::ostream& os) {  // NOLINT(*)
   // NOTE: C have comma expression so cannot use (int2)(v0, v1)
   // instead should use int2(v0, v1)

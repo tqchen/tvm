@@ -1229,15 +1229,6 @@ class TestLogical(BaseCompare):
     )
 
 
-class TestLet(BaseCompare):
-    x, y = tvm.tirx.Var("x", "int32"), tvm.tirx.Var("y", "int32")
-    z = tvm.tirx.Let(x, 1, x + 1)
-
-    test_case = tvm.testing.parameter(
-        TestCase(z + z, 4),
-    )
-
-
 class TestCast(BaseCompare):
     def _generate_tests():
         x = tvm.tirx.Var("x", "int32")

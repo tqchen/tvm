@@ -28,15 +28,5 @@ def test_verify_ssa():
     )
 
 
-def test_verify_weak_let_ssa():
-    x = tvm.tirx.Var("x", "int32")
-    z1 = tvm.tirx.Let(x, 1, x + 1)
-    z2 = tvm.tirx.Let(x, 2, x + 2)
-
-    assert tvm.tirx.analysis.verify_ssa(tvm.tirx.PrimFunc([], tvm.tirx.Evaluate(z1 + z1)))
-    assert not tvm.tirx.analysis.verify_ssa(tvm.tirx.PrimFunc([], tvm.tirx.Evaluate(z1 * z2)))
-
-
 if __name__ == "__main__":
     test_verify_ssa()
-    test_verify_weak_let_ssa()

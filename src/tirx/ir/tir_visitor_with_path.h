@@ -136,7 +136,6 @@ class TIRVisitorWithPath
   void VisitExpr_(const SizeVarNode* op, ffi::reflection::AccessPath path) override;
   void VisitExpr_(const BufferLoadNode* op, ffi::reflection::AccessPath path) override;
   void VisitExpr_(const ProducerLoadNode* op, ffi::reflection::AccessPath path) override;
-  void VisitExpr_(const LetNode* op, ffi::reflection::AccessPath path) override;
   void VisitExpr_(const CallNode* op, ffi::reflection::AccessPath path) override;
   void VisitExpr_(const AddNode* op, ffi::reflection::AccessPath path) override;
   void VisitExpr_(const SubNode* op, ffi::reflection::AccessPath path) override;

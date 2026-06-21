@@ -123,25 +123,6 @@ Stmt DataTypeLegalizer::VisitStmt_(const AttrStmtNode* op) {
   }
   return StmtExprMutator::VisitStmt_(op);
 }
-
-PrimExpr DataTypeLegalizer::VisitExpr_(const LetNode* op) {
-  PrimExpr value = this->VisitExpr(op->value);
-  Var var = op->var;
-
-  if (value.dtype() != op->var->dtype) {
-    var = op->var.copy_with_dtype(value.dtype());
-    var_remap_[op->var.get()] = var;
-  }
-
-  PrimExpr new_body = this->VisitExpr(op->body);
-
-  if (value.same_as(op->value) && new_body.same_as(op->body)) {
-    return ffi::GetRef<PrimExpr>(op);
-  } else {
-    return Let(var, value, new_body, op->span);
-  }
-}
-
 Stmt DataTypeLegalizer::VisitStmt_(const BindNode* op) {
   PrimExpr value = this->VisitExpr(op->value);
   Var var = op->var;

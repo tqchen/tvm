@@ -122,7 +122,6 @@ class ExprFunctor<R(const PrimExpr& n, Args...)> {
   }
   virtual R VisitExpr_(const BufferLoadNode* op, Args... args) EXPR_FUNCTOR_DEFAULT;
   virtual R VisitExpr_(const ProducerLoadNode* op, Args... args) EXPR_FUNCTOR_DEFAULT;
-  virtual R VisitExpr_(const LetNode* op, Args... args) EXPR_FUNCTOR_DEFAULT;
   virtual R VisitExpr_(const CallNode* op, Args... args) EXPR_FUNCTOR_DEFAULT;
   virtual R VisitExpr_(const AddNode* op, Args... args) EXPR_FUNCTOR_DEFAULT;
   virtual R VisitExpr_(const SubNode* op, Args... args) EXPR_FUNCTOR_DEFAULT;
@@ -165,7 +164,6 @@ class ExprFunctor<R(const PrimExpr& n, Args...)> {
     IR_EXPR_FUNCTOR_DISPATCH(SizeVarNode);
     IR_EXPR_FUNCTOR_DISPATCH(BufferLoadNode);
     IR_EXPR_FUNCTOR_DISPATCH(ProducerLoadNode);
-    IR_EXPR_FUNCTOR_DISPATCH(LetNode);
     IR_EXPR_FUNCTOR_DISPATCH(CallNode);
     IR_EXPR_FUNCTOR_DISPATCH(AddNode);
     IR_EXPR_FUNCTOR_DISPATCH(SubNode);
@@ -216,7 +214,6 @@ class TVM_DLL ExprVisitor : public ExprFunctor<void(const PrimExpr&)> {
   void VisitExpr_(const SizeVarNode* op) override;
   void VisitExpr_(const BufferLoadNode* op) override;
   void VisitExpr_(const ProducerLoadNode* op) override;
-  void VisitExpr_(const LetNode* op) override;
   void VisitExpr_(const CallNode* op) override;
   void VisitExpr_(const AddNode* op) override;
   void VisitExpr_(const SubNode* op) override;
@@ -261,7 +258,6 @@ class TVM_DLL ExprMutator : protected ExprFunctor<PrimExpr(const PrimExpr&)> {
   PrimExpr VisitExpr_(const SizeVarNode* op) override;
   PrimExpr VisitExpr_(const BufferLoadNode* op) override;
   PrimExpr VisitExpr_(const ProducerLoadNode* op) override;
-  PrimExpr VisitExpr_(const LetNode* op) override;
   PrimExpr VisitExpr_(const CallNode* op) override;
   PrimExpr VisitExpr_(const AddNode* op) override;
   PrimExpr VisitExpr_(const SubNode* op) override;

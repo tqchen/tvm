@@ -213,7 +213,6 @@ class CodeGenLLVM : public ExprFunctor<llvm::Value*(const PrimExpr&)>,
   llvm::Value* VisitExpr_(const OrNode* op) override;
   llvm::Value* VisitExpr_(const NotNode* op) override;
   llvm::Value* VisitExpr_(const SelectNode* op) override;
-  llvm::Value* VisitExpr_(const LetNode* op) override;
   llvm::Value* VisitExpr_(const BufferLoadNode* op) override;
   llvm::Value* VisitExpr_(const CallNode* op) override;
   llvm::Value* VisitExpr_(const RampNode* op) override;
@@ -557,12 +556,7 @@ class CodeGenLLVM : public ExprFunctor<llvm::Value*(const PrimExpr&)>,
   // set of var that are not restricted(can alias)
   std::unordered_set<const VarNode*> alias_var_set_;
   // set of volatile buffer.
-  std::unordered_set<const VarNode*> volatile_buf_;
-  // deep comparison of PrimExpr
-  ExprDeepEqual deep_equal_;
-  // binding of let variables. Enables duplicate var defs that map to same value
-  std::unordered_map<Var, const LetNode*> let_binding_;
-  // debug info for function being compiled
+  std::unordered_set<const VarNode*> volatile_buf_;  // debug info for function being compiled
   llvm::DISubprogram* di_subprogram_{nullptr};
   // Cache potential common path ops to slightly improve lookup time.
   // global symbol table.

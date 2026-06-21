@@ -684,40 +684,6 @@ class Broadcast : public PrimExpr {
 };
 
 /*!
- * \brief Let binding. Bind var to value then evaluate body.
- */
-class LetNode : public PrimExprNode {
- public:
-  /*! \brief The variable. */
-  Var var;
-  /*! \brief The value to be binded. */
-  PrimExpr value;
-  /*! \brief The result expression. */
-  PrimExpr body;
-
-  static void RegisterReflection() {
-    namespace refl = tvm::ffi::reflection;
-    refl::ObjectDef<LetNode>()
-        // TODO(tqchen): use SEqHashDefNonRecursive after the next pypi tvm-ffi release
-        .def_ro("var", &LetNode::var, refl::AttachFieldFlag::SEqHashDefRecursive())
-        .def_ro("value", &LetNode::value)
-        .def_ro("body", &LetNode::body);
-  }
-  TVM_FFI_DECLARE_OBJECT_INFO_FINAL("tirx.Let", LetNode, PrimExprNode);
-};
-
-/*!
- * \brief Managed reference to LetNode
- * \sa LetNode
- */
-class Let : public PrimExpr {
- public:
-  TVM_DLL Let(Var var, PrimExpr value, PrimExpr body, Span span = Span());
-  TVM_FFI_DEFINE_OBJECT_REF_METHODS_NULLABLE(Let, PrimExpr, LetNode);
-  TVM_DEFINE_OBJECT_REF_COW_METHOD(LetNode);
-};
-
-/*!
  * \brief Call node.
  */
 class CallNode : public PrimExprNode {

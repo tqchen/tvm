@@ -47,40 +47,11 @@ class Scalarizer : public ExprMutator {
 
   PrimExpr VisitExpr_(const BroadcastNode* op) final { return op->value; }
 
-  PrimExpr VisitExpr_(const VarNode* op) final {
-    Var var = ffi::GetRef<Var>(op);
-
-    auto it = let_var_remap_.find(op);
-    if (it != let_var_remap_.end()) {
-      return it->second;
-    } else {
-      return ExprMutator::VisitExpr_(op);
-    }
-  }
-  PrimExpr VisitExpr_(const LetNode* op) final {
-    if (op->value.dtype().lanes() == 1) {
-      return ExprMutator::VisitExpr_(op);
-    }
-
-    auto it = let_var_remap_.find(op->var.get());
-    TVM_FFI_ICHECK(it == let_var_remap_.end()) << "Duplicate binding of variable " << op->var;
-
-    Var new_var(op->var->name_hint + "_scalar", op->var.dtype().element_of());
-    let_var_remap_[op->var.get()] = new_var;
-
-    PrimExpr value = this->VisitExpr(op->value);
-    PrimExpr body = this->VisitExpr(op->body);
-
-    let_var_remap_.erase(op->var.get());
-    return Let(op->var, value, body);
-  }
+  PrimExpr VisitExpr_(const VarNode* op) final { return ExprMutator::VisitExpr_(op); }
 
  private:
   // The lane to extract
   PrimExpr lane_;
-
-  // Let binding
-  std::unordered_map<const VarNode*, Var> let_var_remap_;
 };
 
 PrimExpr UnwrapVectorExpr(const PrimExpr& vector_expr, const PrimExpr& lane) {

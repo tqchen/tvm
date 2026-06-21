@@ -61,7 +61,7 @@ def test_scalar_add():
 def assignment_helper(store_dtype, value_dtype):
     store = tirx.Var("store", dtype=store_dtype)
     value = tirx.Var("value", dtype=value_dtype)
-    tirx.Let(store, value, body=store)
+    tirx.Bind(store, value)
 
 
 def test_fail_implicit_downcasts_same_type():

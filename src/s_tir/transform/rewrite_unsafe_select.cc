@@ -87,7 +87,6 @@ class UnsafeExprDetector : public ExprFunctor<bool(const PrimExpr& n)> {
   bool VisitExpr_(const AndNode* op) final { return BinaryOp(op); }
   bool VisitExpr_(const OrNode* op) final { return BinaryOp(op); }
   bool VisitExpr_(const NotNode* op) final { return VisitExpr(op->a); }
-  bool VisitExpr_(const LetNode* op) final { return VisitExpr(op->body) || VisitExpr(op->value); }
   bool VisitExpr_(const CastNode* op) final { return VisitExpr(op->value); }
   bool VisitExpr_(const BroadcastNode* op) final { return VisitExpr(op->value); }
   bool VisitExpr_(const RampNode* op) final { return VisitExpr(op->base) && VisitExpr(op->stride); }
