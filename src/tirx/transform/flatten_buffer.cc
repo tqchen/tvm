@@ -24,6 +24,7 @@
 #include <tvm/arith/iter_affine_map.h>
 #include <tvm/ffi/cast.h>
 #include <tvm/ffi/reflection/registry.h>
+#include <tvm/ir/type.h>
 #include <tvm/tirx/analysis.h>
 #include <tvm/tirx/layout.h>
 #include <tvm/tirx/stmt_functor.h>
@@ -187,7 +188,7 @@ class BufferFlattener : public arith::IRMutatorWithAnalyzer {
     if (load_returns_bool) {
       TVM_FFI_ICHECK_EQ(load->buffer->dtype, DataType::Int(8))
           << "Expected int8 backing array for boolean tensor";
-      load.CopyOnWrite()->SetDType(DataType::Int(8));
+      load.CopyOnWrite()->ty = PrimType::Int(8);
       return tvm::cast(DataType::Bool(), load);
     } else {
       return load;

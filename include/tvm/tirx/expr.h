@@ -752,6 +752,9 @@ class CallNode : public PrimExprNode {
  */
 class Call : public PrimExpr {
  public:
+  TVM_DLL Call(PrimType dtype, RelaxExpr op, ffi::Array<PrimExpr> args, Attrs attrs = Attrs(),
+               Span span = Span());
+  TVM_DLL Call(PrimType dtype, RelaxExpr op, ffi::Array<PrimExpr> args, Span span);
   TVM_DLL Call(DataType dtype, RelaxExpr op, ffi::Array<PrimExpr> args, Attrs attrs = Attrs(),
                Span span = Span());
   TVM_DLL Call(DataType dtype, RelaxExpr op, ffi::Array<PrimExpr> args, Span span);
