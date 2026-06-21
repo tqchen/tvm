@@ -31,14 +31,15 @@
  *
  * This intentionally uses a minimal PrimType-like object layout instead of
  * linking TVM.  It isolates the cost shape relevant to the refactor:
- * allocation, compact-key hash lookup, direct singleton lookup, and the
- * downstream IntImm constructor shape.
+ * allocation, compact-key TLS hash lookup, direct singleton lookup, and the
+ * downstream IntImm and binary-expression constructor shapes.
  */
 
 #include <algorithm>
 #include <atomic>
 #include <chrono>
 #include <cstdint>
+#include <cstdlib>
 #include <iomanip>
 #include <iostream>
 #include <memory>
@@ -56,6 +57,11 @@ struct DataTypeLike {
 };
 
 constexpr DataTypeLike kInt32{0, 32, 1};
+constexpr DataTypeLike kInt64{0, 64, 1};
+
+bool SameDataType(DataTypeLike lhs, DataTypeLike rhs) {
+  return lhs.code == rhs.code && lhs.bits == rhs.bits && lhs.lanes == rhs.lanes;
+}
 
 uint32_t CompactKey(DataTypeLike dtype) {
   return (static_cast<uint32_t>(dtype.code) << 24) | (static_cast<uint32_t>(dtype.bits) << 16) |
@@ -77,6 +83,42 @@ struct NewIntImmNode {
   int64_t value;
 };
 
+struct OldExprLike {
+  DataTypeLike dtype;
+  int64_t value;
+};
+
+struct NewExprLike {
+  PrimTypeLikeNode* ty;
+  int64_t value;
+};
+
+struct OldCastNode {
+  DataTypeLike dtype;
+  OldExprLike* value;
+};
+
+struct NewCastNode {
+  PrimTypeLikeNode* ty;
+  NewExprLike* value;
+};
+
+struct OldBinaryNode {
+  DataTypeLike dtype;
+  OldExprLike* a;
+  OldExprLike* b;
+  OldCastNode* cast_a{nullptr};
+  OldCastNode* cast_b{nullptr};
+};
+
+struct NewBinaryNode {
+  PrimTypeLikeNode* ty;
+  NewExprLike* a;
+  NewExprLike* b;
+  NewCastNode* cast_a{nullptr};
+  NewCastNode* cast_b{nullptr};
+};
+
 template <typename T>
 void DoNotOptimize(const T& value) {
 #if defined(__GNUC__) || defined(__clang__)
@@ -88,27 +130,22 @@ void DoNotOptimize(const T& value) {
 
 PrimTypeLikeNode* FreshPrimTypeNode(DataTypeLike dtype) { return new PrimTypeLikeNode{dtype, 1}; }
 
-const std::unordered_map<uint32_t, std::unique_ptr<PrimTypeLikeNode>>& PrimTypeHashCache() {
-  static const std::unordered_map<uint32_t, std::unique_ptr<PrimTypeLikeNode>> cache = [] {
-    std::unordered_map<uint32_t, std::unique_ptr<PrimTypeLikeNode>> result;
-    for (DataTypeLike dtype :
-         {DataTypeLike{0, 8, 1}, DataTypeLike{0, 16, 1}, kInt32, DataTypeLike{0, 64, 1},
-          DataTypeLike{1, 8, 1}, DataTypeLike{1, 16, 1}, DataTypeLike{1, 32, 1},
-          DataTypeLike{2, 32, 1}, DataTypeLike{2, 64, 1}}) {
-      auto node = std::make_unique<PrimTypeLikeNode>();
-      node->dtype = dtype;
-      node->ref_count.store(1, std::memory_order_relaxed);
-      result.emplace(CompactKey(dtype), std::move(node));
-    }
-    return result;
-  }();
+std::unordered_map<uint32_t, std::unique_ptr<PrimTypeLikeNode>>& PrimTypeTlsHashCache() {
+  thread_local std::unordered_map<uint32_t, std::unique_ptr<PrimTypeLikeNode>> cache;
   return cache;
 }
 
-PrimTypeLikeNode* HashCachedPrimTypeNode(DataTypeLike dtype) {
-  const auto& cache = PrimTypeHashCache();
+PrimTypeLikeNode* TlsCachedPrimTypeNode(DataTypeLike dtype) {
+  auto& cache = PrimTypeTlsHashCache();
   auto it = cache.find(CompactKey(dtype));
-  return it == cache.end() ? nullptr : it->second.get();
+  if (it != cache.end()) {
+    return it->second.get();
+  }
+
+  auto node = std::make_unique<PrimTypeLikeNode>();
+  node->dtype = dtype;
+  node->ref_count.store(1, std::memory_order_relaxed);
+  return cache.emplace(CompactKey(dtype), std::move(node)).first->second.get();
 }
 
 PrimTypeLikeNode* StaticInt32PrimTypeNode() {
@@ -155,7 +192,7 @@ NewIntImmNode* MakeNewIntImmWithFreshPrimType(DataTypeLike dtype, int64_t value)
 }
 
 NewIntImmNode* MakeNewIntImmWithHashCachedPrimType(DataTypeLike dtype, int64_t value) {
-  PrimTypeLikeNode* ty = HashCachedPrimTypeNode(dtype);
+  PrimTypeLikeNode* ty = TlsCachedPrimTypeNode(dtype);
   IncRef(ty);
   return new NewIntImmNode{ty, value};
 }
@@ -176,10 +213,91 @@ void DeleteCachedNewIntImm(NewIntImmNode* node) {
   delete node;
 }
 
+DataTypeLike PromoteOldBinaryType(DataTypeLike lhs, DataTypeLike rhs) {
+  if (SameDataType(lhs, rhs)) {
+    return lhs;
+  }
+  if (lhs.code == rhs.code && lhs.bits < rhs.bits) {
+    return rhs;
+  }
+  return lhs;
+}
+
+PrimTypeLikeNode* PromoteNewBinaryType(PrimTypeLikeNode* lhs, PrimTypeLikeNode* rhs) {
+  if (SameDataType(lhs->dtype, rhs->dtype)) {
+    return lhs;
+  }
+  if (lhs->dtype.code == rhs->dtype.code && lhs->dtype.bits < rhs->dtype.bits) {
+    return rhs;
+  }
+  return lhs;
+}
+
+OldBinaryNode* MakeOldAddSameType(OldExprLike* a, OldExprLike* b) {
+  if (!SameDataType(a->dtype, b->dtype)) std::abort();
+  return new OldBinaryNode{a->dtype, a, b};
+}
+
+NewBinaryNode* MakeNewAddSameType(NewExprLike* a, NewExprLike* b) {
+  if (!SameDataType(a->ty->dtype, b->ty->dtype)) std::abort();
+  IncRef(a->ty);
+  return new NewBinaryNode{a->ty, a, b};
+}
+
+OldBinaryNode* MakeOldAddWithPromotion(OldExprLike* a, OldExprLike* b) {
+  DataTypeLike promoted = PromoteOldBinaryType(a->dtype, b->dtype);
+  OldCastNode* cast_a = nullptr;
+  OldCastNode* cast_b = nullptr;
+  if (!SameDataType(a->dtype, promoted)) {
+    cast_a = new OldCastNode{promoted, a};
+  }
+  if (!SameDataType(b->dtype, promoted)) {
+    cast_b = new OldCastNode{promoted, b};
+  }
+  return new OldBinaryNode{promoted, a, b, cast_a, cast_b};
+}
+
+NewBinaryNode* MakeNewAddWithPromotion(NewExprLike* a, NewExprLike* b) {
+  PrimTypeLikeNode* promoted = PromoteNewBinaryType(a->ty, b->ty);
+  NewCastNode* cast_a = nullptr;
+  NewCastNode* cast_b = nullptr;
+  if (!SameDataType(a->ty->dtype, promoted->dtype)) {
+    IncRef(promoted);
+    cast_a = new NewCastNode{promoted, a};
+  }
+  if (!SameDataType(b->ty->dtype, promoted->dtype)) {
+    IncRef(promoted);
+    cast_b = new NewCastNode{promoted, b};
+  }
+  IncRef(promoted);
+  return new NewBinaryNode{promoted, a, b, cast_a, cast_b};
+}
+
+void DeleteOldBinary(OldBinaryNode* node) {
+  delete node->cast_a;
+  delete node->cast_b;
+  delete node;
+}
+
+void DeleteNewBinary(NewBinaryNode* node) {
+  if (node->cast_a) {
+    DecRef(node->cast_a->ty);
+    delete node->cast_a;
+  }
+  if (node->cast_b) {
+    DecRef(node->cast_b->ty);
+    delete node->cast_b;
+  }
+  DecRef(node->ty);
+  delete node;
+}
+
 }  // namespace
 
 int main() {
   std::vector<BenchResult> results;
+  TlsCachedPrimTypeNode(kInt32);
+  TlsCachedPrimTypeNode(kInt64);
 
   results.push_back(Measure("PrimType fresh node from DataType", 5000000, [](uint64_t i) {
     auto* node = FreshPrimTypeNode(kInt32);
@@ -187,18 +305,20 @@ int main() {
     delete node;
     DoNotOptimize(i);
   }));
-  results.push_back(Measure("PrimType hash cache lookup by compact key", 50000000, [](uint64_t i) {
-    auto* node = HashCachedPrimTypeNode(kInt32);
-    DoNotOptimize(node);
-    DoNotOptimize(i);
-  }));
-  results.push_back(Measure("PrimType hash lookup plus ref materialize", 20000000, [](uint64_t i) {
-    auto* node = HashCachedPrimTypeNode(kInt32);
-    IncRef(node);
-    DoNotOptimize(node);
-    DecRef(node);
-    DoNotOptimize(i);
-  }));
+  results.push_back(
+      Measure("PrimType TLS hash cache lookup by compact key", 50000000, [](uint64_t i) {
+        auto* node = TlsCachedPrimTypeNode(kInt32);
+        DoNotOptimize(node);
+        DoNotOptimize(i);
+      }));
+  results.push_back(
+      Measure("PrimType TLS hash lookup plus ref materialize", 20000000, [](uint64_t i) {
+        auto* node = TlsCachedPrimTypeNode(kInt32);
+        IncRef(node);
+        DoNotOptimize(node);
+        DecRef(node);
+        DoNotOptimize(i);
+      }));
   results.push_back(Measure("PrimType direct static singleton lookup", 50000000, [](uint64_t i) {
     auto* node = StaticInt32PrimTypeNode();
     DoNotOptimize(node);
@@ -232,6 +352,36 @@ int main() {
         auto* node = MakeNewIntImmWithStaticPrimType(static_cast<int64_t>(i));
         DoNotOptimize(node);
         DeleteCachedNewIntImm(node);
+      }));
+  results.push_back(Measure("Binary add old dtype-field same-type shape", 5000000, [](uint64_t i) {
+    OldExprLike a{kInt32, static_cast<int64_t>(i)};
+    OldExprLike b{kInt32, static_cast<int64_t>(i + 1)};
+    auto* node = MakeOldAddSameType(&a, &b);
+    DoNotOptimize(node);
+    DeleteOldBinary(node);
+  }));
+  results.push_back(Measure("Binary add PrimType same-type reuse shape", 5000000, [](uint64_t i) {
+    NewExprLike a{TlsCachedPrimTypeNode(kInt32), static_cast<int64_t>(i)};
+    NewExprLike b{TlsCachedPrimTypeNode(kInt32), static_cast<int64_t>(i + 1)};
+    auto* node = MakeNewAddSameType(&a, &b);
+    DoNotOptimize(node);
+    DeleteNewBinary(node);
+  }));
+  results.push_back(
+      Measure("Binary add old dtype-field promote i32+i64 shape", 3000000, [](uint64_t i) {
+        OldExprLike a{kInt32, static_cast<int64_t>(i)};
+        OldExprLike b{kInt64, static_cast<int64_t>(i + 1)};
+        auto* node = MakeOldAddWithPromotion(&a, &b);
+        DoNotOptimize(node);
+        DeleteOldBinary(node);
+      }));
+  results.push_back(
+      Measure("Binary add PrimType promote/reuse i32+i64 shape", 3000000, [](uint64_t i) {
+        NewExprLike a{TlsCachedPrimTypeNode(kInt32), static_cast<int64_t>(i)};
+        NewExprLike b{TlsCachedPrimTypeNode(kInt64), static_cast<int64_t>(i + 1)};
+        auto* node = MakeNewAddWithPromotion(&a, &b);
+        DoNotOptimize(node);
+        DeleteNewBinary(node);
       }));
 
   std::cout << "| benchmark | iterations | ns/op |\n";
