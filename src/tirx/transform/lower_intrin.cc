@@ -307,11 +307,6 @@ class IntrinInjecter : public tvm::arith::IRMutatorWithAnalyzer {
     }
     for (const Stmt& binding : bindings) {
       pending_bindings_->push_back(binding);
-      if (const auto* op = binding.as<BindNode>()) {
-        if (SideEffect(op->value) <= CallEffectKind::kPure) {
-          analyzer_->Bind(op->var, op->value);
-        }
-      }
     }
     return body;
   }

@@ -205,6 +205,152 @@ class IRConvertSSA final : public StmtExprMutator {
   Buffer VisitBufferDef(const Buffer& buffer, bool alloc_data) override { return buffer; }
 
   PrimExpr VisitExpr_(const VarNode* op) final { return GetRemappedVar(ffi::GetRef<Var>(op)); }
+  PrimExpr VisitExpr_(const BufferLoadNode* op) final {
+    auto node = Downcast<BufferLoad>(StmtExprMutator::VisitExpr_(op));
+    auto output = VisitBufferAccess(std::move(node));
+    return output;
+  }
+
+  Stmt VisitStmt_(const BufferStoreNode* op) final {
+    auto node = Downcast<BufferStore>(StmtExprMutator::VisitStmt_(op));
+    auto output = VisitBufferAccess(std::move(node));
+    return output;
+  }
+
+  Stmt VisitStmt_(const DeclBufferNode* op) final {
+    DeclBuffer decl = Downcast<DeclBuffer>(StmtExprMutator::VisitStmt_(op));
+    Buffer new_buffer = GetRemappedBuffer(decl->buffer);
+    if (!new_buffer.same_as(decl->buffer)) {
+      decl.CopyOnWrite()->buffer = std::move(new_buffer);
+    }
+    return decl;
+  }
+
+  Stmt VisitStmt_(const SBlockNode* op) final {
+    SBlock block = ffi::GetRef<SBlock>(op);
+
+    // The SBlockNode is the point of definition for the IterVar
+    // instances.  These re-defines must be present before visiting
+    // the body of the SBlockNode.
+    return scope_.WithNewScope([&]() -> Stmt {
+      ffi::Array<IterVar> iter_vars = op->iter_vars.Map([&](IterVar iter_var) {
+        if (defined_.count(iter_var->var.get())) {
+          Var new_var = MakeNewVar(iter_var->var);
+          PushVarRemap(iter_var->var, new_var);
+          iter_var.CopyOnWrite()->var = new_var;
+        } else {
+          defined_.insert(iter_var->var.get());
+        }
+        return iter_var;
+      });
+      ffi::Array<BufferRegion> reads =
+          block->reads.Map([&](const auto& region) { return VisitBufferAccess(region); });
+      ffi::Array<BufferRegion> writes =
+          block->writes.Map([&](const auto& region) { return VisitBufferAccess(region); });
+
+      if (!reads.same_as(block->reads) || !writes.same_as(block->writes) ||
+          !iter_vars.same_as(op->iter_vars)) {
+        auto write_ptr = block.CopyOnWrite();
+        write_ptr->reads = reads;
+        write_ptr->writes = writes;
+        write_ptr->iter_vars = iter_vars;
+      }
+
+      return Downcast<SBlock>(StmtExprMutator::VisitStmt_(block.get()));
+    });
+  }
+
+  template <typename Node>
+  Node VisitBufferAccess(Node node) {
+    Buffer new_buf = GetRemappedBuffer(node->buffer);
+    if (!new_buf.same_as(node->buffer)) {
+      auto writer = node.CopyOnWrite();
+      writer->buffer = new_buf;
+    }
+
+    return node;
+  }
+
+  Var GetRemappedVar(Var var) {
+    if (auto it = var_remap_.find(var.get()); it != var_remap_.end() && it->second.size()) {
+      return it->second.back();
+    } else if (auto it = function_scope_var_remap_.find(var.get());
+               it != function_scope_var_remap_.end()) {
+      return it->second;
+    } else {
+      return var;
+    }
+  }
+
+  Buffer GetRemappedBuffer(Buffer buf) {
+    // Determine the buffer var that should be in the updated buffer,
+    // given the current scope.  If no redefines are present, then the
+    // buffer var is unchanged.
+    Var new_buffer_var = GetRemappedVar(buf->data);
+    PrimExpr elem_offset = VisitExpr(buf->elem_offset);
+    auto visit_expr = [this](const PrimExpr& expr) { return VisitExpr(expr); };
+    ffi::Array<PrimExpr> shape = buf->shape.Map(visit_expr);
+    ffi::Array<PrimExpr> strides = buf->strides.Map(visit_expr);
+
+    // Rewrite the layout's per-iter extent/stride expressions in lockstep
+    // with the shape. If we don't, SSA-renamed shape vars end up as fresh
+    // Vars while the layout still references the original, producing
+    // structurally-unequal buffers whose shape and layout disagree (e.g.,
+    // test_dynamic_launch_thread).
+    ffi::Optional<Layout> new_layout = buf->layout;
+    bool layout_changed = false;
+    if (buf->layout.defined()) {
+      if (auto opt_tile = buf->layout.value().as<TileLayoutNode>()) {
+        auto remap_iter = [&](const Iter& it) -> Iter {
+          PrimExpr new_extent = VisitExpr(it->extent);
+          PrimExpr new_stride = VisitExpr(it->stride);
+          if (new_extent.same_as(it->extent) && new_stride.same_as(it->stride)) {
+            return it;
+          }
+          return Iter(new_extent, new_stride, it->axis);
+        };
+        auto new_shard = opt_tile->shard.Map(remap_iter);
+        auto new_replica = opt_tile->replica.Map(remap_iter);
+        if (!new_shard.same_as(opt_tile->shard) || !new_replica.same_as(opt_tile->replica)) {
+          new_layout = TileLayout(new_shard, new_replica, opt_tile->offset);
+          layout_changed = true;
+        }
+      }
+    }
+
+    // If no mapping is required, return the original buffer.
+    if (new_buffer_var.same_as(buf->data) && elem_offset.same_as(buf->elem_offset) &&
+        shape.same_as(buf->shape) && strides.same_as(buf->strides) && !layout_changed) {
+      return buf;
+    }
+
+    // If the current scope already has a mapping of this buffer, use
+    // the mapped buffer.
+    auto key = buf.get();
+    std::vector<Buffer>& buffers = buf_remap_[key];
+    if (buffers.size() && buffers.back()->data.same_as(new_buffer_var)) {
+      return buffers.back();
+    }
+
+    // Otherwise, make and return a new buffer object that uses the
+    // new buffer, pushing it onto the scoped stack of existing
+    // buffers.  This will be popped when the new_buffer_var
+    // redefinition is popped.
+    Buffer new_buf = buf;
+    {
+      auto write_ptr = new_buf.CopyOnWrite();
+      write_ptr->data = new_buffer_var;
+      write_ptr->shape = shape;
+      write_ptr->strides = strides;
+      write_ptr->elem_offset = elem_offset;
+      if (layout_changed) {
+        write_ptr->layout = std::move(new_layout);
+      }
+    }
+    buffers.push_back(new_buf);
+    return new_buf;
+  }
+
   Stmt VisitStmt_(const BindNode* op) final {
     // Bind var remaps are tracked in the current scope so they persist
     // across SeqStmt siblings and are cleaned up when the enclosing
@@ -386,76 +532,6 @@ class IRConvertSSA final : public StmtExprMutator {
         return Var(old_var->name_hint, old_var->dtype);
       }
     }
-  }
-
-  /*! \brief Return the currently active remap for a variable, if any. */
-  Var GetRemappedVar(Var var) {
-    if (auto it = var_remap_.find(var.get()); it != var_remap_.end() && it->second.size()) {
-      return it->second.back();
-    } else if (auto it = function_scope_var_remap_.find(var.get());
-               it != function_scope_var_remap_.end()) {
-      return it->second;
-    } else {
-      return var;
-    }
-  }
-
-  /*! \brief Return the currently active remap for a buffer, if any. */
-  Buffer GetRemappedBuffer(Buffer buf) {
-    Var new_buffer_var = GetRemappedVar(buf->data);
-    PrimExpr elem_offset = VisitExpr(buf->elem_offset);
-    auto visit_expr = [this](const PrimExpr& expr) { return VisitExpr(expr); };
-    ffi::Array<PrimExpr> shape = buf->shape.Map(visit_expr);
-    ffi::Array<PrimExpr> strides = buf->strides.Map(visit_expr);
-    ffi::Array<PrimExpr> allocated_addr = buf->allocated_addr.Map(visit_expr);
-
-    ffi::Optional<Layout> new_layout = buf->layout;
-    bool layout_changed = false;
-    if (buf->layout.defined()) {
-      if (auto opt_tile = buf->layout.value().as<TileLayoutNode>()) {
-        auto remap_iter = [&](const Iter& it) -> Iter {
-          PrimExpr new_extent = VisitExpr(it->extent);
-          PrimExpr new_stride = VisitExpr(it->stride);
-          if (new_extent.same_as(it->extent) && new_stride.same_as(it->stride)) {
-            return it;
-          }
-          return Iter(new_extent, new_stride, it->axis);
-        };
-        auto new_shard = opt_tile->shard.Map(remap_iter);
-        auto new_replica = opt_tile->replica.Map(remap_iter);
-        if (!new_shard.same_as(opt_tile->shard) || !new_replica.same_as(opt_tile->replica)) {
-          new_layout = TileLayout(new_shard, new_replica, opt_tile->offset);
-          layout_changed = true;
-        }
-      }
-    }
-
-    if (new_buffer_var.same_as(buf->data) && elem_offset.same_as(buf->elem_offset) &&
-        shape.same_as(buf->shape) && strides.same_as(buf->strides) &&
-        allocated_addr.same_as(buf->allocated_addr) && !layout_changed) {
-      return buf;
-    }
-
-    auto key = buf.get();
-    std::vector<Buffer>& buffers = buf_remap_[key];
-    if (buffers.size() && buffers.back()->data.same_as(new_buffer_var)) {
-      return buffers.back();
-    }
-
-    Buffer new_buf = buf;
-    {
-      auto write_ptr = new_buf.CopyOnWrite();
-      write_ptr->data = new_buffer_var;
-      write_ptr->shape = shape;
-      write_ptr->strides = strides;
-      write_ptr->elem_offset = elem_offset;
-      write_ptr->allocated_addr = allocated_addr;
-      if (layout_changed) {
-        write_ptr->layout = std::move(new_layout);
-      }
-    }
-    buffers.push_back(new_buf);
-    return new_buf;
   }
 
   /*! \brief Push a variable remap to the current scope and the var_remap_ stack. */
