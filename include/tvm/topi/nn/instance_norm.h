@@ -88,12 +88,12 @@ inline Tensor instance_norm(const Tensor& data, const Tensor& gamma, const Tenso
     }
     auto square = [is_float16](const PrimExpr& x) {
       if (is_float16) {
-        return Cast(DataType::Float(32), x) * Cast(DataType::Float(32), x);
+        return Cast(PrimType::Float(32), x) * Cast(PrimType::Float(32), x);
       }
       return x * x;
     };
     if (is_float16) {
-      return func({Cast(DataType::Float(32), data(eval_range)), square(data(eval_range))},
+      return func({Cast(PrimType::Float(32), data(eval_range)), square(data(eval_range))},
                   reduce_axes, nullptr);
     } else {
       return func({data(eval_range), square(data(eval_range))}, reduce_axes, nullptr);
@@ -126,7 +126,7 @@ inline Tensor instance_norm(const Tensor& data, const Tensor& gamma, const Tenso
     auto var = temp_x2(non_reduce_indices) / reduce_extent - mean * mean;
     auto instance_norm = (data(indices) - mean) * tvm::rsqrt(var + MakeConst(var.dtype(), epsilon));
     if (is_float16) {
-      instance_norm = Cast(DataType::Float(16), instance_norm);
+      instance_norm = Cast(PrimType::Float(16), instance_norm);
     }
     instance_norm = topi::multiply(instance_norm, gamma(channel));
     if (beta.defined()) {

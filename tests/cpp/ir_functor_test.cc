@@ -258,7 +258,7 @@ TEST(IRF, StmtMutator) {
 
   {
     auto body =
-        Evaluate(Call(DataType::Int(32), builtin::call_extern(), {StringImm("xyz"), x + 1}));
+        Evaluate(Call(PrimType::Int(32), builtin::call_extern(), {StringImm("xyz"), x + 1}));
     auto res = v(std::move(body));
     TVM_FFI_ICHECK(res.as<EvaluateNode>()->value.as<CallNode>()->args[1].same_as(x));
   }
@@ -351,7 +351,7 @@ TEST(IRF, Substitute) {
     Var y = x.copy_with_suffix("subst");
     Var m("m", DataType::Int(32));
     Buffer buffer = fmakebuffer();
-    Stmt store = BufferStore(buffer, FloatImm(dtype, 0), {IntImm::Int32(0)});
+    Stmt store = BufferStore(buffer, FloatImm(PrimType(dtype), 0), {IntImm::Int32(0)});
     Stmt decl = SeqStmt({DeclBuffer(buffer), store});
     auto f_subst = [&](const Var& var) -> ffi::Optional<PrimExpr> {
       if (var.same_as(x)) return y;

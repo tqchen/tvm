@@ -274,9 +274,9 @@ class DoubleBufferInjector : public StmtExprMutator {
     }
     StorageEntry& e = it->second;
     e.loop = loop_nest_.back();
-    PrimExpr zero = IntImm(e.loop->loop_var.dtype(), 0);
-    PrimExpr one = IntImm(e.loop->loop_var.dtype(), 1);
-    PrimExpr two = IntImm(e.loop->loop_var.dtype(), 2);
+    PrimExpr zero = IntImm(e.loop->loop_var.ty(), 0);
+    PrimExpr one = IntImm(e.loop->loop_var.ty(), 1);
+    PrimExpr two = IntImm(e.loop->loop_var.ty(), 2);
     PrimExpr loop_shift = e.loop->loop_var + one;
     e.switch_write_var = Var(e.loop->loop_var->name_hint + ".db", e.loop->loop_var.dtype());
     e.switch_read_var = indexmod(e.loop->loop_var, two);

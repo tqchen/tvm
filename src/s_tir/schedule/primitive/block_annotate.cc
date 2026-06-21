@@ -330,7 +330,7 @@ class DTypeMutator : private ReplaceBufferMutator {
     auto it = buffer_var_map_.find(node->buffer->data.get());
     if (it != buffer_var_map_.end()) {
       node.CopyOnWrite()->buffer = it->second;
-      node.CopyOnWrite()->value = Cast(tgt_dtype_, node->value);
+      node.CopyOnWrite()->value = Cast(PrimType(tgt_dtype_), node->value);
     }
     return node;
   }
@@ -339,7 +339,7 @@ class DTypeMutator : private ReplaceBufferMutator {
     BufferLoad node = StmtExprMutator::VisitExpr_(op).as_or_throw<BufferLoad>();
     auto it = buffer_var_map_.find(node->buffer->data.get());
     if (it != buffer_var_map_.end()) {
-      return Cast(src_dtype_, BufferLoad(it->second, node->indices));
+      return Cast(PrimType(src_dtype_), BufferLoad(it->second, node->indices));
     }
     return node;
   }

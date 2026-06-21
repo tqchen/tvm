@@ -25,6 +25,7 @@
 #define TVM_TARGET_INTRIN_RULE_H_
 
 #include <tvm/ffi/function.h>
+#include <tvm/ir/type.h>
 #include <tvm/tirx/builtin.h>
 #include <tvm/tirx/expr.h>
 
@@ -83,7 +84,7 @@ inline PrimExpr DispatchPureExtern(const PrimExpr& e) {
     for (auto arg : call->args) {
       new_args.push_back(arg);
     }
-    return Call(call->dtype(), builtin::call_pure_extern(), new_args);
+    return Call(e.ty(), builtin::call_pure_extern(), new_args);
   } else {
     return e;
   }

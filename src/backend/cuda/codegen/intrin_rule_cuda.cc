@@ -147,7 +147,7 @@ struct CUDAWarpIntrinsic {
 static PrimExpr DispatchCUDAWarpActiveMask(const PrimExpr& e) {
   const CallNode* call = e.as<CallNode>();
   static const Op& cuda_active_mask_op = Op::Get("tirx.cuda.__activemask");
-  return Call(call->dtype(), cuda_active_mask_op, call->args);
+  return Call(e.ty(), cuda_active_mask_op, call->args);
 }
 
 template <typename T>
@@ -156,7 +156,7 @@ static PrimExpr DispatchCUDAShuffle(const PrimExpr& e) {
   TVM_FFI_ICHECK(call != nullptr);
   TVM_FFI_ICHECK_EQ(call->args.size(), 5);  // mask, value, warp_id, width, warp_size
   ffi::Array<PrimExpr> cuda_args{{call->args[0], call->args[1], call->args[2], call->args[3]}};
-  return Call(call->dtype(), T()(call->dtype(), call->op.as_or_throw<Op>()), cuda_args);
+  return Call(e.ty(), T()(call->dtype(), call->op.as_or_throw<Op>()), cuda_args);
 }
 
 void RegisterCudaIntrinRules() {

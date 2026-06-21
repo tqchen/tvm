@@ -57,7 +57,7 @@ inline PrimExpr DispatchPureExternOCML(const PrimExpr& e) {
     new_args.push_back(arg);
   }
 
-  return Call(call->dtype, builtin::call_pure_extern(), new_args);
+  return Call(ffi::GetRef<PrimExpr>(call).ty(), builtin::call_pure_extern(), new_args);
 }
 
 inline PrimExpr DispatchShuffle(const PrimExpr& e) {
@@ -71,9 +71,9 @@ inline PrimExpr DispatchShuffle(const PrimExpr& e) {
   // get own lane in self (__lane_id)
   PrimExpr minus_one = IntImm::Int32(-1);
   PrimExpr zero = IntImm::Int32(0);
-  PrimExpr lo = Call(DataType::Int(32), builtin::call_pure_extern(),
+  PrimExpr lo = Call(PrimType::Int(32), builtin::call_pure_extern(),
                      {StringImm("llvm.amdgcn.mbcnt.lo"), minus_one, zero});
-  PrimExpr self = Call(DataType::Int(32), builtin::call_pure_extern(),
+  PrimExpr self = Call(PrimType::Int(32), builtin::call_pure_extern(),
                        {StringImm("llvm.amdgcn.mbcnt.hi"), minus_one, lo});
 
   // compute lane to get from
@@ -95,7 +95,7 @@ inline PrimExpr DispatchShuffle(const PrimExpr& e) {
   // reinterprete var as int32
   bool is_int32 = var.dtype().is_int() && var.dtype().bits() == 32;
   PrimExpr source = is_int32 ? var : reinterpret(DataType::Int(32), var);
-  PrimExpr res = Call(DataType::Int(32), builtin::call_pure_extern(),
+  PrimExpr res = Call(PrimType::Int(32), builtin::call_pure_extern(),
                       {StringImm("llvm.amdgcn.ds.bpermute"), index << 2, source});
   if (!is_int32) {
     res = reinterpret(var.dtype(), res);

@@ -75,9 +75,9 @@ PrimExpr CodeGenARM::ARMPopcount(const CallNode* call) {
   if (!call->dtype.is_fixed_length_vector() || call->dtype.bits() == 8 ||
       (total_size != 128 && total_size != 64)) {
     ffi::Array<PrimExpr> vcnt_args;
-    vcnt_args.push_back(IntImm(DataType::UInt(32), ctpop_id));
+    vcnt_args.push_back(IntImm(PrimType::UInt(32), ctpop_id));
     vcnt_args.push_back(e);
-    return tirx::Call(call->dtype, builtin_call_llvm_pure_intrin_, vcnt_args);
+    return tirx::Call(ffi::GetRef<PrimExpr>(call).ty(), builtin_call_llvm_pure_intrin_, vcnt_args);
   }
 
   // Popcount lowering rule:
@@ -98,13 +98,13 @@ PrimExpr CodeGenARM::ARMPopcount(const CallNode* call) {
   const CallNode* c0 = input8.as<CallNode>();
   TVM_FFI_ICHECK(c0 != nullptr);
   ffi::Array<PrimExpr> vcnt8_args;
-  vcnt8_args.push_back(IntImm(DataType::UInt(32), ctpop_id));
+  vcnt8_args.push_back(IntImm(PrimType::UInt(32), ctpop_id));
   vcnt8_args.push_back(input8);
   PrimExpr vcnt8 = tirx::Call(uint8_type, builtin_call_llvm_pure_intrin_, vcnt8_args);
 
   // Accumulation 8->16bit
   ffi::Array<PrimExpr> vcnt16_args;
-  vcnt16_args.push_back(IntImm(DataType::UInt(32), vpaddlu_id));
+  vcnt16_args.push_back(IntImm(PrimType::UInt(32), vpaddlu_id));
   vcnt16_args.push_back(vcnt8);
   PrimExpr vcnt16 = tirx::Call(uint16_type, builtin_call_llvm_pure_intrin_, vcnt16_args);
   if (call->dtype.bits() == 16) {
@@ -113,7 +113,7 @@ PrimExpr CodeGenARM::ARMPopcount(const CallNode* call) {
 
   // Accumulation 16->32bit
   ffi::Array<PrimExpr> vcnt32_args;
-  vcnt32_args.push_back(IntImm(DataType::UInt(32), vpaddlu_id));
+  vcnt32_args.push_back(IntImm(PrimType::UInt(32), vpaddlu_id));
   vcnt32_args.push_back(vcnt16);
   PrimExpr vcnt32 = tirx::Call(uint32_type, builtin_call_llvm_pure_intrin_, vcnt32_args);
   if (call->dtype.bits() == 32) {
@@ -122,9 +122,9 @@ PrimExpr CodeGenARM::ARMPopcount(const CallNode* call) {
 
   // Accumulation 32->64bit
   ffi::Array<PrimExpr> vcnt64_args;
-  vcnt64_args.push_back(IntImm(DataType::UInt(32), vpaddlu_id));
+  vcnt64_args.push_back(IntImm(PrimType::UInt(32), vpaddlu_id));
   vcnt64_args.push_back(vcnt32);
-  return tirx::Call(call->dtype, builtin_call_llvm_pure_intrin_, vcnt64_args);
+  return tirx::Call(ffi::GetRef<PrimExpr>(call).ty(), builtin_call_llvm_pure_intrin_, vcnt64_args);
 }
 
 TVM_FFI_STATIC_INIT_BLOCK() {

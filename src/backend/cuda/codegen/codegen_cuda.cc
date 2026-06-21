@@ -1363,44 +1363,44 @@ void CodeGenCUDA::VisitExpr_(const CallNode* op, std::ostream& os) {
       if (tgt_dtype.is_float4_e2m1fn()) {
         // We view the source as an uint16, and then extract bits of two fp4 numbers,
         // and finally reinterpret the result as fp4x2.
-        value = tirx::Call(DataType::UInt(16), tirx::builtin::reinterpret(), {value});
+        value = tirx::Call(PrimType::UInt(16), tirx::builtin::reinterpret(), {value});
         tirx::Var temp_var("temp_var", DataType::UInt(16));
         value = tirx::Let(temp_var, value,
-                          tirx::Cast(DataType::UInt(8),
-                                     (temp_var & IntImm(DataType::UInt(16), 0xF)) |
-                                         ((temp_var >> 4) & IntImm(DataType::UInt(16), 0xF0))));
+                          tirx::Cast(PrimType::UInt(8),
+                                     (temp_var & IntImm(PrimType::UInt(16), 0xF)) |
+                                         ((temp_var >> 4) & IntImm(PrimType::UInt(16), 0xF0))));
       } else {
-        value = tirx::Cast(DataType::UInt(16),
-                           tirx::Call(DataType::UInt(8), tirx::builtin::reinterpret(), {value}));
+        value = tirx::Cast(PrimType::UInt(16),
+                           tirx::Call(PrimType::UInt(8), tirx::builtin::reinterpret(), {value}));
         tirx::Var temp_var("temp_var", DataType::UInt(16));
         value = tirx::Let(temp_var, value,
-                          (temp_var & IntImm(DataType::UInt(16), 0xF)) |
-                              ((temp_var & IntImm(DataType::UInt(16), 0xF0)) << 4));
+                          (temp_var & IntImm(PrimType::UInt(16), 0xF)) |
+                              ((temp_var & IntImm(PrimType::UInt(16), 0xF0)) << 4));
       }
-      os << PrintExpr(tirx::Call(tgt_dtype, tirx::builtin::reinterpret(), {value}));
+      os << PrintExpr(tirx::Call(PrimType(tgt_dtype), tirx::builtin::reinterpret(), {value}));
     } else if (lanes == 4) {
       if (tgt_dtype.is_float4_e2m1fn()) {
         // We view the source as an uint32, and then extract bits of four fp4 numbers,
         // and finally reinterpret the result as fp4x4.
-        value = tirx::Call(DataType::UInt(32), tirx::builtin::reinterpret(), {value});
+        value = tirx::Call(PrimType::UInt(32), tirx::builtin::reinterpret(), {value});
         tirx::Var temp_var("temp_var", DataType::UInt(32));
         value = tirx::Let(temp_var, value,
-                          tirx::Cast(DataType::UInt(16),
-                                     (temp_var & IntImm(DataType::UInt(32), 0xF)) |
-                                         ((temp_var >> 4) & IntImm(DataType::UInt(32), 0xF0)) |
-                                         ((temp_var >> 8) & IntImm(DataType::UInt(32), 0xF00)) |
-                                         ((temp_var >> 12) & IntImm(DataType::UInt(32), 0xF000))));
+                          tirx::Cast(PrimType::UInt(16),
+                                     (temp_var & IntImm(PrimType::UInt(32), 0xF)) |
+                                         ((temp_var >> 4) & IntImm(PrimType::UInt(32), 0xF0)) |
+                                         ((temp_var >> 8) & IntImm(PrimType::UInt(32), 0xF00)) |
+                                         ((temp_var >> 12) & IntImm(PrimType::UInt(32), 0xF000))));
       } else {
-        value = tirx::Cast(DataType::UInt(32),
-                           tirx::Call(DataType::UInt(16), tirx::builtin::reinterpret(), {value}));
+        value = tirx::Cast(PrimType::UInt(32),
+                           tirx::Call(PrimType::UInt(16), tirx::builtin::reinterpret(), {value}));
         tirx::Var temp_var("temp_var", DataType::UInt(32));
         value = tirx::Let(temp_var, value,
-                          (temp_var & IntImm(DataType::UInt(32), 0xF)) |
-                              ((temp_var & IntImm(DataType::UInt(32), 0xF0)) << 4) |
-                              ((temp_var & IntImm(DataType::UInt(32), 0xF00)) << 8) |
-                              ((temp_var & IntImm(DataType::UInt(32), 0xF000)) << 12));
+                          (temp_var & IntImm(PrimType::UInt(32), 0xF)) |
+                              ((temp_var & IntImm(PrimType::UInt(32), 0xF0)) << 4) |
+                              ((temp_var & IntImm(PrimType::UInt(32), 0xF00)) << 8) |
+                              ((temp_var & IntImm(PrimType::UInt(32), 0xF000)) << 12));
       }
-      os << PrintExpr(tirx::Call(tgt_dtype, tirx::builtin::reinterpret(), {value}));
+      os << PrintExpr(tirx::Call(PrimType(tgt_dtype), tirx::builtin::reinterpret(), {value}));
     } else {
       TVM_FFI_THROW(InternalError)
           << "Invalid number of lanes for float4_e2m1fn reinterpret: " << lanes;
@@ -1572,7 +1572,7 @@ void CodeGenCUDA::VisitStmt_(const AttrStmtNode* op) {
         << "For CUDA, the index of an async queue must be 0.";
     this->VisitStmt(op->body);
     static const Op& ptx_cp_async_commit_group_op = Op::Get("tirx.ptx.cp_async_commit_group");
-    auto commit_group = Call(DataType::Void(), ptx_cp_async_commit_group_op, {});
+    auto commit_group = Call(PrimType::Void(), ptx_cp_async_commit_group_op, {});
     this->PrintIndent();
     this->VisitExpr(commit_group, this->stream);
     this->stream << ";\n";
@@ -1584,7 +1584,7 @@ void CodeGenCUDA::VisitStmt_(const AttrStmtNode* op) {
         << "For CUDA, the index of an async queue must be 0.";
     auto wait_cnt = wait_attrs.second;
     static const Op& ptx_cp_async_wait_group_op = Op::Get("tirx.ptx.cp_async_wait_group");
-    auto wait_group = Call(DataType::Void(), ptx_cp_async_wait_group_op, {wait_cnt});
+    auto wait_group = Call(PrimType::Void(), ptx_cp_async_wait_group_op, {wait_cnt});
     this->PrintIndent();
     this->VisitExpr(wait_group, this->stream);
     this->stream << ";\n";
@@ -1945,7 +1945,7 @@ inline void PrintConst(const FloatImmNode* op, std::ostream& os, CodeGenCUDA* p)
     }
     case 16: {
       os << "__float2half_rn" << '(';
-      FloatImm const_f32 = FloatImm(DataType::Float(32), op->value);
+      FloatImm const_f32 = FloatImm(PrimType::Float(32), op->value);
       PrintConst(const_f32.get(), os, p);
       os << ')';
       break;

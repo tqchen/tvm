@@ -420,14 +420,14 @@ ffi::Array<StmtSRef> Split(ScheduleState self, const StmtSRef& loop_sref,
     dtype = DataType::Int(bits);
   }
   int n = factors.size();
-  PrimExpr substitute_value = IntImm(dtype, 0);
+  PrimExpr substitute_value = IntImm(PrimType(dtype), 0);
   std::vector<Var> new_loop_vars;
   new_loop_vars.reserve(n);
   for (int i = 0; i < n; i++) {
     const PrimExpr& factor = factors[i];
     Var var = loop->loop_var.copy_with_suffix("_" + std::to_string(i)).copy_with_dtype(dtype);
     substitute_value = substitute_value * factor + var;
-    analyzer->Bind(var, Range::FromMinExtent(IntImm(dtype, 0), tvm::cast(dtype, factor)));
+    analyzer->Bind(var, Range::FromMinExtent(IntImm(PrimType(dtype), 0), tvm::cast(dtype, factor)));
     new_loop_vars.emplace_back(std::move(var));
   }
   ffi::Map<SBlock, SBlock> opaque_block_reuse;

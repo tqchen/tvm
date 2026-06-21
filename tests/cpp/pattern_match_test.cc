@@ -27,7 +27,7 @@ TEST(Pattern, Basic) {
   using namespace tvm::tirx;
   using namespace tvm::arith;
   tvm::tirx::Var x("x"), y("y"), z("z");
-  PrimExpr scalable_lanes = Mul(Call(DataType::Int(32), builtin::vscale(), {}), 4);
+  PrimExpr scalable_lanes = Mul(Call(PrimType::Int(32), builtin::vscale(), {}), 4);
   arith::PVar<PrimExpr> px, py, pz;
   arith::PVar<DataType> pt;
   arith::PVar<PrimExpr> planes;
@@ -101,14 +101,14 @@ TEST(Pattern, Basic) {
   // cast pattern
   {
     TVM_FFI_ICHECK(
-        !cast(PConst<DataType>(DataType::Int(32)), px).Match(tirx::Cast(DataType::Float(64), x)));
-    TVM_FFI_ICHECK(cast(pt, px).Match(tirx::Cast(DataType::Float(64), x)));
+        !cast(PConst<DataType>(DataType::Int(32)), px).Match(tirx::Cast(PrimType::Float(64), x)));
+    TVM_FFI_ICHECK(cast(pt, px).Match(tirx::Cast(PrimType::Float(64), x)));
     TVM_FFI_ICHECK(pt.Eval() == DataType::Float(64));
     auto zz = cast(pt, px).Eval();
     TVM_FFI_ICHECK(
         (cast(pt, px) - cast(pt, py))
-            .Match(tirx::Cast(DataType::Float(64), x) - tirx::Cast(DataType::Int(64), x)));
-    auto expr = tirx::Cast(DataType::Int(32), tirx::Cast(DataType::Float(64), x));
+            .Match(tirx::Cast(PrimType::Float(64), x) - tirx::Cast(PrimType::Int(64), x)));
+    auto expr = tirx::Cast(PrimType::Int(32), tirx::Cast(PrimType::Float(64), x));
     TVM_FFI_ICHECK(!(cast(pt, cast(pt, px))).Match(expr));
   }
   // ramp pattern

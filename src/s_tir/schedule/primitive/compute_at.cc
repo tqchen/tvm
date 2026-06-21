@@ -272,7 +272,7 @@ class ScopeReconstructor : private StmtMutator {
         loop_vars.push_back(var);
         loop_extents.push_back(analyzer->Simplify(iter_dom->extent));
         iter_values.push_back(iter_dom->min + var);
-        analyzer->Bind(var, Range::FromMinExtent(IntImm(var.dtype(), 0), iter_dom->extent));
+        analyzer->Bind(var, Range::FromMinExtent(IntImm(var.ty(), 0), iter_dom->extent));
       } else {
         iter_values.push_back(iter_dom->min);
       }
@@ -578,7 +578,7 @@ bool UpdateBlockVarDomainAffine(const BufferNode* buffer, const ffi::Array<IterV
   NDIntSet required_bound;
   for (size_t i = 0; i < ndim; ++i) {
     required_bound.push_back(
-        arith::IntSet::Interval(IntImm(buffer->shape[i].dtype(), 0), max(buffer->shape[i] - 1, 0)));
+        arith::IntSet::Interval(IntImm(buffer->shape[i].ty(), 0), max(buffer->shape[i] - 1, 0)));
   }
   ffi::Map<Var, arith::IntSet> var_dom =
       InverseAffineIterMap(res->indices, required_region, analyzer);

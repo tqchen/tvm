@@ -243,7 +243,7 @@ class NarrowDataTypeRewriter : public IndexDataTypeRewriter {
   PrimExpr VisitExpr_(const IntImmNode* op) final {
     if (is_enabled_) {
       if (visitor_.vmap.find(op) != visitor_.vmap.end()) {
-        return IntImm(visitor_.vmap[op], op->value);
+        return IntImm(PrimType(visitor_.vmap[op]), op->value);
       }
     }
     return Parent::VisitExpr_(op);
@@ -258,7 +258,7 @@ class NarrowDataTypeRewriter : public IndexDataTypeRewriter {
       PrimExpr new_value = new_op->value;
       DataType cast_type = visitor_.vmap[op];
       if (new_value.dtype() != cast_type) {
-        new_value = Cast(cast_type, new_value);
+        new_value = Cast(PrimType(cast_type), new_value);
       }
       return new_value;
     }

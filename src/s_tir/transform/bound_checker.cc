@@ -126,7 +126,7 @@ class BoundChecker : public StmtExprMutator {
 
     new_shape.MutateByApply([&](const PrimExpr& dim) {
       // Cast to uint64 to avoid potential overflow.
-      return IntImm(DataType::UInt(64), type.lanes()) * dim;
+      return IntImm(PrimType::UInt(64), type.lanes()) * dim;
     });
     mem_to_shape_[buffer_var.get()] = new_shape;
   }
@@ -210,8 +210,8 @@ class BoundChecker : public StmtExprMutator {
         upper_bound = analyzer_->Simplify(upper_bound);
 
         // Cast to the same type - signed, to be able to check lower bound.
-        index = Cast(DataType::Int(64), index);
-        upper_bound = Cast(DataType::Int(64), upper_bound);
+        index = Cast(PrimType::Int(64), index);
+        upper_bound = Cast(PrimType::Int(64), upper_bound);
 
         // Looks like a lower bound should always be zero after normalization.
         PrimExpr lower_bound = IntImm::Int64(0);
