@@ -35,7 +35,18 @@ def lower_intrin(params, stmt):
     )(mod)
     func = mod["main"]
     stmt = func.body
-    return stmt.value if lower_expr else stmt.body
+    if not lower_expr:
+        return stmt
+    if isinstance(stmt, tvm.tirx.Evaluate):
+        return stmt.value
+
+    assert isinstance(stmt, tvm.tirx.SeqStmt)
+    assert isinstance(stmt.seq[-1], tvm.tirx.Evaluate)
+    result = stmt.seq[-1].value
+    for binding in reversed(stmt.seq[:-1]):
+        assert isinstance(binding, tvm.tirx.Bind)
+        result = tvm.tirx.Let(binding.var, binding.value, result)
+    return result
 
 
 def check_value(expr, variables, data, fref):
@@ -157,6 +168,37 @@ def test_lower_floormod():
             tvm.tirx.floormod(x + tvm.tirx.const(4, dtype=dtype), tvm.tirx.const(5, dtype=dtype)),
         )
         check_value(res, [x, y], [(a, b) for a, b in data if b == 5], lambda a, b: (a + 4) % b)
+
+
+def test_lower_floordiv_emits_statement_bindings():
+    x = tvm.tirx.Var("x", "int32")
+    y = tvm.tirx.Var("y", "int32")
+    out = tvm.tirx.decl_buffer((1,), dtype="int32", name="out")
+
+    body = lower_intrin([x, y, out], tvm.tirx.BufferStore(out, tvm.tirx.floordiv(x, y), [0]))
+
+    assert isinstance(body, tvm.tirx.SeqStmt)
+    assert len(body.seq) == 3
+    assert isinstance(body.seq[0], tvm.tirx.Bind)
+    assert isinstance(body.seq[1], tvm.tirx.Bind)
+    assert isinstance(body.seq[2], tvm.tirx.BufferStore)
+    assert not isinstance(body.seq[2].value, tvm.tirx.Let)
+
+
+def test_lower_floordiv_select_branch_keeps_expression_scope():
+    x = tvm.tirx.Var("x", "int32")
+    y = tvm.tirx.Var("y", "int32")
+    out = tvm.tirx.decl_buffer((1,), dtype="int32", name="out")
+    zero = tvm.tirx.const(0, "int32")
+
+    body = lower_intrin(
+        [x, y, out],
+        tvm.tirx.BufferStore(out, tvm.tirx.Select(y != zero, tvm.tirx.floordiv(x, y), zero), [0]),
+    )
+
+    assert isinstance(body, tvm.tirx.BufferStore)
+    assert isinstance(body.value, tvm.tirx.Select)
+    assert isinstance(body.value.true_value, tvm.tirx.Let)
 
 
 @pytest.mark.skipif(not env.has_llvm(), reason="need llvm")

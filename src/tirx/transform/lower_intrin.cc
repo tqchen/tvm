@@ -34,6 +34,7 @@
 
 #include <limits>
 #include <unordered_set>
+#include <vector>
 
 #include "../../arith/ir_mutator_with_analyzer.h"
 #include "../../arith/pattern_match.h"
@@ -81,6 +82,11 @@ class IntrinInjecter : public tvm::arith::IRMutatorWithAnalyzer {
   }
 
   PrimExpr VisitExpr_(const CallNode* op) final {
+    static const Op& if_then_else_op = Op::Get("tirx.if_then_else");
+    if (op->op.same_as(if_then_else_op)) {
+      return WithoutBindingEmission([&]() { return IRMutatorWithAnalyzer::VisitExpr_(op); });
+    }
+
     if (auto* ptr_op = op->op.as<OpNode>()) {
       for (const auto& f_attr_map : attr_maps_) {
         FLowerGeneral f = f_attr_map.get(ffi::GetRef<Op>(ptr_op), nullptr);
@@ -98,6 +104,61 @@ class IntrinInjecter : public tvm::arith::IRMutatorWithAnalyzer {
       }
     }
     return IRMutatorWithAnalyzer::VisitExpr_(op);
+  }
+
+  PrimExpr VisitExpr_(const SelectNode* op) final {
+    return WithoutBindingEmission([&]() { return IRMutatorWithAnalyzer::VisitExpr_(op); });
+  }
+
+  Stmt VisitStmt_(const BindNode* op) final {
+    std::vector<Stmt> bindings;
+    PrimExpr value = VisitExprWithBindings(op->value, &bindings);
+    if (SideEffect(value) <= CallEffectKind::kPure) {
+      analyzer_->Bind(op->var, value);
+    }
+    Stmt stmt;
+    if (value.same_as(op->value)) {
+      stmt = ffi::GetRef<Stmt>(op);
+    } else {
+      auto n = this->CopyOnWrite(op);
+      n->value = std::move(value);
+      stmt = Stmt(n);
+    }
+    return PrependBindings(std::move(bindings), std::move(stmt));
+  }
+
+  Stmt VisitStmt_(const BufferStoreNode* op) final {
+    std::vector<Stmt> bindings;
+    Buffer new_buf = this->VisitBufferUse(op->buffer);
+    PrimExpr value = VisitExprWithBindings(op->value, &bindings);
+    ffi::Array<PrimExpr> indices =
+        op->indices.Map([&](const PrimExpr& e) { return VisitExprWithBindings(e, &bindings); });
+
+    Stmt stmt;
+    if (new_buf.same_as(op->buffer) && value.same_as(op->value) && indices.same_as(op->indices)) {
+      stmt = ffi::GetRef<Stmt>(op);
+    } else {
+      auto n = this->CopyOnWrite(op);
+      n->buffer = std::move(new_buf);
+      n->value = std::move(value);
+      n->indices = std::move(indices);
+      stmt = Stmt(n);
+    }
+    return PrependBindings(std::move(bindings), std::move(stmt));
+  }
+
+  Stmt VisitStmt_(const EvaluateNode* op) final {
+    std::vector<Stmt> bindings;
+    PrimExpr value = VisitExprWithBindings(op->value, &bindings);
+    Stmt stmt;
+    if (value.same_as(op->value)) {
+      stmt = ffi::GetRef<Stmt>(op);
+    } else {
+      auto n = this->CopyOnWrite(op);
+      n->value = std::move(value);
+      stmt = Stmt(n);
+    }
+    return PrependBindings(std::move(bindings), std::move(stmt));
   }
 
   PrimExpr VisitExpr_(const AddNode* op) final {
@@ -163,11 +224,10 @@ class IntrinInjecter : public tvm::arith::IRMutatorWithAnalyzer {
         auto rdiv = tirx::Var("rdiv", dtype);
         // b >= 0 => (rmod >=0 ? rdiv : rdiv - 1)
         // b < 0  => (rmod <= 0 ? rdiv : rdiv - 1)
-        PrimExpr let_rdiv =
-            tirx::Let(rdiv, truncdiv(op->a, op->b),
-                      tirx::Select((op->b >= 0 && rmod >= 0) || (op->b < 0 && rmod <= 0), rdiv,
-                                   rdiv - MakeConst(dtype, 1)));
-        return Let(rmod, truncmod(op->a, op->b), let_rdiv);
+        PrimExpr body = tirx::Select((op->b >= 0 && rmod >= 0) || (op->b < 0 && rmod <= 0), rdiv,
+                                     rdiv - MakeConst(dtype, 1));
+        return EmitBinding(rmod, truncmod(op->a, op->b),
+                           EmitBinding(rdiv, truncdiv(op->a, op->b), body));
       }
     }
   }
@@ -226,9 +286,9 @@ class IntrinInjecter : public tvm::arith::IRMutatorWithAnalyzer {
         // b > 0 && rmod < 0  -> rmod + b
         // b < 0 && rmod < 0 -> rmod
         // b < 0 && rmod > 0 -> rmod + b
-        return Let(
-            rmod, truncmod(op->a, op->b),
-            Select((op->b >= 0 && rmod >= 0) || (op->b < 0 && rmod <= 0), rmod, rmod + op->b));
+        PrimExpr body =
+            Select((op->b >= 0 && rmod >= 0) || (op->b < 0 && rmod <= 0), rmod, rmod + op->b);
+        return EmitBinding(rmod, truncmod(op->a, op->b), body);
       }
     }
   }
@@ -266,6 +326,40 @@ class IntrinInjecter : public tvm::arith::IRMutatorWithAnalyzer {
   }
 
  private:
+  PrimExpr VisitExprWithBindings(const PrimExpr& expr, std::vector<Stmt>* bindings) {
+    std::vector<Stmt>* saved_bindings = pending_bindings_;
+    pending_bindings_ = bindings;
+    PrimExpr result = this->VisitExpr(expr);
+    pending_bindings_ = saved_bindings;
+    return result;
+  }
+
+  PrimExpr EmitBinding(const Var& var, const PrimExpr& value, const PrimExpr& body) {
+    if (pending_bindings_ != nullptr && expression_local_control_depth_ == 0) {
+      pending_bindings_->push_back(Bind(var, value));
+      if (SideEffect(value) <= CallEffectKind::kPure) {
+        analyzer_->Bind(var, value);
+      }
+      return body;
+    }
+    return Let(var, value, body);
+  }
+
+  Stmt PrependBindings(std::vector<Stmt> bindings, Stmt stmt) {
+    if (bindings.empty()) return stmt;
+    ffi::Array<Stmt> seq(bindings.begin(), bindings.end());
+    seq.push_back(std::move(stmt));
+    return SeqStmt(seq);
+  }
+
+  template <typename F>
+  PrimExpr WithoutBindingEmission(F f) {
+    ++expression_local_control_depth_;
+    PrimExpr result = f();
+    --expression_local_control_depth_;
+    return result;
+  }
+
   PrimExpr SwapBroadcastCast(const PrimExpr& e) {
     // Try to change broadcast(cast(x)) to cast(broadcast(x))
     // For some targets, LLVM will generate more efficient FMA
@@ -360,7 +454,9 @@ class IntrinInjecter : public tvm::arith::IRMutatorWithAnalyzer {
 
   // attribute maps, shared only when FLegalize == FLowerIntrinsic
   std::vector<OpAttrMap<FLowerGeneral>> attr_maps_;
+  std::vector<Stmt>* pending_bindings_{nullptr};
   FLowerGeneral fma_{nullptr};
+  int expression_local_control_depth_{0};
   bool support_bitwise_op_{true};
 };
 
