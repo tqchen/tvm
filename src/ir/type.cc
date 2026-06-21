@@ -24,6 +24,10 @@
 #include <tvm/ffi/function.h>
 #include <tvm/ffi/reflection/registry.h>
 #include <tvm/ir/type.h>
+
+#include <cstdint>
+#include <unordered_map>
+
 namespace tvm {
 
 namespace {
@@ -35,68 +39,22 @@ ffi::ObjectPtr<PrimTypeNode> MakePrimTypeNode(runtime::DataType dtype, Span span
   return n;
 }
 
-ffi::ObjectPtr<PrimTypeNode> GetCachedPrimTypeNode(const runtime::DataType& dtype) {
-  if (dtype == DataType::Bool()) {
-    static ffi::ObjectPtr<PrimTypeNode> value = MakePrimTypeNode(DataType::Bool());
-    return value;
+uint32_t PackDataTypeKey(runtime::DataType dtype) {
+  DLDataType raw = dtype;
+  return (static_cast<uint32_t>(raw.code) << 24) | (static_cast<uint32_t>(raw.bits) << 16) |
+         static_cast<uint32_t>(raw.lanes);
+}
+
+ffi::ObjectPtr<PrimTypeNode> GetCachedPrimTypeNode(runtime::DataType dtype) {
+  thread_local std::unordered_map<uint32_t, ffi::ObjectPtr<PrimTypeNode>> cache;
+  uint32_t key = PackDataTypeKey(dtype);
+  auto it = cache.find(key);
+  if (it != cache.end()) {
+    return it->second;
   }
-  if (dtype == DataType::Int(32)) {
-    static ffi::ObjectPtr<PrimTypeNode> value = MakePrimTypeNode(DataType::Int(32));
-    return value;
-  }
-  if (dtype == DataType::Int(8)) {
-    static ffi::ObjectPtr<PrimTypeNode> value = MakePrimTypeNode(DataType::Int(8));
-    return value;
-  }
-  if (dtype == DataType::Int(16)) {
-    static ffi::ObjectPtr<PrimTypeNode> value = MakePrimTypeNode(DataType::Int(16));
-    return value;
-  }
-  if (dtype == DataType::Int(64)) {
-    static ffi::ObjectPtr<PrimTypeNode> value = MakePrimTypeNode(DataType::Int(64));
-    return value;
-  }
-  if (dtype == DataType::UInt(8)) {
-    static ffi::ObjectPtr<PrimTypeNode> value = MakePrimTypeNode(DataType::UInt(8));
-    return value;
-  }
-  if (dtype == DataType::UInt(16)) {
-    static ffi::ObjectPtr<PrimTypeNode> value = MakePrimTypeNode(DataType::UInt(16));
-    return value;
-  }
-  if (dtype == DataType::UInt(32)) {
-    static ffi::ObjectPtr<PrimTypeNode> value = MakePrimTypeNode(DataType::UInt(32));
-    return value;
-  }
-  if (dtype == DataType::UInt(64)) {
-    static ffi::ObjectPtr<PrimTypeNode> value = MakePrimTypeNode(DataType::UInt(64));
-    return value;
-  }
-  if (dtype == DataType::Float(16)) {
-    static ffi::ObjectPtr<PrimTypeNode> value = MakePrimTypeNode(DataType::Float(16));
-    return value;
-  }
-  if (dtype == DataType::Float(32)) {
-    static ffi::ObjectPtr<PrimTypeNode> value = MakePrimTypeNode(DataType::Float(32));
-    return value;
-  }
-  if (dtype == DataType::Float(64)) {
-    static ffi::ObjectPtr<PrimTypeNode> value = MakePrimTypeNode(DataType::Float(64));
-    return value;
-  }
-  if (dtype == DataType::BFloat(16)) {
-    static ffi::ObjectPtr<PrimTypeNode> value = MakePrimTypeNode(DataType::BFloat(16));
-    return value;
-  }
-  if (dtype == DataType::Handle()) {
-    static ffi::ObjectPtr<PrimTypeNode> value = MakePrimTypeNode(DataType::Handle());
-    return value;
-  }
-  if (dtype == DataType::Void()) {
-    static ffi::ObjectPtr<PrimTypeNode> value = MakePrimTypeNode(DataType::Void());
-    return value;
-  }
-  return ffi::ObjectPtr<PrimTypeNode>();
+
+  ffi::ObjectPtr<PrimTypeNode> node = MakePrimTypeNode(dtype);
+  return cache.emplace(key, std::move(node)).first->second;
 }
 
 }  // namespace

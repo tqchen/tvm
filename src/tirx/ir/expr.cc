@@ -124,21 +124,20 @@ TVM_FFI_STATIC_INIT_BLOCK() {
     data_ = std::move(node);                                                  \
   }
 
-#define TVM_DEFINE_CMPOP_CONSTRUCTOR(Name)                                                   \
-  Name::Name(PrimExpr a, PrimExpr b, Span span) {                                            \
-    using T = Name::ContainerType;                                                           \
-    TVM_FFI_CHECK(a.defined(), ValueError) << "a is undefined\n";                            \
-    TVM_FFI_CHECK(b.defined(), ValueError) << "b is undefined\n";                            \
-    TVM_FFI_CHECK(a.dtype() == b.dtype(), TypeError)                                         \
-        << "mismatched types. " << a.dtype() << " vs. " << b.dtype() << "\n";                \
-    ffi::ObjectPtr<T> node = ffi::make_object<T>();                                          \
-    DataType a_dtype = a.dtype();                                                            \
-    node->ty = PrimType(                                                                     \
-        DataType::Bool(a_dtype.get_lanes_or_vscale_factor(), a_dtype.is_scalable_vector())); \
-    node->a = std::move(a);                                                                  \
-    node->b = std::move(b);                                                                  \
-    node->span = std::move(span);                                                            \
-    data_ = std::move(node);                                                                 \
+#define TVM_DEFINE_CMPOP_CONSTRUCTOR(Name)                                                         \
+  Name::Name(PrimExpr a, PrimExpr b, Span span) {                                                  \
+    using T = Name::ContainerType;                                                                 \
+    TVM_FFI_CHECK(a.defined(), ValueError) << "a is undefined\n";                                  \
+    TVM_FFI_CHECK(b.defined(), ValueError) << "b is undefined\n";                                  \
+    TVM_FFI_CHECK(a.dtype() == b.dtype(), TypeError)                                               \
+        << "mismatched types. " << a.dtype() << " vs. " << b.dtype() << "\n";                      \
+    ffi::ObjectPtr<T> node = ffi::make_object<T>();                                                \
+    DataType a_dtype = a.dtype();                                                                  \
+    node->ty = PrimType::Bool(a_dtype.get_lanes_or_vscale_factor(), a_dtype.is_scalable_vector()); \
+    node->a = std::move(a);                                                                        \
+    node->b = std::move(b);                                                                        \
+    node->span = std::move(span);                                                                  \
+    data_ = std::move(node);                                                                       \
   }
 
 // Var
@@ -269,16 +268,20 @@ TVM_FFI_STATIC_INIT_BLOCK() {
 }
 
 // Cast
-Cast::Cast(DataType t, PrimExpr value, Span span) {
+Cast::Cast(PrimType t, PrimExpr value, Span span) {
   TVM_FFI_ICHECK(value.defined());
-  TVM_FFI_ICHECK_EQ(t.get_lanes_or_vscale_factor(), value.dtype().get_lanes_or_vscale_factor());
-  TVM_FFI_ICHECK(t.is_scalable_vector() == value.dtype().is_scalable_vector());
+  DataType dtype = t->dtype;
+  TVM_FFI_ICHECK_EQ(dtype.get_lanes_or_vscale_factor(), value.dtype().get_lanes_or_vscale_factor());
+  TVM_FFI_ICHECK(dtype.is_scalable_vector() == value.dtype().is_scalable_vector());
   ffi::ObjectPtr<CastNode> node = ffi::make_object<CastNode>();
-  node->ty = PrimType(t);
+  node->ty = std::move(t);
   node->value = std::move(value);
   node->span = std::move(span);
   data_ = std::move(node);
 }
+
+Cast::Cast(DataType t, PrimExpr value, Span span)
+    : Cast(PrimType(t), std::move(value), std::move(span)) {}
 
 TVM_FFI_STATIC_INIT_BLOCK() {
   namespace refl = tvm::ffi::reflection;
@@ -431,8 +434,7 @@ And::And(PrimExpr a, PrimExpr b, Span span) {
   TVM_FFI_CHECK(a.dtype() == b.dtype(), TypeError) << "mismatched types";
 
   ffi::ObjectPtr<AndNode> node = ffi::make_object<AndNode>();
-  node->ty = PrimType(
-      DataType::Bool(a.dtype().get_lanes_or_vscale_factor(), a.dtype().is_scalable_vector()));
+  node->ty = PrimType::Bool(a.dtype().get_lanes_or_vscale_factor(), a.dtype().is_scalable_vector());
   node->a = std::move(a);
   node->b = std::move(b);
   node->span = std::move(span);
@@ -454,8 +456,7 @@ Or::Or(PrimExpr a, PrimExpr b, Span span) {
   TVM_FFI_CHECK(a.dtype() == b.dtype(), TypeError) << "mismatched types";
 
   ffi::ObjectPtr<OrNode> node = ffi::make_object<OrNode>();
-  node->ty = PrimType(
-      DataType::Bool(a.dtype().get_lanes_or_vscale_factor(), a.dtype().is_scalable_vector()));
+  node->ty = PrimType::Bool(a.dtype().get_lanes_or_vscale_factor(), a.dtype().is_scalable_vector());
   node->a = std::move(a);
   node->b = std::move(b);
   node->span = std::move(span);
@@ -475,8 +476,7 @@ Not::Not(PrimExpr a, Span span) {
 
   ffi::ObjectPtr<NotNode> node = ffi::make_object<NotNode>();
   DataType a_dtype = a.dtype();
-  node->ty =
-      PrimType(DataType::Bool(a_dtype.get_lanes_or_vscale_factor(), a_dtype.is_scalable_vector()));
+  node->ty = PrimType::Bool(a_dtype.get_lanes_or_vscale_factor(), a_dtype.is_scalable_vector());
   node->a = std::move(a);
   node->span = std::move(span);
   data_ = std::move(node);
