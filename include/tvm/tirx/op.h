@@ -151,6 +151,16 @@ TVM_DLL PrimExpr infinity(const DataType& dtype, Span span = Span());
  * \return The result expression.
  * \note This function may return value if the type is the same.
  */
+TVM_DLL PrimExpr cast(PrimType t, PrimExpr value, Span span = Span());
+/*!
+ * \brief cast value to type.
+ *
+ * \param t the target data type.
+ * \param value The value
+ * \param span The location of this operation in the source.
+ * \return The result expression.
+ * \note This function may return value if the type is the same.
+ */
 TVM_DLL PrimExpr cast(const DataType& t, PrimExpr value, Span span = Span());
 /*!
  * \brief perform reinterpret cast value to type.
