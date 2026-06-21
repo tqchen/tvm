@@ -44,8 +44,24 @@ ffi::ObjectPtr<PrimTypeNode> GetCachedPrimTypeNode(const runtime::DataType& dtyp
     static ffi::ObjectPtr<PrimTypeNode> value = MakePrimTypeNode(DataType::Int(32));
     return value;
   }
+  if (dtype == DataType::Int(8)) {
+    static ffi::ObjectPtr<PrimTypeNode> value = MakePrimTypeNode(DataType::Int(8));
+    return value;
+  }
+  if (dtype == DataType::Int(16)) {
+    static ffi::ObjectPtr<PrimTypeNode> value = MakePrimTypeNode(DataType::Int(16));
+    return value;
+  }
   if (dtype == DataType::Int(64)) {
     static ffi::ObjectPtr<PrimTypeNode> value = MakePrimTypeNode(DataType::Int(64));
+    return value;
+  }
+  if (dtype == DataType::UInt(8)) {
+    static ffi::ObjectPtr<PrimTypeNode> value = MakePrimTypeNode(DataType::UInt(8));
+    return value;
+  }
+  if (dtype == DataType::UInt(16)) {
+    static ffi::ObjectPtr<PrimTypeNode> value = MakePrimTypeNode(DataType::UInt(16));
     return value;
   }
   if (dtype == DataType::UInt(32)) {

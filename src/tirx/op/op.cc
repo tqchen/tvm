@@ -136,12 +136,7 @@ Type GetType(const PrimExpr& expr) {
   return GetTypeFromRuntimeDataType(expr.dtype());
 }
 
-Type GetTypeFromRuntimeDataType(const DataType& dtype) {
-  if (dtype.is_void()) {
-    return VoidType();
-  }
-  return PrimType(dtype);
-}
+Type GetTypeFromRuntimeDataType(const DataType& dtype) { return PrimType(dtype); }
 
 // LargeUIntImm
 PrimExpr LargeUIntImm(DataType t, int64_t low, int64_t high, Span span) {

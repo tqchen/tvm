@@ -214,7 +214,7 @@ class LayoutApplier : public arith::IRMutatorWithAnalyzer {
     if (load_returns_bool) {
       TVM_FFI_ICHECK_EQ(load->buffer->dtype, DataType::Int(8))
           << "Expected int8 backing array for boolean tensor";
-      load.CopyOnWrite()->SetDType(DataType::Int(8));
+      load.CopyOnWrite()->ty = PrimType::Int(8);
       return tvm::cast(DataType::Bool(), load);
     } else {
       return std::move(load);

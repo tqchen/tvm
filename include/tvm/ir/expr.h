@@ -85,6 +85,28 @@ class Type : public ffi::ObjectRef {
   TVM_FFI_DEFINE_OBJECT_REF_METHODS_NULLABLE(Type, ffi::ObjectRef, TypeNode);
 };
 
+/*!
+ * \brief Primitive data types used in the low-level IR.
+ *
+ * PrimType represents POD-values and handles that are
+ * not automatically managed by the runtime.
+ *
+ * \sa PrimType
+ */
+class PrimTypeNode : public TypeNode {
+ public:
+  /*!
+   * \brief The corresponding dtype field.
+   */
+  runtime::DataType dtype;
+
+  static void RegisterReflection() {
+    namespace refl = tvm::ffi::reflection;
+    refl::ObjectDef<PrimTypeNode>().def_ro("dtype", &PrimTypeNode::dtype);
+  }
+  TVM_FFI_DECLARE_OBJECT_INFO_FINAL("ir.PrimType", PrimTypeNode, TypeNode);
+};
+
 class PrimType;
 
 /*!
@@ -148,38 +170,21 @@ class BaseExpr : public ffi::ObjectRef {
 class PrimExprNode : public BaseExprNode {
  public:
   /*!
-   * \brief The runtime data type of the primitive expression.
-   *
-   * runtime::DataType(dtype) provides coarse grained type information
-   * during compile time and runtime. It is eagerly built in
-   * PrimExpr expression construction and can be used for
-   * quick type checking.
-   *
-   * dtype is sufficient to decide the Type of the PrimExpr
-   * when it corresponds to POD value types such as i32.
-   *
-   * When dtype is DataType::Handle(), the expression could corresponds to
-   * a more fine-grained Type, and we can get the type by running lazy type inference.
-   */
-  DataType dtype_;
-
-  /*!
    * \brief Return the runtime dtype represented by `ty`.
    *
-   * The `dtype` field is retained as a transition cache for reflected
-   * compatibility. New C++ code should use this method or `PrimExpr::dtype()`.
+   * The PrimExpr invariant is that `ty` is always a PrimType. Richer
+   * annotations such as pointer types are stored on the specific node, e.g.
+   * VarNode::type_annotation.
    */
-  TVM_DLL DataType dtype() const;
-
-  /*! \brief Set `ty` from a runtime dtype and synchronize the dtype cache. */
-  TVM_DLL void SetDType(DataType dtype);
-
-  /*! \brief Set the expression type and synchronize the runtime dtype cache. */
-  TVM_DLL void SetType(Type ty);
+  DataType dtype() const {
+    TVM_FFI_DCHECK(this->ty.defined());
+    TVM_FFI_DCHECK(this->ty->IsInstance<PrimTypeNode>());
+    return static_cast<const PrimTypeNode*>(this->ty.get())->dtype;
+  }
 
   static void RegisterReflection() {
     namespace refl = tvm::ffi::reflection;
-    refl::ObjectDef<PrimExprNode>().def_ro("dtype", &PrimExprNode::dtype_);
+    refl::ObjectDef<PrimExprNode>();
   }
 
   static constexpr const uint32_t _type_child_slots = 40;
@@ -204,7 +209,12 @@ class PrimExpr : public BaseExpr {
   TVM_DLL PrimExpr(float value);  // NOLINT(*)
 
   /*! \return the data type of this expression. */
-  DataType dtype() const { return static_cast<const PrimExprNode*>(get())->dtype(); }
+  DataType dtype() const {
+    const auto* node = static_cast<const PrimExprNode*>(get());
+    TVM_FFI_DCHECK(node->ty.defined());
+    TVM_FFI_DCHECK(node->ty->IsInstance<PrimTypeNode>());
+    return static_cast<const PrimTypeNode*>(node->ty.get())->dtype;
+  }
 
   TVM_FFI_DEFINE_OBJECT_REF_METHODS_NULLABLE(PrimExpr, BaseExpr, PrimExprNode);
 

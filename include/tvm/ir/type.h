@@ -28,19 +28,16 @@
  *
  * ## Relation between Type and runtime::DataType
  *
- * Besides Type, we also store a dtype field in the low-level PrimExpr.
- * runtime::DataType(dtype) provides coarse grained type information
- * during compile time and runtime. It is eagerly built in
- * low-level expression construction and can be used for
- * quick type checking in the low-level IR.
- * For example, when an Expr's dtype is int32,
- * we know for sure that its type is also int32.
+ * PrimExpr stores a PrimType in its `ty` field. runtime::DataType(dtype)
+ * provides coarse grained type information during compile time and runtime.
+ * It is eagerly built in low-level expression construction and can be used
+ * for quick type checking in the low-level IR. For example, when an Expr's
+ * dtype is int32, we know for sure that its PrimType is also int32.
  *
  * On the other hand, Type provides more fine grained information.
  * For example, a low level expression can have DataType::Handle() as
- * its dtype and MemRef[float32] as its type.
- * Types are usually lazily constructed via type checking,
- * so they may not readily be available during IR construction.
+ * its runtime dtype while a node-specific type annotation records a
+ * PointerType to a float32 element.
  *
  * The unified Type serves as a common bridge across IR dialects.
  * For example, we require all the functions to have a type signature,
@@ -59,28 +56,6 @@
 #include <string>
 
 namespace tvm {
-
-/*!
- * \brief Primitive data types used in the low-level IR.
- *
- * PrimType represents POD-values and handles that are
- * not automatically managed by the runtime.
- *
- * \sa PrimType
- */
-class PrimTypeNode : public TypeNode {
- public:
-  /*!
-   * \brief The corresponding dtype field.
-   */
-  runtime::DataType dtype;
-
-  static void RegisterReflection() {
-    namespace refl = tvm::ffi::reflection;
-    refl::ObjectDef<PrimTypeNode>().def_ro("dtype", &PrimTypeNode::dtype);
-  }
-  TVM_FFI_DECLARE_OBJECT_INFO_FINAL("ir.PrimType", PrimTypeNode, TypeNode);
-};
 
 /*
  * \brief Managed reference to PrimTypeNode.
@@ -118,6 +93,18 @@ class PrimType : public Type {
 
   TVM_FFI_DEFINE_OBJECT_REF_METHODS_NOTNULLABLE(PrimType, Type, PrimTypeNode);
 };
+
+namespace ffi {
+template <>
+inline constexpr bool use_default_type_traits_v<PrimType> = false;
+
+template <>
+struct TypeTraits<PrimType> : public ObjectRefWithFallbackTraitsBase<PrimType, runtime::DataType> {
+  TVM_FFI_INLINE static PrimType ConvertFallbackValue(runtime::DataType dtype) {
+    return PrimType(dtype);
+  }
+};
+}  // namespace ffi
 
 /*!
  * \brief Low-level raw pointer type.
