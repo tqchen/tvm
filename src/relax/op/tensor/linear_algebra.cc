@@ -42,9 +42,9 @@ TVM_FFI_STATIC_INIT_BLOCK() {
 
 /* relax.matmul */
 
-Expr matmul(Expr x1, Expr x2, ffi::Optional<DataType> out_dtype) {
+Expr matmul(Expr x1, Expr x2, ffi::Optional<DLDataType> out_dtype) {
   ffi::ObjectPtr<MatmulAttrs> attrs = ffi::make_object<MatmulAttrs>();
-  attrs->out_dtype = out_dtype.value_or(DataType::Void());
+  attrs->out_dtype = out_dtype.value_or(PrimType::Void()->dtype);
 
   static const Op& op = Op::Get("relax.matmul");
   return Call(op, {std::move(x1), std::move(x2)}, Attrs(attrs), {});
@@ -74,9 +74,9 @@ Type InferTypeMatmul(const Call& call, const BlockBuilder& ctx) {
   }
 
   const auto* attrs = call->attrs.as<MatmulAttrs>();
-  DataType out_dtype = attrs->out_dtype.is_void()
-                           ? InferBinaryArithOpOutDtype(call, ctx, x1_ty, x2_ty)
-                           : attrs->out_dtype;
+  PrimType out_dtype = attrs->out_dtype == PrimType::Void()->dtype
+                           ? PrimType(InferBinaryArithOpOutDtype(call, ctx, x1_ty, x2_ty))
+                           : PrimType(attrs->out_dtype);
 
   if (x1_ty->IsUnknownNdim() || x2_ty->IsUnknownNdim()) {
     if (vdev.defined()) {
@@ -159,7 +159,8 @@ Type InferTypeMatmul(const Call& call, const BlockBuilder& ctx) {
 }
 
 Call InferMixedPrecisionMatmul(const Call& call, const DataType& out_dtype) {
-  return matmul(call->args[0], call->args[1], out_dtype).as_or_throw<Call>();
+  return matmul(call->args[0], call->args[1], static_cast<DLDataType>(out_dtype))
+      .as_or_throw<Call>();
 }
 
 TVM_REGISTER_OP("relax.matmul")

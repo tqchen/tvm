@@ -337,7 +337,7 @@ Expr LowerBuiltinView(const BlockBuilder& bb, const Call& call) {
         << "or the input dtype is known.  "
         << "However, in expression " << call << ", no output dtype is specified, "
         << "and the input " << data << " of type " << data->ty << " has unknown dtype.";
-    dtype = relax::DataTypeImm(DataType(data_dtype->dtype));
+    dtype = relax::DataTypeImm(data_dtype->dtype);
   }
 
   if (HasVoidType(relative_byte_offset)) {

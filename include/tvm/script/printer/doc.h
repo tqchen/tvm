@@ -309,8 +309,8 @@ class LiteralDoc : public ExprDoc {
    * \param v The string value.
    * \param p The object path
    */
-  static LiteralDoc DataType(const runtime::DataType& v, const ffi::Optional<AccessPath>& p) {
-    std::string dtype = v.is_void() ? "void" : ffi::DLDataTypeToString(v);
+  static LiteralDoc DataType(DLDataType v, const ffi::Optional<AccessPath>& p) {
+    std::string dtype = v == PrimType::Void()->dtype ? "void" : ffi::DLDataTypeToString(v);
     return LiteralDoc::Str(dtype, p);
   }
   /*!

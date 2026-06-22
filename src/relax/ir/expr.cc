@@ -396,9 +396,9 @@ TVM_FFI_STATIC_INIT_BLOCK() {
                         [](ffi::String value, Span span) { return StringImm(value, span); });
 }
 
-DataTypeImm::DataTypeImm(DataType value, Span span) {
+DataTypeImm::DataTypeImm(DLDataType value, Span span) {
   ffi::ObjectPtr<DataTypeImmNode> n = ffi::make_object<DataTypeImmNode>();
-  n->value = std::move(value);
+  n->value = value;
   n->span = std::move(span);
   n->ty = ObjectType();
   data_ = std::move(n);
@@ -407,7 +407,7 @@ DataTypeImm::DataTypeImm(DataType value, Span span) {
 TVM_FFI_STATIC_INIT_BLOCK() {
   namespace refl = tvm::ffi::reflection;
   refl::GlobalDef().def("relax.DataTypeImm",
-                        [](DataType value, Span span) { return DataTypeImm(value, span); });
+                        [](DLDataType value, Span span) { return DataTypeImm(value, span); });
 }
 
 MatchCast::MatchCast(Var var, Expr value, Type ty, Span span) {

@@ -208,9 +208,11 @@ std::tuple<DFPattern, ffi::TypedFunction<Expr(Expr, ffi::Map<DFPattern, Expr>)>>
     // If two of the three are compile-time, group those two values
     // together, to allow them to be lifted out and pre-computed.
     if (is_compile_time(expr_a) && is_compile_time(expr_b)) {
-      return matmul(matmul(expr_a, expr_b, DataType::Void()), expr_c, DataType::Void());
+      return matmul(matmul(expr_a, expr_b, PrimType::Void()->dtype), expr_c,
+                    PrimType::Void()->dtype);
     } else if (is_compile_time(expr_b) && is_compile_time(expr_c)) {
-      return matmul(expr_a, matmul(expr_b, expr_c, DataType::Void()), DataType::Void());
+      return matmul(expr_a, matmul(expr_b, expr_c, PrimType::Void()->dtype),
+                    PrimType::Void()->dtype);
     }
 
     // Otherwise, select the order that reduces the total number of
@@ -285,9 +287,11 @@ std::tuple<DFPattern, ffi::TypedFunction<Expr(Expr, ffi::Map<DFPattern, Expr>)>>
                       size_N > 0 && size_R > 0 && size_M > 0 && size_B > 0);
 
     if (analyzer->CanProve(ops_with_lhs_first < ops_with_rhs_first)) {
-      return matmul(matmul(expr_a, expr_b, DataType::Void()), expr_c, DataType::Void());
+      return matmul(matmul(expr_a, expr_b, PrimType::Void()->dtype), expr_c,
+                    PrimType::Void()->dtype);
     } else if (analyzer->CanProve(ops_with_rhs_first < ops_with_lhs_first)) {
-      return matmul(expr_a, matmul(expr_b, expr_c, DataType::Void()), DataType::Void());
+      return matmul(expr_a, matmul(expr_b, expr_c, PrimType::Void()->dtype),
+                    PrimType::Void()->dtype);
     }
 
     // If we cannot determine which order is best, keep the existing order.

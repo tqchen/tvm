@@ -155,7 +155,8 @@ Type InferTypeScan(const Call& call, const BlockBuilder& ctx) {
   TensorType data_ty = GetUnaryInputTensorType(call, ctx);
   const auto* attrs = call->attrs.as<ScanopAttrs>();
 
-  PrimType out_type = attrs->dtype.is_void() ? data_ty->dtype : PrimType(attrs->dtype);
+  PrimType out_type =
+      attrs->dtype == PrimType::Void()->dtype ? data_ty->dtype : PrimType(attrs->dtype);
 
   if (!attrs->axis.has_value()) {
     // flattened
@@ -238,11 +239,11 @@ Type InferTypeStatisticalExtension(const Call& call, const BlockBuilder& ctx) {
 }
 
 /* relax.cumprod */
-Expr cumprod(Expr data, ffi::Optional<int64_t> axis, ffi::Optional<DataType> dtype,
+Expr cumprod(Expr data, ffi::Optional<int64_t> axis, ffi::Optional<DLDataType> dtype,
              bool exclusive) {
   auto attrs = ffi::make_object<ScanopAttrs>();
   attrs->axis = std::move(axis);
-  attrs->dtype = std::move(dtype.value_or(DataType::Void()));
+  attrs->dtype = dtype.value_or(PrimType::Void()->dtype);
   attrs->exclusive = exclusive;
 
   static const Op& op = Op::Get("relax.cumprod");
@@ -262,10 +263,11 @@ TVM_REGISTER_OP("relax.cumprod")
     .set_attr<bool>("FPurity", true);
 
 /* relax.cumsum */
-Expr cumsum(Expr data, ffi::Optional<int64_t> axis, ffi::Optional<DataType> dtype, bool exclusive) {
+Expr cumsum(Expr data, ffi::Optional<int64_t> axis, ffi::Optional<DLDataType> dtype,
+            bool exclusive) {
   auto attrs = ffi::make_object<ScanopAttrs>();
   attrs->axis = std::move(axis);
-  attrs->dtype = std::move(dtype.value_or(DataType::Void()));
+  attrs->dtype = dtype.value_or(PrimType::Void()->dtype);
   attrs->exclusive = exclusive;
 
   static const Op& op = Op::Get("relax.cumsum");
