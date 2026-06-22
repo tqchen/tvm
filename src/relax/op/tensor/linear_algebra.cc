@@ -158,9 +158,8 @@ Type InferTypeMatmul(const Call& call, const BlockBuilder& ctx) {
   return TensorType(ShapeExpr(output_shape), out_dtype);
 }
 
-Call InferMixedPrecisionMatmul(const Call& call, const DataType& out_dtype) {
-  return matmul(call->args[0], call->args[1], static_cast<DLDataType>(out_dtype))
-      .as_or_throw<Call>();
+Call InferMixedPrecisionMatmul(const Call& call, DLDataType out_dtype) {
+  return matmul(call->args[0], call->args[1], out_dtype).as_or_throw<Call>();
 }
 
 TVM_REGISTER_OP("relax.matmul")

@@ -664,7 +664,7 @@ TVM_DLL Pass DataflowUseInplaceCalls();
  * \note Mainly operates within dataflow blocks. ConvertToDataflow may need to be called first.
  */
 TVM_DLL Pass
-ToMixedPrecision(const DataType& out_dtype,
+ToMixedPrecision(DLDataType out_dtype,
                  ffi::Optional<ffi::Array<ffi::String>> fp16_input_names = std::nullopt);
 
 /*!
