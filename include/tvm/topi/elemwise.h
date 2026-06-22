@@ -443,7 +443,7 @@ inline Tensor fast_exp_float32(const Tensor& _x, std::string name, std::string t
             (((((p[0] * f + p[1]) * f + p[2]) * f + p[3]) * f + p[4]) * f + p[5]) * f * f + f + one;
         // Return 2^m * exp(r).
         auto ef =
-            tvm::reinterpret(DataType::Float(32), ::tvm::cast(DataType::Int(32), n + b) << 23);
+            tvm::reinterpret(PrimType::Float(32), ::tvm::cast(PrimType::Int(32), n + b) << 23);
         return ::tvm::max(ef * y, _x(i));  // NOLINT(*)
       },
       name, tag);
