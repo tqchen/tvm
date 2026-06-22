@@ -43,7 +43,7 @@ class CodeGenMetal final : public CodeGenC {
   void InitFuncState(const PrimFunc& f) final;
   void PrintStorageScope(const std::string& scope, std::ostream& os) final;  // NOLINT(*)
   void PrintStorageSync(const CallNode* op) final;                           // NOLINT(*)
-  void PrintType(DataType t, std::ostream& os) final;                        // NOLINT(*)
+  void PrintType(DLDataType t, std::ostream& os) final;                      // NOLINT(*)
   void BindThreadIndex(const IterVar& iv) final;                             // NOLINT(*)
   // print load of single element
   void PrintVecElemLoad(const std::string& vec, DataType t, int i,

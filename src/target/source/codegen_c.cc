@@ -128,7 +128,7 @@ void CodeGenC::PrintFunctionSignature(const ffi::String& function_name, const Pr
   for (const auto& param : func->params) {
     if (auto* ptr = param->type_annotation.as<PointerTypeNode>()) {
       if (auto* prim = ptr->element_type.as<PrimTypeNode>()) {
-        RegisterHandleType(param.get(), DataType(prim->dtype));
+        RegisterHandleType(param.get(), prim->dtype);
       }
     }
   }
@@ -382,13 +382,13 @@ std::string CodeGenC::GetStructRef(DataType t, const PrimExpr& buffer, const Pri
   }
 }
 
-bool CodeGenC::HandleTypeMatch(const VarNode* buf_var, DataType t) const {
+bool CodeGenC::HandleTypeMatch(const VarNode* buf_var, DLDataType t) const {
   auto it = handle_data_type_.find(buf_var);
   if (it == handle_data_type_.end()) return false;
   return it->second == t;
 }
 
-void CodeGenC::RegisterHandleType(const VarNode* buf_var, DataType t) {
+void CodeGenC::RegisterHandleType(const VarNode* buf_var, DLDataType t) {
   auto it = handle_data_type_.find(buf_var);
   if (it == handle_data_type_.end()) {
     handle_data_type_[buf_var] = t;
@@ -461,7 +461,7 @@ inline void PrintConst(const IntImmNode* op, std::ostream& os, CodeGenC* p) {  /
     os << temp.str();
   } else {
     os << "(";
-    p->PrintType(DataType(op->ty()->dtype), os);
+    p->PrintType(op->ty()->dtype, os);
     os << ")" << op->value;
   }
 }
@@ -493,7 +493,7 @@ inline void PrintConst(const FloatImmNode* op, std::ostream& os, CodeGenC* p) { 
     }
     case 16: {
       os << '(';
-      p->PrintType(DataType(op->ty()->dtype), os);
+      p->PrintType(op->ty()->dtype, os);
       os << ')' << std::scientific << op->value << 'f';
       break;
     }
@@ -692,7 +692,7 @@ void CodeGenC::VisitExpr_(const CallNode* op, std::ostream& os) {  // NOLINT(*)
       std::string result = name_supply_->FreshName("condval");
       std::string cond = PrintExpr(op->args[0]);
       this->PrintIndent();
-      PrintType(DataType(op->ty()->dtype), this->stream);
+      PrintType(op->ty()->dtype, this->stream);
       this->stream << " " << result << ";\n";
       this->PrintIndent();
       this->stream << "if (" << cond << ") {\n";
@@ -723,7 +723,7 @@ void CodeGenC::VisitExpr_(const CallNode* op, std::ostream& os) {  // NOLINT(*)
             << "CodeGenC only supports flat memory allocations.";
         const VarNode* data = load->buffer->data.get();
         if (pointer_offset_vars_.count(data) &&
-            HandleTypeMatch(data, DataType(load->buffer->dtype->dtype)) &&
+            HandleTypeMatch(data, load->buffer->dtype->dtype) &&
             !IsVolatile(data)) {
           os << "(" << GetVarID(data) << " + ";
           this->PrintExpr(load->indices[0], os);
@@ -766,7 +766,7 @@ void CodeGenC::VisitExpr_(const CallNode* op, std::ostream& os) {  // NOLINT(*)
     } else if (op->op.same_as(builtin::ptr_byte_offset())) {
       TVM_FFI_ICHECK_EQ(op->args.size(), 3U);
       os << "((";
-      PrintType(DataType(op->args[2].ty()->dtype), os);
+      PrintType(op->args[2].ty()->dtype, os);
       os << "*)(((char*)";
       this->PrintExpr(op->args[0], os);
       os << ") + ";
@@ -996,7 +996,7 @@ void CodeGenC::VisitExpr_(const LetNode* op, std::ostream& os) {  // NOLINT(*)
       PrintType(handle_data_type_.at(op->var.get()), this->stream);
       this->stream << "*)" << value << ";\n";
     } else {
-      PrintType(DataType(op->var.ty()->dtype), this->stream);
+      PrintType(op->var.ty()->dtype, this->stream);
       this->stream << ' ' << AllocVarID(op->var.get()) << " = " << value << ";\n";
     }
   }
@@ -1011,7 +1011,7 @@ void CodeGenC::VisitExpr_(const LetNode* op, std::ostream& os) {  // NOLINT(*)
 void CodeGenC::VisitExpr_(const RampNode* op, std::ostream& os) {  // NOLINT(*)
   // NOTE: C have comma expression so cannot use (int2)(v0, v1)
   // instead should use int2(v0, v1)
-  PrintType(DataType(op->ty()->dtype), os);
+  PrintType(op->ty()->dtype, os);
   int lanes = DataType(op->ty()->dtype).lanes();
   os << "(";
   for (int i = 0; i < lanes; i++) {
@@ -1122,7 +1122,7 @@ void CodeGenC::VisitStmt_(const BindNode* op) {
       PrintType(handle_data_type_.at(op->var.get()), stream);
       stream << "*)" << value << ";\n";
     } else {
-      PrintType(DataType(op->var.ty()->dtype), this->stream);
+      PrintType(op->var.ty()->dtype, this->stream);
       this->stream << ' ' << AllocVarID(op->var.get()) << " = " << value << ";\n";
     }
   }
@@ -1146,10 +1146,10 @@ void CodeGenC::VisitStmt_(const AllocBufferNode* op) {
   alloc_storage_scope_[op->buffer->data.get()] = scope;
   PrintStorageScope(scope, stream);
 
-  PrintType(DataType(op->buffer->dtype->dtype), stream);
+  PrintType(op->buffer->dtype->dtype, stream);
   stream << ' ' << vid << '[' << constant_size << "];\n";
 
-  RegisterHandleType(op->buffer->data.get(), DataType(op->buffer->dtype->dtype));
+  RegisterHandleType(op->buffer->data.get(), op->buffer->dtype->dtype);
   if (op->annotations.count(tirx::attr::kVolatile)) {
     MarkVolatile(op->buffer->data.get());
   }
@@ -1255,7 +1255,7 @@ void CodeGenC::VisitStmt_(const ForNode* op) {
   PrintIndent();
   std::string vid = AllocVarID(op->loop_var.get());
   stream << "for (";
-  PrintType(DataType(op->loop_var.ty()->dtype), stream);
+  PrintType(op->loop_var.ty()->dtype, stream);
   stream << ' ' << vid << " = " << begin_str << "; " << vid << " < " << end_str << "; ";
   if (step_str.empty()) {
     stream << "++" << vid;

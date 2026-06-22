@@ -137,7 +137,8 @@ void CodeGenTrainium::AddFunction(const GlobalVar& gvar, const PrimFunc& func) {
   this->EndScope(func_scope);
 }
 
-void CodeGenTrainium::PrintType(DataType t, std::ostream& os) {  // NOLINT(*)
+void CodeGenTrainium::PrintType(DLDataType raw_t, std::ostream& os) {  // NOLINT(*)
+  DataType t(raw_t);
   int lanes = t.lanes();
   TVM_FFI_ICHECK(lanes == 1) << "Trainium codegen does not support vector types";
   TVM_FFI_ICHECK(!t.is_handle()) << "Trainium codegen does not support handle type";
@@ -215,7 +216,7 @@ void CodeGenTrainium::VisitStmt_(const AllocBufferNode* op) {
   this->PrintIndent();
   auto scope = GetPtrStorageScope(op->buffer->data);
   std::ostringstream dtype_os;
-  PrintType(DataType(op->buffer->dtype->dtype), dtype_os);
+  PrintType(op->buffer->dtype->dtype, dtype_os);
   std::string dtype_str = dtype_os.str();
   if (scope == "trn.psum") {
     stream << vid << " = nl.ndarray(shape=[";

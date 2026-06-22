@@ -306,7 +306,8 @@ void CodeGenWebGPU::BindThreadIndex(const IterVar& iv) {
   }
 }
 
-void CodeGenWebGPU::PrintType(DataType t, std::ostream& os) {  // NOLINT(*)
+void CodeGenWebGPU::PrintType(DLDataType raw_t, std::ostream& os) {  // NOLINT(*)
+  DataType t(raw_t);
   int lanes = t.lanes();
   if (t.is_handle()) {
     TVM_FFI_THROW(InternalError) << "Cannot print handle type in WebGPU";
@@ -675,12 +676,12 @@ void CodeGenWebGPU::VisitStmt_(const AllocBufferNode* op) {
 
   if (storage_scope.rank == runtime::StorageRank::kShared) {
     this->decl_stream << "var<workgroup> " << vid << " : array<";
-    PrintType(DataType(op->buffer->dtype->dtype), this->decl_stream);
+    PrintType(op->buffer->dtype->dtype, this->decl_stream);
     this->decl_stream << ", " << constant_size << ">;\n";
   } else if (storage_scope.rank == runtime::StorageRank::kLocal) {
     this->PrintIndent();
     this->stream << "var " << vid << " : array<";
-    PrintType(DataType(op->buffer->dtype->dtype), this->stream);
+    PrintType(op->buffer->dtype->dtype, this->stream);
     this->stream << ", " << constant_size << ">;\n";
   } else {
     TVM_FFI_THROW(InternalError) << "WebGPU: Do not support storage scope: "

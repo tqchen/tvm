@@ -52,7 +52,7 @@ class CodeGenWebGPU final : public CodeGenC {
   runtime::FunctionInfo AddFunction(const PrimFunc& f, bool skip_readonly_decl);  // NOLINT(*)
   void InitFuncState(const PrimFunc& f) final;
   void PrintStorageSync(const CallNode* op) final;     // NOLINT(*)
-  void PrintType(DataType t, std::ostream& os) final;  // NOLINT(*)
+  void PrintType(DLDataType t, std::ostream& os) final;  // NOLINT(*)
   void BindThreadIndex(const IterVar& iv) final;       // NOLINT(*)
 
   // assignment printing

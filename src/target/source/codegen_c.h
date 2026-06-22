@@ -294,13 +294,13 @@ class CodeGenC : public ExprFunctor<void(const PrimExpr&, std::ostream&)>,
    * \param buf_var The buffer variable.
    * \param t The type to be checked.
    */
-  bool HandleTypeMatch(const VarNode* buf_var, DataType t) const;
+  bool HandleTypeMatch(const VarNode* buf_var, DLDataType t) const;
   /*!
    * \brief Register the data type of buf_var
    * \param buf_var The buffer variable.
    * \param t The type to be checked.
    */
-  void RegisterHandleType(const VarNode* buf_var, DataType t);
+  void RegisterHandleType(const VarNode* buf_var, DLDataType t);
   /*!
    * \brief Register a typed pointer produced by explicit pointer-offset intrinsics.
    *
@@ -324,7 +324,7 @@ class CodeGenC : public ExprFunctor<void(const PrimExpr&, std::ostream&)>,
   /*! \brief the storage scope of allocation */
   std::unordered_map<const VarNode*, std::string> alloc_storage_scope_;
   /*! \brief the data type of allocated buffers */
-  std::unordered_map<const VarNode*, DataType> handle_data_type_;
+  std::unordered_map<const VarNode*, DLDataType> handle_data_type_;
   /*! \brief Handle vars whose address_of(buffer[index]) should print as ptr + index. */
   std::unordered_set<const VarNode*> pointer_offset_vars_;
   /*! \brief Record of ops that have pre-defined global symbol. */

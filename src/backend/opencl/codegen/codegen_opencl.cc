@@ -193,7 +193,8 @@ void CodeGenOpenCL::BindThreadIndex(const IterVar& iv) {
       CastFromTo(os.str(), DataType::UInt(64), DataType(iv->var.ty()->dtype));
 }
 
-void CodeGenOpenCL::PrintType(DataType t, std::ostream& os) {  // NOLINT(*)
+void CodeGenOpenCL::PrintType(DLDataType raw_t, std::ostream& os) {  // NOLINT(*)
+  DataType t(raw_t);
   int lanes = t.lanes();
   if (t.is_handle()) {
     TVM_FFI_ICHECK_EQ(lanes, 1) << "do not yet support vector types";

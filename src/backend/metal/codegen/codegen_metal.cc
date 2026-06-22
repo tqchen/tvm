@@ -194,7 +194,8 @@ void CodeGenMetal::BindThreadIndex(const IterVar& iv) {
       CastFromTo(vname, DataType::UInt(thread_index_bits_), DataType(iv->var.ty()->dtype));
 }
 
-void CodeGenMetal::PrintType(DataType t, std::ostream& os) {  // NOLINT(*)
+void CodeGenMetal::PrintType(DLDataType raw_t, std::ostream& os) {  // NOLINT(*)
+  DataType t(raw_t);
   int lanes = t.lanes();
   if (t.is_handle()) {
     TVM_FFI_ICHECK_EQ(lanes, 1) << "do not yet support vector types";
