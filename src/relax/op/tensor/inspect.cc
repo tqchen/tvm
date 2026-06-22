@@ -88,7 +88,9 @@ std::tuple<TensorType, ffi::Optional<int64_t>> GetTensorArgInfoWithIndex(const C
   return {ffi::GetRef<TensorType>(tensor_ty), int_imm_axis};
 }
 
-DataType GetTensorDataType(const Call& call) { return GetTensorArgInfo(call)->dtype; }
+DataType GetTensorDataType(const Call& call) {
+  return DataType(GetTensorArgInfo(call)->dtype->dtype);
+}
 
 tirx::PrimFunc GetDLTensorField(tirx::builtin::TVMStructFieldKind field, DataType field_dtype) {
   tirx::Var dlpack_handle("dlpack_handle", DataType::Handle());

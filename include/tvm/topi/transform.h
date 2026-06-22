@@ -1527,7 +1527,8 @@ inline Tensor gather(const Tensor& data, int axis, const Tensor& indices,
     size_t indices_dim_i = static_cast<size_t>(GetConstInt(indices->shape[axis]));
     TVM_FFI_ICHECK_GE(indices_dim_i, 1);
   }
-  TVM_FFI_ICHECK(indices->dtype.is_int() || indices->dtype.is_uint());
+  DataType indices_dtype(indices->dtype->dtype);
+  TVM_FFI_ICHECK(indices_dtype.is_int() || indices_dtype.is_uint());
 
   ffi::Array<PrimExpr> out_shape;
   for (size_t i = 0; i < ndim_i; ++i) {
@@ -1594,7 +1595,8 @@ inline Tensor gather_nd(const Tensor& data, const Tensor& indices, int batch_dim
         }
         for (size_t i = 0; i < indices_dim0; ++i) {
           indices_position.Set(0, IntImm::Int32(i));
-          if (indices->dtype.is_int() || indices->dtype.is_uint()) {
+          DataType indices_dtype(indices->dtype->dtype);
+          if (indices_dtype.is_int() || indices_dtype.is_uint()) {
             real_indices.push_back(indices(indices_position));
           } else {
             real_indices.push_back(tvm::cast(tvm::DataType::Int(32), indices(indices_position)));
@@ -2113,7 +2115,8 @@ inline Tensor sparse_to_dense(const Tensor& sparse_indices,
                               const PrimExpr& default_value,
                               const std::string name = "T_sparse_to_dense",
                               const std::string tag = kInjective) {
-  TVM_FFI_ICHECK(sparse_indices->dtype.is_int()) << "sparse_indices only accepts integer values";
+  TVM_FFI_ICHECK(DataType(sparse_indices->dtype->dtype).is_int())
+      << "sparse_indices only accepts integer values";
   TVM_FFI_ICHECK_LE(sparse_indices->shape.size(), 3)
       << "sparse_indices tensor should be 0D, 1D, or 2D only";
   TVM_FFI_ICHECK_LE(sparse_values->shape.size(), 2)

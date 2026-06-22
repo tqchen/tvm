@@ -55,7 +55,7 @@ Type InferTypeAstype(const Call& call, const BlockBuilder& ctx) {
   TensorType ty = GetUnaryInputTensorType(call, ctx);
   const auto* attrs = call->attrs.as<AstypeAttrs>();
   ffi::ObjectPtr<TensorTypeNode> new_ty = ffi::make_object<TensorTypeNode>(*ty.get());
-  new_ty->dtype = attrs->dtype;
+  new_ty->dtype = PrimType(attrs->dtype);
   return TensorType(new_ty);
 }
 
@@ -87,7 +87,7 @@ Type InferTypeWrapParam(const Call& call, const BlockBuilder& ctx) {
   TensorType ty = GetUnaryInputTensorType(call, ctx);
   const auto* attrs = call->attrs.as<WrapParamAttrs>();
   ffi::ObjectPtr<TensorTypeNode> new_ty = ffi::make_object<TensorTypeNode>(*ty.get());
-  new_ty->dtype = attrs->dtype;
+  new_ty->dtype = PrimType(attrs->dtype);
   return TensorType(new_ty);
 }
 

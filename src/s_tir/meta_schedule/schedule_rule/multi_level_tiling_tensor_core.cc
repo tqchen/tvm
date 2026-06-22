@@ -626,7 +626,7 @@ std::vector<State> MultiLevelTilingTensorCoreNode::AddReadReuseTensorCore(
     tirx::Buffer cache_read_buffer =
         s_tir::GetNthAccessBuffer(sch->state(), ffi::GetRef<tirx::SBlock>(cache_read_block), 0,
                                   s_tir::BufferIndexType::kWrite);
-    const DataType& dtype = cache_read_buffer->dtype;
+    const DataType dtype(cache_read_buffer->dtype->dtype);
     if (dtype.is_float16()) {
       sch->StorageAlign(cache_read, 0, -2, 32, 8);
     } else if (dtype.is_int() && dtype.bits() == 8) {

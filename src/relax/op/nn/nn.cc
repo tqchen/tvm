@@ -122,7 +122,7 @@ Type InferTypePRelu(const Call& call, const BlockBuilder& ctx) {
   if (data_ty->IsUnknownNdim()) {
     return data_ty;
   }
-  if (!data_ty->IsUnknownDtype() && !data_ty->dtype.is_float()) {
+  if (!data_ty->IsUnknownDtype() && !DataType(data_ty->dtype->dtype).is_float()) {
     TVM_FFI_VISIT_THROW(TypeError, call) << "Prelu requires the input tensor to have float "
                                             "dtype. However, the given input dtype is "
                                          << data_ty->dtype;
@@ -186,10 +186,13 @@ Type InferTypeSoftmax(const Call& call, const BlockBuilder& ctx) {
   if (data_ty->IsUnknownNdim()) {
     return data_ty;
   }
-  if (!data_ty->IsUnknownDtype() && !data_ty->dtype.is_float() && !data_ty->dtype.is_bfloat()) {
+  if (!data_ty->IsUnknownDtype()) {
+    DataType data_dtype(data_ty->dtype->dtype);
+    if (!data_dtype.is_float() && !data_dtype.is_bfloat()) {
     TVM_FFI_VISIT_THROW(TypeError, call) << "Softmax requires the input tensor to have float "
                                             "dtype. However, the given input dtype is "
                                          << data_ty->dtype;
+    }
   }
   const auto* attrs = call->attrs.as<SoftmaxAttrs>();
   NormalizeAxis(call, ctx, data_ty->ndim, attrs->axis);
@@ -380,13 +383,16 @@ bool NormCheckDtypeAndShape(const Call& call, const BlockBuilder& ctx,
     axes_non_neg = NormalizeAxes(call, ctx, data_ty->ndim, axes);
   }
   int n_axis = axes.size();
-  if (!data_ty->IsUnknownDtype() && (!data_ty->dtype.is_float() && !data_ty->dtype.is_bfloat())) {
+  if (!data_ty->IsUnknownDtype()) {
+    DataType data_dtype(data_ty->dtype->dtype);
+    if (!data_dtype.is_float() && !data_dtype.is_bfloat()) {
     TVM_FFI_VISIT_THROW(TypeError, call)
         << op << " requires the input data to have float dtype. However, the given data dtype is "
         << data_ty->dtype;
+    }
   }
   for (int i = 1; i < n_input; ++i) {
-    if (input_ty[i]->dtype != data_ty->dtype) {
+    if (input_ty[i]->dtype->dtype != data_ty->dtype->dtype) {
       TVM_FFI_VISIT_THROW(TypeError, call)
           << op << " requires all the input tensors to have the same dtype. However, the "
           << op->arguments[i]->name << " has dtype " << input_ty[i]->dtype
@@ -462,7 +468,7 @@ Type InferTypeBatchNorm(const Call& call, const BlockBuilder& ctx) {
   const auto* attrs = call->attrs.as<BatchNormAttrs>();
   bool unknown_shape = NormCheckDtypeAndShape(call, ctx, input_ty, {attrs->axis});
 
-  DataType dtype = input_ty[0]->dtype;
+  PrimType dtype = input_ty[0]->dtype;
   if (unknown_shape) {
     auto vdev = input_ty[0]->vdevice;
     return TupleType({TensorType(dtype, input_ty[0]->ndim, vdev),
@@ -620,7 +626,7 @@ Type InferTypeGroupNorm(const Call& call, const BlockBuilder& ctx) {
           << channel_axis << ", axes: " << attrs->axes;
     }
   }
-  if (!data_ty->IsUnknownDtype() && !data_ty->dtype.is_float()) {
+  if (!data_ty->IsUnknownDtype() && !DataType(data_ty->dtype->dtype).is_float()) {
     TVM_FFI_VISIT_THROW(TypeError, call)
         << op << " expects that data must be float, but got " << data_ty->dtype;
   }
@@ -633,7 +639,7 @@ Type InferTypeGroupNorm(const Call& call, const BlockBuilder& ctx) {
         << ", but got " << data_shape->values[channel_axis];
   }
   for (int i = 1; i < static_cast<int>(op->arguments.size()); ++i) {
-    if (input_ty[i]->dtype != data_ty->dtype) {
+    if (input_ty[i]->dtype->dtype != data_ty->dtype->dtype) {
       TVM_FFI_VISIT_THROW(TypeError, call)
           << op << " expects that all inputs must have the same dtype, but got "
           << input_ty[i]->dtype << " and " << data_ty->dtype;
@@ -735,7 +741,7 @@ Type InferTypeInstanceNorm(const Call& call, const BlockBuilder& ctx) {
   const auto* data_shape = data_ty->shape.as<ShapeExprNode>();
   arith::Analyzer analyzer = ctx->GetAnalyzer();
   for (int i = 1; i < static_cast<int>(op->arguments.size()); ++i) {
-    if (input_ty[i]->dtype != data_ty->dtype) {
+    if (input_ty[i]->dtype->dtype != data_ty->dtype->dtype) {
       TVM_FFI_VISIT_THROW(TypeError, call)
           << op << " expects that all inputs must have the same dtype, but got "
           << input_ty[i]->dtype << " and " << data_ty->dtype;
@@ -1010,15 +1016,18 @@ Type InferTypeNLLLoss(const Call& call, const BlockBuilder& ctx) {
     vdevice = InferBinaryArithOpOutVDevice(call, ctx, ffi::GetRef<TensorType>(pred_ty),
                                            ffi::GetRef<TensorType>(wgt_ty));
   } else {
-    output_dtype = pred_ty->dtype;
+    output_dtype = DataType(pred_ty->dtype->dtype);
     vdevice = pred_ty->vdevice;
   }
 
   // the type of targets must be int/uint.
-  if (!tgt_ty->IsUnknownDtype() && !tgt_ty->dtype.is_int() && !tgt_ty->dtype.is_uint()) {
+  if (!tgt_ty->IsUnknownDtype()) {
+    DataType target_dtype(tgt_ty->dtype->dtype);
+    if (!target_dtype.is_int() && !target_dtype.is_uint()) {
     TVM_FFI_VISIT_THROW(TypeError, call)
         << "NLLLoss expects the dtype of targets to be int/uint. However, the dtype of targets is "
         << tgt_ty->dtype;
+    }
   }
 
   // infer ndim

@@ -98,7 +98,7 @@ class ComputeLegalizePlanner : public StmtExprVisitor {
 
   void VisitStmt_(const AllocBufferNode* op) final {
     // remap all intermediate constant buffer to promote data types (fp16/fp32)
-    if (MatchDType(op->buffer->dtype)) {
+    if (MatchDType(DType(op->buffer->dtype))) {
       DataType dtype = promote_dtype_.with_lanes(op->buffer->dtype.lanes());
       ffi::String storage_scope = "global";
       if (auto* ptr_type = op->buffer->data->type_annotation.as<PointerTypeNode>()) {
@@ -334,17 +334,17 @@ class ComputeLegalizer : public StmtExprMutator {
     if (value.same_as(op->value) && indices.same_as(op->indices) && new_buf.same_as(op->buffer)) {
       return ffi::GetRef<Stmt>(op);
     } else {
-      if (MatchDType(new_buf->dtype)) {
+      if (MatchDType(DType(new_buf->dtype))) {
         int index_lanes = indices.size() ? indices.back().ty().lanes() : 1;
         int buffer_lanes = new_buf->dtype.lanes();
-        DataType legalized_dtype = new_buf->dtype.with_lanes(index_lanes * buffer_lanes);
+        DataType legalized_dtype = DType(new_buf->dtype).with_lanes(index_lanes * buffer_lanes);
         value = CastTargetToDType(value, legalized_dtype);
       }
-      if (DType(value) != new_buf->dtype) {
+      if (DType(value) != DType(new_buf->dtype)) {
         // this happens when buffer get rewritten to f32
         // but values remain as fp8/bf16
         TVM_FFI_ICHECK(MatchDType(DType(value)));
-        value = DTypeConversion(value, new_buf->dtype.with_lanes(value.ty().lanes()));
+        value = DTypeConversion(value, DType(new_buf->dtype).with_lanes(value.ty().lanes()));
       }
       TVM_FFI_ICHECK(!op->predicate.defined())
           << "Predicated buffer store is not currently supported in "
@@ -543,8 +543,8 @@ class StorageLegalizer : public StmtExprMutator {
     // in a rare case the buffer didn't get remapped
     // because the original var is not bfloat*
     // force remap here
-    if (MatchDType(buf->dtype)) {
-      DataType new_dtype = GetStorageUIntDType(buf->dtype);
+    if (MatchDType(DType(buf->dtype))) {
+      DataType new_dtype = GetStorageUIntDType(DType(buf->dtype));
       ffi::String storage_scope = "global";
       if (auto* ptr_type = buf->data->type_annotation.as<PointerTypeNode>()) {
         storage_scope = ptr_type->storage_scope;
@@ -570,8 +570,8 @@ class StorageLegalizer : public StmtExprMutator {
     // in a rare case the buffer didn't get remapped
     // because the original var is not bfloat*
     // force remap here
-    if (MatchDType(buf->dtype)) {
-      buf = Buffer(buf->data, GetStorageUIntDType(buf->dtype), buf->shape, buf->strides,
+    if (MatchDType(DType(buf->dtype))) {
+      buf = Buffer(buf->data, GetStorageUIntDType(DType(buf->dtype)), buf->shape, buf->strides,
                    buf->elem_offset, buf->name, buf->data_alignment, buf->offset_factor,
                    buf->buffer_type, buf->axis_separators, buf->span, buf->layout,
                    buf->allocated_addr);
@@ -615,7 +615,7 @@ class StorageLegalizer : public StmtExprMutator {
       return ffi::GetRef<Stmt>(op);
     } else {
       if (MatchDType(DType(op->value))) {
-        TVM_FFI_ICHECK(new_buf->dtype.is_uint());
+        TVM_FFI_ICHECK(DType(new_buf->dtype).is_uint());
       }
       TVM_FFI_ICHECK(!op->predicate.defined())
           << "Predicated buffer store is not currently supported in "
@@ -720,12 +720,13 @@ class StorageLegalizer : public StmtExprMutator {
     Buffer new_buf = buf;
     auto var_it = var_remap_.find(buf->data);
     if (var_it != var_remap_.end()) {
-      DataType dtype = MatchDType(buf->dtype) ? GetStorageUIntDType(buf->dtype) : buf->dtype;
+      DataType dtype =
+          MatchDType(DType(buf->dtype)) ? GetStorageUIntDType(DType(buf->dtype)) : DType(buf->dtype);
       new_buf = Buffer(var_it->second, dtype, buf->shape, buf->strides, buf->elem_offset, buf->name,
                        buf->data_alignment, buf->offset_factor, buf->buffer_type,
                        buf->axis_separators, buf->span, buf->layout, buf->allocated_addr);
     } else {
-      TVM_FFI_ICHECK(!MatchDType(buf->dtype)) << "Cannot find var remap for " << buf;
+      TVM_FFI_ICHECK(!MatchDType(DType(buf->dtype))) << "Cannot find var remap for " << buf;
     }
 
     buffer_remap_[buf] = new_buf;

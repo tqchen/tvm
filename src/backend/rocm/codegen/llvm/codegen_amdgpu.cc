@@ -100,7 +100,7 @@ class CodeGenAMDGPU : public CodeGenLLVM {
     llvm::Value* buf = nullptr;
     StorageInfo& info = alloc_storage_info_[op->buffer->data.get()];
     auto storage_scope = runtime::StorageScope::Create(GetPtrStorageScope(op->buffer->data));
-    DataType dtype = op->buffer->dtype;
+    DataType dtype(op->buffer->dtype->dtype);
 
     if (storage_scope.rank == runtime::StorageRank::kShared && storage_scope.tag == ".dyn") {
       LOG(WARNING) << "Dynamic shared memory support for rocm is experimental.";
@@ -223,7 +223,7 @@ class CodeGenAMDGPU : public CodeGenLLVM {
       TVM_FFI_ICHECK(op->args[1]->dtype.bits() == 32) << "Only supports 32 bit atomic for now";
       llvm::Value* v0 = MakeValue(op->args[0]);
       llvm::Value* v1 = MakeValue(op->args[1]);
-      if (op->args[1]->dtype.is_float()) {
+      if (DataType(op->args[1].ty()->dtype).is_float()) {
         return builder_->CreateAtomicRMW(llvm::AtomicRMWInst::FAdd, v0, v1, llvm::MaybeAlign(),
                                          llvm::AtomicOrdering::Monotonic);
       }

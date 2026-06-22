@@ -155,7 +155,7 @@ Type InferTypeScan(const Call& call, const BlockBuilder& ctx) {
   TensorType data_ty = GetUnaryInputTensorType(call, ctx);
   const auto* attrs = call->attrs.as<ScanopAttrs>();
 
-  DataType out_type = attrs->dtype.is_void() ? data_ty->dtype : attrs->dtype;
+  PrimType out_type = attrs->dtype.is_void() ? data_ty->dtype : PrimType(attrs->dtype);
 
   if (!attrs->axis.has_value()) {
     // flattened

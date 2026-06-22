@@ -33,7 +33,8 @@ Type InferDistTypeSoftmax(const Call& call, const BlockBuilder& ctx) {
   if (input_tensor_ty->IsUnknownNdim()) {
     TVM_FFI_VISIT_THROW(ValueError, call) << "Input of distributed operator must have known ndim";
   }
-  if (!input_tensor_ty->IsUnknownDtype() && !input_tensor_ty->dtype.is_float()) {
+  if (!input_tensor_ty->IsUnknownDtype() &&
+      !DataType(input_tensor_ty->dtype->dtype).is_float()) {
     TVM_FFI_VISIT_THROW(TypeError, call) << "Softmax requires the input tensor to have float "
                                             "dtype. However, the given input dtype is "
                                          << input_tensor_ty->dtype;

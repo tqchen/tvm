@@ -535,7 +535,7 @@ void CodeGenWebGPU::VisitExpr_(const BufferLoadNode* op, std::ostream& os) {  //
   DataType value_dtype = DataType(op->ty()->dtype);
   PrimExpr index = op->indices[0];
   Var buffer_var = op->buffer->data;
-  DataType element_dtype = op->buffer->dtype;
+  DataType element_dtype(op->buffer->dtype->dtype);
 
   int lanes = DataType(op->ty()->dtype).lanes();
   std::string buffer_vid = GetVarID(buffer_var.get());
@@ -605,7 +605,7 @@ void CodeGenWebGPU::VisitStmt_(const BufferStoreNode* op) {
   TVM_FFI_ICHECK(!op->predicate.defined()) << "Predicated buffer store is not supported.";
 
   DataType value_dtype = DataType(op->value.ty()->dtype);
-  DataType element_dtype = op->buffer->dtype;
+  DataType element_dtype(op->buffer->dtype->dtype);
   PrimExpr index = op->indices[0];
   Var buffer_var = op->buffer->data;
 
@@ -675,12 +675,12 @@ void CodeGenWebGPU::VisitStmt_(const AllocBufferNode* op) {
 
   if (storage_scope.rank == runtime::StorageRank::kShared) {
     this->decl_stream << "var<workgroup> " << vid << " : array<";
-    PrintType(op->buffer->dtype, this->decl_stream);
+    PrintType(DataType(op->buffer->dtype->dtype), this->decl_stream);
     this->decl_stream << ", " << constant_size << ">;\n";
   } else if (storage_scope.rank == runtime::StorageRank::kLocal) {
     this->PrintIndent();
     this->stream << "var " << vid << " : array<";
-    PrintType(op->buffer->dtype, this->stream);
+    PrintType(DataType(op->buffer->dtype->dtype), this->stream);
     this->stream << ", " << constant_size << ">;\n";
   } else {
     TVM_FFI_THROW(InternalError) << "WebGPU: Do not support storage scope: "

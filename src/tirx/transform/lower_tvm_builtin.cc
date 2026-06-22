@@ -245,10 +245,10 @@ class BuiltinLower : public StmtExprMutator {
         return stmt;
       }
     }
-    if (op->buffer->dtype.is_scalable_vector()) {
+    if (op->buffer->dtype.IsScalableVector()) {
       return stmt;
     }
-    int64_t nbytes = GetVectorBytes(op->buffer->dtype);
+    int64_t nbytes = runtime::GetVectorBytes(DataType(op->buffer->dtype->dtype));
     if (const auto* dev_type = device_type_.as<IntImmNode>();
         dev_type && dev_type->value == kDLCPU) {
       auto storage_scope =

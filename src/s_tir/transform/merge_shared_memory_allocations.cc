@@ -451,7 +451,8 @@ class SharedMemoryRewriter : public StmtExprMutator {
           << "and is to be run after "
           << "FlattenBuffer";
       ffi::Array<PrimExpr> indices = {
-          node->indices[0] + this->GetBufferOffset(node->buffer->data, node->buffer->dtype)};
+          node->indices[0] +
+              this->GetBufferOffset(node->buffer->data, DataType(node->buffer->dtype->dtype))};
 
       auto writer = node.CopyOnWrite();
       writer->buffer = GetUpdatedBuffer(node->buffer);
@@ -646,7 +647,7 @@ class SharedMemoryRewriter : public StmtExprMutator {
       for (int i = 0; i < static_cast<int>(e->allocs.size()); i++) {
         for (const VarNode* buffer : e->allocs[i]) {
           const Buffer& buf = scope.shmem_allocs.at(buffer);
-          align[i] = std::max(align[i], buf->dtype.bytes());
+          align[i] = std::max(align[i], DataType(buf->dtype->dtype).bytes());
         }
       }
     }
@@ -658,13 +659,13 @@ class SharedMemoryRewriter : public StmtExprMutator {
         for (const VarNode* buffer : e->allocs[i]) {
           const Buffer& buf = scope.shmem_allocs.at(buffer);
           ffi::Array<PrimExpr> alloc_shape = GetBufferAllocationShape(buf);
-          int align_bytes = std::max(align[i], buf->dtype.bytes());
+          int align_bytes = std::max(align[i], DataType(buf->dtype->dtype).bytes());
           if (buf->data_alignment > 0) {
             TVM_FFI_ICHECK(buf->data_alignment % align_bytes == 0)
                 << "The alignment of the buffer is not a multiple of the data type size.";
             align_bytes = buf->data_alignment;
           }
-          PrimExpr buffer_bytes = alloc_shape[0] * buf->dtype.bytes();
+          PrimExpr buffer_bytes = alloc_shape[0] * DataType(buf->dtype->dtype).bytes();
           inner_offset +=
               indexmod(align_bytes - indexmod(scope.merged_alloc_size + inner_offset, align_bytes),
                        align_bytes);
@@ -702,7 +703,8 @@ class SharedMemoryRewriter : public StmtExprMutator {
     // compiler can do a better job with register allocation.
     const uint64_t match_range = 16;
     ffi::Array<PrimExpr> alloc_shape = GetBufferAllocationShape(buf);
-    uint64_t op_elem_bits = buf->dtype.bits() * buf->dtype.lanes();
+    DataType dtype(buf->dtype->dtype);
+    uint64_t op_elem_bits = dtype.bits() * dtype.lanes();
     uint64_t const_nbits =
         static_cast<uint64_t>(ConstantAllocationSize(alloc_shape) * op_elem_bits);
     // disable reuse of small arrays, they will be lowered to registers in LLVM

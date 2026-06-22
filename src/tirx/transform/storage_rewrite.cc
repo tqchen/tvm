@@ -438,7 +438,7 @@ class StoragePlanRewriter : public StmtExprMutator {
 
       ffi::Array<PrimExpr> indices = node->indices;
       indices.Set(indices.size() - 1,
-                  RemapIndex(node->buffer->dtype, indices[indices.size() - 1], it->second));
+                  RemapIndex(DType(node->buffer->dtype), indices[indices.size() - 1], it->second));
 
       auto writer = node.CopyOnWrite();
       writer->buffer = buf;
@@ -675,7 +675,7 @@ class StoragePlanRewriter : public StmtExprMutator {
           NewAllocTagMerged(e);
           continue;
         }
-        if (e->allocs.size() == 1 && e->allocs[0]->buffer->dtype.is_scalable_vector()) {
+        if (e->allocs.size() == 1 && e->allocs[0]->buffer->dtype.IsScalableVector()) {
           // Scalable vector lanes are runtime-dependent.  Keep these allocations exact rather
           // than trying to compare or merge their compile-time bit size.
           e->alloc_var = e->allocs[0]->buffer->data;
@@ -689,17 +689,17 @@ class StoragePlanRewriter : public StmtExprMutator {
         }
         // Get the allocation size;
         e->alloc_var = e->allocs[0]->buffer->data;
-        DataType alloc_type = e->allocs[0]->buffer->dtype;
+        DataType alloc_type = DType(e->allocs[0]->buffer->dtype);
         for (const AllocBufferNode* op : e->allocs) {
           if (op->buffer->dtype.lanes() > alloc_type.lanes()) {
-            alloc_type = op->buffer->dtype;
+            alloc_type = DType(op->buffer->dtype);
           }
         }
 
         bool all_allocs_identical = std::all_of(
             e->allocs.begin() + 1, e->allocs.end(), [&](const AllocBufferNode* op) -> bool {
               const AllocBufferNode* first = *e->allocs.begin();
-              if (op->buffer->dtype != first->buffer->dtype) {
+              if (op->buffer->dtype->dtype != first->buffer->dtype->dtype) {
                 return false;
               }
               if (op->buffer->shape.size() != first->buffer->shape.size()) {
@@ -896,8 +896,8 @@ class StoragePlanRewriter : public StmtExprMutator {
                 StorageEntry* src_entry = alloc_map_.at(src);
                 if (src_entry->scope == storage_scope &&
                     src_entry->attach_scope_ == thread_scope_ &&
-                    !alloc->buffer->dtype.is_scalable_vector() &&
-                    src_entry->elem_type == alloc->buffer->dtype.element_of() &&
+                    !alloc->buffer->dtype.IsScalableVector() &&
+                    src_entry->elem_type == DType(alloc->buffer->dtype).element_of() &&
                     visitor.Check(s.stmt, var, src)) {
                   int64_t const_size = AllocBuffer(ffi::GetRef<AllocBuffer>(alloc))
                                            .ConstantAllocationSize()
@@ -965,7 +965,7 @@ class StoragePlanRewriter : public StmtExprMutator {
     auto entry = std::make_unique<StorageEntry>();
     entry->attach_scope_ = attach_scope;
     entry->scope = scope;
-    entry->elem_type = op->buffer->dtype.element_of();
+    entry->elem_type = DType(op->buffer->dtype).element_of();
     entry->const_nbits = const_nbits;
     StorageEntry* e = entry.get();
     alloc_vec_.emplace_back(std::move(entry));
@@ -979,7 +979,7 @@ class StoragePlanRewriter : public StmtExprMutator {
     // skip plan for local variable,
     // compiler can do a better job with register allocation.
     const uint64_t match_range = 16;
-    bool is_scalable_vector = op->buffer->dtype.is_scalable_vector();
+    bool is_scalable_vector = op->buffer->dtype.IsScalableVector();
     uint64_t op_elem_bits =
         is_scalable_vector ? 0 : op->buffer->dtype.bits() * op->buffer->dtype.lanes();
     int64_t const_size =
@@ -999,7 +999,7 @@ class StoragePlanRewriter : public StmtExprMutator {
     // disable reuse of small arrays, they will be lowered to registers in LLVM
     // This rules only apply if we are using non special memory
     bool is_small_array = (scope.tag.length() == 0) &&
-                          (scope.rank >= StorageRank::kWarp || op->buffer->dtype.is_handle() ||
+                          (scope.rank >= StorageRank::kWarp || op->buffer->dtype.IsHandle() ||
                            (is_known_size && const_nbits <= 32));
 
     if (is_scalable_vector || !enable_reuse || is_small_array || !is_flat_memory_space) {
@@ -1018,7 +1018,7 @@ class StoragePlanRewriter : public StmtExprMutator {
         if (e->scope != scope) continue;
         // when not divided, no reuse, eg, float4 vs float3
         if (e->bits_offset % op_elem_bits != 0) continue;
-        if (reuse_require_exact_matched_dtype && e->elem_type != op->buffer->dtype) {
+        if (reuse_require_exact_matched_dtype && e->elem_type != DType(op->buffer->dtype)) {
           continue;
         }
         e->const_nbits = std::max(const_nbits, e->const_nbits);
@@ -1031,8 +1031,8 @@ class StoragePlanRewriter : public StmtExprMutator {
         StorageEntry* e = it->second;
         if (e->attach_scope_ != attach_scope) continue;
         if (e->scope != scope) continue;
-        if (e->elem_type != op->buffer->dtype.element_of()) continue;
-        if (reuse_require_exact_matched_dtype && e->elem_type != op->buffer->dtype) {
+        if (e->elem_type != DType(op->buffer->dtype).element_of()) continue;
+        if (reuse_require_exact_matched_dtype && e->elem_type != DType(op->buffer->dtype)) {
           continue;
         }
         e->const_nbits = std::max(const_nbits, e->const_nbits);
@@ -1045,7 +1045,7 @@ class StoragePlanRewriter : public StmtExprMutator {
         StorageEntry* e = *it;
         if (e->attach_scope_ != attach_scope) continue;
         if (e->scope != scope) continue;
-        if (e->elem_type != op->buffer->dtype.element_of()) continue;
+        if (e->elem_type != DType(op->buffer->dtype).element_of()) continue;
         sym_free_list_.erase(it);
         return e;
       }
@@ -1063,8 +1063,8 @@ class StoragePlanRewriter : public StmtExprMutator {
     // This rules only apply if we are using non special memory
     if (e->scope.tag.length() == 0) {
       // Disable sharing of local memory.
-      if (e->scope.rank >= StorageRank::kWarp || e->allocs[0]->buffer->dtype.is_handle() ||
-          e->allocs[0]->buffer->dtype.is_scalable_vector()) {
+      if (e->scope.rank >= StorageRank::kWarp || e->allocs[0]->buffer->dtype.IsHandle() ||
+          e->allocs[0]->buffer->dtype.IsScalableVector()) {
         return;
       }
       // disable reuse of small arrays
@@ -1216,7 +1216,7 @@ class VectorTypeAccessChecker : public StmtExprVisitor {
     for (auto it : buffer_map) {
       Buffer& buffer = it.second;
       Var buffer_var = buffer->data;
-      DataType dtype = buffer->dtype;
+      DataType dtype = DType(buffer->dtype);
       PrimExpr extent = buffer->shape.size() ? buffer->shape[buffer->shape.size() - 1] : 0;
       OnArrayDeclaration(buffer_var, dtype, extent, BufferVarInfo::kPrimFuncParam);
     }
@@ -1265,7 +1265,7 @@ class VectorTypeAccessChecker : public StmtExprVisitor {
   void VisitStmt_(const AllocBufferNode* op) final {
     const ffi::Array<PrimExpr>& shape = op->buffer->shape;
     PrimExpr extent = shape.size() ? shape[shape.size() - 1] : PrimExpr(0);
-    OnArrayDeclaration(op->buffer->data, op->buffer->dtype, extent,
+    OnArrayDeclaration(op->buffer->data, DType(op->buffer->dtype), extent,
                        BufferVarInfo::kAllocBufferNode);
 
     StmtExprVisitor::VisitStmt_(op);
@@ -1532,7 +1532,7 @@ class VectorTypeRewriter : public StmtExprMutator {
     const PrimExpr& last_dim_index = indices[indices.size() - 1];
     const RampNode* ramp_index = indices[indices.size() - 1].as<RampNode>();
 
-    if (node->buffer->dtype.is_scalable_vector() || DType(last_dim_index).is_scalable_vector()) {
+    if (node->buffer->dtype.IsScalableVector() || DType(last_dim_index).is_scalable_vector()) {
       // Scalable types are not currently supported in storage_rewrite. Scalable buffer
       // accesses are not currently checked and therefore are not rewritten.
       return {node, shuffle_index};
@@ -1625,7 +1625,7 @@ class VectorTypeRewriter : public StmtExprMutator {
 
       auto writer = buf.CopyOnWrite();
       writer->data = info.new_buffer_var;
-      writer->dtype = info.new_element_dtype;
+      writer->dtype = PrimType(info.new_element_dtype);
       writer->shape = shape;
       writer->layout = std::nullopt;
     }

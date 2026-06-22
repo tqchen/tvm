@@ -377,7 +377,7 @@ void TVMFFIABIBuilder::BindBuffer(const Buffer& arg, const Buffer& value,
         }
         if (!is_one(acond)) {
           int param_index = GetParamIndex(base_path);
-          int data_bytes = GetVectorBytes(arg->dtype);
+          int data_bytes = runtime::GetVectorBytes(DataType(arg->dtype->dtype));
           EmitAssert(acond, "ValueError",  //
                      "Misaligned buffer data on argument #", std::to_string(param_index),
                      when_calling_imm_, sig_imm_, "`,\n  expected data alignment=",
@@ -665,8 +665,9 @@ void TVMFFIABIBuilder::DecodeParamDLTensor(const Buffer& buffer, const PrimExpr&
                          IntImm(PrimType::UInt(8), buffer->dtype.bits()) &&
                      TVMStructGet(DataType::UInt(16), handle, 0, builtin::kDLTensorTypeLanes) ==
                          IntImm(PrimType::UInt(16), buffer->dtype.lanes()));
-    if (!(buffer->dtype == DataType::Int(1) || buffer->dtype == DataType::Int(4) ||
-          buffer->dtype == DataType::UInt(4))) {
+    if (!(buffer->dtype->dtype == PrimType::Int(1)->dtype ||
+          buffer->dtype->dtype == PrimType::Int(4)->dtype ||
+          buffer->dtype->dtype == PrimType::UInt(4)->dtype)) {
       std::ostringstream dtype_os;
       dtype_os << buffer->dtype;
       EmitAssert(cond, "TypeError",  //
@@ -678,8 +679,9 @@ void TVMFFIABIBuilder::DecodeParamDLTensor(const Buffer& buffer, const PrimExpr&
   // ── Section: shape ───────────────────────────────────────────
   Var shape_ptr = DLTensorGetFieldPtr(handle, builtin::kDLTensorShape, arg_name + "_shape");
   for (size_t k = 0; k < buffer->shape.size(); ++k) {
-    if (buffer->dtype == DataType::Int(4) || buffer->dtype == DataType::UInt(4) ||
-        buffer->dtype == DataType::Int(1)) {
+    if (buffer->dtype->dtype == PrimType::Int(4)->dtype ||
+        buffer->dtype->dtype == PrimType::UInt(4)->dtype ||
+        buffer->dtype->dtype == PrimType::Int(1)->dtype) {
       break;
     }
     ffi::reflection::AccessPath shape_k_path = param_path->Attr(ffi::String("shape"))->ArrayItem(k);
@@ -699,7 +701,7 @@ void TVMFFIABIBuilder::DecodeParamDLTensor(const Buffer& buffer, const PrimExpr&
   }
 
   // ── Section: byte_offset ─────────────────────────────────────
-  int data_bytes = GetVectorBytes(buffer->dtype);
+  int data_bytes = runtime::GetVectorBytes(DataType(buffer->dtype->dtype));
   ffi::reflection::AccessPath byte_offset_path = param_path->Attr(ffi::String("byte_offset"));
   if (const auto* const_offset = buffer->elem_offset.as<IntImmNode>()) {
     BindScalar(IntImm(PrimType::UInt(64), const_offset->value * data_bytes),

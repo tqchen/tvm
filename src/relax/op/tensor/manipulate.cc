@@ -218,7 +218,7 @@ Type InferTypeConcat(const Call& call, const BlockBuilder& ctx) {
 
   const auto* attrs = call->attrs.as<ConcatAttrs>();
   int output_ndim = attrs->axis.has_value() ? kUnknownNDim : 1;
-  DataType output_dtype = DataType::Void();
+  PrimType output_dtype = PrimType::Void();
   ffi::Optional<VDevice> vdev = std::nullopt;
   bool shape_unknown = false;
   bool is_void_dtype = false;
@@ -228,11 +228,11 @@ Type InferTypeConcat(const Call& call, const BlockBuilder& ctx) {
 
   for (TensorType ty : tensor_ty) {
     // Update the output dtype.
-    if (ty->dtype.is_void()) {
+    if (ty->dtype.IsVoid()) {
       is_void_dtype = true;
-    } else if (output_dtype.is_void()) {
+    } else if (output_dtype.IsVoid()) {
       output_dtype = ty->dtype;
-    } else if (ty->dtype != output_dtype) {
+    } else if (ty->dtype->dtype != output_dtype->dtype) {
       TVM_FFI_VISIT_THROW(TypeError, call)
           << "Concat expects all input tensors to have the same dtype. However, the "
              "input contains tensors with dtype "
@@ -284,7 +284,7 @@ Type InferTypeConcat(const Call& call, const BlockBuilder& ctx) {
   }
 
   if (is_void_dtype) {
-    output_dtype = DataType::Void();
+    output_dtype = PrimType::Void();
   }
   if (vdevice_unknown) {
     vdev = std::nullopt;
@@ -572,14 +572,14 @@ Type InferTypeIndexTensor(const Call& call, const BlockBuilder& ctx) {
         << "index_tensor expects a non‑empty tuple of index tensors";
   }
 
-  DataType output_dtype = data_ty->dtype;
+  PrimType output_dtype = data_ty->dtype;
   int n_indices = static_cast<int>(indices_ty.size());
   ffi::Optional<VDevice> vdev = data_ty->vdevice;
 
   // Indices must be integers
   for (int i = 0; i < n_indices; ++i) {
     const auto& s = indices_ty[i];
-    if (!s->IsUnknownDtype() && !s->dtype.is_int()) {
+    if (!s->IsUnknownDtype() && !DataType(s->dtype->dtype).is_int()) {
       TVM_FFI_VISIT_THROW(TypeError, call)
           << "index_tensor requires every index tensor to have an integer dtype; "
           << "index " << i << " has dtype " << s->dtype;
@@ -725,7 +725,7 @@ Type InferTypeLayoutTransform(const Call& call, const BlockBuilder& ctx) {
   if (optional_pad_value.defined()) {
     PrimExpr padded_value = optional_pad_value.value()->value;
     DataType padded_dtype(padded_value.ty()->dtype);
-    if (padded_dtype != data_ty->dtype) {
+    if (padded_dtype != DataType(data_ty->dtype->dtype)) {
       TVM_FFI_VISIT_THROW(TypeError, call)
           << "layout_transform pad_value dtype (" << padded_dtype << ") and input dtype ("
           << data_ty->dtype << ") must be the same";
@@ -1490,7 +1490,7 @@ Type InferTypeStack(const Call& call, const BlockBuilder& ctx) {
 
   // Default axis is 0 if not specified
   int output_ndim = tensor_ty[0]->ndim + 1;  // Stack adds one dimension
-  DataType output_dtype = DataType::Void();
+  PrimType output_dtype = PrimType::Void();
   ffi::Optional<VDevice> vdev = std::nullopt;
   bool shape_unknown = false;
   bool is_void_dtype = false;
@@ -1500,11 +1500,11 @@ Type InferTypeStack(const Call& call, const BlockBuilder& ctx) {
 
   for (TensorType ty : tensor_ty) {
     // Check dtype consistency
-    if (ty->dtype.is_void()) {
+    if (ty->dtype.IsVoid()) {
       is_void_dtype = true;
-    } else if (output_dtype.is_void()) {
+    } else if (output_dtype.IsVoid()) {
       output_dtype = ty->dtype;
-    } else if (ty->dtype != output_dtype) {
+    } else if (ty->dtype->dtype != output_dtype->dtype) {
       TVM_FFI_VISIT_THROW(TypeError, call)
           << "Stack expects all input tensors to have the same dtype. "
           << "Found " << output_dtype << " and " << ty->dtype;
@@ -1543,7 +1543,7 @@ Type InferTypeStack(const Call& call, const BlockBuilder& ctx) {
     }
   }
 
-  if (is_void_dtype) output_dtype = DataType::Void();
+  if (is_void_dtype) output_dtype = PrimType::Void();
   if (vdevice_unknown) vdev = std::nullopt;
 
   // Normalize axis (default to 0 if not specified)
@@ -1651,7 +1651,7 @@ Type InferTypeCollapseSumLike(const Call& call, const BlockBuilder& ctx) {
   TensorType data_ty = input_ty[0];
   TensorType collapse_target_ty = input_ty[1];
 
-  DataType output_dtype = data_ty->dtype;
+  PrimType output_dtype = data_ty->dtype;
 
   ffi::Optional<ffi::Array<PrimExpr>> data_shape_value;
   if (data_ty->shape.defined()) {
@@ -1712,7 +1712,7 @@ Type InferTypeCollapseSumTo(const Call& call, const BlockBuilder& ctx) {
         << call->args[1]->ty->GetTypeKey();
   }
 
-  DataType output_dtype = data_ty->dtype;
+  PrimType output_dtype = data_ty->dtype;
 
   ffi::Optional<ffi::Array<PrimExpr>> data_shape_value;
   if (data_ty->shape.defined()) {
@@ -2103,7 +2103,7 @@ Type InferTypeGatherElements(const Call& call, const BlockBuilder& ctx) {
         << call->args[1]->ty->GetTypeKey();
   }
 
-  if (!indices_ty->IsUnknownDtype() && !indices_ty->dtype.is_int()) {
+  if (!indices_ty->IsUnknownDtype() && !DataType(indices_ty->dtype->dtype).is_int()) {
     TVM_FFI_VISIT_THROW(TypeError, call)
         << "GatherElements requires the input indices to have int64 dtype. However, the "
         << "given indices dtype is " << indices_ty->dtype;
@@ -2206,7 +2206,7 @@ Type InferTypeGatherND(const Call& call, const BlockBuilder& ctx) {
   TVM_FFI_ICHECK_GE(attrs->batch_dims, 0);
   int batch_dims = static_cast<int>(attrs->batch_dims);
   int input_dims = data_ty->ndim;
-  if (!indices_ty->IsUnknownDtype() && indices_ty->dtype != DataType::Int(64)) {
+  if (!indices_ty->IsUnknownDtype() && indices_ty->dtype->dtype != PrimType::Int(64)->dtype) {
     TVM_FFI_VISIT_THROW(TypeError, call)
         << "GatherND requires the input indices to have int64 dtype. However, the "
         << "given indices dtype is " << indices_ty->dtype;
@@ -2341,10 +2341,13 @@ Type InferTypeIndexPut(const Call& call, const BlockBuilder& ctx) {
     if (tensor_ty->IsUnknownDtype()) {
       LOG(WARNING) << "Data type of index tensor " << i
                    << " has not been specified. Assume it has an integer type.";
-    } else if (!(tensor_ty->dtype.is_int() || tensor_ty->dtype.is_uint())) {
+    } else {
+      DataType index_dtype(tensor_ty->dtype->dtype);
+      if (!(index_dtype.is_int() || index_dtype.is_uint())) {
       TVM_FFI_VISIT_THROW(TypeError, call)
           << "IndexPut requires each index tensor to have integer dtype. "
           << "However, index tensor " << i << " has dtype=" << tensor_ty->dtype;
+      }
     }
   }
 
@@ -2382,7 +2385,7 @@ Type InferTypeIndexPut(const Call& call, const BlockBuilder& ctx) {
     };
     diag_dtype(data_ty, "data");
     diag_dtype(values_ty, "values");
-  } else if (data_ty->dtype != values_ty->dtype) {
+  } else if (data_ty->dtype->dtype != values_ty->dtype->dtype) {
     TVM_FFI_VISIT_THROW(TypeError, call)
         << "IndexPut requires the input data to have the same type as values. "
         << "However, the given types are data: " << data_ty->dtype
@@ -2442,7 +2445,7 @@ Type InferTypeMeshgrid(const Call& call, const BlockBuilder& ctx) {
   }
 
   std::vector<PrimExpr> lengths;
-  DataType common_dtype = DataType::Void();
+  PrimType common_dtype = PrimType::Void();
   bool shape_unknown = false;
   ffi::Optional<VDevice> vdev = std::nullopt;
   bool vdevice_unknown = false;
@@ -2456,11 +2459,11 @@ Type InferTypeMeshgrid(const Call& call, const BlockBuilder& ctx) {
           << i;
     }
 
-    if (ty->dtype.is_void()) {
+    if (ty->dtype.IsVoid()) {
       continue;
-    } else if (common_dtype.is_void()) {
+    } else if (common_dtype.IsVoid()) {
       common_dtype = ty->dtype;
-    } else if (ty->dtype != common_dtype) {
+    } else if (ty->dtype->dtype != common_dtype->dtype) {
       TVM_FFI_VISIT_THROW(TypeError, call)
           << "meshgrid expects all input tensors to have the same dtype. Found " << ty->dtype
           << " and " << common_dtype;
@@ -2584,7 +2587,7 @@ Type InferTypeScatterElements(const Call& call, const BlockBuilder& ctx) {
     diag_dtype(data_ty, "data");
     diag_dtype(data_ty, "updates");
   } else {
-    if (data_ty->dtype != updates_ty->dtype) {
+    if (data_ty->dtype->dtype != updates_ty->dtype->dtype) {
       TVM_FFI_VISIT_THROW(TypeError, call)
           << "ScatterElements op requires the input data to have same type with "
              "updates. However, the given types are "
@@ -2594,11 +2597,14 @@ Type InferTypeScatterElements(const Call& call, const BlockBuilder& ctx) {
 
   if (indices_ty->IsUnknownDtype()) {
     LOG(WARNING) << "Data type of indices has not been specified. Assume it has an integer type.";
-  } else if (!(indices_ty->dtype.is_int() || indices_ty->dtype.is_uint())) {
+  } else {
+    DataType indices_dtype(indices_ty->dtype->dtype);
+    if (!(indices_dtype.is_int() || indices_dtype.is_uint())) {
     TVM_FFI_VISIT_THROW(TypeError, call)
         << "ScatterElements op requires the input indices to have integer dtype. However, the "
            "given indices dtype is "
         << indices_ty->dtype;
+    }
   }
 
   const auto* indices_shape = indices_ty->shape.as<ShapeExprNode>();
@@ -2705,7 +2711,7 @@ Type InferTypeScatterND(const Call& call, const BlockBuilder& ctx) {
         << "data: " << data_ty->dtype << ", updates: " << updates_ty->dtype;
   }
 
-  if (data_ty->dtype != updates_ty->dtype) {
+  if (data_ty->dtype->dtype != updates_ty->dtype->dtype) {
     TVM_FFI_VISIT_THROW(TypeError, call)
         << "ScatterND op requires the input data to have same type with updates. "
            "However, the given types are "
@@ -2714,11 +2720,14 @@ Type InferTypeScatterND(const Call& call, const BlockBuilder& ctx) {
 
   if (indices_ty->IsUnknownDtype()) {
     LOG(WARNING) << "Data type of indices has not been specified. Assume it has an integer type.";
-  } else if (!(indices_ty->dtype.is_int() || indices_ty->dtype.is_uint())) {
+  } else {
+    DataType indices_dtype(indices_ty->dtype->dtype);
+    if (!(indices_dtype.is_int() || indices_dtype.is_uint())) {
     TVM_FFI_VISIT_THROW(TypeError, call)
         << "ScatterND op requires the input indices to have integer dtype. However, "
            "the given indices dtype is "
         << indices_ty->dtype;
+    }
   }
 
   const auto* data_shape = data_ty->shape.as<ShapeExprNode>();
@@ -2898,7 +2907,7 @@ Type InferTypeSliceScatter(const Call& call, const BlockBuilder& ctx) {
     diag_dtype_warn(data_ty, "data");
     diag_dtype_warn(src_ty, "src");
   } else {
-    if (data_ty->dtype != src_ty->dtype) {
+    if (data_ty->dtype->dtype != src_ty->dtype->dtype) {
       TVM_FFI_VISIT_THROW(TypeError, call)
           << "SliceScatter op requires the input data to have the same type as "
              "src. However, the given types are "
@@ -3030,11 +3039,14 @@ Type InferTypeOneHot(const Call& call, const BlockBuilder& ctx) {
   // Check if indices has an integer dtype
   if (indices_ty->IsUnknownDtype()) {
     LOG(WARNING) << "Data type of indices has not been specified. Assume it has an integer type.";
-  } else if (!(indices_ty->dtype.is_int() || indices_ty->dtype.is_uint())) {
+  } else {
+    DataType indices_dtype(indices_ty->dtype->dtype);
+    if (!(indices_dtype.is_int() || indices_dtype.is_uint())) {
     TVM_FFI_VISIT_THROW(TypeError, call)
         << "one_hot op requires the input indices to have integer dtype. However, the "
            "given indices dtype is "
         << indices_ty->dtype;
+    }
   }
   // Check if indices has unknown dimension
   if (indices_ty->IsUnknownNdim()) {

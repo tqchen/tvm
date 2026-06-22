@@ -175,7 +175,7 @@ Stmt RewriteWmmaLoad(Stmt stmt) {
                       /*op=*/builtin::tvm_access_ptr(),
                       /*args=*/
                       {
-                          /*0:*/ TypeAnnotation(new_src_buffer->dtype),
+                          /*0:*/ TypeAnnotation(DataType(new_src_buffer->dtype->dtype)),
                           /*1:*/ new_src_buffer->data,
                           /*2:*/ new_src_buffer->elem_offset,
                           /*3:*/ new_src_buffer->strides[new_src_buffer->strides.size() - 2] * 16,
@@ -236,7 +236,7 @@ Stmt RewriteWmmaStore(Stmt stmt) {
   Buffer src_buffer = buf_load->buffer;
   Buffer tgt_buffer = buf_store->buffer;
 
-  const DataType dtype = src_buffer->dtype;
+  const DataType dtype(src_buffer->dtype->dtype);
 
   Buffer new_src_buffer(/*data=*/Var("src", PointerType(PrimType(dtype), src_buffer.scope())),
                         /*dtype=*/dtype,
@@ -281,7 +281,7 @@ Stmt RewriteWmmaStore(Stmt stmt) {
                       /*data=*/PrimType::Handle(),
                       /*op=*/builtin::tvm_access_ptr(),
                       {
-                          /*0:*/ TypeAnnotation(new_tgt_buffer->dtype),
+                          /*0:*/ TypeAnnotation(DataType(new_tgt_buffer->dtype->dtype)),
                           /*1:*/ new_tgt_buffer->data,
                           /*2:*/ new_tgt_buffer->elem_offset,
                           /*3:*/ new_tgt_buffer->strides[0] * 16,
@@ -458,7 +458,7 @@ Stmt RewriteMmaStore(Stmt stmt) {
   // Step 3.1. Generate new buffer
   Buffer src_buffer = buf_load->buffer;
   Buffer tgt_buffer = buf_store->buffer;
-  const DataType dtype = src_buffer->dtype;
+  const DataType dtype(src_buffer->dtype->dtype);
   Buffer new_src_buffer(/*data=*/Var("src", PointerType(PrimType(dtype), src_buffer.scope())),
                         /*dtype=*/dtype,
                         /*shape=*/{IntImm::Int32(8), IntImm::Int32(8)},

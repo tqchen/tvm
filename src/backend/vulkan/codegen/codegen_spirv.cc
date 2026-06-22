@@ -809,7 +809,7 @@ void CodeGenSPIRV::VisitStmt_(const IfThenElseNode* op) {
 }
 
 void CodeGenSPIRV::VisitStmt_(const AllocBufferNode* op) {
-  TVM_FFI_ICHECK(!op->buffer->dtype.is_handle());
+  TVM_FFI_ICHECK(!op->buffer->dtype.IsHandle());
   const IntImmNode* dim_imm = op->buffer->shape[0].as<IntImmNode>();
   TVM_FFI_ICHECK(dim_imm) << "Can only handle constant size stack allocation in GPU";
   size_t constant_size = static_cast<size_t>(dim_imm->value);
@@ -850,7 +850,7 @@ void CodeGenSPIRV::VisitStmt_(const AllocBufferNode* op) {
       int32_t aligned_constant_size = ((constant_size + 3) & ~0x3);
       buf = builder_->Allocate(etype, static_cast<uint32_t>(aligned_constant_size), storage_class);
 
-      size_t num_bytes = op->buffer->dtype.bytes() * op->buffer->dtype.lanes() *
+      size_t num_bytes = DataType(op->buffer->dtype->dtype).bytes() * op->buffer->dtype.lanes() *
                          static_cast<uint32_t>(aligned_constant_size);
       shared_memory_bytes_used_ += num_bytes;
     } break;

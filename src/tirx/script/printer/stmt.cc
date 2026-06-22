@@ -502,7 +502,7 @@ ffi::Optional<ExprDoc> TryDeclBufferSugarWithParent(const tirx::Buffer& child, c
     }
     if (shapes_compatible) {
       ExprDoc dtype_doc =
-          LiteralDoc::Str(DType2Str(child->dtype), p->Attr("buffer")->Attr("dtype"));
+          LiteralDoc::Str(DType2Str(DataType(child->dtype->dtype)), p->Attr("buffer")->Attr("dtype"));
       return pdoc->Attr("view")->Call({dtype_doc});
     }
   }
@@ -723,7 +723,7 @@ Doc AllocBufferDoc(tirx::AllocBuffer stmt, AccessPath p, IRDocsifier d) {
       d->Define(stmt->buffer->data, d->frames.back(),
                 [d, buf, p]() { return d->AsDoc<ExprDoc>(buf, p->Attr("buffer"))->Attr("data"); });
     }
-    ExprDoc type_ann = TIR(d, DType2Str(stmt->buffer->dtype));
+    ExprDoc type_ann = TIR(d, DType2Str(DataType(stmt->buffer->dtype->dtype)));
     return AssignDoc(lhs, std::nullopt, type_ann);
   }
   ExprDoc rhs = BufferDecl(stmt->buffer, "alloc_buffer", {}, p->Attr("buffer"), d->frames.back(), d,

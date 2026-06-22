@@ -110,7 +110,7 @@ class AutoPadder {
         std::vector<std::vector<int>> low_dim_iter_space(iter_spaces.size(), std::vector<int>());
 
         int n = buffer->shape.size();
-        int data_bits = buffer->dtype.bits();
+        int data_bits = DataType(buffer->dtype->dtype).bits();
         // Step 1. initialize `low_dim_iter_space` with the iteration space of the last dim
         for (int i = 0; i < static_cast<int>(iter_spaces.size()); i++) {
           auto last_dim_iter_space = iter_spaces[i][n - 1];
@@ -689,7 +689,7 @@ class AutoCopyMutator : public StmtExprMutator {
       TVM_FFI_ICHECK(found) << "Multiple buffer read";
     }
 
-    int data_bits = target_read->buffer->dtype.bits();
+    int data_bits = DataType(target_read->buffer->dtype->dtype).bits();
     ConstraintSet constraints(this->thread_extent_,  //
                               this->outer_loops_,    //
                               target_read,           //

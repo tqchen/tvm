@@ -59,19 +59,19 @@ Type InferTypeMultinomialFromUniform(const Call& call, const BlockBuilder& ctx) 
   TensorType sample_indices_ty = GetInputTensorType(call, 2, ctx);
   const auto* attrs = call->attrs.as<MultinomialFromUniformAttrs>();
 
-  if (!prob_ty->dtype.is_float()) {
+  if (!DataType(prob_ty->dtype->dtype).is_float()) {
     TVM_FFI_VISIT_THROW(TypeError, call)
         << "Multinomial_from_uniform op requires the input prob to have float dtype. "
            "However, the given prob dtype is "
         << prob_ty->dtype;
   }
-  if (!uniform_sample_ty->dtype.is_float()) {
+  if (!DataType(uniform_sample_ty->dtype->dtype).is_float()) {
     TVM_FFI_VISIT_THROW(TypeError, call)
         << "Multinomial_from_uniform op requires the input uniform_sample to have float "
            "dtype. However, the given uniform_sample dtype is "
         << uniform_sample_ty->dtype;
   }
-  if (!sample_indices_ty->dtype.is_int()) {
+  if (!DataType(sample_indices_ty->dtype->dtype).is_int()) {
     TVM_FFI_VISIT_THROW(TypeError, call)
         << "Multinomial from uniform op requires the input sample_indices to have int "
            "dtype. However, the given sample_indices dtype is "

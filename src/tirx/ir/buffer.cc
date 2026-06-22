@@ -431,7 +431,7 @@ PrimExpr Buffer::vload(ffi::Array<PrimExpr> begin, DataType value_dtype,
   // specially handle bool, stored as DataType::Int(8)
   const BufferNode* n = operator->();
   TVM_FFI_ICHECK(n != nullptr);
-  TVM_FFI_ICHECK(value_dtype.element_of() == n->dtype.element_of() &&
+  TVM_FFI_ICHECK(value_dtype.element_of() == DataType(n->dtype->dtype).element_of() &&
                  value_dtype.get_lanes_or_vscale_factor() % n->dtype.lanes() == 0)
       << "Cannot load " << value_dtype << " from buffer of " << n->dtype;
 
@@ -453,7 +453,7 @@ Stmt Buffer::vstore(ffi::Array<PrimExpr> begin, PrimExpr value,
   const BufferNode* n = operator->();
   TVM_FFI_ICHECK(n != nullptr);
   DataType value_dtype(value.ty()->dtype);
-  TVM_FFI_ICHECK(value_dtype.element_of() == n->dtype.element_of() &&
+  TVM_FFI_ICHECK(value_dtype.element_of() == DataType(n->dtype->dtype).element_of() &&
                  value_dtype.get_lanes_or_vscale_factor() % n->dtype.lanes() == 0)
       << "Cannot store " << value_dtype << " to buffer of " << n->dtype;
 
@@ -556,7 +556,7 @@ PrimExpr Buffer::access_ptr(int access_mask, DataType ptr_type, int content_lane
   }
   PrimExpr elem_offset = self->elem_offset + offset;
   if (content_lanes > 1) {
-    e_dtype = tirx::TypeAnnotation(self->dtype.with_lanes(content_lanes));
+    e_dtype = tirx::TypeAnnotation(self->dtype.WithLanes(content_lanes));
     extent = extent / MakeConst(self->elem_offset.ty(), content_lanes);
     elem_offset = self->elem_offset / MakeConst(self->elem_offset.ty(), content_lanes);
   } else {
@@ -571,11 +571,11 @@ PrimExpr Buffer::access_ptr(int access_mask, DataType ptr_type, int content_lane
   return tirx::Call(PrimType(ptr_type), tirx::builtin::tvm_access_ptr(), acc_args);
 }
 
-Buffer::Buffer(Var data, DataType dtype, ffi::Array<PrimExpr> shape, ffi::Array<PrimExpr> strides,
+Buffer::Buffer(Var data, PrimType dtype, ffi::Array<PrimExpr> shape, ffi::Array<PrimExpr> strides,
                PrimExpr elem_offset, ffi::String name, int data_alignment, int offset_factor,
                BufferType buffer_type, ffi::Array<IntImm> axis_separators, Span span,
                ffi::Optional<Layout> layout, ffi::Array<PrimExpr> allocated_addr) {
-  DataType storage_dtype = dtype;
+  DataType storage_dtype(dtype->dtype);
   // specially handle bool
   if (storage_dtype == DataType::Bool()) {
     storage_dtype = DataType::Int(8);
@@ -668,7 +668,7 @@ Buffer Buffer::with_allocated_addr(ffi::Array<PrimExpr> allocated_addr) const {
   return output;
 }
 
-Buffer Buffer::with_dtype(DataType dtype) const {
+Buffer Buffer::with_dtype(PrimType dtype) const {
   Buffer output = *this;
   auto writer = output.CopyOnWrite();
   writer->dtype = dtype;

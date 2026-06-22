@@ -215,7 +215,7 @@ void CodeGenTrainium::VisitStmt_(const AllocBufferNode* op) {
   this->PrintIndent();
   auto scope = GetPtrStorageScope(op->buffer->data);
   std::ostringstream dtype_os;
-  PrintType(op->buffer->dtype, dtype_os);
+  PrintType(DataType(op->buffer->dtype->dtype), dtype_os);
   std::string dtype_str = dtype_os.str();
   if (scope == "trn.psum") {
     stream << vid << " = nl.ndarray(shape=[";

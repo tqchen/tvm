@@ -71,7 +71,7 @@ class BoundChecker : public StmtExprMutator {
 
   Stmt VisitStmt_(const AllocBufferNode* op) final {
     if (UpdateIsNeeded(op->buffer->data)) {
-      Update(op->buffer->data, op->buffer->shape, op->buffer->dtype);
+      Update(op->buffer->data, op->buffer->shape, DataType(op->buffer->dtype->dtype));
     }
     return StmtExprMutator::VisitStmt_(op);
   }

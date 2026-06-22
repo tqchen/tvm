@@ -304,7 +304,8 @@ class BackwardBindingGenerator : private ExprVisitor {
 
     // Initialize the adjoint of target_var as ones op. We have already checked the target.
     auto* target_ty = GetTypeAs<TensorTypeNode>(target_var);
-    generator.UpdateAdjoint(target_var, ones(target_ty->shape.value(), target_ty->dtype));
+    generator.UpdateAdjoint(target_var,
+                            ones(target_ty->shape.value(), DataType(target_ty->dtype->dtype)));
 
     // Do reverse-mode ad, so visit bindings backwards
     for (auto it = forward_block->bindings.rbegin(); it != forward_block->bindings.rend(); ++it) {
@@ -546,7 +547,7 @@ class BackwardBindingGenerator : private ExprVisitor {
       auto* tensor_ty = ty.as<TensorTypeNode>();
       TVM_FFI_ICHECK(tensor_ty) << "The leaf of adjoint should be a Tensor.";
       TVM_FFI_ICHECK(tensor_ty->shape.defined()) << "Missing shape when building zeros tuple.";
-      const Expr& init = zeros(tensor_ty->shape.value(), tensor_ty->dtype);
+      const Expr& init = zeros(tensor_ty->shape.value(), DataType(tensor_ty->dtype->dtype));
       return init;
     });
     return AdjointMsgToExpr(msg);
@@ -707,7 +708,7 @@ class GradientMutator : private ExprMutator {
 
   static bool IsFloatTensorType(const Type& ty) {
     auto* tensor_ty = ty.as<TensorTypeNode>();
-    return tensor_ty && tensor_ty->dtype.is_float();
+    return tensor_ty && DataType(tensor_ty->dtype->dtype).is_float();
   }
 
   // When the return value is a Var, it is the target;

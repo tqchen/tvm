@@ -41,7 +41,7 @@ Type InferDistTypeUnary(const Call& call, const BlockBuilder& ctx, FType f_compu
   TensorType input_tensor_ty = input_dtensor_ty->tensor_ty;
 
   if (require_float_dtype && !input_tensor_ty->IsUnknownDtype() &&
-      !input_tensor_ty->dtype.is_float()) {
+      !DataType(input_tensor_ty->dtype->dtype).is_float()) {
     TVM_FFI_VISIT_THROW(TypeError, call)
         << call->op
         << " requires the input tensor to have float dtype. However, the given input dtype is "

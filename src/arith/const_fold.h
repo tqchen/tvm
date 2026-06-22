@@ -77,7 +77,17 @@ inline bool IsIndexType(DLDataType type) {
          (type.bits == 32 || type.bits == 64) && type.lanes == 1;
 }
 
-inline bool IsIndexType(const DataType& type) { return IsIndexType(static_cast<DLDataType>(type)); }
+inline bool IsIndexTypedExpr(const PrimExprNode* expr) {
+  TVM_FFI_DCHECK(expr != nullptr);
+  TVM_FFI_DCHECK(expr->BaseExprNode::ty.defined());
+  const auto* prim_ty = expr->BaseExprNode::ty.as<PrimTypeNode>();
+  TVM_FFI_DCHECK(prim_ty != nullptr);
+  return IsIndexType(prim_ty->dtype);
+}
+
+inline bool IsIndexTypedExpr(const PrimExpr& expr) {
+  return IsIndexTypedExpr(static_cast<const PrimExprNode*>(expr.get()));
+}
 
 /*! \brief Helper to get const folding result repr in int64. */
 inline int64_t GetFoldResultInt64Repr(int64_t x, const DataType& dtype) {
@@ -135,10 +145,8 @@ inline double GetFoldResultDoubleRepr(float x) {
 #define TVM_INDEX_CONST_PROPAGATION(BODY)                               \
   const IntImmNode* pa = a.as<IntImmNode>();                            \
   const IntImmNode* pb = b.as<IntImmNode>();                            \
-  PrimType ta = a.ty();                                                 \
-  PrimType tb = b.ty();                                                 \
-  if (arith::IsIndexType(ta->dtype) && arith::IsIndexType(tb->dtype)) { \
-    BODY;                                                               \
+  if (arith::IsIndexTypedExpr(a) && arith::IsIndexTypedExpr(b)) { \
+    BODY;                                                         \
   }
 
 // specialization of constant folders.

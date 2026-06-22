@@ -181,7 +181,7 @@ class BufferAccessRegionCollector : public StmtExprVisitor {
 
   void VisitStmt_(const BindNode* op) final {
     StmtExprVisitor::VisitExpr(op->value);
-    if (arith::IsIndexType(op->value.ty()->dtype)) {
+    if (arith::IsIndexTypedExpr(op->value)) {
       dom_analyzer_->Bind(op->var, op->value);
       dom_map_.emplace(op->var.get(), arith::IntSet::SinglePoint(op->value));
     }
@@ -189,12 +189,12 @@ class BufferAccessRegionCollector : public StmtExprVisitor {
 
   void VisitExpr_(const LetNode* op) final {
     StmtExprVisitor::VisitExpr(op->value);
-    if (arith::IsIndexType(op->value.ty()->dtype)) {
+    if (arith::IsIndexTypedExpr(op->value)) {
       dom_analyzer_->Bind(op->var, op->value);
       dom_map_.emplace(op->var.get(), arith::IntSet::SinglePoint(op->value));
     }
     StmtExprVisitor::VisitExpr(op->body);
-    if (arith::IsIndexType(op->value.ty()->dtype)) {
+    if (arith::IsIndexTypedExpr(op->value)) {
       dom_map_.erase(op->var.get());
     }
   }
@@ -615,7 +615,7 @@ class BufferCompactor : public StmtExprMutator {
       return alloc_buf;
     }
     const Buffer& new_buffer = it->second.new_buffer;
-    if (op->buffer->dtype != new_buffer->dtype) {
+    if (op->buffer->dtype->dtype != new_buffer->dtype->dtype) {
       return alloc_buf;
     }
     alloc_buf.CopyOnWrite()->buffer = new_buffer;

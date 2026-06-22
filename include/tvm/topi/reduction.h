@@ -330,7 +330,7 @@ inline PrimExpr ProdOp(PrimExpr source, ffi::Array<IterVar> axis, ffi::Array<Pri
  */
 inline Tensor sum(const Tensor& data, const ffi::Optional<ffi::Array<int64_t>>& axis,
                   bool keepdims = false, bool atleast1d = false) {
-  if (data->dtype.is_bool()) {
+  if (DataType(data->dtype->dtype).is_bool()) {
     return CommReduce(data, axis, tvm::any, keepdims, atleast1d);
   } else {
     return CommReduce(data, axis, tvm::sum, keepdims, atleast1d);

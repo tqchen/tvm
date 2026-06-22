@@ -98,7 +98,7 @@ ffi::Array<ArgInfo> ArgInfo::FromPrimFunc(const tirx::PrimFunc& func) {
   for (const tirx::Var& arg : func->params) {
     if (ffi::Optional<tirx::Buffer> _buffer = func->buffer_map.Get(arg)) {
       tirx::Buffer buffer = _buffer.value();
-      result.push_back(TensorInfo(/*dtype=*/buffer->dtype,
+      result.push_back(TensorInfo(/*dtype=*/DataType(buffer->dtype->dtype),
                                   /*shape=*/AsVector<PrimExpr, int64_t>(buffer->shape)));
     } else {
       TVM_FFI_THROW(ValueError) << "Unsupported argument type: " << arg;
