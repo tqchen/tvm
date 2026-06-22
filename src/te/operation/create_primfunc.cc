@@ -387,7 +387,7 @@ Stmt GenerateBodyStmt(const ffi::Array<PrimExpr>& indices, const ffi::Array<Buff
       const PrimExpr& right = analyzer->Simplify(f_transform_and_remap(reduce->source[i]));
       lhs.push_back(left);
       rhs.push_back(right);
-      TVM_FFI_ICHECK_EQ(left.dtype(), right.dtype());
+      TVM_FFI_ICHECK_EQ(DataType(left.ty().dtype()), DataType(right.ty().dtype()));
     }
 
     ffi::Array<Var> temp_vars;
@@ -494,7 +494,7 @@ Stmt GenerateStmtFromCompute(const te::ComputeOp& compute_op, CreateFuncInfo* in
     for (size_t j = 0; j < axes.size(); ++j) {
       const IterVar& axis = axes[j];
       DataType index_type =
-          DataType::Int(std::max(axis->dom->min.dtype().bits(), axis->dom->extent.dtype().bits()));
+          DataType::Int(std::max(axis->dom->min.ty().bits(), axis->dom->extent.ty().bits()));
       bool first_times_define =
           std::find(axes_levels[i].begin(), axes_levels[i].end(), axis) != axes_levels[i].end();
       if (first_times_define) {

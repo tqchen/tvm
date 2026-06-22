@@ -152,7 +152,7 @@ void CodeGenSourceBase::PrintType(DataType type, std::ostream& os) {  // NOLINT(
 
 void CodeGenSourceBase::PrintType(const Type& type, std::ostream& os) {  // NOLINT(*)
   if (auto* ptr = type.as<PrimTypeNode>()) {
-    return PrintType(ptr->dtype, os);
+    return PrintType(DataType(ptr->dtype), os);
   } else if (auto* ptr = type.as<PointerTypeNode>()) {
     PrintType(ptr->element_type, os);
     os << '*';

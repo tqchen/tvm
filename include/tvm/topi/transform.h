@@ -835,7 +835,7 @@ inline te::Tensor dynamic_strided_slice(const te::Tensor& x, const te::Tensor& b
                                         bool assume_inbound = true,
                                         std::string name = "T_strided_slice_dynamic",
                                         std::string tag = topi::kInjective) {
-  DataType index_dtype = begin->shape[0].dtype();
+  DataType index_dtype = DataType(begin->shape[0].ty().dtype());
   const int64_t num_dynamic_axes = begin->shape[0].as<IntImmNode>()->value;
   TVM_FFI_ICHECK_EQ(end->shape[0].as<IntImmNode>()->value, num_dynamic_axes);
   TVM_FFI_ICHECK_EQ(strides->shape[0].as<IntImmNode>()->value, num_dynamic_axes);
@@ -874,8 +874,9 @@ inline ffi::Array<PrimExpr> StridedSliceOutputShape(const ffi::Array<PrimExpr>& 
                  axes.size() == strides.size());
   std::vector<int64_t> begin_vec, end_vec, strides_vec;
   std::tie(begin_vec, end_vec, strides_vec) = ConvertToVec(begin, end, strides, slice_mode);
-  DataType index_dtype =
-      (begin.size() > 0 && begin[0].defined()) ? begin[0].value().dtype() : DataType::Int(64);
+  DataType index_dtype = (begin.size() > 0 && begin[0].defined())
+                             ? DataType(begin[0].value().ty().dtype())
+                             : DataType::Int(64);
   auto begin_canonicalized =
       StridedSliceCanonicalizeBegin(ishape, begin_vec, strides_vec, axes, index_dtype, slice_mode);
   return StridedSliceOutputShape(ishape, begin_vec, end_vec, strides_vec, axes, slice_mode,
@@ -924,8 +925,9 @@ inline Tensor strided_slice_with_axes(
   std::vector<int64_t> begin_vec, end_vec, strides_vec;
   std::tie(begin_vec, end_vec, strides_vec) = ConvertToVec(begin, end, strides, slice_mode);
 
-  DataType index_dtype =
-      (begin.size() > 0 && begin[0].defined()) ? begin[0].value().dtype() : DataType::Int(64);
+  DataType index_dtype = (begin.size() > 0 && begin[0].defined())
+                             ? DataType(begin[0].value().ty().dtype())
+                             : DataType::Int(64);
   auto begin_expr = StridedSliceCanonicalizeBegin(x->shape, begin_vec, strides_vec, normalized_axes,
                                                   index_dtype, slice_mode);
   auto out_shape = StridedSliceOutputShape(x->shape, begin_vec, end_vec, strides_vec,
@@ -938,7 +940,7 @@ inline Tensor strided_slice_with_axes(
         for (size_t i = 0; i < out_shape.size(); ++i) real_indices.push_back(indices[i]);
         for (size_t i = 0; i < normalized_axes.size(); ++i) {
           int64_t ax = normalized_axes[i];
-          auto stride = MakeConst(strides[i]->dtype(), strides_vec[i]);
+          auto stride = MakeConst(strides[i]->ty(), strides_vec[i]);
           PrimExpr ind = indices[ax] * stride + begin_expr[i];
           real_indices.Set(ax, ind);
         }
@@ -972,8 +974,9 @@ inline Tensor strided_slice(const Tensor& x, const ffi::Array<ffi::Optional<IntI
   ffi::Array<ffi::Optional<IntImm>> end_full(end);
   ffi::Array<IntImm> strides_full(strides);
 
-  DataType index_dtype =
-      (begin.size() > 0 && begin[0].defined()) ? begin[0].value().dtype() : DataType::Int(64);
+  DataType index_dtype = (begin.size() > 0 && begin[0].defined())
+                             ? DataType(begin[0].value().ty().dtype())
+                             : DataType::Int(64);
   const IntImm one = IntImm(PrimType(index_dtype), 1);
   const IntImm zero = IntImm(PrimType(index_dtype), 0);
   const IntImm max_range = max_value(index_dtype).as_or_throw<IntImm>();
@@ -1744,7 +1747,12 @@ inline Tensor arange(const PrimExpr& start, const PrimExpr& stop, const PrimExpr
                      DataType dtype, std::string name = "T_arange", std::string tag = kInjective) {
   arith::Analyzer analyzer;
   PrimExpr num_elem;
-  bool is_all_int = start.dtype().is_int() && stop.dtype().is_int() && step.dtype().is_int();
+  PrimType start_ty = start.ty();
+  PrimType stop_ty = stop.ty();
+  PrimType step_ty = step.ty();
+  bool is_all_int = start_ty.code() == DLDataTypeCode::kDLInt &&
+                    stop_ty.code() == DLDataTypeCode::kDLInt &&
+                    step_ty.code() == DLDataTypeCode::kDLInt;
   if (is_all_int && analyzer->CanProveGreaterEqual(step, 1)) {
     // fast path for integer arange when step is positive
     num_elem = tvm::floordiv((stop - start + step - 1), step);

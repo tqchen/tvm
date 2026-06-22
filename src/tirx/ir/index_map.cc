@@ -83,7 +83,7 @@ std::pair<IndexMap, PrimExpr> IndexMapInverseImpl(const IndexMap& self,
     // should be named (X.outer,X.inner).
     std::stringstream ss;
     ss << "axis" << i;
-    Var var_index(ss.str(), index.dtype());
+    Var var_index(ss.str(), index.ty());
     output_vars.push_back(var_index);
   }
 
@@ -249,12 +249,13 @@ ffi::Array<Range> IndexMapNode::MapRanges(const ffi::Array<Range>& ranges,
   auto output_dtype = [&]() {
     int max_bits = ranges.empty() ? 32 : 0;
     for (const auto& range : ranges) {
-      max_bits = std::max(max_bits, range->extent.dtype().bits());
+      max_bits = std::max(max_bits, range->extent.ty().bits());
     }
     return DataType::Int(max_bits);
   }();
   output.MutateByApply([&](const Range& range) {
-    if (range->min.dtype() != output_dtype || range->extent.dtype() != output_dtype) {
+    if (DataType(range->min.ty().dtype()) != output_dtype ||
+        DataType(range->extent.ty().dtype()) != output_dtype) {
       return Range::FromMinExtent(cast(output_dtype, range->min),
                                   cast(output_dtype, range->extent));
     } else {
@@ -366,7 +367,7 @@ IndexMap IndexMap::RenameVariables(
           ffi::String name = opt_name.value();
           TVM_FFI_ICHECK(!name_supply->ContainsName(name, /*add_prefix=*/false));
           name_supply->ReserveName(name, /*add_prefix=*/false);
-          var_remap.Set(var, Var(name, var.dtype()));
+          var_remap.Set(var, Var(name, var.ty()));
         }
       });
     });

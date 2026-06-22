@@ -513,7 +513,7 @@ class ComputeInliner : public BaseInliner {
     }
     idx_vars_.resize(buffer_ndim);
     for (size_t i = 0; i < idx_vars_.size(); ++i) {
-      idx_vars_[i] = Var("ph_" + std::to_string(i), inlined_store_->indices[i].dtype());
+      idx_vars_[i] = Var("ph_" + std::to_string(i), inlined_store_->indices[i].ty());
     }
     auto inverse_iter_map = arith::InverseAffineIterMap(
         res->indices, ffi::Array<PrimExpr>(idx_vars_.begin(), idx_vars_.end()));

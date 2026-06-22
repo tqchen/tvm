@@ -129,7 +129,7 @@ class ForMatcher : public TensorizeComparator {
         if (match) {
           evaluated_symbols.back().insert(symbol_map.begin(), symbol_map.end());
           evaluated_symbols.back()[ffi::GetRef<Var>(operand_a)] =
-              MakeConstScalar(rhs_ptr->b.dtype(), 1);
+              MakeConstScalar(rhs_ptr->b.ty(), 1);
           return true;
         }
       }
@@ -142,7 +142,7 @@ class ForMatcher : public TensorizeComparator {
         if (match) {
           evaluated_symbols.back().insert(symbol_map.begin(), symbol_map.end());
           evaluated_symbols.back()[ffi::GetRef<Var>(operand_b)] =
-              MakeConstScalar(rhs_ptr->a.dtype(), 1);
+              MakeConstScalar(rhs_ptr->a.ty(), 1);
           return true;
         }
       }
@@ -160,7 +160,7 @@ class ForMatcher : public TensorizeComparator {
         if (match) {
           evaluated_symbols.back().insert(symbol_map.begin(), symbol_map.end());
           evaluated_symbols.back()[ffi::GetRef<Var>(operand_a)] =
-              MakeConstScalar(rhs_ptr->b.dtype(), 0);
+              MakeConstScalar(rhs_ptr->b.ty(), 0);
           return true;
         }
       }
@@ -173,7 +173,7 @@ class ForMatcher : public TensorizeComparator {
         if (match) {
           evaluated_symbols.back().insert(symbol_map.begin(), symbol_map.end());
           evaluated_symbols.back()[ffi::GetRef<Var>(operand_b)] =
-              MakeConstScalar(rhs_ptr->a.dtype(), 0);
+              MakeConstScalar(rhs_ptr->a.ty(), 0);
           return true;
         }
       }

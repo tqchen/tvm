@@ -328,14 +328,14 @@ inline ffi::Array<PrimExpr> BufferOffset(const BufferNode* n, ffi::Array<PrimExp
   // get the offset in number of scalars.
   if (n->dtype.lanes() != 1) {
     PrimExpr last_offset = offsets[offsets.size() - 1];
-    offsets.Set(offsets.size() - 1, last_offset * MakeConst(last_offset.dtype(), dtype.lanes()));
+    offsets.Set(offsets.size() - 1, last_offset * MakeConst(last_offset.ty(), dtype.lanes()));
   }
 
   // If the requested type has more than one lane, make a RampNode at
   // that offset.
   if (dtype.lanes() != 1) {
     PrimExpr last_offset = offsets[offsets.size() - 1];
-    PrimExpr stride = MakeConst(last_offset.dtype(), 1);
+    PrimExpr stride = MakeConst(last_offset.ty(), 1);
     offsets.Set(offsets.size() - 1, tirx::Ramp(last_offset, stride, dtype.lanes()));
   }
 
@@ -404,8 +404,7 @@ Buffer Buffer::GetFlattenedBuffer() const {
   // The axis_separators for the output buffer.
   ffi::Array<IntImm> output_axis_separators;
   for (size_t i = 0; i < self->axis_separators.size(); i++) {
-    auto dtype = self->axis_separators[i].dtype();
-    output_axis_separators.push_back(IntImm(PrimType(dtype), i + 1));
+    output_axis_separators.push_back(IntImm(self->axis_separators[i].ty(), i + 1));
   }
 
   if (output_shape.size() == self->shape.size() && self->strides.empty()) {
@@ -440,7 +439,8 @@ PrimExpr Buffer::vload(ffi::Array<PrimExpr> begin, DataType value_dtype,
   PrimExpr base = indices[indices.size() - 1];
   if (value_dtype.is_fixed_length_vector()) {
     int factor = value_dtype.lanes() / n->dtype.lanes();
-    if (factor > 1 && base.dtype().is_scalar()) {
+    PrimType base_ty = base.ty();
+    if (factor > 1 && !base_ty.IsFixedLengthVector() && !base_ty.IsScalableVector()) {
       indices.Set(indices.size() - 1, Ramp(base, 1, factor));
     }
   }
@@ -452,7 +452,7 @@ Stmt Buffer::vstore(ffi::Array<PrimExpr> begin, PrimExpr value,
   // specially handle bool, stored as DataType::Int(8)
   const BufferNode* n = operator->();
   TVM_FFI_ICHECK(n != nullptr);
-  DataType value_dtype = value.dtype();
+  DataType value_dtype(value.ty().dtype());
   TVM_FFI_ICHECK(value_dtype.element_of() == n->dtype.element_of() &&
                  value_dtype.get_lanes_or_vscale_factor() % n->dtype.lanes() == 0)
       << "Cannot store " << value_dtype << " to buffer of " << n->dtype;
@@ -461,7 +461,8 @@ Stmt Buffer::vstore(ffi::Array<PrimExpr> begin, PrimExpr value,
   PrimExpr base = indices[indices.size() - 1];
   if (value_dtype.is_fixed_length_vector()) {
     int factor = value_dtype.lanes() / n->dtype.lanes();
-    if (factor > 1 && base.dtype().is_scalar()) {
+    PrimType base_ty = base.ty();
+    if (factor > 1 && !base_ty.IsFixedLengthVector() && !base_ty.IsScalableVector()) {
       indices.Set(indices.size() - 1, Ramp(base, 1, factor));
     }
   }
@@ -556,8 +557,8 @@ PrimExpr Buffer::access_ptr(int access_mask, DataType ptr_type, int content_lane
   PrimExpr elem_offset = self->elem_offset + offset;
   if (content_lanes > 1) {
     e_dtype = tirx::TypeAnnotation(self->dtype.with_lanes(content_lanes));
-    extent = extent / MakeConst(self->elem_offset.dtype(), content_lanes);
-    elem_offset = self->elem_offset / MakeConst(self->elem_offset.dtype(), content_lanes);
+    extent = extent / MakeConst(self->elem_offset.ty(), content_lanes);
+    elem_offset = self->elem_offset / MakeConst(self->elem_offset.ty(), content_lanes);
   } else {
     e_dtype = tirx::TypeAnnotation(self->dtype);
   }
@@ -620,7 +621,7 @@ Buffer::Buffer(Var data, DataType dtype, ffi::Array<PrimExpr> shape, ffi::Array<
   n->buffer_type = buffer_type;
   if (n->buffer_type == kAutoBroadcast && n->shape.size() > 0 && n->strides.empty()) {
     for (size_t i = 0; i < n->shape.size(); ++i) {
-      n->strides.push_back(Var("stride", n->shape[i].dtype()));
+      n->strides.push_back(Var("stride", n->shape[i].ty()));
     }
   }
   n->span = std::move(span);
@@ -651,7 +652,7 @@ tirx::Buffer BufferWithOffsetAlignment(ffi::Array<PrimExpr> shape, DataType dtyp
 
   PrimExpr elem_offset;
   if (offset_factor != 0) {
-    elem_offset = tirx::Var(name + "_elem_offset", shape[0].dtype());
+    elem_offset = tirx::Var(name + "_elem_offset", shape[0].ty());
   } else {
     elem_offset = PrimExpr();
   }

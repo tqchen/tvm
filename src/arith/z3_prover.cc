@@ -63,6 +63,10 @@ using namespace ffi;
 
 namespace {
 
+DataType DType(const PrimExpr& expr) { return DataType(expr.ty().dtype()); }
+
+DataType DType(const PrimExprNode* expr) { return DataType(expr->ty().dtype()); }
+
 struct Namespace {
   std::unordered_set<std::string> used_names;
   /// @brief Get a new name that is not used before
@@ -147,7 +151,7 @@ class Z3Prover::Impl : ExprFunctor<z3::expr(const PrimExpr&)> {
   /// @brief Create a Free z3 expression from PrimExprNode
   z3::expr Create(const PrimExprNode* op) {
     auto ref = ffi::GetRef<PrimExpr>(op);
-    auto dtype = op->dtype();
+    auto dtype = DType(op);
     std::string name = ns.GetNewName(ref);
     /// TVM max_val can't handle uint64 max correctly, so we special case it here
     if (dtype.is_bool()) {
@@ -249,7 +253,7 @@ class Z3Prover::Impl : ExprFunctor<z3::expr(const PrimExpr&)> {
     // solver) must degrade to "cannot prove" instead of escaping to the caller.
     try {
       if (CheckTrivilBadCases(expr)) return false;
-      if (!IsValidDType(expr->dtype())) return false;
+      if (!IsValidDType(DType(expr))) return false;
       z3::expr_vector constr(*ctx);
       constr.push_back(!ConvertBool(expr));
       auto result = solver.check(constr);
@@ -263,7 +267,7 @@ class Z3Prover::Impl : ExprFunctor<z3::expr(const PrimExpr&)> {
   /// @brief Binded
   /// @brief Bind a variable to a value or a range
   void Bind(const Var& var, const PrimExpr& value, bool allow_override = false) {
-    if (!IsValidDType(var->dtype())) return;
+    if (!IsValidDType(DType(var))) return;
     scope_stack_.back().push_back(Scope{Scope::BindValue, var, value});
     // we add the binding whenever the value is pure,
     // because non-pure parts are handling by creating free variables in VisitExpr
@@ -272,7 +276,7 @@ class Z3Prover::Impl : ExprFunctor<z3::expr(const PrimExpr&)> {
 
   /// @brief Bind a variable to a range
   void Bind(const Var& var, const Range& range, bool allow_override = false) {
-    if (!IsValidDType(var->dtype())) return;
+    if (!IsValidDType(DType(var))) return;
     scope_stack_.back().push_back(
         Scope{Scope::BindRange, var, PrimExpr(), range->min, range->extent});
     // 1. Create a placeholder for the var, and save it in the memo
@@ -427,7 +431,7 @@ class Z3Prover::Impl : ExprFunctor<z3::expr(const PrimExpr&)> {
    * \return Number of satisfying values, -1 on error, -2 if min_consecutive constraint not met
    */
   int64_t CountSatisfyingValues(const Var& var, int64_t max_count, int64_t min_consecutive = 1) {
-    if (!IsValidDType(var->dtype())) {
+    if (!IsValidDType(DType(var))) {
       return -1;
     }
 
@@ -550,7 +554,7 @@ class Z3Prover::Impl : ExprFunctor<z3::expr(const PrimExpr&)> {
     }
     return e->IsInstance<CallNode>() || e->IsInstance<BufferLoadNode>() ||
            e->IsInstance<ProducerLoadNode>() || e->IsInstance<ReduceNode>() ||
-           (e->IsInstance<CastNode>() && !IsValidDType(Downcast<Cast>(e)->value->dtype()));
+           (e->IsInstance<CastNode>() && !IsValidDType(DType(Downcast<Cast>(e)->value)));
   }
 
   /// @brief Check if the dtype is valid for z3 integer operations
@@ -581,7 +585,7 @@ class Z3Prover::Impl : ExprFunctor<z3::expr(const PrimExpr&)> {
   /// @brief Helper function to visit binary arithmetic operations
   z3::expr VisitArith(Z3BinOp signed_op, const PrimExprNode* op, const PrimExpr& a,
                       const PrimExpr& b) {
-    if (IsValidDType(a->dtype()) && IsValidDType(b->dtype())) {
+    if (IsValidDType(DType(a)) && IsValidDType(DType(b))) {
       return signed_op(VisitInt(a), VisitInt(b));
     } else {
       return Create(op);
@@ -589,14 +593,14 @@ class Z3Prover::Impl : ExprFunctor<z3::expr(const PrimExpr&)> {
   }
 
   z3::expr VisitExpr_(const LetNode* op) override {
-    if (IsValidDType(op->var->dtype())) {
+    if (IsValidDType(DType(op->var))) {
       memo_.emplace(op->var, VisitInt(op->value));
     }
     return VisitExpr(op->body);
   }
   z3::expr VisitExpr_(const CastNode* op) override {
     // if the inner dtype is valid, we just visit it
-    if (IsValidDType(op->value->dtype()) && IsValidDType(op->dtype())) {
+    if (IsValidDType(DType(op->value)) && IsValidDType(DType(op))) {
       return VisitInt(op->value);
     } else {
       // otherwise, we create a new free z3 variable
@@ -696,7 +700,7 @@ class Z3Prover::Impl : ExprFunctor<z3::expr(const PrimExpr&)> {
     } else if (op->op.same_as(tirx::builtin::shift_right())) {
       return VisitShiftOp(z3::ashr, op);
     } else if (op->op.same_as(tirx::builtin::if_then_else()) && op->args.size() == 3 &&
-               IsValidDType(op->args[1]->dtype()) && IsValidDType(op->args[2]->dtype())) {
+               IsValidDType(DType(op->args[1])) && IsValidDType(DType(op->args[2]))) {
       // tir.if_then_else(cond, a, b) is a select-like ternary.
       return z3::ite(VisitBool(op->args[0]), VisitInt(op->args[1]), VisitInt(op->args[2]));
     } else {
@@ -715,9 +719,9 @@ class Z3Prover::Impl : ExprFunctor<z3::expr(const PrimExpr&)> {
 
     const PrimExpr& a = op->args[0];
     const PrimExpr& b = op->args[1];
-    unsigned bit_width = std::max(op->args[0].dtype().bits(), op->args[1].dtype().bits());
+    unsigned bit_width = std::max(DType(op->args[0]).bits(), DType(op->args[1]).bits());
 
-    if (IsValidDType(a->dtype()) && IsValidDType(b->dtype())) {
+    if (IsValidDType(DType(a)) && IsValidDType(DType(b))) {
       return z3::bv2int(
           op_func(z3::int2bv(bit_width, VisitInt(a)), z3::int2bv(bit_width, VisitInt(b))), true);
     } else {
@@ -734,9 +738,9 @@ class Z3Prover::Impl : ExprFunctor<z3::expr(const PrimExpr&)> {
 
     const PrimExpr& a = op->args[0];
 
-    if (IsValidDType(a->dtype())) {
+    if (IsValidDType(DType(a))) {
       // Cast integer to bit-vector, apply bitwise not, then cast back.
-      unsigned bit_width = a.dtype().bits();
+      unsigned bit_width = DType(a).bits();
       z3::expr a_int = VisitInt(a);
       z3::expr a_bv = z3::int2bv(bit_width, a_int);
       return z3::bv2int(~a_bv, true);
@@ -756,7 +760,7 @@ class Z3Prover::Impl : ExprFunctor<z3::expr(const PrimExpr&)> {
     const PrimExpr& b = op->args[1];
 
     // Shift operations require integer types for both operands
-    if (IsValidDType(a->dtype()) && IsValidDType(b->dtype())) {
+    if (IsValidDType(DType(a)) && IsValidDType(DType(b))) {
       z3::expr a_expr = VisitInt(a);
       z3::expr b_expr = VisitInt(b);
 
@@ -765,7 +769,7 @@ class Z3Prover::Impl : ExprFunctor<z3::expr(const PrimExpr&)> {
       // matching push/pop in this path, so the assertion would permanently
       // poison the shared solver and make all subsequent unrelated proofs about
       // `b` unsound.
-      unsigned bit_width = std::max(a.dtype().bits(), b.dtype().bits());
+      unsigned bit_width = std::max(DType(a).bits(), DType(b).bits());
       z3::expr a_bv = z3::int2bv(bit_width, a_expr);
       z3::expr b_bv = z3::int2bv(bit_width, b_expr);
 

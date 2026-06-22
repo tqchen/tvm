@@ -490,7 +490,7 @@ class SharedMemoryRewriter : public StmtExprMutator {
     static const Op& ptx_cp_async_op = Op::Get("tirx.ptx.cp_async_raw");
     if (op->op.same_as(builtin::tvm_access_ptr())) {
       TVM_FFI_ICHECK_EQ(op->args.size(), 5U);
-      DataType dtype = op->args[0].dtype();
+      DataType dtype(op->args[0].ty().dtype());
       Var buffer = op->args[1].as_or_throw<Var>();
       if (!IsAppropriateSharedMemory(buffer) || scope_stack_.empty() ||
           !scope_stack_.back().shmem_allocs.count(buffer.get())) {

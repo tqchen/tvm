@@ -139,7 +139,7 @@ inline Tensor layer_norm(const Tensor& data, const Tensor& gamma, const Tensor& 
     }
     auto mean = temp_mean(non_reduce_indices);
     auto var = temp_var_sum(non_reduce_indices) / reduce_extent;
-    auto layer_norm = (data(indices) - mean) * rsqrt(var + MakeConst(var.dtype(), epsilon));
+    auto layer_norm = (data(indices) - mean) * rsqrt(var + MakeConst(var.ty(), epsilon));
     if (is_float16) {
       layer_norm = Cast(PrimType::Float(16), layer_norm);
     }

@@ -202,12 +202,13 @@ class GPUCodeVerifier : public StmtExprVisitor {
   void CheckBufferIndicesVectorizable(const ffi::Array<PrimExpr> indices) {
     for (const auto index : indices) {
       if (const auto* ramp = index.as<RampNode>()) {
-        if (!is_one(ramp->stride) &&
-            static_cast<size_t>(ramp->dtype().lanes() * ramp->dtype().bytes()) >
-                max_vector_bytes_) {
+        PrimType ramp_ty = ramp->ty();
+        DataType ramp_dtype(ramp_ty.dtype());
+        if (!is_one(ramp->stride) && ramp_ty.IsFixedLengthVector() &&
+            static_cast<size_t>(ramp_dtype.lanes() * ramp_dtype.bytes()) > max_vector_bytes_) {
           std::stringstream s;
-          s << "Number of lanes (" << ramp->dtype().lanes() << ") times number of bytes ("
-            << ramp->dtype().bytes() << ") for dtype " << ramp->dtype()
+          s << "Number of lanes (" << ramp_dtype.lanes() << ") times number of bytes ("
+            << ramp_dtype.bytes() << ") for dtype " << ramp_dtype
             << " is greater than the maximum number of vector bytes (" << max_vector_bytes_ << ")";
           errors_.push_back(s.str());
         }
@@ -216,11 +217,13 @@ class GPUCodeVerifier : public StmtExprVisitor {
   }
 
   void VisitExpr_(const CastNode* op) {
-    if (op->dtype().is_vector()) {
-      if (static_cast<size_t>(op->dtype().lanes() * op->dtype().bytes()) > max_vector_bytes_) {
+    PrimType op_ty = op->ty();
+    DataType op_dtype(op_ty.dtype());
+    if (op_ty.IsFixedLengthVector()) {
+      if (static_cast<size_t>(op_dtype.lanes() * op_dtype.bytes()) > max_vector_bytes_) {
         std::stringstream s;
-        s << "Number of lanes (" << op->dtype().lanes() << ") times number of bytes ("
-          << op->dtype().bytes() << ") for dtype " << op->dtype()
+        s << "Number of lanes (" << op_dtype.lanes() << ") times number of bytes ("
+          << op_dtype.bytes() << ") for dtype " << op_dtype
           << " is greater than the maximum number of vector bytes (" << max_vector_bytes_ << ")";
         errors_.push_back(s.str());
       }
@@ -229,11 +232,13 @@ class GPUCodeVerifier : public StmtExprVisitor {
   }
 
   void VisitExpr_(const BufferLoadNode* op) {
-    if (op->dtype().is_vector()) {
-      if (static_cast<size_t>(op->dtype().lanes() * op->dtype().bytes()) > max_vector_bytes_) {
+    PrimType op_ty = op->ty();
+    DataType op_dtype(op_ty.dtype());
+    if (op_ty.IsFixedLengthVector()) {
+      if (static_cast<size_t>(op_dtype.lanes() * op_dtype.bytes()) > max_vector_bytes_) {
         std::stringstream s;
-        s << "Number of lanes (" << op->dtype().lanes() << ") times number of bytes ("
-          << op->dtype().bytes() << ") for dtype " << op->dtype()
+        s << "Number of lanes (" << op_dtype.lanes() << ") times number of bytes ("
+          << op_dtype.bytes() << ") for dtype " << op_dtype
           << " is greater than the maximum number of vector bytes (" << max_vector_bytes_ << ")";
         errors_.push_back(s.str());
       }
@@ -243,12 +248,13 @@ class GPUCodeVerifier : public StmtExprVisitor {
   }
 
   void VisitStmt_(const BufferStoreNode* op) {
-    if (op->value.dtype().is_vector()) {
-      if (static_cast<size_t>(op->value.dtype().lanes() * op->value.dtype().bytes()) >
-          max_vector_bytes_) {
+    PrimType value_ty = op->value.ty();
+    DataType value_dtype(value_ty.dtype());
+    if (value_ty.IsFixedLengthVector()) {
+      if (static_cast<size_t>(value_dtype.lanes() * value_dtype.bytes()) > max_vector_bytes_) {
         std::stringstream s;
-        s << "Number of lanes (" << op->value.dtype().lanes() << ") times number of bytes ("
-          << op->value.dtype().bytes() << ") for dtype " << op->value.dtype()
+        s << "Number of lanes (" << value_dtype.lanes() << ") times number of bytes ("
+          << value_dtype.bytes() << ") for dtype " << value_dtype
           << " is greater than the maximum number of vector bytes (" << max_vector_bytes_ << ")";
         errors_.push_back(s.str());
       }

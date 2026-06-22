@@ -24,6 +24,12 @@ namespace tvm {
 namespace script {
 namespace printer {
 
+namespace {
+
+DataType DType(const PrimType& ty) { return DataType(ty.dtype()); }
+
+}  // namespace
+
 ExprDoc PrintVarCreation(const tirx::Var& var, const AccessPath& var_p, const IRDocsifier& d) {
   Type type = var->type_annotation;
   AccessPath type_p = var_p->Attr("type_annotation");
@@ -38,8 +44,8 @@ ExprDoc PrintVarCreation(const tirx::Var& var, const AccessPath& var_p, const IR
 
   if (const auto* ptr_type = type.as<PointerTypeNode>()) {
     if (const auto* prim_type = ptr_type->element_type.as<PrimTypeNode>()) {
-      ExprDoc element_type =
-          LiteralDoc::DataType(prim_type->dtype, type_p->Attr("element_type")->Attr("dtype"));
+      ExprDoc element_type = LiteralDoc::DataType(DataType(prim_type->dtype),
+                                                  type_p->Attr("element_type")->Attr("dtype"));
       rhs = TIR(d, "handle");
       rhs->source_paths.push_back(var_p->Attr("dtype"));
       if (ptr_type->storage_scope == "") {
@@ -54,7 +60,7 @@ ExprDoc PrintVarCreation(const tirx::Var& var, const AccessPath& var_p, const IR
       rhs = TIR(d, "TensorMap")->Call({}, {}, {});
     }
   } else {
-    rhs = TIR(d, DType2Str(var.dtype()));
+    rhs = TIR(d, DType2Str(DType(var.ty())));
     rhs->source_paths.push_back(var_p->Attr("dtype"));
     rhs = rhs->Call({}, kwargs_keys, kwargs_values);
   }
@@ -121,7 +127,7 @@ TVM_STATIC_IR_FUNCTOR(IRDocsifier, vtable)
 
 TVM_STATIC_IR_FUNCTOR(IRDocsifier, vtable)
     .set_dispatch<tirx::Cast>("", [](tirx::Cast cast, AccessPath p, IRDocsifier d) -> Doc {
-      ExprDoc dtype = LiteralDoc::DataType(cast->dtype(), p->Attr("dtype"));
+      ExprDoc dtype = LiteralDoc::DataType(DType(cast.ty()), p->Attr("dtype"));
       ExprDoc value = d->AsDoc<ExprDoc>(cast->value, p->Attr("value"));
       return TIR(d, "Cast")->Call({dtype, value});
     });
@@ -258,6 +264,7 @@ TVM_STATIC_IR_FUNCTOR(IRDocsifier, vtable)
 
 TVM_STATIC_IR_FUNCTOR(IRDocsifier, vtable)
     .set_dispatch<tirx::Call>("", [](tirx::Call call, AccessPath call_p, IRDocsifier d) -> Doc {
+      DataType call_dtype = DType(call.ty());
       if (call->attrs.defined()) {
         ffi::Array<ExprDoc> call_args;
         int n_args = call->args.size();
@@ -268,10 +275,9 @@ TVM_STATIC_IR_FUNCTOR(IRDocsifier, vtable)
         ExprDoc op_doc = call->op.as<Op>()
                              ? LiteralDoc::Str(call->op.as<Op>().value()->name, call_p->Attr("op"))
                              : d->AsDoc<ExprDoc>(call->op, call_p->Attr("op"));
-        return TIR(d, "Call")->Call({LiteralDoc::DataType(call->dtype(), call_p->Attr("dtype")),
-                                     op_doc, ListDoc(call_args)},
-                                    {"attrs"},
-                                    {d->AsDoc<ExprDoc>(call->attrs, call_p->Attr("attrs"))});
+        return TIR(d, "Call")->Call(
+            {LiteralDoc::DataType(call_dtype, call_p->Attr("dtype")), op_doc, ListDoc(call_args)},
+            {"attrs"}, {d->AsDoc<ExprDoc>(call->attrs, call_p->Attr("attrs"))});
       }
       static const OpAttrMap<tirx::TScriptPrinterName>& op_names =
           Op::GetAttrMap<tirx::TScriptPrinterName>("TScriptPrinterName");
@@ -298,7 +304,7 @@ TVM_STATIC_IR_FUNCTOR(IRDocsifier, vtable)
           ffi::Array<ExprDoc> args;
           args.reserve(n_args + 1);
           if (dtype_print_location == tirx::ScriptDtypePrintLocation::kFirst) {
-            args.push_back(LiteralDoc::DataType(call->dtype(), call_p->Attr("dtype")));
+            args.push_back(LiteralDoc::DataType(call_dtype, call_p->Attr("dtype")));
           }
 
           for (int i = 0; i < n_args; ++i) {
@@ -310,7 +316,7 @@ TVM_STATIC_IR_FUNCTOR(IRDocsifier, vtable)
             }
           }
           if (dtype_print_location == tirx::ScriptDtypePrintLocation::kLast) {
-            args.push_back(LiteralDoc::DataType(call->dtype(), call_p->Attr("dtype")));
+            args.push_back(LiteralDoc::DataType(call_dtype, call_p->Attr("dtype")));
           }
           return prefix.value()->Call(args);
         }
@@ -335,9 +341,9 @@ TVM_STATIC_IR_FUNCTOR(IRDocsifier, vtable)
           kw_keys.push_back("source_code");
           kw_vals.push_back(src);
           // If non-void return type, print return_type keyword.
-          if (call->dtype() != DataType::Void()) {
+          if (!call.ty().IsVoid()) {
             kw_keys.push_back("return_type");
-            kw_vals.push_back(LiteralDoc::DataType(call->dtype(), call_p->Attr("dtype")));
+            kw_vals.push_back(LiteralDoc::DataType(call_dtype, call_p->Attr("dtype")));
           }
           return prefix.value()->Call(args, kw_keys, kw_vals);
         }
@@ -350,14 +356,14 @@ TVM_STATIC_IR_FUNCTOR(IRDocsifier, vtable)
       int n_args = call->args.size();
       args.reserve(n_args + 1);
       if (dtype_print_location == tirx::ScriptDtypePrintLocation::kFirst) {
-        args.push_back(LiteralDoc::DataType(call->dtype(), call_p->Attr("dtype")));
+        args.push_back(LiteralDoc::DataType(call_dtype, call_p->Attr("dtype")));
       }
 
       for (int i = 0; i < n_args; ++i) {
         args.push_back(d->AsDoc<ExprDoc>(call->args[i], call_p->Attr("args")->ArrayItem(i)));
       }
       if (dtype_print_location == tirx::ScriptDtypePrintLocation::kLast) {
-        args.push_back(LiteralDoc::DataType(call->dtype(), call_p->Attr("dtype")));
+        args.push_back(LiteralDoc::DataType(call_dtype, call_p->Attr("dtype")));
       }
       return prefix.value()->Call(args);
     });
@@ -392,8 +398,10 @@ TVM_STATIC_IR_FUNCTOR(IRDocsifier, vtable)
       if (!ret->IsInstance<tirx::DivNode>()) {
         return TIR(d, "Div")->Call({a, b});
       }
-      if ((node->a.dtype().is_int() || node->a.dtype().is_uint()) &&
-          (node->b.dtype().is_int() || node->b.dtype().is_uint())) {
+      PrimType a_ty = node->a.ty();
+      PrimType b_ty = node->b.ty();
+      if ((a_ty.code() == DLDataTypeCode::kDLInt || a_ty.code() == DLDataTypeCode::kDLUInt) &&
+          (b_ty.code() == DLDataTypeCode::kDLInt || b_ty.code() == DLDataTypeCode::kDLUInt)) {
         return TIR(d, "Div")->Call({a, b});
       }
       return OperationDoc(OperationDocNode::Kind::kDiv, {a, b});

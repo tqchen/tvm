@@ -49,6 +49,14 @@
 namespace tvm {
 namespace tirx {
 
+namespace {
+
+DataType DType(const PrimType& ty) { return DataType(ty.dtype()); }
+
+DataType DType(const PrimExpr& expr) { return DType(expr.ty()); }
+
+}  // namespace
+
 using runtime::StorageRank;
 using runtime::StorageScope;
 
@@ -356,7 +364,7 @@ class InplaceOpVerifier : public StmtExprVisitor {
       return;
     }
     if (src_ == buf) {
-      if (store_ == nullptr || store_->value.dtype() != op->dtype()) {
+      if (store_ == nullptr || DType(store_->value) != DType(op->ty())) {
         result_ = false;
         return;
       }
@@ -482,7 +490,7 @@ class StoragePlanRewriter : public StmtExprMutator {
   PrimExpr VisitExpr_(const CallNode* op) final {
     if (op->op.same_as(builtin::tvm_access_ptr())) {
       TVM_FFI_ICHECK_EQ(op->args.size(), 5U);
-      DataType dtype = op->args[0].dtype();
+      DataType dtype = DType(op->args[0]);
       const VarNode* buffer = op->args[1].as<VarNode>();
       auto it = alloc_map_.find(buffer);
       if (it == alloc_map_.end()) {
@@ -494,7 +502,7 @@ class StoragePlanRewriter : public StmtExprMutator {
       uint64_t elem_bits = dtype.bits() * dtype.lanes();
       TVM_FFI_ICHECK_EQ(se->bits_offset % elem_bits, 0U);
       if (se->bits_offset != 0) {
-        offset = MakeConst(offset.dtype(), se->bits_offset / elem_bits) + offset;
+        offset = MakeConst(DType(offset), se->bits_offset / elem_bits) + offset;
       }
       return Call(ffi::GetRef<PrimExpr>(op).ty(), op->op,
                   {op->args[0], se->alloc_var, offset, extent, op->args[4]}, op->attrs, op->span);
@@ -633,7 +641,7 @@ class StoragePlanRewriter : public StmtExprMutator {
     if (e->bits_offset == 0) return index;
     uint64_t elem_bits = dtype.bits();
     TVM_FFI_ICHECK_EQ(e->bits_offset % elem_bits, 0U);
-    return MakeConst(index.dtype(), e->bits_offset / elem_bits) + index;
+    return MakeConst(DType(index), e->bits_offset / elem_bits) + index;
   }
   // Prepare the new allocations
   void PrepareNewAlloc() {
@@ -789,7 +797,7 @@ class StoragePlanRewriter : public StmtExprMutator {
     }
     uint64_t type_bits = e->elem_type.bits() * e->elem_type.lanes();
     PrimExpr alloc_size =
-        MakeConst(e->allocs[0]->buffer->shape[0].dtype(), (total_bits + type_bits - 1) / type_bits);
+        MakeConst(DType(e->allocs[0]->buffer->shape[0]), (total_bits + type_bits - 1) / type_bits);
     Buffer buf(e->alloc_var, e->elem_type, {alloc_size}, {}, PrimExpr(), e->alloc_var->name_hint, 0,
                0, BufferType::kDefault);
     bool any_volatile = e->is_volatile;
@@ -1226,18 +1234,18 @@ class VectorTypeAccessChecker : public StmtExprVisitor {
   }
 
   void VisitExpr_(const BufferLoadNode* op) final {
-    OnArrayAccess(op->dtype(), op->buffer->data.get(), op->indices, /*is_buffer_load=*/true);
+    OnArrayAccess(DType(op->ty()), op->buffer->data.get(), op->indices, /*is_buffer_load=*/true);
     StmtExprVisitor::VisitExpr_(op);
   }
 
   void VisitStmt_(const BufferStoreNode* op) final {
-    OnArrayAccess(op->value.dtype(), op->buffer->data.get(), op->indices, /*is_buffer_load=*/false);
+    OnArrayAccess(DType(op->value), op->buffer->data.get(), op->indices, /*is_buffer_load=*/false);
     StmtExprVisitor::VisitStmt_(op);
   }
 
   void VisitExpr_(const CallNode* op) final {
     if (op->op.same_as(builtin::tvm_access_ptr())) {
-      DataType dtype = op->args[0].dtype();
+      DataType dtype = DType(op->args[0]);
       const VarNode* buffer = op->args[1].as<VarNode>();
       PrimExpr index = op->args[2];
       // args[1] may be a nested Call (e.g. another tvm_access_ptr) rather
@@ -1248,7 +1256,7 @@ class VectorTypeAccessChecker : public StmtExprVisitor {
       }
     } else if (op->op.same_as(builtin::address_of())) {
       BufferLoad load = op->args[0].as_or_throw<BufferLoad>();
-      OnArrayAccess(load->dtype(), load->buffer->data.get(), load->indices,
+      OnArrayAccess(DType(load->ty()), load->buffer->data.get(), load->indices,
                     /*is_buffer_load=*/false);
     }
     StmtExprVisitor::VisitExpr_(op);
@@ -1274,12 +1282,12 @@ class VectorTypeAccessChecker : public StmtExprVisitor {
   }
 
   void HandleLetNode(Var let_var) {
-    if (let_var.dtype().is_handle()) {
+    if (DType(let_var).is_handle()) {
       auto pointer_type = GetPointerType(let_var->type_annotation);
       if (pointer_type.has_value()) {
         OnArrayDeclaration(let_var, pointer_type.value(), 0, BufferVarInfo::kLetNode);
       } else if (allow_untyped_pointers_) {
-        OnArrayDeclaration(let_var, let_var.dtype(), 0, BufferVarInfo::kLetNode);
+        OnArrayDeclaration(let_var, DType(let_var), 0, BufferVarInfo::kLetNode);
       } else {
         TVM_FFI_THROW(InternalError) << "Let statement of variable " << let_var->name_hint
                                      << " is missing a type annotation, "
@@ -1349,10 +1357,10 @@ class VectorTypeAccessChecker : public StmtExprVisitor {
     }
 
     for (int i = 0; i < static_cast<int>(indices.size()) - 1; i++) {
-      TVM_FFI_ICHECK(indices[i].dtype().is_scalar())
+      TVM_FFI_ICHECK(DType(indices[i]).is_scalar())
           << "Only the last index of a buffer access may be a vector type.";
     }
-    int index_lanes = indices.size() ? indices.back().dtype().lanes() : 1;
+    int index_lanes = indices.size() ? DType(indices.back()).lanes() : 1;
 
     DataType access_dtype = value_dtype;
 
@@ -1400,7 +1408,7 @@ class VectorTypeAccessChecker : public StmtExprVisitor {
 
     if (detect_scalar_read_patterns_ && is_buffer_load && indices.size()) {
       const PrimExpr last_dim_index = indices[indices.size() - 1];
-      if (last_dim_index.dtype().lanes() == 1) {
+      if (DType(last_dim_index).lanes() == 1) {
         arith::ModularSet me = analyzer_->modular_set(last_dim_index);
         var_info.scalar_read_dtype.emplace(access_dtype.with_lanes(me->coeff));
         return;
@@ -1524,7 +1532,7 @@ class VectorTypeRewriter : public StmtExprMutator {
     const PrimExpr& last_dim_index = indices[indices.size() - 1];
     const RampNode* ramp_index = indices[indices.size() - 1].as<RampNode>();
 
-    if (node->buffer->dtype.is_scalable_vector() || last_dim_index.dtype().is_scalable_vector()) {
+    if (node->buffer->dtype.is_scalable_vector() || DType(last_dim_index).is_scalable_vector()) {
       // Scalable types are not currently supported in storage_rewrite. Scalable buffer
       // accesses are not currently checked and therefore are not rewritten.
       return {node, shuffle_index};
@@ -1532,17 +1540,17 @@ class VectorTypeRewriter : public StmtExprMutator {
 
     if (ramp_index && is_one(ramp_index->stride) && ramp_index->lanes->IsInstance<IntImmNode>()) {
       int lanes = static_cast<int>(ramp_index->lanes.as_or_throw<IntImm>()->value);
-      PrimExpr new_index = ramp_index->base / MakeConst(ramp_index->base.dtype(), lanes);
+      PrimExpr new_index = ramp_index->base / MakeConst(DType(ramp_index->base), lanes);
       if (lanes != info.factor()) {
         TVM_FFI_ICHECK(info.factor() && lanes % info.factor() == 0);
         int new_lanes = lanes / info.factor();
         new_index = Ramp(new_index * new_lanes, ramp_index->stride, new_lanes, ramp_index->span);
       }
       indices.Set(indices.size() - 1, new_index);
-    } else if (last_dim_index.dtype().lanes() == 1 && info.factor() > 1) {
+    } else if (DType(last_dim_index).lanes() == 1 && info.factor() > 1) {
       arith::ModularSet me = analyzer_->modular_set(last_dim_index);
       TVM_FFI_ICHECK(me->coeff == 0 || info.factor() % me->coeff == 0);
-      PrimExpr new_index = last_dim_index / MakeConst(last_dim_index.dtype(), info.factor());
+      PrimExpr new_index = last_dim_index / MakeConst(DType(last_dim_index), info.factor());
       shuffle_index = me->base % info.factor();
       indices.Set(indices.size() - 1, new_index);
     }
@@ -1613,7 +1621,7 @@ class VectorTypeRewriter : public StmtExprMutator {
 
       ffi::Array<PrimExpr> shape = buf->shape;
       PrimExpr last_dim = shape[shape.size() - 1];
-      shape.Set(shape.size() - 1, last_dim / MakeConst(last_dim.dtype(), info.factor()));
+      shape.Set(shape.size() - 1, last_dim / MakeConst(DType(last_dim), info.factor()));
 
       auto writer = buf.CopyOnWrite();
       writer->data = info.new_buffer_var;
@@ -1648,8 +1656,8 @@ class VectorTypeRewriter : public StmtExprMutator {
 
       PrimExpr e_dtype = tirx::TypeAnnotation(info.new_element_dtype);
       int factor = info.factor();
-      extent = extent / MakeConst(extent.dtype(), factor);
-      index = index / MakeConst(index.dtype(), factor);
+      extent = extent / MakeConst(DType(extent), factor);
+      index = index / MakeConst(DType(index), factor);
       ffi::Array<PrimExpr> acc_args{e_dtype, info.new_buffer_var, index, extent, flag};
       // tvm_access_ptr produces a pointer; its Call.dtype must be handle
       // (the lowering rule in src/target/intrin_rule.cc ICHECKs this).

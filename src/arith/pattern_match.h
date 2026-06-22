@@ -282,7 +282,7 @@ class PVarWithDataType : public PVarWithCheck<PVarWithDataType<T, DType>, T> {
  public:
   explicit PVarWithDataType(const DType& dtype) : dtype_(dtype) {}
 
-  bool Match_(const T& value) const { return dtype_.Match_(value->dtype()); }
+  bool Match_(const T& value) const { return dtype_.Match_(DataType(value.ty().dtype())); }
 
  protected:
   typename DType::Nested dtype_;
@@ -377,7 +377,7 @@ class PConstWithTypeLike : public Pattern<PConstWithTypeLike<TA>> {
     }
   }
 
-  PrimExpr Eval() const { return tirx::MakeConst(ref_.Eval().dtype(), value_); }
+  PrimExpr Eval() const { return tirx::MakeConst(ref_.Eval().ty(), value_); }
 
  private:
   typename TA::Nested ref_;
@@ -540,7 +540,7 @@ class PCastExpr : public Pattern<PCastExpr<DType, TA>> {
 
   bool Match_(const ffi::ObjectRef& node) const {
     if (const tirx::CastNode* ptr = node.as<tirx::CastNode>()) {
-      if (!dtype_.Match_(ptr->dtype())) return false;
+      if (!dtype_.Match_(DataType(ptr->ty().dtype()))) return false;
       if (!value_.Match_(ptr->value)) return false;
       return true;
     } else {
