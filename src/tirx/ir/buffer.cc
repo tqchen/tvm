@@ -452,7 +452,7 @@ Stmt Buffer::vstore(ffi::Array<PrimExpr> begin, PrimExpr value,
   // specially handle bool, stored as DataType::Int(8)
   const BufferNode* n = operator->();
   TVM_FFI_ICHECK(n != nullptr);
-  DataType value_dtype(value.ty().dtype());
+  DataType value_dtype(value.ty()->dtype);
   TVM_FFI_ICHECK(value_dtype.element_of() == n->dtype.element_of() &&
                  value_dtype.get_lanes_or_vscale_factor() % n->dtype.lanes() == 0)
       << "Cannot store " << value_dtype << " to buffer of " << n->dtype;

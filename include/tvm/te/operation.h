@@ -80,7 +80,7 @@ class TVM_DLL OperationNode : public ffi::Object {
    *
    * \note Compatibility wrapper for public APIs that still expose DataType.
    */
-  DataType output_dtype(size_t i) const { return DataType(output_prim_type(i).dtype()); }
+  DataType output_dtype(size_t i) const { return DataType(output_prim_type(i)->dtype); }
   /*!
    * \brief Get shape of i-th output tensor.
    * \param i The output index.
@@ -346,7 +346,7 @@ TVM_DLL Tensor placeholder(ffi::Array<PrimExpr> shape, DataType dtype = DataType
 
 inline Tensor placeholder(ffi::Array<PrimExpr> shape, PrimType dtype,
                           std::string name = "placeholder") {
-  return placeholder(std::move(shape), DataType(dtype.dtype()), std::move(name));
+  return placeholder(std::move(shape), DataType(dtype->dtype), std::move(name));
 }
 
 /*!

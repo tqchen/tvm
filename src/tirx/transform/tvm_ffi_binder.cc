@@ -72,7 +72,7 @@ TVMFFIABIBuilder::TVMFFIABIBuilder(const ffi::String& func_name, const ffi::Arra
       os << "], " << buf->dtype << ")";
       param_names_[static_cast<int>(i)] = buf_name;
     } else {
-      os << param->name_hint << ": " << DataType(param.ty().dtype());
+      os << param->name_hint << ": " << DataType(param.ty()->dtype);
       param_names_[static_cast<int>(i)] = param->name_hint;
     }
   }
@@ -163,7 +163,7 @@ int TVMFFIABIBuilder::GetParamIndex(const ffi::reflection::AccessPath& path) con
 
 bool TVMFFIABIBuilder::BindScalar(const PrimExpr& arg, const PrimExpr& value,
                                   const ffi::reflection::AccessPath& path, bool with_lets) {
-  TVM_FFI_ICHECK_EQ(DataType(arg.ty().dtype()), DataType(value.ty().dtype()));
+  TVM_FFI_ICHECK_EQ(DataType(arg.ty()->dtype), DataType(value.ty()->dtype));
   if (arg.as<VarNode>()) {
     Var v_arg = arg.as_or_throw<Var>();
     auto it = var_defs_.find(v_arg.get());
@@ -447,7 +447,7 @@ PrimExpr TVMFFIABIBuilder::DecodeParamOpaqueHandle(int param_index, const Var& t
   const int64_t object_cell_offset = sizeof(TVMFFIObject);
   static_assert(sizeof(TVMFFIObject) == 24);
   PrimExpr arg_value = LoadTVMFFIAnyUnionValue(v_packed_args_, param_index,
-                                               DataType(params_[param_index].ty().dtype()));
+                                               DataType(params_[param_index].ty()->dtype));
   PrimExpr handle_from_tensor = Call(PrimType::Handle(), tirx::builtin::handle_add_byte_offset(),
                                      {arg_value, IntImm::Int32(object_cell_offset)});
   return Select(type_index == ffi::TypeIndex::kTVMFFITensor, handle_from_tensor, arg_value);
@@ -493,7 +493,7 @@ PrimExpr TVMFFIABIBuilder::DecodeParamFloat(int param_index, const Var& type_ind
 
 void TVMFFIABIBuilder::DecodeParam(int param_index) {
   Var param = params_[param_index];
-  DataType dtype = DataType(param.ty().dtype());
+  DataType dtype = DataType(param.ty()->dtype);
 
   // Extract type_index from packed_args
   Var type_index(param->name_hint + ".type_index", DataType::Int(32));

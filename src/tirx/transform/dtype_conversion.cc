@@ -27,13 +27,13 @@ namespace tvm {
 namespace tirx {
 
 PrimExpr ReinterpretAsUInt(PrimExpr value) {
-  return reinterpret(GetStorageUIntDType(DataType(value.ty().dtype())), value);
+  return reinterpret(GetStorageUIntDType(DataType(value.ty()->dtype)), value);
 }
 
 DataType GetStorageUIntDType(DataType dtype) { return DataType::UInt(dtype.bits(), dtype.lanes()); }
 
 PrimExpr DTypeConversion(PrimExpr src_value, DataType tgt_dtype, RoundingMode round_mode) {
-  DataType src_dtype(src_value.ty().dtype());
+  DataType src_dtype(src_value.ty()->dtype);
   // Step 1: check dtype
   // The lanes of src dtype and target dtype must match.
   TVM_FFI_ICHECK_EQ(src_dtype.lanes(), tgt_dtype.lanes())

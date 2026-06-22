@@ -110,7 +110,7 @@ void CodeGenTrainium::AddFunction(const GlobalVar& gvar, const PrimFunc& func) {
   size_t num_buffer = 0;
   for (size_t i = 0; i < func->params.size(); ++i, ++num_buffer) {
     Var v = func->params[i];
-    if (!DataType(v.ty().dtype()).is_handle()) {
+    if (!DataType(v.ty()->dtype).is_handle()) {
       LOG(FATAL) << "Trainium codegen currently only support buffer arguments";
     };
     std::string vid = AllocVarID(v.get());
@@ -589,7 +589,7 @@ void CodeGenTrainium::VisitExpr_(const VarNode* op, std::ostream& os) {  // NOLI
 }
 
 void CodeGenTrainium::VisitExpr_(const CastNode* op, std::ostream& os) {
-  ctx_.dst_dtype = DataType(op->ty().dtype());
+  ctx_.dst_dtype = DataType(op->ty()->dtype);
   CodeGenTrainium::VisitExpr(op->value, os);
 }
 

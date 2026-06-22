@@ -117,7 +117,7 @@ class IntrinInjecter : public tvm::arith::IRMutatorWithAnalyzer {
     op = ret.as<FloorDivNode>();
     if (op == nullptr) return ret;
     int shift;
-    DataType dtype = DataType(op->ty().dtype());
+    DataType dtype = DataType(op->ty()->dtype);
     TVM_FFI_ICHECK(dtype.is_int() || dtype.is_uint());
 
     if (support_bitwise_op_ && is_const_power_of_two_integer(op->b, &shift)) {
@@ -178,7 +178,7 @@ class IntrinInjecter : public tvm::arith::IRMutatorWithAnalyzer {
     if (op == nullptr) return ret;
     // Lower floordiv to native truncdiv.
     int shift;
-    DataType dtype = DataType(op->ty().dtype());
+    DataType dtype = DataType(op->ty()->dtype);
     TVM_FFI_ICHECK(dtype.is_int() || dtype.is_uint());
 
     if (support_bitwise_op_ && is_const_power_of_two_integer(op->b, &shift)) {

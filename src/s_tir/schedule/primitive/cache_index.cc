@@ -261,7 +261,7 @@ ffi::Array<SBlock> MakeIndexCacheStage(IndexInfo* info, const ffi::String& stora
       });
     }
 
-    DataType data_type(index_expr.ty().dtype());
+    DataType data_type(index_expr.ty()->dtype);
     Var index_buffer_var("index_var_" + std::to_string(expr_index),
                          PointerType(PrimType(data_type), storage_scope));
     ffi::Array<PrimExpr> buffer_shape;

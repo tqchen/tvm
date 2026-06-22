@@ -146,57 +146,81 @@ class PrimType : public Type {
   TVM_DLL static PrimType ScalableVector(DLDataTypeCode code, int bits, int lanes);
 
   // Accessors.
-  DLDataTypeCode code() const {
+  TVM_FFI_INLINE DLDataTypeCode code() const {
     return static_cast<DLDataTypeCode>(static_cast<int>(get()->dtype.code));
   }
 
-  int32_t bits() const { return get()->dtype.bits; }
+  TVM_FFI_INLINE int32_t bits() const { return get()->dtype.bits; }
 
-  int32_t lanes() const {
+  TVM_FFI_INLINE int32_t lanes() const {
     int16_t encoded_lanes = static_cast<int16_t>(get()->dtype.lanes);
-    if (encoded_lanes < 0) {
+    if (TVM_FFI_PREDICT_FALSE(encoded_lanes < 0)) {
       TVM_FFI_THROW(InternalError)
           << "Can't fetch the lanes of a scalable vector at a compile time.";
     }
     return encoded_lanes;
   }
 
-  DLDataType dtype() const { return get()->dtype; }
-
   // Quick checks.
-  bool MatchesElementType(DLDataTypeCode code, int bits) const {
-    DLDataType dtype = this->dtype();
+  TVM_FFI_INLINE bool MatchesElementType(DLDataTypeCode code, int bits) const {
+    DLDataType dtype = get()->dtype;
     return dtype.code == static_cast<uint8_t>(code) && dtype.bits == bits;
   }
 
-  bool IsVoid() const {
-    DLDataType dtype = this->dtype();
+  TVM_FFI_INLINE bool IsVoid() const {
+    DLDataType dtype = get()->dtype;
     return dtype.code == static_cast<uint8_t>(DLDataTypeCode::kDLOpaqueHandle) && dtype.bits == 0 &&
            static_cast<int16_t>(dtype.lanes) == 0;
   }
 
-  bool IsHandle() const {
+  TVM_FFI_INLINE bool IsHandle() const {
     return this->code() == DLDataTypeCode::kDLOpaqueHandle && !this->IsVoid();
   }
 
-  bool IsPredicate() const {
-    DLDataType dtype = this->dtype();
+  TVM_FFI_INLINE bool IsPredicate() const {
+    DLDataType dtype = get()->dtype;
     return dtype.code == static_cast<uint8_t>(DLDataTypeCode::kDLBool) ||
            (dtype.code == static_cast<uint8_t>(DLDataTypeCode::kDLUInt) && dtype.bits == 1);
   }
 
-  bool IsScalableVector() const { return static_cast<int16_t>(get()->dtype.lanes) < -1; }
+  TVM_FFI_INLINE bool IsScalableVector() const {
+    return static_cast<int16_t>(get()->dtype.lanes) < -1;
+  }
 
-  bool IsFixedLengthVector() const { return static_cast<int16_t>(get()->dtype.lanes) > 1; }
+  TVM_FFI_INLINE bool IsFixedLengthVector() const {
+    return static_cast<int16_t>(get()->dtype.lanes) > 1;
+  }
 
   // Rewriters.
-  TVM_DLL PrimType WithCode(DLDataTypeCode code) const;
+  TVM_FFI_INLINE PrimType WithCode(DLDataTypeCode code) const {
+    DLDataType dtype = get()->dtype;
+    int16_t encoded_lanes = static_cast<int16_t>(dtype.lanes);
+    if (encoded_lanes < -1) {
+      return ScalableVector(code, dtype.bits, -encoded_lanes);
+    }
+    return PrimType(code, dtype.bits, encoded_lanes);
+  }
 
-  TVM_DLL PrimType WithBits(int bits) const;
+  TVM_FFI_INLINE PrimType WithBits(int bits) const {
+    DLDataType dtype = get()->dtype;
+    int16_t encoded_lanes = static_cast<int16_t>(dtype.lanes);
+    if (encoded_lanes < -1) {
+      return ScalableVector(this->code(), bits, -encoded_lanes);
+    }
+    return PrimType(this->code(), bits, encoded_lanes);
+  }
 
-  TVM_DLL PrimType WithLanes(int lanes) const;
+  TVM_FFI_INLINE PrimType WithLanes(int lanes) const {
+    return PrimType(this->code(), this->bits(), lanes);
+  }
 
-  TVM_DLL int32_t VScaleFactor() const;
+  TVM_FFI_INLINE int32_t VScaleFactor() const {
+    int16_t encoded_lanes = static_cast<int16_t>(get()->dtype.lanes);
+    if (encoded_lanes >= -1) {
+      TVM_FFI_THROW(InternalError) << "A fixed length vector doesn't have a vscale factor.";
+    }
+    return -encoded_lanes;
+  }
 
   TVM_FFI_DEFINE_OBJECT_REF_METHODS_NOTNULLABLE(PrimType, Type, PrimTypeNode);
 };
@@ -252,10 +276,8 @@ template <>
 inline constexpr bool use_default_type_traits_v<PrimType> = false;
 
 template <>
-struct TypeTraits<PrimType> : public ObjectRefWithFallbackTraitsBase<PrimType, runtime::DataType> {
-  TVM_FFI_INLINE static PrimType ConvertFallbackValue(runtime::DataType dtype) {
-    return PrimType(dtype.operator DLDataType());
-  }
+struct TypeTraits<PrimType> : public ObjectRefWithFallbackTraitsBase<PrimType, DLDataType> {
+  TVM_FFI_INLINE static PrimType ConvertFallbackValue(DLDataType dtype) { return PrimType(dtype); }
 };
 }  // namespace ffi
 

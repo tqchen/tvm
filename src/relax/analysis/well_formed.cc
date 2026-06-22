@@ -459,7 +459,7 @@ class WellFormedChecker : public relax::ExprVisitor,
       tirx::ExprVisitor::VisitExpr(expr);
       if (expr.ty().code() != DLDataTypeCode::kDLInt) {
         TVM_FFI_VISIT_THROW(TypeError, expr)
-            << "Shape expressions must be of integer type, but got " << expr.ty().dtype();
+            << "Shape expressions must be of integer type, but got " << expr.ty()->dtype;
       }
     }
     CheckType(op);

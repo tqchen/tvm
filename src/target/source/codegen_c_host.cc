@@ -191,9 +191,9 @@ void CodeGenCHost::PrintType(DataType t, std::ostream& os) {  // NOLINT(*)
 
 void CodeGenCHost::VisitExpr_(const BroadcastNode* op, std::ostream& os) {  // NOLINT(*)
   std::string v = PrintExpr(op->value);
-  int lanes = DataType(op->ty().dtype()).lanes();
+  int lanes = DataType(op->ty()->dtype).lanes();
   os << "((";
-  PrintType(DataType(op->ty().dtype()), os);
+  PrintType(DataType(op->ty()->dtype), os);
   os << ")(";
   for (int i = 0; i < lanes; ++i) {
     if (i != 0) os << ", ";
@@ -356,10 +356,10 @@ inline void CodeGenCHost::PrintTernaryCondExpr(const T* op, const char* compare,
                                                std::ostream& os) {  // NOLINT(*)
   std::ostringstream temp_a;
   VisitExpr(op->a, temp_a);
-  std::string a_id = SSAGetID(temp_a.str(), DataType(op->a.ty().dtype()));
+  std::string a_id = SSAGetID(temp_a.str(), DataType(op->a.ty()->dtype));
   std::ostringstream temp_b;
   VisitExpr(op->b, temp_b);
-  std::string b_id = SSAGetID(temp_b.str(), DataType(op->b.ty().dtype()));
+  std::string b_id = SSAGetID(temp_b.str(), DataType(op->b.ty()->dtype));
 
   os << "((" << a_id << ") " << compare << " (" << b_id << ") "
      << "? (" << a_id << ") : (" << b_id << "))";

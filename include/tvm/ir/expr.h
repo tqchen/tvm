@@ -28,7 +28,6 @@
 #include <tvm/ffi/reflection/registry.h>
 #include <tvm/ffi/string.h>
 #include <tvm/ir/base_expr.h>
-#include <tvm/ir/cast.h>
 #include <tvm/ir/cow.h>
 #include <tvm/ir/source_map.h>
 #include <tvm/runtime/data_type.h>
@@ -609,7 +608,13 @@ inline constexpr bool use_default_type_traits_v<IntImm> = false;
 // specialize to enable implicit conversion from const char*
 template <>
 struct TypeTraits<IntImm> : public ObjectRefWithFallbackTraitsBase<IntImm, int64_t> {
-  TVM_DLL static IntImm ConvertFallbackValue(int64_t value);
+  TVM_FFI_INLINE static IntImm ConvertFallbackValue(int64_t value) {
+    auto value_ty =
+        (value > std::numeric_limits<int>::max() || value < std::numeric_limits<int>::min())
+            ? PrimType::Int(64)
+            : PrimType::Int(32);
+    return IntImm(value_ty, value);
+  }
 };
 
 template <>
@@ -617,7 +622,9 @@ inline constexpr bool use_default_type_traits_v<FloatImm> = false;
 
 template <>
 struct TypeTraits<FloatImm> : public ObjectRefWithFallbackTraitsBase<FloatImm, double> {
-  TVM_DLL static FloatImm ConvertFallbackValue(double value);
+  TVM_FFI_INLINE static FloatImm ConvertFallbackValue(double value) {
+    return FloatImm(PrimType::Float(32), value);
+  }
 };
 
 // define automatic conversion from bool, int64_t, double to PrimExpr

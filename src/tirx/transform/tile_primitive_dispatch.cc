@@ -664,7 +664,7 @@ class TilePrimitiveDispatcher : public StmtExprMutator {
         // to map Vars back to their ScopeBinding.
         Var bind_var = def->def_ids[i];
         PrimExpr value = resolved[i];
-        if (DataType(bind_var.ty().dtype()) != DataType(value.ty().dtype())) {
+        if (DataType(bind_var.ty()->dtype) != DataType(value.ty()->dtype)) {
           value = Cast(bind_var.ty(), value);
         }
         scope_binds->push_back({bind_var, value});

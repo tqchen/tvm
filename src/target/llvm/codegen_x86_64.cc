@@ -53,8 +53,8 @@ llvm::Value* CodeGenX86_64::VisitExpr_(const CastNode* op) {
   // LLVM does not automatically generate the correct instruction sequences for
   // half -> float conversion (i.e. using AVX2/AVX-512 vectorized variants of
   // vcvtph2ps), so we explicitly generate them ourselves.
-  const auto from = DataType(op->value.ty().dtype());
-  const auto to = DataType(op->ty().dtype());
+  const auto from = DataType(op->value.ty()->dtype);
+  const auto to = DataType(op->ty()->dtype);
   if (from.is_float() && to.is_float() && from.bits() == 16 && to.bits() == 32) {
     TVM_FFI_ICHECK_EQ(from.lanes(), to.lanes());
 

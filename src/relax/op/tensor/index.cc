@@ -72,7 +72,7 @@ Type InferTypeTake(const Call& call, const BlockBuilder& ctx) {
     if (auto tensor_ty = ty.as<TensorType>()) {
       return tensor_ty.value();
     } else if (auto prim_ty = ty.as<PrimTypeNode>()) {
-      return TensorType(ShapeExpr(ffi::Array<PrimExpr>{}), prim_ty->dtype);
+      return TensorType(ShapeExpr(ffi::Array<PrimExpr>{}), DataType(prim_ty->dtype));
     } else {
       TVM_FFI_VISIT_THROW(TypeError, call)
           << "Operator " << call->op << " requires the indices argument to be "

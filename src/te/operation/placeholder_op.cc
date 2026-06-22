@@ -54,7 +54,7 @@ PlaceholderOp::PlaceholderOp(std::string name, ffi::Array<PrimExpr> shape, DataT
 }
 
 PlaceholderOp::PlaceholderOp(std::string name, ffi::Array<PrimExpr> shape, PrimType dtype)
-    : PlaceholderOp(std::move(name), std::move(shape), DataType(dtype.dtype())) {}
+    : PlaceholderOp(std::move(name), std::move(shape), DataType(dtype->dtype)) {}
 
 Tensor placeholder(ffi::Array<PrimExpr> shape, DataType dtype, std::string name) {
   return PlaceholderOp(name, shape, dtype).output(0);

@@ -98,7 +98,7 @@ class FlopEstimator : private ExprFunctor<TResult(const PrimExpr& n)>,
   TResult VisitExpr_(const Node* op) final {     \
     TResult result = VisitExpr(op->a);           \
     result += VisitExpr(op->b);                  \
-    result.Add(DataType(op->ty().dtype()));      \
+    result.Add(DataType(op->ty()->dtype));       \
     return result;                               \
   }
   TVM_TIR_ESTIMATE_FLOP_VISIT_BINARY(AddNode);

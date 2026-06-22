@@ -66,7 +66,7 @@ using arith::IRMutatorWithAnalyzer;
 
 namespace {
 
-DataType DType(const PrimType& ty) { return DataType(ty.dtype()); }
+DataType DType(const PrimType& ty) { return DataType(ty->dtype); }
 
 DataType DType(const PrimExpr& expr) { return DType(expr.ty()); }
 
@@ -98,8 +98,8 @@ class DataTypeVisitor final : public StmtExprVisitor {
         analyzer_->const_int_bound(e, &bound_);
       }
       ConstIntBound bound = bound_[e];
-      int64_t ubound = Downcast<IntImm>(max_value(DataType::Int(target_bits_)))->value;
-      int64_t lbound = Downcast<IntImm>(min_value(DataType::Int(target_bits_)))->value;
+      int64_t ubound = max_value(DataType::Int(target_bits_)).as_or_throw<IntImm>()->value;
+      int64_t lbound = min_value(DataType::Int(target_bits_)).as_or_throw<IntImm>()->value;
       if (e_ty.bits() <= target_bits_ ||
           (bound->max_value <= ubound && bound->min_value >= lbound)) {
         bits = target_bits_;

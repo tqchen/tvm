@@ -194,7 +194,7 @@ llvm::Value* CodeGenHexagon::VisitExpr_(const BufferLoadNode* op) {
   if (!op->buffer.same_as(op->buffer->data)) {
     // Check if we can generate a vector lookup.
     if (!op->indices[0].as<RampNode>()) {
-      if (auto* vlut = VectorLookupLoad(op->buffer, DataType(op->ty().dtype()), op->indices)) {
+      if (auto* vlut = VectorLookupLoad(op->buffer, DataType(op->ty()->dtype), op->indices)) {
         return vlut;
       }
     }

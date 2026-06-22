@@ -203,7 +203,7 @@ class GPUCodeVerifier : public StmtExprVisitor {
     for (const auto index : indices) {
       if (const auto* ramp = index.as<RampNode>()) {
         PrimType ramp_ty = ramp->ty();
-        DataType ramp_dtype(ramp_ty.dtype());
+        DataType ramp_dtype(ramp_ty->dtype);
         if (!is_one(ramp->stride) && ramp_ty.IsFixedLengthVector() &&
             static_cast<size_t>(ramp_dtype.lanes() * ramp_dtype.bytes()) > max_vector_bytes_) {
           std::stringstream s;
@@ -218,7 +218,7 @@ class GPUCodeVerifier : public StmtExprVisitor {
 
   void VisitExpr_(const CastNode* op) {
     PrimType op_ty = op->ty();
-    DataType op_dtype(op_ty.dtype());
+    DataType op_dtype(op_ty->dtype);
     if (op_ty.IsFixedLengthVector()) {
       if (static_cast<size_t>(op_dtype.lanes() * op_dtype.bytes()) > max_vector_bytes_) {
         std::stringstream s;
@@ -233,7 +233,7 @@ class GPUCodeVerifier : public StmtExprVisitor {
 
   void VisitExpr_(const BufferLoadNode* op) {
     PrimType op_ty = op->ty();
-    DataType op_dtype(op_ty.dtype());
+    DataType op_dtype(op_ty->dtype);
     if (op_ty.IsFixedLengthVector()) {
       if (static_cast<size_t>(op_dtype.lanes() * op_dtype.bytes()) > max_vector_bytes_) {
         std::stringstream s;
@@ -249,7 +249,7 @@ class GPUCodeVerifier : public StmtExprVisitor {
 
   void VisitStmt_(const BufferStoreNode* op) {
     PrimType value_ty = op->value.ty();
-    DataType value_dtype(value_ty.dtype());
+    DataType value_dtype(value_ty->dtype);
     if (value_ty.IsFixedLengthVector()) {
       if (static_cast<size_t>(value_dtype.lanes() * value_dtype.bytes()) > max_vector_bytes_) {
         std::stringstream s;

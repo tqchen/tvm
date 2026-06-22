@@ -290,7 +290,7 @@ class EinsumBuilder {
         // Normal label
         reduction_axes->push_back(
             IterVar(Range(0, label_to_extent_[label]),
-                    Var(std::string(1, label), DataType(label_to_extent_[label].ty().dtype())),
+                    Var(std::string(1, label), DataType(label_to_extent_[label].ty()->dtype)),
                     IterVarType::kCommReduce));
         label_to_index->emplace(label, reduction_axes->back()->var);
       }

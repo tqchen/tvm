@@ -238,8 +238,7 @@ class TensorType : public Type {
 
   TensorType(Expr shape, tvm::PrimType dtype, ffi::Optional<VDevice> vdevice = std::nullopt,
              Span span = Span())
-      : TensorType(std::move(shape), DataType(dtype.dtype()), std::move(vdevice), std::move(span)) {
-  }
+      : TensorType(std::move(shape), DataType(dtype->dtype), std::move(vdevice), std::move(span)) {}
 
   /*!
    * \brief Construction with an unknown shape expression.
@@ -253,7 +252,7 @@ class TensorType : public Type {
 
   TensorType(tvm::PrimType dtype, int ndim, ffi::Optional<VDevice> vdevice = std::nullopt,
              Span span = Span())
-      : TensorType(DataType(dtype.dtype()), ndim, std::move(vdevice), std::move(span)) {}
+      : TensorType(DataType(dtype->dtype), ndim, std::move(vdevice), std::move(span)) {}
 
   TVM_FFI_DEFINE_OBJECT_REF_METHODS_NOTNULLABLE(TensorType, Type, TensorTypeNode);
 };

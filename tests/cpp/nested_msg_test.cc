@@ -171,7 +171,7 @@ TEST(NestedMsg, MapAndDecompose) {
   auto output2 = MapToNestedMsg<IntImm>(GetType(t1), [&](Type ty) -> NestedMsg<IntImm> {
     const auto* prim_ty = ty.as<PrimTypeNode>();
     if (prim_ty == nullptr) return std::nullopt;
-    int bits = prim_ty->dtype.bits();
+    int bits = prim_ty->dtype.bits;
     if (bits == 16) return c0;
     if (bits == 32) return c1;
     if (bits == 64) return c2;

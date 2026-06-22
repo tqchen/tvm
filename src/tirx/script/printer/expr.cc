@@ -26,7 +26,7 @@ namespace printer {
 
 namespace {
 
-DataType DType(const PrimType& ty) { return DataType(ty.dtype()); }
+DataType DType(const PrimType& ty) { return DataType(ty->dtype); }
 
 }  // namespace
 

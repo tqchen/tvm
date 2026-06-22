@@ -63,9 +63,9 @@ using namespace ffi;
 
 namespace {
 
-DataType DType(const PrimExpr& expr) { return DataType(expr.ty().dtype()); }
+DataType DType(const PrimExpr& expr) { return DataType(expr.ty()->dtype); }
 
-DataType DType(const PrimExprNode* expr) { return DataType(expr->ty().dtype()); }
+DataType DType(const PrimExprNode* expr) { return DataType(expr->ty()->dtype); }
 
 struct Namespace {
   std::unordered_set<std::string> used_names;
@@ -554,7 +554,7 @@ class Z3Prover::Impl : ExprFunctor<z3::expr(const PrimExpr&)> {
     }
     return e->IsInstance<CallNode>() || e->IsInstance<BufferLoadNode>() ||
            e->IsInstance<ProducerLoadNode>() || e->IsInstance<ReduceNode>() ||
-           (e->IsInstance<CastNode>() && !IsValidDType(DType(Downcast<Cast>(e)->value)));
+           (e->IsInstance<CastNode>() && !IsValidDType(DType(e.as_or_throw<Cast>()->value)));
   }
 
   /// @brief Check if the dtype is valid for z3 integer operations

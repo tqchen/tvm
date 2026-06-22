@@ -499,7 +499,7 @@ class BuiltinLower : public StmtExprMutator {
     prep_seq.emplace_back(TVMStructSet(scope.stack_array, idx, builtin::kDLTensorStrides, strides));
     prep_seq.emplace_back(
         TVMStructSet(scope.stack_array, idx, builtin::kDLTensorNDim, op->args[3]));
-    DataType dtype = DataType(op->args[4].ty().dtype());
+    DataType dtype = DataType(op->args[4].ty()->dtype);
     prep_seq.emplace_back(TVMStructSet(scope.stack_array, idx, builtin::kDLTensorTypeCode,
                                        IntImm(PrimType::UInt(8), static_cast<int>(dtype.code()))));
     prep_seq.emplace_back(TVMStructSet(scope.stack_array, idx, builtin::kDLTensorTypeBits,
@@ -536,7 +536,7 @@ class BuiltinLower : public StmtExprMutator {
           PrimType::Int(32), anylist_set_packed_arg_op,
           {call_pattern->args[0], call_pattern->args[1], args_stack, ConstInt32(stack_offset)})));
     } else {
-      DataType arg_dtype = DataType(arg.ty().dtype());
+      DataType arg_dtype = DataType(arg.ty()->dtype);
       DataType api_dtype = APIType(arg_dtype);
       if (arg_dtype != api_dtype) {
         arg = Cast(PrimType(api_dtype), arg);

@@ -42,7 +42,7 @@ namespace tvm {
 using namespace tirx;
 
 namespace {
-DataType DType(const PrimType& ty) { return DataType(ty.dtype()); }
+DataType DType(const PrimType& ty) { return DataType(ty->dtype); }
 
 DataType DType(const PrimExpr& expr) { return DType(expr.ty()); }
 
@@ -291,7 +291,7 @@ TVM_FFI_STATIC_INIT_BLOCK() {
 // maximum and min limits
 PrimExpr max_value(PrimType value_ty, Span span) {
   using namespace tirx;
-  DataType dtype(value_ty.dtype());
+  DataType dtype(value_ty->dtype);
   TVM_FFI_ICHECK_EQ(dtype.lanes(), 1);
   if (dtype.is_int()) {
     if (dtype.bits() == 64) {
@@ -351,7 +351,7 @@ PrimExpr max_value(PrimType value_ty, Span span) {
 
 PrimExpr min_value(PrimType value_ty, Span span) {
   using namespace tirx;
-  DataType dtype(value_ty.dtype());
+  DataType dtype(value_ty->dtype);
   TVM_FFI_ICHECK_EQ(dtype.lanes(), 1);
   if (dtype.is_int()) {
     if (dtype.bits() == 64) {
@@ -407,7 +407,7 @@ PrimExpr min_value(PrimType value_ty, Span span) {
 // infinity
 PrimExpr infinity(PrimType value_ty, Span span) {
   using namespace tirx;
-  DataType dtype(value_ty.dtype());
+  DataType dtype(value_ty->dtype);
   TVM_FFI_ICHECK_EQ(dtype.lanes(), 1);
   if (dtype.is_float()) {
     if (dtype.bits() == 64) {
@@ -507,9 +507,9 @@ PrimExpr cast(const DataType& t, PrimExpr value, Span span) {
 
 // reinterpret
 PrimExpr reinterpret(PrimType t, PrimExpr value, Span span) {
-  DataType target_dtype(t.dtype());
+  DataType target_dtype(t->dtype);
   DataType value_dtype = DType(value);
-  if (runtime::TypeEqual(value.ty().dtype(), t.dtype())) return value;
+  if (runtime::TypeEqual(value.ty()->dtype, t->dtype)) return value;
   if (!target_dtype.is_scalable_vector() && !value_dtype.is_scalable_vector()) {
     TVM_FFI_ICHECK(
         value_dtype.bits() * value_dtype.lanes() == target_dtype.bits() * target_dtype.lanes() ||
@@ -783,7 +783,7 @@ PrimExpr right_shift(PrimExpr a, PrimExpr b, Span span) {
   BinaryOpMatchTypes(a, b, span);
   TVM_INDEX_CONST_PROPAGATION({
     PrimType result_ty = a.ty();
-    DataType result_dtype(result_ty.dtype());
+    DataType result_dtype(result_ty->dtype);
     if (pb)
       TVM_FFI_ICHECK(pb->value >= 0 && pb->value < result_dtype.bits())
           << "Shift amount must be non-negative and less than " << result_dtype.bits()
@@ -806,7 +806,7 @@ PrimExpr left_shift(PrimExpr a, PrimExpr b, Span span) {
   BinaryOpMatchTypes(a, b, span);
   TVM_INDEX_CONST_PROPAGATION({
     PrimType result_ty = a.ty();
-    DataType result_dtype(result_ty.dtype());
+    DataType result_dtype(result_ty->dtype);
     if (pb)
       TVM_FFI_ICHECK(pb->value >= 0 && pb->value < result_dtype.bits())
           << "Shift amount must be non-negative and less than " << result_dtype.bits()

@@ -248,8 +248,8 @@ class MatchBufferLower : public StmtExprMutator {
   void Bind(const PrimExpr& arg, PrimExpr value, const std::string& arg_name = "argument") {
     PrimType arg_ty = arg.ty();
     PrimType value_ty = value.ty();
-    DataType arg_dtype(arg_ty.dtype());
-    DataType value_dtype(value_ty.dtype());
+    DataType arg_dtype(arg_ty->dtype);
+    DataType value_dtype(value_ty->dtype);
     if (arg_dtype != value_dtype) {
       bool same_lanes = arg_ty.IsScalableVector() == value_ty.IsScalableVector();
       if (same_lanes) {

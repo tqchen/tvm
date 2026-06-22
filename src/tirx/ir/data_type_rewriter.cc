@@ -44,7 +44,7 @@ namespace tirx {
 
 namespace {
 
-DataType DType(const PrimType& ty) { return DataType(ty.dtype()); }
+DataType DType(const PrimType& ty) { return DataType(ty->dtype); }
 
 DataType DType(const PrimExpr& expr) { return DType(expr.ty()); }
 

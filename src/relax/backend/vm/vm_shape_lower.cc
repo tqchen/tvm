@@ -646,7 +646,8 @@ class VMShapeLowerMutator
     if (always_check || !IsBaseOf(PrimType(op->dtype), GetType(value))) {
       // check_shape_info(value, ndim, err_ctx)
       Call call(builtin_check_prim_value_info_,
-                {value, DataTypeImm(op->dtype), GetErrContext(err_ctx)}, Attrs(), {void_ty_});
+                {value, DataTypeImm(DataType(op->dtype)), GetErrContext(err_ctx)}, Attrs(),
+                {void_ty_});
       builder_->Emit(call, "_");
     }
   }
