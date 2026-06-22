@@ -579,7 +579,9 @@ Type InferTypeIndexTensor(const Call& call, const BlockBuilder& ctx) {
   // Indices must be integers
   for (int i = 0; i < n_indices; ++i) {
     const auto& s = indices_ty[i];
-    if (!s->IsUnknownDtype() && !DataType(s->dtype->dtype).is_int()) {
+    const DLDataType index_dtype = s->dtype->dtype;
+    // Indexing only requires integer element kind; vector lanes do not affect shape inference.
+    if (!s->IsUnknownDtype() && index_dtype.code != DLDataTypeCode::kDLInt) {
       TVM_FFI_VISIT_THROW(TypeError, call)
           << "index_tensor requires every index tensor to have an integer dtype; "
           << "index " << i << " has dtype " << s->dtype;
@@ -724,11 +726,11 @@ Type InferTypeLayoutTransform(const Call& call, const BlockBuilder& ctx) {
   // Check pad_value has same dtype as input.
   if (optional_pad_value.defined()) {
     PrimExpr padded_value = optional_pad_value.value()->value;
-    DataType padded_dtype(padded_value.ty()->dtype);
-    if (padded_dtype != DataType(data_ty->dtype->dtype)) {
+    const DLDataType padded_dtype = padded_value.ty()->dtype;
+    if (padded_dtype != data_ty->dtype->dtype) {
       TVM_FFI_VISIT_THROW(TypeError, call)
-          << "layout_transform pad_value dtype (" << padded_dtype << ") and input dtype ("
-          << data_ty->dtype << ") must be the same";
+          << "layout_transform pad_value dtype (" << PrimType(padded_dtype)
+          << ") and input dtype (" << data_ty->dtype << ") must be the same";
     }
   }
 
@@ -2103,7 +2105,9 @@ Type InferTypeGatherElements(const Call& call, const BlockBuilder& ctx) {
         << call->args[1]->ty->GetTypeKey();
   }
 
-  if (!indices_ty->IsUnknownDtype() && !DataType(indices_ty->dtype->dtype).is_int()) {
+  const DLDataType indices_dtype = indices_ty->dtype->dtype;
+  // Gather indices only require integer element kind; vector lanes do not affect shape inference.
+  if (!indices_ty->IsUnknownDtype() && indices_dtype.code != DLDataTypeCode::kDLInt) {
     TVM_FFI_VISIT_THROW(TypeError, call)
         << "GatherElements requires the input indices to have int64 dtype. However, the "
         << "given indices dtype is " << indices_ty->dtype;

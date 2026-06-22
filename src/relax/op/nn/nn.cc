@@ -122,7 +122,9 @@ Type InferTypePRelu(const Call& call, const BlockBuilder& ctx) {
   if (data_ty->IsUnknownNdim()) {
     return data_ty;
   }
-  if (!data_ty->IsUnknownDtype() && !DataType(data_ty->dtype->dtype).is_float()) {
+  const DLDataType data_dtype = data_ty->dtype->dtype;
+  // PRelu preserves the old float-kind check; vector lanes are irrelevant to this check.
+  if (!data_ty->IsUnknownDtype() && data_dtype.code != DLDataTypeCode::kDLFloat) {
     TVM_FFI_VISIT_THROW(TypeError, call) << "Prelu requires the input tensor to have float "
                                             "dtype. However, the given input dtype is "
                                          << data_ty->dtype;
@@ -626,7 +628,9 @@ Type InferTypeGroupNorm(const Call& call, const BlockBuilder& ctx) {
           << channel_axis << ", axes: " << attrs->axes;
     }
   }
-  if (!data_ty->IsUnknownDtype() && !DataType(data_ty->dtype->dtype).is_float()) {
+  const DLDataType data_dtype = data_ty->dtype->dtype;
+  // GroupNorm preserves the old float-kind check; vector lanes are irrelevant to this check.
+  if (!data_ty->IsUnknownDtype() && data_dtype.code != DLDataTypeCode::kDLFloat) {
     TVM_FFI_VISIT_THROW(TypeError, call)
         << op << " expects that data must be float, but got " << data_ty->dtype;
   }
