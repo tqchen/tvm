@@ -1989,7 +1989,7 @@ inline Tensor meta_schedule_layout_transform(
  * \param tag output tensor tag.
  * \return Tensor of input shape.
  */
-inline Tensor shape(const Tensor& src, DataType dtype, const std::string name = "T_shape",
+inline Tensor shape(const Tensor& src, PrimType dtype, const std::string name = "T_shape",
                     const std::string tag = kInjective) {
   int ndim = static_cast<int>(src->shape.size());
   ffi::Array<PrimExpr> out_shape{ndim};
@@ -2006,6 +2006,11 @@ inline Tensor shape(const Tensor& src, DataType dtype, const std::string name = 
       name, tag);
 }
 
+inline Tensor shape(const Tensor& src, DataType dtype, const std::string name = "T_shape",
+                    const std::string tag = kInjective) {
+  return shape(src, PrimType(dtype), name, tag);
+}
+
 /*!
  * \brief Get the size of input tensor.
  * \param src the input tensor.
@@ -2014,7 +2019,7 @@ inline Tensor shape(const Tensor& src, DataType dtype, const std::string name = 
  * \param tag output tensor tag.
  * \return Tensor of input shape.
  */
-inline te::Tensor tensor_size(const te::Tensor& src, const DataType& dtype,
+inline te::Tensor tensor_size(const te::Tensor& src, PrimType dtype,
                               const std::string& name = "tensor_size",
                               const std::string& tag = kInjective) {
   int ndim = static_cast<int>(src->shape.size());
@@ -2029,6 +2034,12 @@ inline te::Tensor tensor_size(const te::Tensor& src, const DataType& dtype,
         return tvm::cast(dtype, ret);
       },
       name, tag);
+}
+
+inline te::Tensor tensor_size(const te::Tensor& src, const DataType& dtype,
+                              const std::string& name = "tensor_size",
+                              const std::string& tag = kInjective) {
+  return tensor_size(src, PrimType(dtype), name, tag);
 }
 
 /*!
@@ -2046,7 +2057,7 @@ inline te::Tensor tensor_size(const te::Tensor& src, const DataType& dtype,
  * \return one-hot tensor.
  */
 inline Tensor one_hot(const Tensor& indices, const PrimExpr on_value, const PrimExpr off_value,
-                      int depth, int axis, const DataType& dtype,
+                      int depth, int axis, PrimType dtype,
                       ffi::Array<PrimExpr> oshape = ffi::Array<PrimExpr>(),
                       const std::string name = "T_one_hot", const std::string tag = kInjective) {
   int true_axis = (axis == -1) ? indices->shape.size() : axis;
@@ -2080,6 +2091,14 @@ inline Tensor one_hot(const Tensor& indices, const PrimExpr on_value, const Prim
         return tirx::Select(indices(indices_indices) == idx, on_value_cast, off_value_cast);
       },
       name, tag);
+}
+
+inline Tensor one_hot(const Tensor& indices, const PrimExpr on_value, const PrimExpr off_value,
+                      int depth, int axis, const DataType& dtype,
+                      ffi::Array<PrimExpr> oshape = ffi::Array<PrimExpr>(),
+                      const std::string name = "T_one_hot", const std::string tag = kInjective) {
+  return one_hot(indices, on_value, off_value, depth, axis, PrimType(dtype), std::move(oshape),
+                 name, tag);
 }
 
 /*!

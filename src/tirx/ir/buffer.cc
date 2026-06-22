@@ -719,11 +719,16 @@ TVM_FFI_STATIC_INIT_BLOCK() {
                     *ret = Buffer(data, dtype, shape, strides, elem_offset, name, data_alignment,
                                   offset_factor, type, axis_separators, span, layout);
                   })
-      .def_method("tirx.BufferAccessPtr", &Buffer::access_ptr)
+      .def_method(
+          "tirx.BufferAccessPtr",
+          static_cast<PrimExpr (Buffer::*)(int, DataType, int, PrimExpr, ffi::Optional<PrimExpr>)
+                          const>(&Buffer::access_ptr))
       .def_method("tirx.BufferGetFlattenedBuffer", &Buffer::GetFlattenedBuffer)
       .def_method("tirx.BufferOffsetOf", &Buffer::OffsetOf)
       .def_method("tirx.BufferOffsetOfp", &Buffer::OffsetOf_p)
-      .def_method("tirx.BufferVLoad", &Buffer::vload)
+      .def_method("tirx.BufferVLoad",
+                  static_cast<PrimExpr (Buffer::*)(ffi::Array<PrimExpr>, DataType,
+                                                   ffi::Optional<PrimExpr>) const>(&Buffer::vload))
       .def_method("tirx.BufferVStore", &Buffer::vstore)
       .def_method("tirx.BufferStorageScope", &Buffer::scope)
       .def_method("tirx.BufferWithAllocatedAddr", &Buffer::with_allocated_addr)

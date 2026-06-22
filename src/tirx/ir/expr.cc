@@ -958,7 +958,7 @@ TVM_FFI_STATIC_INIT_BLOCK() {
 // ProducerLoad
 ProducerLoad::ProducerLoad(DataProducer producer, ffi::Array<PrimExpr> indices, Span span) {
   ffi::ObjectPtr<ProducerLoadNode> node = ffi::make_object<ProducerLoadNode>();
-  node->BaseExprNode::ty = PrimType(producer->GetDataType());
+  node->BaseExprNode::ty = producer->GetPrimType();
   node->producer = std::move(producer);
   node->indices = std::move(indices);
   node->span = std::move(span);

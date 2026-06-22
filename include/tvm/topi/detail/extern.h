@@ -28,6 +28,7 @@
 #include <tvm/tirx/builtin.h>
 
 #include <string>
+#include <utility>
 #include <vector>
 
 namespace tvm {
@@ -61,7 +62,7 @@ using FExtern = std::function<PrimExpr(ffi::Array<Buffer>, ffi::Array<Buffer>)>;
  * element of out_types.
  */
 inline ffi::Array<Tensor> make_extern(const ffi::Array<ffi::Array<PrimExpr>>& out_shapes,
-                                      const std::vector<DataType>& out_types,
+                                      const std::vector<PrimType>& out_types,
                                       const ffi::Array<Tensor>& inputs, FExtern fextern,
                                       std::string name, std::string tag,
                                       ::tvm::ffi::Map<ffi::String, ffi::Any> attrs) {
@@ -87,6 +88,20 @@ inline ffi::Array<Tensor> make_extern(const ffi::Array<ffi::Array<PrimExpr>>& ou
     outputs.push_back(op.output(i));
   }
   return outputs;
+}
+
+inline ffi::Array<Tensor> make_extern(const ffi::Array<ffi::Array<PrimExpr>>& out_shapes,
+                                      const std::vector<DataType>& out_types,
+                                      const ffi::Array<Tensor>& inputs, FExtern fextern,
+                                      std::string name, std::string tag,
+                                      ::tvm::ffi::Map<ffi::String, ffi::Any> attrs) {
+  std::vector<PrimType> prim_types;
+  prim_types.reserve(out_types.size());
+  for (DataType dtype : out_types) {
+    prim_types.emplace_back(dtype);
+  }
+  return make_extern(out_shapes, prim_types, inputs, std::move(fextern), std::move(name),
+                     std::move(tag), std::move(attrs));
 }
 
 /*!
