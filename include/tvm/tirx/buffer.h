@@ -151,6 +151,9 @@ class BufferNode : public ffi::Object {
     return shape.size() != 0 ? DataType(shape[0].ty().dtype()) : tvm::tirx::DefaultIndexType();
   }
 
+  /*! \return primitive element type for compiler-side uses. */
+  PrimType ElementType() const { return PrimType(dtype); }
+
   /*! \brief Determine the offset in the buffer of the given index.
    *
    * Returns the buffer offset, in number of elements of type dtype,
@@ -269,6 +272,11 @@ class Buffer : public ffi::ObjectRef {
    */
   TVM_DLL Buffer with_dtype(DataType dtype) const;
 
+  Buffer with_dtype(PrimType dtype) const { return with_dtype(DataType(dtype.dtype())); }
+
+  /*! \return primitive element type for compiler-side uses. */
+  PrimType ElementType() const { return (*this)->ElementType(); }
+
   /*!
    * \brief Return a new buffer with the data.
    */
@@ -320,6 +328,11 @@ class DataProducerNode : public PrimExprConvertibleNode {
    * \return The data type.
    */
   virtual DataType GetDataType() const = 0;
+  /*!
+   * \brief Get the primitive element type of the result.
+   * \return The primitive type.
+   */
+  virtual PrimType GetPrimType() const { return PrimType(GetDataType()); }
   /*!
    * \brief Get the name hint of the data producer.
    * \return The data type.

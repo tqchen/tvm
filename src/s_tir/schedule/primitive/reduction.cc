@@ -334,7 +334,7 @@ struct ReducerRegistry {
                   return ffi::Array<PrimExpr>{min(x[0], y[0])};
                 },
                 [](const ffi::Array<PrimExpr>& values) {
-                  return ffi::Array<PrimExpr>{max_value(DataType(values[0].ty().dtype()))};
+                  return ffi::Array<PrimExpr>{max_value(values[0].ty())};
                 }),
             CreateReducerGetter(
                 /*n_buffers=*/1,
@@ -342,7 +342,7 @@ struct ReducerRegistry {
                   return ffi::Array<PrimExpr>{max(x[0], y[0])};
                 },
                 [](const ffi::Array<PrimExpr>& values) {
-                  return ffi::Array<PrimExpr>{min_value(DataType(values[0].ty().dtype()))};
+                  return ffi::Array<PrimExpr>{min_value(values[0].ty())};
                 }),
             CreateReducerGetter(
                 /*n_buffers=*/2,
@@ -362,7 +362,7 @@ struct ReducerRegistry {
                 },
                 [](const ffi::Array<PrimExpr>& values) {
                   return ffi::Array<PrimExpr>{MakeConst(values[0].ty(), -1),
-                                              min_value(DataType(values[1].ty().dtype()))};
+                                              min_value(values[1].ty())};
                 }),
             CreateReducerGetter(
                 /*n_buffers=*/2,
@@ -375,7 +375,7 @@ struct ReducerRegistry {
                 },
                 [](const ffi::Array<PrimExpr>& values) {
                   return ffi::Array<PrimExpr>{MakeConst(values[0].ty(), -1),
-                                              min_value(DataType(values[1].ty().dtype()))};
+                                              min_value(values[1].ty())};
                 }),
             CreateReducerGetter(
                 /*n_buffers=*/2,
@@ -386,7 +386,7 @@ struct ReducerRegistry {
                 },
                 [](const ffi::Array<PrimExpr>& values) {
                   return ffi::Array<PrimExpr>{MakeConst(values[0].ty(), -1),
-                                              max_value(DataType(values[1].ty().dtype()))};
+                                              max_value(values[1].ty())};
                 }),
             CreateReducerGetter(
                 /*n_buffers=*/2,
@@ -398,7 +398,7 @@ struct ReducerRegistry {
                 },
                 [](const ffi::Array<PrimExpr>& values) {
                   return ffi::Array<PrimExpr>{MakeConst(values[0].ty(), -1),
-                                              max_value(DataType(values[1].ty().dtype()))};
+                                              max_value(values[1].ty())};
                 })} {}
 
   static void RegisterReducer(

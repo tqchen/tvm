@@ -137,7 +137,7 @@ class PatternMatcher : public ExprVisitor {
     if (ptr == nullptr) {
       match_success_ = false;
     } else {
-      if (!runtime::TypeEqual(op->ty(), ptr->ty())) {
+      if (!runtime::TypeEqual(op->ty().dtype(), ptr->ty().dtype())) {
         match_success_ = false;
       } else {
         PrimExpr tmp = expr_to_match_;

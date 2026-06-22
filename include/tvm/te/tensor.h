@@ -84,6 +84,8 @@ class TensorNode : public DataProducerNode {
 
   DataType GetDataType() const final { return dtype; }
 
+  PrimType GetPrimType() const final { return PrimType(dtype); }
+
   TVM_DLL PrimExpr ToPrimExpr() const final;
 
   TVM_DLL ffi::String GetNameHint() const final;

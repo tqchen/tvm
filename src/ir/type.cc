@@ -79,10 +79,9 @@ DLDataType MakeDLDataType(DLDataTypeCode code, int bits, int lanes, bool is_scal
 
 int16_t EncodedLanes(DLDataType dtype) { return static_cast<int16_t>(dtype.lanes); }
 
-ffi::ObjectPtr<PrimTypeNode> MakePrimTypeNode(DLDataType dtype, Span span = Span()) {
+ffi::ObjectPtr<PrimTypeNode> MakePrimTypeNode(DLDataType dtype) {
   ffi::ObjectPtr<PrimTypeNode> n = ffi::make_object<PrimTypeNode>();
   n->dtype = dtype;
-  n->span = std::move(span);
   return n;
 }
 
@@ -114,15 +113,10 @@ TVM_FFI_STATIC_INIT_BLOCK() {
   TensorMapTypeNode::RegisterReflection();
 }
 
-PrimType::PrimType(DLDataType dtype, Span span) {
-  if (!span.defined()) {
-    if (auto cached = GetCachedPrimTypeNode(dtype)) {
-      data_ = std::move(cached);
-      return;
-    }
-  }
-  data_ = MakePrimTypeNode(dtype, std::move(span));
-}
+PrimType::PrimType(DLDataType dtype) { data_ = GetCachedPrimTypeNode(dtype); }
+
+PrimType::PrimType(DLDataTypeCode code, int bits, int lanes)
+    : PrimType(MakeDLDataType(code, bits, lanes)) {}
 
 PrimType PrimType::Int(int bits, int lanes) {
   if (lanes == 1) {
@@ -138,10 +132,6 @@ PrimType PrimType::Int(int bits, int lanes) {
   return PrimType(MakeDLDataType(DLDataTypeCode::kDLInt, bits, lanes));
 }
 
-PrimType PrimType::UInt(int bits, int lanes) {
-  return PrimType(MakeDLDataType(DLDataTypeCode::kDLUInt, bits, lanes));
-}
-
 PrimType PrimType::Float(int bits, int lanes) {
   if (bits == 32 && lanes == 1) {
     thread_local PrimType f32_ty(MakeDLDataType(DLDataTypeCode::kDLFloat, 32, 1));
@@ -150,101 +140,21 @@ PrimType PrimType::Float(int bits, int lanes) {
   return PrimType(MakeDLDataType(DLDataTypeCode::kDLFloat, bits, lanes));
 }
 
-PrimType PrimType::BFloat(int bits, int lanes) {
-  return PrimType(MakeDLDataType(DLDataTypeCode::kDLBfloat, bits, lanes));
-}
-
-PrimType PrimType::Float8E3M4(int lanes) {
-  return PrimType(MakeDLDataType(DLDataTypeCode::kDLFloat8_e3m4, 8, lanes));
-}
-
-PrimType PrimType::Float8E4M3(int lanes) {
-  return PrimType(MakeDLDataType(DLDataTypeCode::kDLFloat8_e4m3, 8, lanes));
-}
-
-PrimType PrimType::Float8E4M3B11FNUZ(int lanes) {
-  return PrimType(MakeDLDataType(DLDataTypeCode::kDLFloat8_e4m3b11fnuz, 8, lanes));
-}
-
-PrimType PrimType::Float8E4M3FN(int lanes) {
-  return PrimType(MakeDLDataType(DLDataTypeCode::kDLFloat8_e4m3fn, 8, lanes));
-}
-
-PrimType PrimType::Float8E4M3FNUZ(int lanes) {
-  return PrimType(MakeDLDataType(DLDataTypeCode::kDLFloat8_e4m3fnuz, 8, lanes));
-}
-
-PrimType PrimType::Float8E5M2(int lanes) {
-  return PrimType(MakeDLDataType(DLDataTypeCode::kDLFloat8_e5m2, 8, lanes));
-}
-
-PrimType PrimType::Float8E5M2FNUZ(int lanes) {
-  return PrimType(MakeDLDataType(DLDataTypeCode::kDLFloat8_e5m2fnuz, 8, lanes));
-}
-
-PrimType PrimType::Float8E8M0FNU(int lanes) {
-  return PrimType(MakeDLDataType(DLDataTypeCode::kDLFloat8_e8m0fnu, 8, lanes));
-}
-
-PrimType PrimType::Float6E2M3FN(int lanes) {
-  return PrimType(MakeDLDataType(DLDataTypeCode::kDLFloat6_e2m3fn, 6, lanes));
-}
-
-PrimType PrimType::Float6E3M2FN(int lanes) {
-  return PrimType(MakeDLDataType(DLDataTypeCode::kDLFloat6_e3m2fn, 6, lanes));
-}
-
-PrimType PrimType::Float4E2M1FN(int lanes) {
-  return PrimType(MakeDLDataType(DLDataTypeCode::kDLFloat4_e2m1fn, 4, lanes));
-}
-
 PrimType PrimType::Bool() {
   thread_local PrimType bool_ty(MakeDLDataType(DLDataTypeCode::kDLBool, 8, 1));
   return bool_ty;
-}
-
-PrimType PrimType::Bool(int lanes) {
-  if (lanes == 1) return Bool();
-  return PrimType(MakeDLDataType(DLDataTypeCode::kDLBool, 8, lanes));
-}
-
-PrimType PrimType::Handle(int bits, int lanes) {
-  return PrimType(MakeDLDataType(DLDataTypeCode::kDLOpaqueHandle, bits, lanes));
-}
-
-PrimType PrimType::Void() {
-  return PrimType(MakeDLDataType(DLDataTypeCode::kDLOpaqueHandle, 0, 0));
 }
 
 PrimType PrimType::ScalableVector(DLDataTypeCode code, int bits, int lanes) {
   return PrimType(MakeDLDataType(code, bits, lanes, /*is_scalable=*/true));
 }
 
-bool PrimType::MatchesElementType(DLDataTypeCode code, int bits) const {
+PrimType PrimType::WithCode(DLDataTypeCode code) const {
   DLDataType dtype = this->dtype();
-  return dtype.code == static_cast<uint8_t>(code) && dtype.bits == bits;
+  ValidatePrimTypeSpec(code, dtype.bits, EncodedLanes(dtype));
+  dtype.code = static_cast<uint8_t>(code);
+  return PrimType(dtype);
 }
-
-bool PrimType::IsVoid() const {
-  DLDataType dtype = this->dtype();
-  return dtype.code == static_cast<uint8_t>(DLDataTypeCode::kDLOpaqueHandle) && dtype.bits == 0 &&
-         EncodedLanes(dtype) == 0;
-}
-
-bool PrimType::IsHandle() const {
-  DLDataType dtype = this->dtype();
-  return dtype.code == static_cast<uint8_t>(DLDataTypeCode::kDLOpaqueHandle) && !IsVoid();
-}
-
-bool PrimType::IsPredicate() const {
-  DLDataType dtype = this->dtype();
-  return dtype.code == static_cast<uint8_t>(DLDataTypeCode::kDLBool) ||
-         (dtype.code == static_cast<uint8_t>(DLDataTypeCode::kDLUInt) && dtype.bits == 1);
-}
-
-bool PrimType::IsScalableVector() const { return EncodedLanes(this->dtype()) < -1; }
-
-bool PrimType::IsFixedLengthVector() const { return EncodedLanes(this->dtype()) > 1; }
 
 PrimType PrimType::WithBits(int bits) const {
   DLDataType dtype = this->dtype();
@@ -257,20 +167,6 @@ PrimType PrimType::WithLanes(int lanes) const {
   return PrimType(MakeDLDataType(this->code(), this->bits(), lanes));
 }
 
-DLDataTypeCode PrimType::code() const {
-  return static_cast<DLDataTypeCode>(static_cast<int>(this->dtype().code));
-}
-
-int32_t PrimType::bits() const { return this->dtype().bits; }
-
-int32_t PrimType::lanes() const {
-  int16_t encoded_lanes = EncodedLanes(this->dtype());
-  if (encoded_lanes < 0) {
-    TVM_FFI_THROW(InternalError) << "Can't fetch the lanes of a scalable vector at a compile time.";
-  }
-  return encoded_lanes;
-}
-
 int32_t PrimType::VScaleFactor() const {
   int16_t encoded_lanes = EncodedLanes(this->dtype());
   if (encoded_lanes >= -1) {
@@ -278,10 +174,6 @@ int32_t PrimType::VScaleFactor() const {
   }
   return -encoded_lanes;
 }
-
-DLDataType PrimType::dtype() const { return get()->dtype; }
-
-PrimType::operator DLDataType() const { return this->dtype(); }
 
 TVM_FFI_STATIC_INIT_BLOCK() {
   namespace refl = tvm::ffi::reflection;

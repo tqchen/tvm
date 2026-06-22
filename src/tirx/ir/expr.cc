@@ -180,7 +180,7 @@ Var::Var(ffi::String name_hint, Type type_annotation, Span span) {
   if (n->type_annotation.as<PrimTypeNode>()) {
     n->BaseExprNode::ty = n->type_annotation;
   } else {
-    n->BaseExprNode::ty = PrimType(GetRuntimeDataType(n->type_annotation));
+    n->BaseExprNode::ty = PrimType(GetRuntimeDLDataType(n->type_annotation));
   }
   n->span = std::move(span);
   data_ = std::move(n);
@@ -241,7 +241,7 @@ SizeVar::SizeVar(ffi::String name_hint, Type type_annotation, Span span) {
   auto n = ffi::make_object<SizeVarNode>();
   n->name_hint = std::move(name_hint);
   n->type_annotation = std::move(type_annotation);
-  n->BaseExprNode::ty = PrimType(GetRuntimeDataType(n->type_annotation));
+  n->BaseExprNode::ty = PrimType(GetRuntimeDLDataType(n->type_annotation));
   n->span = std::move(span);
   data_ = std::move(n);
 }
