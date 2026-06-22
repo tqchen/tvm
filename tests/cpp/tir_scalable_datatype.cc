@@ -195,7 +195,7 @@ TEST(ScalableDataType, TestScalableIntrinCall) {
 #else
                       {tvm::IntImm::Int32(::llvm::Intrinsic::experimental_stepvector)});
 #endif
-  ASSERT_EQ(tvm::DataType(call.ty().dtype()), scalable_type);
+  ASSERT_EQ(tvm::DataType(call.ty()->dtype), scalable_type);
   ASSERT_EQ(tvm::Script(call),
 #if TVM_LLVM_VERSION >= 200
             "T.call_llvm_intrin(\"int32xvscalex4\", \"llvm.stepvector\")");

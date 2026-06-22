@@ -43,7 +43,7 @@ class StaticTypeDeriver : public TypeFunctor<Type(const Type&)> {
  public:
   Type VisitType_(const ObjectTypeNode* op) final { return ObjectType(op->span); }
 
-  Type VisitType_(const PrimTypeNode* op) final { return PrimType(op->dtype, op->span); }
+  Type VisitType_(const PrimTypeNode* op) final { return tvm::PrimType(op->dtype); }
 
   Type VisitType_(const ShapeTypeNode* op) final { return ShapeType(op->ndim, op->span); }
 
@@ -86,9 +86,9 @@ Type TypeFromStaticType(const Type& type) {
   if (type.as<ObjectTypeNode>()) {
     return ObjectType(type->span);
   } else if (const PrimTypeNode* prim_type = type.as<PrimTypeNode>()) {
-    return PrimType(prim_type->dtype, prim_type->span);
+    return tvm::PrimType(prim_type->dtype);
   } else if (const tvm::PrimTypeNode* prim_type = type.as<tvm::PrimTypeNode>()) {
-    return PrimType(DataType(prim_type->dtype), prim_type->span);
+    return tvm::PrimType(prim_type->dtype);
   } else if (const ShapeTypeNode* shape_type = type.as<ShapeTypeNode>()) {
     return ShapeType(shape_type->ndim, type->span);
   } else if (const TensorTypeNode* tensor_type = type.as<TensorTypeNode>()) {

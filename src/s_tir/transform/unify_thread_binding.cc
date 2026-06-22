@@ -76,7 +76,7 @@ class ThreadBindingUnifier : public StmtExprMutator {
 
     } else {
       // Create a new unit loop with the annotation.
-      DataType dtype(op->loop_var.ty().dtype());
+      DataType dtype(op->loop_var.ty()->dtype);
       return For(/*loop_var=*/Var("var", dtype),         //
                  /*min=*/IntImm(PrimType(dtype), 0),     //
                  /*extent=*/IntImm(PrimType(dtype), 1),  //

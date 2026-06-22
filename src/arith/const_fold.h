@@ -72,15 +72,12 @@ inline ffi::Optional<PrimExpr> TryConstFold(PrimExpr a);
  * \param type The type to represent index.
  * \return the checked result.
  */
-inline bool IsIndexType(const DataType& type) {
-  return type.is_int() && !type.is_scalable_or_fixed_length_vector() &&
-         (type.bits() == 32 || type.bits() == 64);
+inline bool IsIndexType(DLDataType type) {
+  return type.code == static_cast<uint8_t>(DLDataTypeCode::kDLInt) &&
+         (type.bits == 32 || type.bits == 64) && type.lanes == 1;
 }
 
-inline bool IsIndexType(const PrimType& type) {
-  return type.code() == DLDataTypeCode::kDLInt && !type.IsScalableVector() &&
-         !type.IsFixedLengthVector() && (type.bits() == 32 || type.bits() == 64);
-}
+inline bool IsIndexType(const DataType& type) { return IsIndexType(static_cast<DLDataType>(type)); }
 
 /*! \brief Helper to get const folding result repr in int64. */
 inline int64_t GetFoldResultInt64Repr(int64_t x, const DataType& dtype) {
@@ -135,13 +132,13 @@ inline double GetFoldResultDoubleRepr(float x) {
   const FloatImmNode* fb = b.as<FloatImmNode>(); \
   BODY;
 
-#define TVM_INDEX_CONST_PROPAGATION(BODY)                 \
-  const IntImmNode* pa = a.as<IntImmNode>();              \
-  const IntImmNode* pb = b.as<IntImmNode>();              \
-  PrimType ta = a.ty();                                   \
-  PrimType tb = b.ty();                                   \
-  if (arith::IsIndexType(ta) && arith::IsIndexType(tb)) { \
-    BODY;                                                 \
+#define TVM_INDEX_CONST_PROPAGATION(BODY)                               \
+  const IntImmNode* pa = a.as<IntImmNode>();                            \
+  const IntImmNode* pb = b.as<IntImmNode>();                            \
+  PrimType ta = a.ty();                                                 \
+  PrimType tb = b.ty();                                                 \
+  if (arith::IsIndexType(ta->dtype) && arith::IsIndexType(tb->dtype)) { \
+    BODY;                                                               \
   }
 
 // specialization of constant folders.

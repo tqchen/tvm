@@ -91,7 +91,7 @@ inline ffi::Array<PrimExpr> StridedSliceCanonicalizeBegin(const ffi::Array<PrimE
                                                           const std::vector<int64_t>& begin,
                                                           const std::vector<int64_t>& strides,
                                                           const ffi::Array<int64_t>& axes,
-                                                          DataType dtype,
+                                                          PrimType dtype,
                                                           std::string slice_mode = "end") {
   ffi::Array<PrimExpr> begin_expr;
   for (size_t i = 0; i < axes.size(); ++i) {

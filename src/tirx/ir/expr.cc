@@ -56,7 +56,7 @@ std::optional<int> ExtractVscaleFactor(const PrimExpr& lanes) {
   return std::nullopt;
 }
 
-DataType AsDataType(const PrimType& ty) { return DataType(ty.dtype()); }
+DataType AsDataType(const PrimType& ty) { return DataType(ty->dtype); }
 
 bool SameType(const PrimType& lhs, const PrimType& rhs) {
   return AsDataType(lhs) == AsDataType(rhs);
@@ -300,7 +300,7 @@ TVM_FFI_STATIC_INIT_BLOCK() {
 // Cast
 Cast::Cast(PrimType value_ty, PrimExpr value, Span span) {
   TVM_FFI_ICHECK(value.defined());
-  DataType dtype = DataType(value_ty.dtype());
+  DataType dtype = DataType(value_ty->dtype);
   PrimType value_expr_ty = value.ty();
   TVM_FFI_ICHECK_EQ(dtype.get_lanes_or_vscale_factor(), GetLanesOrVScaleFactor(value_expr_ty));
   TVM_FFI_ICHECK(dtype.is_scalable_vector() == value_expr_ty.IsScalableVector());

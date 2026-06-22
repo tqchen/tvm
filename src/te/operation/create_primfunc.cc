@@ -387,7 +387,7 @@ Stmt GenerateBodyStmt(const ffi::Array<PrimExpr>& indices, const ffi::Array<Buff
       const PrimExpr& right = analyzer->Simplify(f_transform_and_remap(reduce->source[i]));
       lhs.push_back(left);
       rhs.push_back(right);
-      TVM_FFI_ICHECK_EQ(DataType(left.ty().dtype()), DataType(right.ty().dtype()));
+      TVM_FFI_ICHECK_EQ(DataType(left.ty()->dtype), DataType(right.ty()->dtype));
     }
 
     ffi::Array<Var> temp_vars;

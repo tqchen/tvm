@@ -276,7 +276,7 @@ InferLayoutOutput InferLayoutUnaryEwise(
  */
 inline std::optional<DataType> GetElementDType(const Type& ty) {
   if (const auto* prim = ty.as<PrimTypeNode>()) {
-    return prim->dtype;
+    return DataType(prim->dtype);
   } else if (const auto* tensor = ty.as<TensorTypeNode>()) {
     return tensor->dtype;
   } else {

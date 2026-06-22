@@ -218,7 +218,7 @@ class VTInjector : public arith::IRMutatorWithAnalyzer {
   PrimExpr VisitExpr_(const CallNode* op) final {
     if (op->op.same_as(builtin::tvm_access_ptr())) {
       TVM_FFI_ICHECK_EQ(op->args.size(), 5U);
-      DataType dtype(op->args[0].ty().dtype());
+      DataType dtype(op->args[0].ty()->dtype);
       const VarNode* buffer = op->args[1].as<VarNode>();
       auto it = alloc_remap_.find(buffer);
       if (it == alloc_remap_.end()) return StmtExprMutator::VisitExpr_(op);

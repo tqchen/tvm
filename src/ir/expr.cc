@@ -70,7 +70,7 @@ PrimExpr::PrimExpr(float value) : PrimExpr(FloatImm(PrimType::Float(32), value))
 PrimExpr PrimExpr::ConvertFallbackValue(ffi::String value) { return tirx::StringImm(value); }
 
 IntImm::IntImm(PrimType value_ty, int64_t value, Span span) {
-  DLDataType runtime_dtype = value_ty.dtype();
+  DLDataType runtime_dtype = value_ty->dtype;
   DLDataTypeCode code = value_ty.code();
   int32_t bits = value_ty.bits();
   TVM_FFI_CHECK(!value_ty.IsScalableVector() && !value_ty.IsFixedLengthVector(), ValueError)
@@ -111,7 +111,7 @@ TVM_FFI_STATIC_INIT_BLOCK() {
 }
 
 FloatImm::FloatImm(PrimType value_ty, double value, Span span) {
-  DLDataType runtime_dtype = value_ty.dtype();
+  DLDataType runtime_dtype = value_ty->dtype;
   DLDataTypeCode code = value_ty.code();
   int32_t bits = value_ty.bits();
   TVM_FFI_CHECK(!value_ty.IsScalableVector() && !value_ty.IsFixedLengthVector(), ValueError)
@@ -211,22 +211,6 @@ FloatImm::FloatImm(PrimType value_ty, double value, Span span) {
   node->span = span;
   data_ = std::move(node);
 }
-
-namespace ffi {
-
-IntImm TypeTraits<IntImm>::ConvertFallbackValue(int64_t value) {
-  auto value_ty =
-      (value > std::numeric_limits<int>::max() || value < std::numeric_limits<int>::min())
-          ? PrimType::Int(64)
-          : PrimType::Int(32);
-  return IntImm(value_ty, value);
-}
-
-FloatImm TypeTraits<FloatImm>::ConvertFallbackValue(double value) {
-  return FloatImm(PrimType::Float(32), value);
-}
-
-}  // namespace ffi
 
 TVM_FFI_STATIC_INIT_BLOCK() {
   namespace refl = tvm::ffi::reflection;

@@ -186,7 +186,7 @@ bool IsBoolType(const Type& ty, bool permit_unknown_rank, bool permit_unknown_dt
     dtype = tensor->dtype;
     ndim = tensor->ndim;
   } else if (const auto* prim = ty.as<PrimTypeNode>()) {
-    dtype = prim->dtype;
+    dtype = DataType(prim->dtype);
     ndim = 0;
   } else {
     return false;

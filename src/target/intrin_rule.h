@@ -73,9 +73,9 @@ inline PrimExpr DispatchPureExtern(const PrimExpr& e) {
   DataType dtype;
   if (dtype_from_arg) {
     TVM_FFI_ICHECK_EQ(call->args.size(), 1U);
-    dtype = DataType(call->args[0].ty().dtype());
+    dtype = DataType(call->args[0].ty()->dtype);
   } else {
-    dtype = DataType(ffi::GetRef<PrimExpr>(call).ty().dtype());
+    dtype = DataType(ffi::GetRef<PrimExpr>(call).ty()->dtype);
   }
   name = T()(dtype, name.substr(5));
 

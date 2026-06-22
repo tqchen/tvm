@@ -122,17 +122,11 @@ Expr tensor_dtype_code(Expr expr) {
 
 Type InferTypeTensorDtypeCode(const Call& call, const BlockBuilder&) {
   auto dlpack_type = DataType::UInt(8);
-
-  DataType dtype = GetTensorDataType(call);
-  if (dtype.is_void()) {
-    return PrimType(dlpack_type);
-  } else {
-    return PrimType(IntImm(tvm::PrimType(dlpack_type), dtype.code()));
-  }
+  return tvm::PrimType(dlpack_type);
 }
 
 Expr LegalizeTensorDtypeCode(const BlockBuilder& bb, const Call& call) {
-  auto field_dtype = call->ty.as_or_throw<PrimType>()->dtype;
+  DataType field_dtype(call->ty.as_or_throw<tvm::PrimType>()->dtype);
 
   Expr arg = call->args[0];
   tirx::PrimFunc getter =
@@ -160,17 +154,11 @@ Expr tensor_dtype_bits(Expr expr) {
 
 Type InferTypeTensorDtypeBits(const Call& call, const BlockBuilder&) {
   auto dlpack_type = DataType::UInt(8);
-
-  DataType dtype = GetTensorDataType(call);
-  if (dtype.is_void()) {
-    return PrimType(dlpack_type);
-  } else {
-    return PrimType(IntImm(tvm::PrimType(dlpack_type), dtype.bits()));
-  }
+  return tvm::PrimType(dlpack_type);
 }
 
 Expr LegalizeTensorDtypeBits(const BlockBuilder& bb, const Call& call) {
-  auto field_dtype = call->ty.as_or_throw<PrimType>()->dtype;
+  DataType field_dtype(call->ty.as_or_throw<tvm::PrimType>()->dtype);
 
   Expr arg = call->args[0];
   tirx::PrimFunc getter =
@@ -198,17 +186,11 @@ Expr tensor_dtype_lanes(Expr expr) {
 
 Type InferTypeTensorDtypeLanes(const Call& call, const BlockBuilder&) {
   auto dlpack_type = DataType::UInt(16);
-
-  DataType dtype = GetTensorDataType(call);
-  if (dtype.is_void()) {
-    return PrimType(dlpack_type);
-  } else {
-    return PrimType(IntImm(tvm::PrimType(dlpack_type), dtype.lanes()));
-  }
+  return tvm::PrimType(dlpack_type);
 }
 
 Expr LegalizeTensorDtypeLanes(const BlockBuilder& bb, const Call& call) {
-  auto field_dtype = call->ty.as_or_throw<PrimType>()->dtype;
+  DataType field_dtype(call->ty.as_or_throw<tvm::PrimType>()->dtype);
 
   Expr arg = call->args[0];
   tirx::PrimFunc getter =
@@ -236,17 +218,11 @@ Expr tensor_ndim(Expr expr) {
 
 Type InferTypeTensorNDim(const Call& call, const BlockBuilder&) {
   auto dlpack_type = DataType::Int(32);
-
-  auto ty = GetTensorArgInfo(call);
-  if (ty->IsUnknownNdim()) {
-    return PrimType(dlpack_type);
-  } else {
-    return PrimType(IntImm(tvm::PrimType(dlpack_type), ty->ndim));
-  }
+  return tvm::PrimType(dlpack_type);
 }
 
 Expr LegalizeTensorNDim(const BlockBuilder& bb, const Call& call) {
-  auto field_dtype = call->ty.as_or_throw<PrimType>()->dtype;
+  DataType field_dtype(call->ty.as_or_throw<tvm::PrimType>()->dtype);
 
   Expr arg = call->args[0];
   tirx::PrimFunc getter =
@@ -280,14 +256,14 @@ Type InferTypeTensorShape(const Call& call, const BlockBuilder&) {
   auto tensor_shape = tensor_ty->GetShape();
 
   if (int_imm_axis && tensor_shape.defined()) {
-    return PrimType(tensor_shape.value()[int_imm_axis.value()].dtype());
+    return tvm::PrimType(tensor_shape.value()[int_imm_axis.value()].ty());
   } else {
-    return PrimType(dlpack_type);
+    return tvm::PrimType(dlpack_type);
   }
 }
 
 Expr LegalizeTensorShape(const BlockBuilder& bb, const Call& call) {
-  auto field_dtype = call->ty.as_or_throw<PrimType>()->dtype;
+  DataType field_dtype(call->ty.as_or_throw<tvm::PrimType>()->dtype);
 
   tirx::PrimFunc getter = [&]() -> tirx::PrimFunc {
     tirx::Var dlpack_handle("dlpack_handle", DataType::Handle());
@@ -321,8 +297,8 @@ Expr LegalizeTensorShape(const BlockBuilder& bb, const Call& call) {
 
     tirx::PrimFunc func({dlpack_handle, axis}, body, tvm::PrimType(field_dtype), {}, attrs);
 
-    FuncType ty({TensorType(DataType::Void(), kUnknownNDim), PrimType(DataType(axis.ty().dtype()))},
-                PrimType(field_dtype));
+    FuncType ty({TensorType(DataType::Void(), kUnknownNDim), tvm::PrimType(axis.ty())},
+                tvm::PrimType(field_dtype));
     func->ty = ty;
     return func;
   }();
@@ -373,9 +349,9 @@ Type InferTypeTensorStride(const Call& call, const BlockBuilder&) {
     for (size_t axis = int_imm_axis.value() + 1; axis < tensor_shape.size(); axis++) {
       stride = stride * tensor_shape[axis];
     }
-    return PrimType(stride.dtype());
+    return tvm::PrimType(stride.ty());
   } else {
-    return PrimType(dlpack_type);
+    return tvm::PrimType(dlpack_type);
   }
 }
 
@@ -405,9 +381,9 @@ Type InferTypeTensorByteOffset(const Call& call, const BlockBuilder&) {
     // Relax implicitly requires that the byte offset is zero for any
     // legalizable tensor.  See InferTypeTensorStride for full
     // explanation.
-    return PrimType(IntImm(tvm::PrimType(dlpack_type), 0));
+    return tvm::PrimType(dlpack_type);
   } else {
-    return PrimType(dlpack_type);
+    return tvm::PrimType(dlpack_type);
   }
 }
 
@@ -436,9 +412,9 @@ Type InferTypeTensorElemOffset(const Call& call, const BlockBuilder&) {
     // Relax implicitly requires that the element offset is zero for
     // any legalizable tensor.  See InferTypeTensorStride for
     // full explanation.
-    return PrimType(IntImm(tvm::PrimType(dlpack_type), 0));
+    return tvm::PrimType(dlpack_type);
   } else {
-    return PrimType(dlpack_type);
+    return tvm::PrimType(dlpack_type);
   }
 }
 

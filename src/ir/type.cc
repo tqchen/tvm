@@ -77,8 +77,6 @@ DLDataType MakeDLDataType(DLDataTypeCode code, int bits, int lanes, bool is_scal
                     static_cast<uint16_t>(encoded_lanes)};
 }
 
-int16_t EncodedLanes(DLDataType dtype) { return static_cast<int16_t>(dtype.lanes); }
-
 ffi::ObjectPtr<PrimTypeNode> MakePrimTypeNode(DLDataType dtype) {
   ffi::ObjectPtr<PrimTypeNode> n = ffi::make_object<PrimTypeNode>();
   n->dtype = dtype;
@@ -147,32 +145,6 @@ PrimType PrimType::Bool() {
 
 PrimType PrimType::ScalableVector(DLDataTypeCode code, int bits, int lanes) {
   return PrimType(MakeDLDataType(code, bits, lanes, /*is_scalable=*/true));
-}
-
-PrimType PrimType::WithCode(DLDataTypeCode code) const {
-  DLDataType dtype = this->dtype();
-  ValidatePrimTypeSpec(code, dtype.bits, EncodedLanes(dtype));
-  dtype.code = static_cast<uint8_t>(code);
-  return PrimType(dtype);
-}
-
-PrimType PrimType::WithBits(int bits) const {
-  DLDataType dtype = this->dtype();
-  ValidatePrimTypeSpec(static_cast<DLDataTypeCode>(dtype.code), bits, EncodedLanes(dtype));
-  dtype.bits = static_cast<uint8_t>(bits);
-  return PrimType(dtype);
-}
-
-PrimType PrimType::WithLanes(int lanes) const {
-  return PrimType(MakeDLDataType(this->code(), this->bits(), lanes));
-}
-
-int32_t PrimType::VScaleFactor() const {
-  int16_t encoded_lanes = EncodedLanes(this->dtype());
-  if (encoded_lanes >= -1) {
-    TVM_FFI_THROW(InternalError) << "A fixed length vector doesn't have a vscale factor.";
-  }
-  return -encoded_lanes;
 }
 
 TVM_FFI_STATIC_INIT_BLOCK() {

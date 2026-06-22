@@ -128,7 +128,7 @@ TVM_REGISTER_OP("tirx.tvm_access_ptr")
       const CallNode* call = e.as<CallNode>();
       TVM_FFI_ICHECK(call != nullptr);
       TVM_FFI_ICHECK_EQ(call->args.size(), 5U);
-      DataType dtype(call->args[0].ty().dtype());
+      DataType dtype(call->args[0].ty()->dtype);
       Var buffer_var = call->args[1].as_or_throw<Var>();
       PrimExpr offset = call->args[2];
       TVM_FFI_ICHECK(call->ty().IsHandle());

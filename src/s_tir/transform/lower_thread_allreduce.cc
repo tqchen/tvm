@@ -187,7 +187,7 @@ class ThreadAllreduceBuilder final : public StmtExprMutator {
       if (!is_one(cond)) {
         values[idx] = Select(cond, values[idx], inits[idx]);
       }
-      types[idx] = DataType(values[idx].ty().dtype());
+      types[idx] = DataType(values[idx].ty()->dtype);
     }
     std::vector<Buffer> buffers(size);
     for (size_t idx = 0; idx < size; ++idx) {
@@ -322,7 +322,7 @@ class ThreadAllreduceBuilder final : public StmtExprMutator {
         for (size_t i = 0; i < size; ++i) {
           Buffer buf = reduce_results[i].as_or_throw<BufferLoad>()->buffer;
           PrimExpr val = BufferLoad(buf, {zero_index});
-          TVM_FFI_ICHECK_EQ(DataType(val->ty().dtype()), types[i]);
+          TVM_FFI_ICHECK_EQ(DataType(val->ty()->dtype), types[i]);
           PrimExpr splat = WarpShuffle(builtin::tvm_warp_shuffle(), new_alloc_bufs.back(), val,
                                        reduce_extent * group_index);
           seq.push_back(BufferStore(buf, splat, {zero_index}));
@@ -395,7 +395,7 @@ class ThreadAllreduceBuilder final : public StmtExprMutator {
       for (size_t i = 0; i < size; ++i) {
         TVM_FFI_ICHECK(!load_remap_.count(buffers[i]->data.get()));
         Buffer buf = reduce_results[i].as_or_throw<BufferLoad>()->buffer;
-        TVM_FFI_ICHECK_EQ(DataType(reduce_results[i].ty().dtype()), types[i]);
+        TVM_FFI_ICHECK_EQ(DataType(reduce_results[i].ty()->dtype), types[i]);
         load_remap_[buffers[i]->data.get()] = reduce_results[i];
 
         // The AllocBuffer doesn't need to be emitted here since alloc_remap_
@@ -431,7 +431,7 @@ class ThreadAllreduceBuilder final : public StmtExprMutator {
         PrimExpr pred = MakeConst(DataType::Bool(types[idx].lanes()), true);
         BufferLoad load(shared_bufs[idx],
                         {BufIndex(IntImm(reduce_index.ty(), 0), group_index, reduce_extent)});
-        TVM_FFI_ICHECK_EQ(DataType(load->ty().dtype()), types[idx]);
+        TVM_FFI_ICHECK_EQ(DataType(load->ty()->dtype), types[idx]);
         load_remap_[buffers[idx]->data.get()] = load;
         alloc_remap_[buffers[idx]->data.get()] = shared_bufs[idx];
         var_remap_[buffers[idx]->data.get()] = shared_bufs[idx]->data;
@@ -496,7 +496,7 @@ class ThreadAllreduceBuilder final : public StmtExprMutator {
     // active channels.
     ffi::Optional<Buffer> mask_buffer;
     if (need_warp_shuffle_mask_) {
-      mask_buffer = decl_buffer(shape, DataType(mask.ty().dtype()), "mask", "local");
+      mask_buffer = decl_buffer(shape, DataType(mask.ty()->dtype), "mask", "local");
       seq->emplace_back(BufferStore(mask_buffer.value(), mask, zero_indices));
       // Push the buffer description.  Later this will have an
       // allocation built for it.
@@ -514,7 +514,7 @@ class ThreadAllreduceBuilder final : public StmtExprMutator {
       for (int i = 0; i < n_buffers; ++i) {
         Buffer shared_buf = shared_bufs[i];
         BufferLoad val(shared_buf, zero_indices);
-        TVM_FFI_ICHECK_EQ(DataType(val->ty().dtype()), dtypes[i]);
+        TVM_FFI_ICHECK_EQ(DataType(val->ty()->dtype), dtypes[i]);
         a.push_back(val);
 
         // __shfl_*sync calls shall not appear in if_then_else expressions
@@ -535,7 +535,7 @@ class ThreadAllreduceBuilder final : public StmtExprMutator {
         seq->push_back(s);
 
         BufferLoad load = BufferLoad(local_buf, zero_indices);
-        TVM_FFI_ICHECK_EQ(DataType(load->ty().dtype()), dtypes[i]);
+        TVM_FFI_ICHECK_EQ(DataType(load->ty()->dtype), dtypes[i]);
         b.push_back(load);
       }
 
@@ -594,11 +594,11 @@ class ThreadAllreduceBuilder final : public StmtExprMutator {
       for (size_t i = 0; i < size; ++i) {
         BufferLoad b_load(shared_bufs[i],
                           {BufIndex(reduce_index + offset, group_index, reduce_extent)});
-        TVM_FFI_ICHECK_EQ(DataType(b_load->ty().dtype()), types[i]);
+        TVM_FFI_ICHECK_EQ(DataType(b_load->ty()->dtype), types[i]);
         b.push_back(b_load);
 
         BufferLoad a_load(shared_bufs[i], {buf_index});
-        TVM_FFI_ICHECK_EQ(DataType(a_load->ty().dtype()), types[i]);
+        TVM_FFI_ICHECK_EQ(DataType(a_load->ty()->dtype), types[i]);
         a.push_back(a_load);
       }
       ffi::Array<PrimExpr> ret = (*combiner)(a, b);

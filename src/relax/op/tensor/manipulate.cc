@@ -724,7 +724,7 @@ Type InferTypeLayoutTransform(const Call& call, const BlockBuilder& ctx) {
   // Check pad_value has same dtype as input.
   if (optional_pad_value.defined()) {
     PrimExpr padded_value = optional_pad_value.value()->value;
-    DataType padded_dtype(padded_value.ty().dtype());
+    DataType padded_dtype(padded_value.ty()->dtype);
     if (padded_dtype != data_ty->dtype) {
       TVM_FFI_VISIT_THROW(TypeError, call)
           << "layout_transform pad_value dtype (" << padded_dtype << ") and input dtype ("
@@ -2918,7 +2918,7 @@ Type InferTypeSliceScatter(const Call& call, const BlockBuilder& ctx) {
     if (prim_ty.code() != DLDataTypeCode::kDLInt && prim_ty.code() != DLDataTypeCode::kDLUInt) {
       TVM_FFI_VISIT_THROW(TypeError, call)
           << "SliceScatter expects `" << key << "` (" << prim_expr
-          << ") to be an integer PrimValue, but got dtype " << prim_ty.dtype();
+          << ") to be an integer PrimValue, but got dtype " << DataType(prim_ty->dtype);
     }
     return prim_expr;
   };
@@ -2997,8 +2997,8 @@ Expr one_hot(Expr indices, PrimValue on_value, PrimValue off_value, int depth, i
   attrs->axis = axis;
 
   // Check if on_value and off_value have the same dtype
-  DataType on_dtype(on_value->value.ty().dtype());
-  DataType off_dtype(off_value->value.ty().dtype());
+  DataType on_dtype(on_value->value.ty()->dtype);
+  DataType off_dtype(off_value->value.ty()->dtype);
   TVM_FFI_ICHECK(on_dtype == off_dtype)
       << "one_hot: on_value and off_value must have the same dtype, "
       << "but got " << on_dtype << " and " << off_dtype;
@@ -3020,8 +3020,8 @@ Type InferTypeOneHot(const Call& call, const BlockBuilder& ctx) {
   PrimValue on_value = call->args[1].as_or_throw<PrimValue>();
   PrimValue off_value = call->args[2].as_or_throw<PrimValue>();
   // Check if on_value and off_value have the same dtype
-  DataType on_dtype(on_value->value.ty().dtype());
-  DataType off_dtype(off_value->value.ty().dtype());
+  DataType on_dtype(on_value->value.ty()->dtype);
+  DataType off_dtype(off_value->value.ty()->dtype);
   TVM_FFI_ICHECK(on_dtype == off_dtype)
       << "one_hot: on_value and off_value must have the same dtype, "
       << "but got " << on_dtype << " and " << off_dtype;

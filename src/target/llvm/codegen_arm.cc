@@ -87,7 +87,7 @@ PrimExpr CodeGenARM::ARMPopcount(const CallNode* call) {
   // to return back to original input type
 
   // Dvisions are always divisible (number of bits = 64 or 128)
-  DataType e_dtype(e.ty().dtype());
+  DataType e_dtype(e.ty()->dtype);
   DataType uint8_type = DataType(e_dtype.code(), 8, e_dtype.bits() * e_dtype.lanes() / 8);
   DataType uint16_type =
       DataType(uint8_type.code(), 16, uint8_type.bits() * uint8_type.lanes() / 16);

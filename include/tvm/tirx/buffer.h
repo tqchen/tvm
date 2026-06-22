@@ -42,13 +42,14 @@ namespace tirx {
 /*! \brief if TVM_INDEX_DEFAULT_I64 is set, return int64, otherwise return int32 */
 inline PrimType DefaultIndexPrimType() {
 #if TVM_INDEX_DEFAULT_I64
-  return PrimType::Int(64);
+  static const PrimType default_index_ty = PrimType::Int(64);
 #else
-  return PrimType::Int(32);
+  static const PrimType default_index_ty = PrimType::Int(32);
 #endif
+  return default_index_ty;
 }
 
-inline DataType DefaultIndexType() { return DataType(DefaultIndexPrimType().dtype()); }
+inline DataType DefaultIndexType() { return DataType(DefaultIndexPrimType()->dtype); }
 
 // forward declare Stmt
 class Stmt;
@@ -150,7 +151,7 @@ class BufferNode : public ffi::Object {
 
   /*! \return preferred index type for this buffer node */
   DataType DefaultIndexType() const {
-    return shape.size() != 0 ? DataType(shape[0].ty().dtype()) : tvm::tirx::DefaultIndexType();
+    return shape.size() != 0 ? DataType(shape[0].ty()->dtype) : tvm::tirx::DefaultIndexType();
   }
 
   /*! \return primitive element type for compiler-side uses. */
@@ -190,7 +191,7 @@ class Buffer : public ffi::ObjectRef {
          PrimExpr elem_offset, ffi::String name, int data_alignment, int offset_factor,
          BufferType buffer_type, ffi::Array<IntImm> axis_separators = {}, Span span = Span(),
          ffi::Optional<Layout> layout = std::nullopt, ffi::Array<PrimExpr> allocated_addr = {})
-      : Buffer(std::move(data), DataType(dtype.dtype()), std::move(shape), std::move(strides),
+      : Buffer(std::move(data), DataType(dtype->dtype), std::move(shape), std::move(strides),
                std::move(elem_offset), std::move(name), data_alignment, offset_factor, buffer_type,
                std::move(axis_separators), std::move(span), std::move(layout),
                std::move(allocated_addr)) {}
@@ -224,7 +225,7 @@ class Buffer : public ffi::ObjectRef {
   PrimExpr access_ptr(int access_mask, PrimType ptr_type, int content_lanes = 1,
                       PrimExpr offset = IntImm::Int32(0),
                       ffi::Optional<PrimExpr> input_extent = std::nullopt) const {
-    return access_ptr(access_mask, DataType(ptr_type.dtype()), content_lanes, std::move(offset),
+    return access_ptr(access_mask, DataType(ptr_type->dtype), content_lanes, std::move(offset),
                       std::move(input_extent));
   }
   /*!
@@ -238,7 +239,7 @@ class Buffer : public ffi::ObjectRef {
                          ffi::Optional<PrimExpr> predicate = std::nullopt) const;
   PrimExpr vload(ffi::Array<PrimExpr> begin, PrimType dtype,
                  ffi::Optional<PrimExpr> predicate = std::nullopt) const {
-    return vload(std::move(begin), DataType(dtype.dtype()), std::move(predicate));
+    return vload(std::move(begin), DataType(dtype->dtype), std::move(predicate));
   }
   /*!
    * \brief Create a Stmt that does a vector store at begin index.
@@ -292,7 +293,7 @@ class Buffer : public ffi::ObjectRef {
    */
   TVM_DLL Buffer with_dtype(DataType dtype) const;
 
-  Buffer with_dtype(PrimType dtype) const { return with_dtype(DataType(dtype.dtype())); }
+  Buffer with_dtype(PrimType dtype) const { return with_dtype(DataType(dtype->dtype)); }
 
   /*! \return primitive element type for compiler-side uses. */
   PrimType ElementType() const { return (*this)->ElementType(); }
@@ -326,7 +327,7 @@ inline Buffer decl_buffer(ffi::Array<PrimExpr> shape, PrimType dtype, ffi::Strin
                           ffi::String storage_scope = "",
                           ffi::Optional<ffi::Array<IntImm>> axis_separators = std::nullopt,
                           Span span = Span()) {
-  return decl_buffer(std::move(shape), DataType(dtype.dtype()), std::move(name),
+  return decl_buffer(std::move(shape), DataType(dtype->dtype), std::move(name),
                      std::move(storage_scope), std::move(axis_separators), std::move(span));
 }
 
@@ -362,7 +363,7 @@ class DataProducerNode : public PrimExprConvertibleNode {
    *
    * \note Compatibility wrapper for public APIs that still expose DataType.
    */
-  virtual DataType GetDataType() const { return DataType(GetPrimType().dtype()); }
+  virtual DataType GetDataType() const { return DataType(GetPrimType()->dtype); }
   /*!
    * \brief Get the name hint of the data producer.
    * \return The data type.
@@ -402,7 +403,7 @@ inline tirx::Buffer BufferWithOffsetAlignment(ffi::Array<PrimExpr> shape, PrimTy
                                               std::string name, int data_alignment,
                                               int offset_factor, bool compact,
                                               std::string memory_scope = "") {
-  return BufferWithOffsetAlignment(std::move(shape), DataType(dtype.dtype()), std::move(name),
+  return BufferWithOffsetAlignment(std::move(shape), DataType(dtype->dtype), std::move(name),
                                    data_alignment, offset_factor, compact, std::move(memory_scope));
 }
 }  // namespace tirx

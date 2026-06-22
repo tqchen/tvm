@@ -62,8 +62,8 @@ class SymbolicMatcher : ExprFunctor<void(const PrimExpr& n, const PrimExpr& othe
       return;
     } else if (node.ty().code() != other.ty().code()) {
       TVM_FFI_THROW(InternalError)
-          << "Parameter expression " << node << " with dtype " << node.ty().dtype()
-          << " cannot match to argument " << other << " with dtype " << other.ty().dtype();
+          << "Parameter expression " << node << " with dtype " << node.ty()->dtype
+          << " cannot match to argument " << other << " with dtype " << other.ty()->dtype;
     } else {
       ExprFunctor::VisitExpr(node, other);
     }
@@ -122,7 +122,7 @@ class SymbolicMatcher : ExprFunctor<void(const PrimExpr& n, const PrimExpr& othe
     if (!rhs) {
       TVM_FFI_THROW(InternalError)
           << "Parameter expression " << ffi::GetRef<PrimExpr>(op) << " expected an cast to "
-          << op->ty().dtype() << " as the argument, "
+          << op->ty()->dtype << " as the argument, "
           << "but was provided with the argument " << other;
     }
     VisitExpr(op->value, rhs->value);
@@ -136,8 +136,8 @@ class SymbolicMatcher : ExprFunctor<void(const PrimExpr& n, const PrimExpr& othe
     } else if (op->ty().code() != rhs.ty().code()) {
       TVM_FFI_THROW(InternalError)
           << "Parameter expression " << ffi::GetRef<PrimExpr>(op) << " with dtype "
-          << op->ty().dtype() << " cannot match to argument " << rhs << " with dtype "
-          << rhs.ty().dtype();
+          << op->ty()->dtype << " cannot match to argument " << rhs << " with dtype "
+          << rhs.ty()->dtype;
     } else if (auto it = var_remap_->find(lhs); it != var_remap_->end()) {
       VisitExpr((*it).second, rhs);
     } else {
@@ -868,7 +868,7 @@ class FusedTIRConstructor : public ExprVisitor {
       } else {
         TVM_FFI_THROW(InternalError)
             << "The params of PrimFunc are expected to be Buffer handle or scalar, but got: "
-            << param_ty.dtype();
+            << DataType(param_ty->dtype);
       }
     }
 
@@ -983,7 +983,7 @@ class FusedTIRConstructor : public ExprVisitor {
 
     } else if (const auto* prim_value = ty.as<PrimTypeNode>()) {
       // Case 2. The relax param is a scalar, we directly create a tirx var
-      out->push_back(tirx::Var(name_hint, prim_value->dtype));
+      out->push_back(tirx::Var(name_hint, tvm::PrimType(prim_value->dtype)));
 
     } else if (const auto* shape_expr = ty.as<ShapeTypeNode>()) {
       // Case 3. The relax param is a tuple of scalars, each represented as a tirx var
@@ -1260,7 +1260,7 @@ class TIRFuseMutator : public ExprMutator {
         if (const auto* literal = arg.as<PrimValueNode>()) {
           tir_vars.push_back(literal->value);
         } else if (const auto* var = arg.as<VarNode>()) {
-          tir_vars.push_back(tirx::Var(var->name_hint(), prim_value->dtype));
+          tir_vars.push_back(tirx::Var(var->name_hint(), tvm::PrimType(prim_value->dtype)));
         } else {
           TVM_FFI_THROW(TypeError) << "FuseTIR expects scalar arguments to be PrimValue or Var, "
                                    << "but received " << arg;

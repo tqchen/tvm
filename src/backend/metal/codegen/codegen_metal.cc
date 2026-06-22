@@ -46,7 +46,7 @@ void CodeGenMetal::InitFuncState(const PrimFunc& f) {
   CodeGenC::InitFuncState(f);
   // analyze the data;
   for (Var arg : f->params) {
-    if (DataType(arg.ty().dtype()).is_handle()) {
+    if (DataType(arg.ty()->dtype).is_handle()) {
       alloc_storage_scope_[arg.get()] = "global";
     }
   }
@@ -97,7 +97,7 @@ void CodeGenMetal::AddFunction(const GlobalVar& gvar, const PrimFunc& func) {
   }
   for (size_t i = 0; i < func->params.size(); ++i, ++num_buffer) {
     Var v = func->params[i];
-    if (!DataType(v.ty().dtype()).is_handle()) break;
+    if (!DataType(v.ty()->dtype).is_handle()) break;
     this->stream << "  ";
     std::string vid = AllocVarID(v.get());
     auto it = alloc_storage_scope_.find(v.get());
@@ -126,24 +126,24 @@ void CodeGenMetal::AddFunction(const GlobalVar& gvar, const PrimFunc& func) {
     decl_stream << "struct " << arg_buf_type << " {\n";
     for (size_t i = num_buffer; i < func->params.size(); ++i) {
       Var v = func->params[i];
-      TVM_FFI_ICHECK(!DataType(v.ty().dtype()).is_handle());
+      TVM_FFI_ICHECK(!DataType(v.ty()->dtype).is_handle());
       std::string vid = AllocVarID(v.get());
       std::ostringstream vref;
-      if (DataType(v.ty().dtype()).bits() == 32) {
+      if (DataType(v.ty()->dtype).bits() == 32) {
         decl_stream << "  ";
-        PrintType(DataType(v.ty().dtype()), decl_stream);
+        PrintType(DataType(v.ty()->dtype), decl_stream);
         decl_stream << " " << vid << "[2];\n";
         vref << varg << "." << vid << "[0]";
-      } else if (DataType(v.ty().dtype()).bits() == 64) {
+      } else if (DataType(v.ty()->dtype).bits() == 64) {
         decl_stream << "  ";
-        PrintType(DataType(v.ty().dtype()), decl_stream);
+        PrintType(DataType(v.ty()->dtype), decl_stream);
         decl_stream << " " << vid << ";\n";
         vref << varg << "." << vid;
       } else {
         // For non 32bit type, ref through arg union.
         decl_stream << "  __TVMArgUnion " << vid << ";\n";
         vref << varg << "." << vid << ".v_";
-        PrintType(DataType(v.ty().dtype()), vref);
+        PrintType(DataType(v.ty()->dtype), vref);
       }
       var_idmap_[v.get()] = vref.str();
     }
@@ -191,7 +191,7 @@ void CodeGenMetal::BindThreadIndex(const IterVar& iv) {
     vname = vname.substr(0, iv->thread_tag.length() - 2);
   }
   var_idmap_[iv->var.get()] =
-      CastFromTo(vname, DataType::UInt(thread_index_bits_), DataType(iv->var.ty().dtype()));
+      CastFromTo(vname, DataType::UInt(thread_index_bits_), DataType(iv->var.ty()->dtype));
 }
 
 void CodeGenMetal::PrintType(DataType t, std::ostream& os) {  // NOLINT(*)
@@ -360,8 +360,8 @@ void CodeGenMetal::VisitExpr_(const SelectNode* op, std::ostream& os) {  // NOLI
 
 void CodeGenMetal::VisitExpr_(const BroadcastNode* op, std::ostream& os) {  // NOLINT(*)
   std::string v = PrintExpr(op->value);
-  int lanes = DataType(op->ty().dtype()).lanes();
-  PrintType(DataType(op->ty().dtype()), os);
+  int lanes = DataType(op->ty()->dtype).lanes();
+  PrintType(DataType(op->ty()->dtype), os);
   os << "(";
   for (int i = 0; i < lanes; ++i) {
     if (i != 0) os << ", ";
@@ -422,7 +422,7 @@ void CodeGenMetal::VisitExpr_(const CallNode* op, std::ostream& os) {  // NOLINT
   } else if (op->op.same_as(builtin::reinterpret())) {
     // generate as_type<TYPE>(ARG)
     os << "(as_type<";
-    this->PrintType(DataType(op->ty().dtype()), os);
+    this->PrintType(DataType(op->ty()->dtype), os);
     os << ">(";
     this->PrintExpr(op->args[0], os);
     os << "))";
@@ -442,9 +442,9 @@ void CodeGenMetal::VisitExpr_(const FloatImmNode* op, std::ostream& os) {  // NO
     temp << "NAN";
   } else {
     temp << std::scientific << op->value;
-    if (DataType(op->ty().dtype()).bits() == 32)
+    if (DataType(op->ty()->dtype).bits() == 32)
       temp << 'f';
-    else if (DataType(op->ty().dtype()).bits() == 16)
+    else if (DataType(op->ty()->dtype).bits() == 16)
       temp << 'h';
   }
   MarkConst(temp.str());

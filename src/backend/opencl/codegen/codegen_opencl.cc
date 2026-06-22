@@ -84,7 +84,7 @@ void CodeGenOpenCL::InitFuncState(const PrimFunc& f) {
       // Storage scope qualifiers for textures are inferred
       // and set prior to function codegen.
       continue;
-    } else if (DataType(arg.ty().dtype()).is_handle()) {
+    } else if (DataType(arg.ty()->dtype).is_handle()) {
       alloc_storage_scope_[arg.get()] = "global";
     }
   }
@@ -190,7 +190,7 @@ void CodeGenOpenCL::BindThreadIndex(const IterVar& iv) {
     os << "get_group_id(" << ts.dim_index << ")";
   }
   var_idmap_[iv->var.get()] =
-      CastFromTo(os.str(), DataType::UInt(64), DataType(iv->var.ty().dtype()));
+      CastFromTo(os.str(), DataType::UInt(64), DataType(iv->var.ty()->dtype));
 }
 
 void CodeGenOpenCL::PrintType(DataType t, std::ostream& os) {  // NOLINT(*)
@@ -423,7 +423,7 @@ void CodeGenOpenCL::VisitExpr_(const CallNode* op, std::ostream& os) {
     if (it != alloc_storage_scope_.end()) {
       PrintStorageScope(it->second, os);
     }
-    this->PrintType(DataType(load->ty().dtype()).element_of(), os);
+    this->PrintType(DataType(load->ty()->dtype).element_of(), os);
     os << " *)" << this->GetVarID(load->buffer->data.get()) << " + ";
     this->PrintExpr(load->indices[0], os);
     os << ')';
@@ -472,7 +472,7 @@ void CodeGenOpenCL::VisitExpr_(const CallNode* op, std::ostream& os) {
     TVM_FFI_ICHECK(channel_size == 64 || channel_size == 128)
         << "Unsupported Channel Size: " << channel_size;
     ss << "as_";
-    this->PrintType(DataType(op->ty().dtype()).with_lanes(data_lanes), ss);
+    this->PrintType(DataType(op->ty()->dtype).with_lanes(data_lanes), ss);
     ss << "(";
     if (channel_size == 64) {
       ss << "READ_IMAGEH(";
@@ -494,7 +494,7 @@ void CodeGenOpenCL::VisitExpr_(const CallNode* op, std::ostream& os) {
     this->PrintExpr(IntImm::Int32(0), ss);
     ss << "))))";
 
-    std::string rhs = SSAGetID(ss.str(), DataType(op->ty().dtype()).with_lanes(data_lanes));
+    std::string rhs = SSAGetID(ss.str(), DataType(op->ty()->dtype).with_lanes(data_lanes));
     if (auto ramp = op->args.back().as<RampNode>()) {
       if (ramp->base.as<IntImmNode>() && *tirx::as_const_int(ramp->base) == 0 &&
           *tirx::as_const_int(ramp->lanes) == data_lanes &&
@@ -502,11 +502,10 @@ void CodeGenOpenCL::VisitExpr_(const CallNode* op, std::ostream& os) {
         os << rhs;
       } else if (*tirx::as_const_int(ramp->stride) == 1) {
         os << "(*(";
-        this->PrintType(DataType(op->ty().dtype()).with_lanes(*tirx::as_const_int(ramp->lanes)),
-                        os);
+        this->PrintType(DataType(op->ty()->dtype).with_lanes(*tirx::as_const_int(ramp->lanes)), os);
         os << "*)";
         os << "((";
-        this->PrintType(DataType(op->ty().dtype()).with_lanes(1), os);
+        this->PrintType(DataType(op->ty()->dtype).with_lanes(1), os);
         os << "*)&" << rhs << " + ";
         this->PrintExpr(ramp->base, os);
         os << "))";
@@ -515,7 +514,7 @@ void CodeGenOpenCL::VisitExpr_(const CallNode* op, std::ostream& os) {
       }
     } else {
       os << "((";
-      this->PrintType(DataType(op->ty().dtype()).with_lanes(1), os);
+      this->PrintType(DataType(op->ty()->dtype).with_lanes(1), os);
       os << "*)&" << rhs << ")[";
       this->PrintExpr(op->args.back(), os);
       os << "]";
@@ -523,7 +522,7 @@ void CodeGenOpenCL::VisitExpr_(const CallNode* op, std::ostream& os) {
   } else if (op->op.same_as(builtin_call_extern_) || op->op.same_as(builtin_call_pure_extern_)) {
     auto func = op->args[0].as_or_throw<StringImm>();
     // Enable atomics extension if used.
-    if (func->value == "atomic_add" && DataType(op->ty().dtype()).is_float()) {
+    if (func->value == "atomic_add" && DataType(op->ty()->dtype).is_float()) {
       enable_atomics_ = true;
       this->PrintCallExtern(GetType(ffi::GetRef<PrimExpr>(op)), "atomic_add_float_emu", op->args,
                             true, os);
@@ -542,9 +541,9 @@ void CodeGenOpenCL::VisitExpr_(const CallNode* op, std::ostream& os) {
 
 void CodeGenOpenCL::VisitExpr_(const BroadcastNode* op, std::ostream& os) {  // NOLINT(*)
   std::string v = PrintExpr(op->value);
-  int lanes = DataType(op->ty().dtype()).lanes();
+  int lanes = DataType(op->ty()->dtype).lanes();
   os << "((";
-  PrintType(DataType(op->ty().dtype()), os);
+  PrintType(DataType(op->ty()->dtype), os);
   os << ")(";
   for (int i = 0; i < lanes; ++i) {
     if (i != 0) os << ", ";
@@ -555,9 +554,9 @@ void CodeGenOpenCL::VisitExpr_(const BroadcastNode* op, std::ostream& os) {  // 
 
 void CodeGenOpenCL::VisitExpr_(const RampNode* op, std::ostream& os) {  // NOLINT(*)
   os << "((";
-  PrintType(DataType(op->ty().dtype()), os);
+  PrintType(DataType(op->ty()->dtype), os);
   os << ")(";
-  int lanes = DataType(op->ty().dtype()).lanes();
+  int lanes = DataType(op->ty()->dtype).lanes();
   for (int i = 0; i < lanes; i++) {
     os << "(" << PrintExpr(op->base) << ")"
        << "+(" << PrintExpr(op->stride) << "*" << i << ")";
@@ -581,18 +580,18 @@ void CodeGenOpenCL::VisitExpr_(const FloatImmNode* op, std::ostream& os) {  // N
 
 template <typename T>
 inline void PrintBinaryExpr(const T* op, const char* opstr, std::ostream& os, CodeGenOpenCL* p) {
-  if (DataType(op->ty().dtype()).lanes() == 1) {
+  if (DataType(op->ty()->dtype).lanes() == 1) {
     os << opstr << "((";
-    p->PrintType(DataType(op->a.ty().dtype()), os);
+    p->PrintType(DataType(op->a.ty()->dtype), os);
     os << ")";
     p->PrintExpr(op->a, os);
     os << ", (";
-    p->PrintType(DataType(op->b.ty().dtype()), os);
+    p->PrintType(DataType(op->b.ty()->dtype), os);
     os << ")";
     p->PrintExpr(op->b, os);
     os << ')';
   } else {
-    p->PrintVecBinaryOp(opstr, DataType(op->ty().dtype()), op->a, op->b, os);
+    p->PrintVecBinaryOp(opstr, DataType(op->ty()->dtype), op->a, op->b, os);
   }
 }
 
@@ -606,15 +605,14 @@ void CodeGenOpenCL::VisitExpr_(const MaxNode* op, std::ostream& os) {
 
 void CodeGenOpenCL::VisitExpr_(const ModNode* op, std::ostream& os) {  // NOLINT(*)
   std::string opstr;
-  if (DataType(op->ty().dtype()).is_int() || DataType(op->ty().dtype()).is_uint()) {
+  if (DataType(op->ty()->dtype).is_int() || DataType(op->ty()->dtype).is_uint()) {
     opstr = "%";
   } else {
-    TVM_FFI_ICHECK(DataType(op->ty().dtype()).is_float())
-        << "Expected floating point or integer dtype in Mod, but got "
-        << DataType(op->ty().dtype());
+    TVM_FFI_ICHECK(DataType(op->ty()->dtype).is_float())
+        << "Expected floating point or integer dtype in Mod, but got " << DataType(op->ty()->dtype);
     opstr = "fmod";
   }
-  if (DataType(op->ty().dtype()).lanes() == 1) {
+  if (DataType(op->ty()->dtype).lanes() == 1) {
     if (isalpha(opstr.c_str()[0])) {
       os << opstr.c_str() << '(';
       this->PrintExpr(op->a, os);
@@ -629,7 +627,7 @@ void CodeGenOpenCL::VisitExpr_(const ModNode* op, std::ostream& os) {  // NOLINT
       os << ')';
     }
   } else {
-    this->PrintVecBinaryOp(opstr.c_str(), DataType(op->ty().dtype()), op->a, op->b, os);
+    this->PrintVecBinaryOp(opstr.c_str(), DataType(op->ty()->dtype), op->a, op->b, os);
   }
 }
 
@@ -637,11 +635,11 @@ void CodeGenOpenCL::VisitExpr_(const AndNode* op, std::ostream& os) {
   std::ostringstream oss;
   os << "(";
   this->PrintExpr(op->a, oss);
-  os << CastTo(oss.str(), DataType(op->ty().dtype()));
+  os << CastTo(oss.str(), DataType(op->ty()->dtype));
   oss.str("");
   os << " && ";
   this->PrintExpr(op->b, oss);
-  os << CastTo(oss.str(), DataType(op->ty().dtype()));
+  os << CastTo(oss.str(), DataType(op->ty()->dtype));
   os << ")";
 }
 
@@ -649,11 +647,11 @@ void CodeGenOpenCL::VisitExpr_(const OrNode* op, std::ostream& os) {
   std::ostringstream oss;
   os << "(";
   this->PrintExpr(op->a, oss);
-  os << CastTo(oss.str(), DataType(op->ty().dtype()));
+  os << CastTo(oss.str(), DataType(op->ty()->dtype));
   oss.str("");
   os << " || ";
   this->PrintExpr(op->b, oss);
-  os << CastTo(oss.str(), DataType(op->ty().dtype()));
+  os << CastTo(oss.str(), DataType(op->ty()->dtype));
   os << ")";
 }
 
@@ -661,19 +659,19 @@ void CodeGenOpenCL::VisitExpr_(const SelectNode* op, std::ostream& os) {
   std::ostringstream oss;
   os << "select(";
   PrintExpr(op->false_value, oss);
-  os << CastFromTo(oss.str(), DataType(op->false_value.ty().dtype()), DataType(op->ty().dtype()));
+  os << CastFromTo(oss.str(), DataType(op->false_value.ty()->dtype), DataType(op->ty()->dtype));
   oss.str("");
   os << ", ";
   PrintExpr(op->true_value, oss);
-  os << CastFromTo(oss.str(), DataType(op->true_value.ty().dtype()), DataType(op->ty().dtype()));
+  os << CastFromTo(oss.str(), DataType(op->true_value.ty()->dtype), DataType(op->ty()->dtype));
   oss.str("");
   os << ", ";
   PrintExpr(op->condition, oss);
-  if (DataType(op->ty().dtype()).is_float()) {
-    os << CastTo(oss.str(), DataType::Int(DataType(op->ty().dtype()).bits(),
-                                          DataType(op->ty().dtype()).lanes()));
+  if (DataType(op->ty()->dtype).is_float()) {
+    os << CastTo(oss.str(), DataType::Int(DataType(op->ty()->dtype).bits(),
+                                          DataType(op->ty()->dtype).lanes()));
   } else {
-    os << CastFromTo(oss.str(), DataType(op->condition.ty().dtype()), DataType(op->ty().dtype()));
+    os << CastFromTo(oss.str(), DataType(op->condition.ty()->dtype), DataType(op->ty()->dtype));
   }
   os << ")";
 }

@@ -46,7 +46,7 @@ Doc PrintTIRVar(tirx::Var n, AccessPath n_p, IRDocsifier d) {
   PrimType n_ty = n.ty();
   TVM_FFI_CHECK(!n_ty.IsScalableVector() && !n_ty.IsFixedLengthVector(), TypeError)
       << "Relax only uses scalar TIR variables,"
-      << "but received TIR variable " << n << " with dtype " << n_ty.dtype();
+      << "but received TIR variable " << n << " with dtype " << DataType(n_ty->dtype);
 
   if (!d->IsVarDefined(n)) {
     RelaxFrameNode* f = GetRelaxFrame(d);

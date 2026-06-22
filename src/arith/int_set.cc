@@ -584,8 +584,8 @@ class IntervalSetEvaluator : public ExprFunctor<IntervalSet(const PrimExpr&)> {
   IntervalSet VisitExpr_(const BufferLoadNode* op) final {
     PrimType op_ty = op->ty();
     if (!(op_ty.code() == DLDataTypeCode::kDLInt || op_ty.code() == DLDataTypeCode::kDLUInt)) {
-      DLOG(WARNING) << "cannot evaluate set BufferLoad which loads from a " << op_ty.dtype()
-                    << " buffer";
+      DLOG(WARNING) << "cannot evaluate set BufferLoad which loads from a "
+                    << DataType(op_ty->dtype) << " buffer";
       return IntervalSet::Everything();
     }
     // If the indices do not contain any variables to be relaxed, return the BufferLoad itself.

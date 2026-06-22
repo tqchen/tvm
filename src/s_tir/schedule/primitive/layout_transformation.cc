@@ -991,7 +991,7 @@ class TransformationPaddingTypeError : public ScheduleError {
   TransformationPaddingTypeError(IRModule mod, Buffer buffer, IndexMap pad_value)
       : mod_(mod), buffer_(buffer), pad_value_(pad_value) {
     TVM_FFI_ICHECK_EQ(pad_value_->final_indices.size(), 1);
-    pad_value_dtype_ = DataType(pad_value_->final_indices[0].ty().dtype());
+    pad_value_dtype_ = DataType(pad_value_->final_indices[0].ty()->dtype);
   }
 
   ffi::String FastErrorString() const final {
@@ -1119,7 +1119,7 @@ IndexMap LegalizeIndexMapDType(const IndexMap& index_map, const ffi::Array<PrimE
   std::optional<DataType> index_dtype = std::nullopt;
 
   for (size_t i = 0; i < args.size(); ++i) {
-    DataType arg_dtype(args[i].ty().dtype());
+    DataType arg_dtype(args[i].ty()->dtype);
     if (index_dtype.has_value()) {
       TVM_FFI_ICHECK_EQ(*index_dtype, arg_dtype)
           << "Buffer index " << args[i] << " has dtype " << arg_dtype
@@ -1128,7 +1128,7 @@ IndexMap LegalizeIndexMapDType(const IndexMap& index_map, const ffi::Array<PrimE
       index_dtype = arg_dtype;
     }
 
-    DataType initial_dtype(initial_indices_orig[i].ty().dtype());
+    DataType initial_dtype(initial_indices_orig[i].ty()->dtype);
     if (arg_dtype != initial_dtype) {
       auto new_idx = Var(initial_indices_orig[i]->name_hint, args[i].ty());
       initial_indices.push_back(new_idx);
@@ -1178,7 +1178,7 @@ void TransformLayout(ScheduleState self, const StmtSRef& block_sref, int buffer_
     if (pad_value.value()->final_indices.size() != 1) {
       throw TransformationPaddingIndexMapError(self->mod, pad_value.value());
     }
-    if (DataType(pad_value.value()->final_indices[0].ty().dtype()) != old_buffer->dtype) {
+    if (DataType(pad_value.value()->final_indices[0].ty()->dtype) != old_buffer->dtype) {
       throw TransformationPaddingTypeError(self->mod, old_buffer, pad_value.value());
     }
 

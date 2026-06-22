@@ -80,7 +80,7 @@ class ReturnRewriter : public StmtMutator {
     ConvertedInfo info;
 
     // convert val's data type to FFI data type, return type code
-    DataType dtype = DataType(val.ty().dtype());
+    DataType dtype = DataType(val.ty()->dtype);
     if (dtype.is_bool()) {
       info.type_index = ffi::TypeIndex::kTVMFFIBool;
       info.expr = Cast(PrimType::Int(64), val);

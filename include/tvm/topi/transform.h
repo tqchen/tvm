@@ -835,14 +835,14 @@ inline te::Tensor dynamic_strided_slice(const te::Tensor& x, const te::Tensor& b
                                         bool assume_inbound = true,
                                         std::string name = "T_strided_slice_dynamic",
                                         std::string tag = topi::kInjective) {
-  DataType index_dtype = DataType(begin->shape[0].ty().dtype());
+  PrimType index_ty = begin->shape[0].ty();
   const int64_t num_dynamic_axes = begin->shape[0].as<IntImmNode>()->value;
   TVM_FFI_ICHECK_EQ(end->shape[0].as<IntImmNode>()->value, num_dynamic_axes);
   TVM_FFI_ICHECK_EQ(strides->shape[0].as<IntImmNode>()->value, num_dynamic_axes);
 
   ffi::Array<PrimExpr> begin_expr, end_expr, strides_expr;
   for (int64_t i = 0; i < num_dynamic_axes; ++i) {
-    auto ind = MakeConst(index_dtype, i);
+    auto ind = MakeConst(index_ty, i);
     begin_expr.push_back(begin(ind));
     end_expr.push_back(end(ind));
     strides_expr.push_back(strides(ind));
@@ -874,11 +874,10 @@ inline ffi::Array<PrimExpr> StridedSliceOutputShape(const ffi::Array<PrimExpr>& 
                  axes.size() == strides.size());
   std::vector<int64_t> begin_vec, end_vec, strides_vec;
   std::tie(begin_vec, end_vec, strides_vec) = ConvertToVec(begin, end, strides, slice_mode);
-  DataType index_dtype = (begin.size() > 0 && begin[0].defined())
-                             ? DataType(begin[0].value().ty().dtype())
-                             : DataType::Int(64);
+  PrimType index_ty =
+      (begin.size() > 0 && begin[0].defined()) ? begin[0].value().ty() : PrimType::Int(64);
   auto begin_canonicalized =
-      StridedSliceCanonicalizeBegin(ishape, begin_vec, strides_vec, axes, index_dtype, slice_mode);
+      StridedSliceCanonicalizeBegin(ishape, begin_vec, strides_vec, axes, index_ty, slice_mode);
   return StridedSliceOutputShape(ishape, begin_vec, end_vec, strides_vec, axes, slice_mode,
                                  begin_canonicalized, true);
 }
@@ -925,11 +924,10 @@ inline Tensor strided_slice_with_axes(
   std::vector<int64_t> begin_vec, end_vec, strides_vec;
   std::tie(begin_vec, end_vec, strides_vec) = ConvertToVec(begin, end, strides, slice_mode);
 
-  DataType index_dtype = (begin.size() > 0 && begin[0].defined())
-                             ? DataType(begin[0].value().ty().dtype())
-                             : DataType::Int(64);
+  PrimType index_ty =
+      (begin.size() > 0 && begin[0].defined()) ? begin[0].value().ty() : PrimType::Int(64);
   auto begin_expr = StridedSliceCanonicalizeBegin(x->shape, begin_vec, strides_vec, normalized_axes,
-                                                  index_dtype, slice_mode);
+                                                  index_ty, slice_mode);
   auto out_shape = StridedSliceOutputShape(x->shape, begin_vec, end_vec, strides_vec,
                                            normalized_axes, slice_mode, begin_expr);
 
@@ -974,12 +972,11 @@ inline Tensor strided_slice(const Tensor& x, const ffi::Array<ffi::Optional<IntI
   ffi::Array<ffi::Optional<IntImm>> end_full(end);
   ffi::Array<IntImm> strides_full(strides);
 
-  DataType index_dtype = (begin.size() > 0 && begin[0].defined())
-                             ? DataType(begin[0].value().ty().dtype())
-                             : DataType::Int(64);
-  const IntImm one = IntImm(PrimType(index_dtype), 1);
-  const IntImm zero = IntImm(PrimType(index_dtype), 0);
-  const IntImm max_range = max_value(index_dtype).as_or_throw<IntImm>();
+  PrimType index_ty =
+      (begin.size() > 0 && begin[0].defined()) ? begin[0].value().ty() : PrimType::Int(64);
+  const IntImm one = IntImm(index_ty, 1);
+  const IntImm zero = IntImm(index_ty, 0);
+  const IntImm max_range = max_value(index_ty).as_or_throw<IntImm>();
 
   for (size_t i = strides.size(); i < src_tensor_dim; ++i) {
     strides_full.push_back(one);
