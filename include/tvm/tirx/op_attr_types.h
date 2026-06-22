@@ -51,27 +51,22 @@ using TGlobalSymbol = ffi::String;
 using TVectorizable = bool;
 
 /*!
- * \brief The return value for intrinsic lowering and legalization hooks.
+ * \brief The intrinsic lowering function for given op.
  *
  * Hooks may return either a direct expression replacement or a pair of
  * statement-scope bindings and the expression that uses them.
  */
-using FLowerGeneralResult = ffi::Variant<PrimExpr, ffi::Tuple<ffi::Array<Bind>, PrimExpr>>;
-
-/*!
- * \brief The lowering function shape for given TIRx op.
- */
-using FLowerGeneral = ffi::TypedFunction<FLowerGeneralResult(PrimExpr)>;
-
-/*!
- * \brief The intrinsic lowering function for given op.
- */
-using FLowerIntrinsic = FLowerGeneral;
+using FLowerIntrinsic =
+    ffi::TypedFunction<ffi::Variant<PrimExpr, ffi::Tuple<ffi::Array<Bind>, PrimExpr>>(PrimExpr)>;
 
 /*!
  * \brief The legalization function for given tirx op.
+ *
+ * Hooks may return either a direct expression replacement or a pair of
+ * statement-scope bindings and the expression that uses them.
  */
-using FLegalize = FLowerGeneral;
+using FLegalize =
+    ffi::TypedFunction<ffi::Variant<PrimExpr, ffi::Tuple<ffi::Array<Bind>, PrimExpr>>(PrimExpr)>;
 
 /*!
  * \brief The operator's name in TVMScript printer

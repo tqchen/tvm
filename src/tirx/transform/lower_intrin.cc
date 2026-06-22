@@ -74,7 +74,7 @@ class IntrinInjecter : public tvm::arith::IRMutatorWithAnalyzer {
 
     for (const std::string& pattern : patterns)
       if (Op::HasAttrMap(pattern)) {
-        attr_maps_.push_back(Op::GetAttrMap<FLowerGeneral>(pattern));
+        attr_maps_.push_back(Op::GetAttrMap<FLowerIntrinsic>(pattern));
         if (fma_ == nullptr) {
           static const Op& fma_op = Op::Get("tirx.fma");
           fma_ = (*attr_maps_.rbegin()).get(fma_op, nullptr);
@@ -85,13 +85,15 @@ class IntrinInjecter : public tvm::arith::IRMutatorWithAnalyzer {
   PrimExpr VisitExpr_(const CallNode* op) final {
     static const Op& if_then_else_op = Op::Get("tirx.if_then_else");
     if (op->op.same_as(if_then_else_op)) {
+      // TODO(tirx): Binding-aware lowering inside tirx.if_then_else is a
+      // scoping question for later design, so keep this path conservative.
       PendingBindingScope binding_scope(&pending_binding_begin_, std::nullopt);
       return IRMutatorWithAnalyzer::VisitExpr_(op);
     }
 
     if (auto* ptr_op = op->op.as<OpNode>()) {
       for (const auto& f_attr_map : attr_maps_) {
-        FLowerGeneral f = f_attr_map.get(ffi::GetRef<Op>(ptr_op), nullptr);
+        FLowerIntrinsic f = f_attr_map.get(ffi::GetRef<Op>(ptr_op), nullptr);
         if (f != nullptr) {
           PrimExpr e = ffi::GetRef<PrimExpr>(op);
           std::optional<LowerResult> opt_r = NormalizeLowerResult(f(e));
@@ -111,6 +113,8 @@ class IntrinInjecter : public tvm::arith::IRMutatorWithAnalyzer {
   }
 
   PrimExpr VisitExpr_(const SelectNode* op) final {
+    // TODO(tirx): Binding-aware lowering inside Select is a scoping question
+    // for later design, so keep this path conservative.
     PendingBindingScope binding_scope(&pending_binding_begin_, std::nullopt);
     return IRMutatorWithAnalyzer::VisitExpr_(op);
   }
@@ -319,7 +323,8 @@ class IntrinInjecter : public tvm::arith::IRMutatorWithAnalyzer {
     std::optional<size_t> saved_binding_begin;
   };
 
-  std::optional<LowerResult> NormalizeLowerResult(const FLowerGeneralResult& result) {
+  std::optional<LowerResult> NormalizeLowerResult(
+      const ffi::Variant<PrimExpr, ffi::Tuple<ffi::Array<Bind>, PrimExpr>>& result) {
     if (auto expr = result.as<PrimExpr>()) {
       if (expr.value().defined()) {
         return LowerResult{{}, expr.value()};
@@ -435,11 +440,10 @@ class IntrinInjecter : public tvm::arith::IRMutatorWithAnalyzer {
     return c_value;
   }
 
-  // attribute maps, shared only when FLegalize == FLowerIntrinsic
-  std::vector<OpAttrMap<FLowerGeneral>> attr_maps_;
+  std::vector<OpAttrMap<FLowerIntrinsic>> attr_maps_;
   std::vector<Stmt> pending_bindings_;
   std::optional<size_t> pending_binding_begin_;
-  FLowerGeneral fma_{nullptr};
+  FLowerIntrinsic fma_{nullptr};
   bool support_bitwise_op_{true};
 };
 
