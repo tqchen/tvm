@@ -392,19 +392,17 @@ inline Tensor full_like(const Tensor& x, const PrimExpr fill_value,
  * y = exp(f) = 1 + 2 * P(x**2)/(Q(x**2) - P(x**2))
  */
 inline Tensor fast_exp_float32(const Tensor& _x, std::string name, std::string tag) {
-  auto x_hi = FloatImm(PrimType::Float(32), 88.3762626647950f);
-  auto x_lo = FloatImm(PrimType::Float(32), -88.3762626647949f);
-  auto log2e = FloatImm(PrimType::Float(32), 1.44269504088896341f);
-  auto ln2 = FloatImm(PrimType::Float(32), 0.6931471805599453f);
-  PrimExpr p[6] = {FloatImm(PrimType::Float(32), 1.9875691500E-4f),
-                   FloatImm(PrimType::Float(32), 1.3981999507E-3f),
-                   FloatImm(PrimType::Float(32), 8.3334519073E-3f),
-                   FloatImm(PrimType::Float(32), 4.1665795894E-2f),
-                   FloatImm(PrimType::Float(32), 1.6666665459E-1f),
-                   FloatImm(PrimType::Float(32), 5.0000001201E-1f)};
-  auto one = FloatImm(PrimType::Float(32), 1.0f);
-  auto one_half = FloatImm(PrimType::Float(32), 0.5f);
-  auto b = FloatImm(PrimType::Float(32), 127.0f);
+  PrimType f32_ty = PrimType::Float(32);
+  auto x_hi = FloatImm(f32_ty, 88.3762626647950f);
+  auto x_lo = FloatImm(f32_ty, -88.3762626647949f);
+  auto log2e = FloatImm(f32_ty, 1.44269504088896341f);
+  auto ln2 = FloatImm(f32_ty, 0.6931471805599453f);
+  PrimExpr p[6] = {FloatImm(f32_ty, 1.9875691500E-4f), FloatImm(f32_ty, 1.3981999507E-3f),
+                   FloatImm(f32_ty, 8.3334519073E-3f), FloatImm(f32_ty, 4.1665795894E-2f),
+                   FloatImm(f32_ty, 1.6666665459E-1f), FloatImm(f32_ty, 5.0000001201E-1f)};
+  auto one = FloatImm(f32_ty, 1.0f);
+  auto one_half = FloatImm(f32_ty, 0.5f);
+  auto b = FloatImm(f32_ty, 127.0f);
 
   return compute(
       _x->shape,

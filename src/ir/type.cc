@@ -78,17 +78,39 @@ PrimType::PrimType(runtime::DataType dtype, Span span) {
   data_ = MakePrimTypeNode(dtype, std::move(span));
 }
 
-PrimType PrimType::Int(int bits, int lanes) { return PrimType(DataType::Int(bits, lanes)); }
+PrimType PrimType::Int(int bits, int lanes) {
+  if (lanes == 1) {
+    if (bits == 32) {
+      thread_local PrimType i32_ty(DataType::Int(32));
+      return i32_ty;
+    }
+    if (bits == 64) {
+      thread_local PrimType i64_ty(DataType::Int(64));
+      return i64_ty;
+    }
+  }
+  return PrimType(DataType::Int(bits, lanes));
+}
 
 PrimType PrimType::UInt(int bits, int lanes, bool is_scalable) {
   return PrimType(DataType::UInt(bits, lanes, is_scalable));
 }
 
-PrimType PrimType::Float(int bits, int lanes) { return PrimType(DataType::Float(bits, lanes)); }
+PrimType PrimType::Float(int bits, int lanes) {
+  if (bits == 32 && lanes == 1) {
+    thread_local PrimType f32_ty(DataType::Float(32));
+    return f32_ty;
+  }
+  return PrimType(DataType::Float(bits, lanes));
+}
 
 PrimType PrimType::BFloat(int bits, int lanes) { return PrimType(DataType::BFloat(bits, lanes)); }
 
 PrimType PrimType::Bool(int lanes, bool is_scalable) {
+  if (lanes == 1 && !is_scalable) {
+    thread_local PrimType bool_ty(DataType::Bool());
+    return bool_ty;
+  }
   return PrimType(DataType::Bool(lanes, is_scalable));
 }
 

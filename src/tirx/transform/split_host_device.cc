@@ -607,9 +607,9 @@ class DeviceKernelMutator : public StmtExprMutator {
       call_args.push_back(Substitute(launch_arg, param_map));
     }
 
-    PrimType dtype = node->dtype().is_void() ? PrimType::Int(32) : node.ty();
+    PrimType ret_ty = node->dtype().is_void() ? PrimType::Int(32) : node.ty();
 
-    return Call(dtype, builtin::tvm_call_packed(), call_args);
+    return Call(ret_ty, builtin::tvm_call_packed(), call_args);
   }
 
   ffi::Optional<Target> current_target_;

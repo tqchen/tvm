@@ -113,8 +113,9 @@ SLayout::SLayout(const ffi::Array<IterVar>& axes) {
   data_ = std::move(node);
 }
 
-SLayout::SLayout(const std::string& name, DataType dtype) {  // NOLINT(*)
-  TVM_FFI_CHECK(dtype.is_int(), TypeError) << "The input dtype should be integer type";
+SLayout::SLayout(const std::string& name, PrimType index_ty) {  // NOLINT(*)
+  DataType index_dtype = index_ty->dtype;
+  TVM_FFI_CHECK(index_dtype.is_int(), TypeError) << "The input dtype should be integer type";
   if (name == "__undef__") return;
 
   auto node = ffi::make_object<SLayoutNode>();
@@ -131,8 +132,8 @@ SLayout::SLayout(const std::string& name, DataType dtype) {  // NOLINT(*)
     if (c >= 'A' && c <= 'Z') {
       TVM_FFI_ICHECK_EQ(factor, 0) << "Invalid layout " << name << ": invalid factor size "
                                    << factor << " before dimension " << c;
-      IterVar axis(Range(IntImm(PrimType(dtype), 0), Var(std::string(1, c), dtype)),
-                   Var(std::string(1, c), dtype), tirx::kDataPar);
+      IterVar axis(Range(IntImm(index_ty, 0), Var(std::string(1, c), index_ty)),
+                   Var(std::string(1, c), index_ty), tirx::kDataPar);
       if (!in_packing) {
         node->axes.push_back(axis);
       } else {
@@ -143,8 +144,8 @@ SLayout::SLayout(const std::string& name, DataType dtype) {  // NOLINT(*)
                                    << factor << " for dimension " << c;
       std::stringstream name;
       name << factor << c;
-      IterVar axis(Range(IntImm(PrimType(dtype), 0), IntImm(PrimType(dtype), factor)),
-                   Var(name.str(), dtype), tirx::kDataPar);
+      IterVar axis(Range(IntImm(index_ty, 0), IntImm(index_ty, factor)), Var(name.str(), index_ty),
+                   tirx::kDataPar);
       if (!in_packing) {
         node->axes.push_back(axis);
       } else {
@@ -174,8 +175,8 @@ SLayout::SLayout(const std::string& name, DataType dtype) {  // NOLINT(*)
         extent = extent * factor->value;
       }
       std::string grouped_name = ss.str();
-      IterVar grouped_axis(Range(IntImm(PrimType(dtype), 0), IntImm(PrimType(dtype), extent)),
-                           Var(grouped_name, dtype), tirx::kDataPar);
+      IterVar grouped_axis(Range(IntImm(index_ty, 0), IntImm(index_ty, extent)),
+                           Var(grouped_name, index_ty), tirx::kDataPar);
       node->axes.push_back(grouped_axis);
 
       in_packing = false;
@@ -231,21 +232,21 @@ ffi::Array<IterVar> SLayout::UnpackIterVar(IterVar packed_iter) {
   int64_t factor = 0, final_factor = 1;
 
   std::string name(packed_iter->var->name_hint.c_str());
-  DataType dtype = packed_iter->var.dtype();
+  PrimType index_ty = packed_iter->var.ty();
 
   for (auto ch : name) {
     if (ch >= '0' && ch <= '9') {
       factor = factor * 10 + (ch - '0');
     } else if (ch >= 'a' && ch <= 'z') {
       TVM_FFI_ICHECK(factor != 0) << "Invalid Factor Size";
-      result.push_back(IterVar(Range(IntImm(PrimType(dtype), 0), IntImm(PrimType(dtype), factor)),
-                               Var(std::string(1, ch), dtype), tirx::kDataPar));
+      result.push_back(IterVar(Range(IntImm(index_ty, 0), IntImm(index_ty, factor)),
+                               Var(std::string(1, ch), index_ty), tirx::kDataPar));
       final_factor *= factor;
       factor = 0;
     } else if (ch >= 'A' && ch <= 'Z') {
       TVM_FFI_ICHECK(factor == 0) << "Can't have non-zero factors for primal axis";
-      result.push_back(IterVar(Range(IntImm(PrimType(dtype), 0), Var(std::string(1, ch), dtype)),
-                               Var(std::string(1, ch), dtype), tirx::kDataPar));
+      result.push_back(IterVar(Range(IntImm(index_ty, 0), Var(std::string(1, ch), index_ty)),
+                               Var(std::string(1, ch), index_ty), tirx::kDataPar));
     }
   }
 
@@ -256,7 +257,7 @@ IterVar SLayout::PackIterVar(ffi::Array<IterVar> iter_vars) {
   std::stringstream name;
   size_t extent = 1;
 
-  DataType dtype = iter_vars[0]->dom->extent.as<PrimExpr>().value().dtype();
+  PrimType index_ty = iter_vars[0]->dom->extent.as<PrimExpr>().value().ty();
   for (auto itvar : iter_vars) {
     TVM_FFI_ICHECK(itvar->dom->extent.as<IntImm>())
         << "Packed Axis can contain only Subordinate Axes";
@@ -264,8 +265,8 @@ IterVar SLayout::PackIterVar(ffi::Array<IterVar> iter_vars) {
     extent = extent * itvar->dom->extent.as<IntImm>().value()->value;
   }
 
-  return IterVar(Range(IntImm(PrimType(dtype), 0), IntImm(PrimType(dtype), extent)),
-                 Var(name.str(), dtype), tirx::kDataPar);
+  return IterVar(Range(IntImm(index_ty, 0), IntImm(index_ty, extent)), Var(name.str(), index_ty),
+                 tirx::kDataPar);
 }
 
 int32_t SLayout::FactorOf(const SLayoutAxis& axis) const {
@@ -584,7 +585,8 @@ TVM_FFI_STATIC_INIT_BLOCK() {
 TVM_FFI_STATIC_INIT_BLOCK() {
   namespace refl = tvm::ffi::reflection;
   refl::GlobalDef()
-      .def("s_tir.SLayout", [](std::string name, DataType dtype) { return SLayout(name, dtype); })
+      .def("s_tir.SLayout",
+           [](std::string name, DataType dtype) { return SLayout(name, PrimType(dtype)); })
       .def("s_tir.SLayoutIndexOf",
            [](SLayout layout, std::string axis) -> int { return layout.IndexOf(axis); })
       .def("s_tir.SLayoutFactorOf",

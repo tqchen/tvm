@@ -144,8 +144,9 @@ TVM_FFI_STATIC_INIT_BLOCK() {
 Var::Var(ffi::String name_hint, DataType dtype, Span span) {
   auto n = ffi::make_object<VarNode>();
   n->name_hint = std::move(name_hint);
-  n->type_annotation = GetTypeFromRuntimeDataType(dtype);
-  n->ty = n->type_annotation;
+  PrimType value_ty(dtype);
+  n->type_annotation = value_ty;
+  n->ty = value_ty;
   n->span = std::move(span);
   data_ = std::move(n);
 }
@@ -154,7 +155,11 @@ Var::Var(ffi::String name_hint, Type type_annotation, Span span) {
   auto n = ffi::make_object<VarNode>();
   n->name_hint = std::move(name_hint);
   n->type_annotation = std::move(type_annotation);
-  n->ty = PrimType(GetRuntimeDataType(n->type_annotation));
+  if (n->type_annotation.as<PrimTypeNode>()) {
+    n->ty = n->type_annotation;
+  } else {
+    n->ty = PrimType(GetRuntimeDataType(n->type_annotation));
+  }
   n->span = std::move(span);
   data_ = std::move(n);
 }
@@ -183,8 +188,9 @@ Var Var::copy_with_dtype(DataType dtype) const {
   } else {
     new_ptr = ffi::make_object<VarNode>(*node);
   }
-  new_ptr->type_annotation = GetTypeFromRuntimeDataType(dtype);
-  new_ptr->ty = new_ptr->type_annotation;
+  PrimType value_ty(dtype);
+  new_ptr->type_annotation = value_ty;
+  new_ptr->ty = value_ty;
   return Var(new_ptr);
 }
 
@@ -268,13 +274,13 @@ TVM_FFI_STATIC_INIT_BLOCK() {
 }
 
 // Cast
-Cast::Cast(PrimType t, PrimExpr value, Span span) {
+Cast::Cast(PrimType value_ty, PrimExpr value, Span span) {
   TVM_FFI_ICHECK(value.defined());
-  DataType dtype = t->dtype;
+  DataType dtype = value_ty->dtype;
   TVM_FFI_ICHECK_EQ(dtype.get_lanes_or_vscale_factor(), value.dtype().get_lanes_or_vscale_factor());
   TVM_FFI_ICHECK(dtype.is_scalable_vector() == value.dtype().is_scalable_vector());
   ffi::ObjectPtr<CastNode> node = ffi::make_object<CastNode>();
-  node->ty = std::move(t);
+  node->ty = std::move(value_ty);
   node->value = std::move(value);
   node->span = std::move(span);
   data_ = std::move(node);
@@ -640,13 +646,13 @@ static ffi::Array<PrimExpr> ConvertCallArgs(ffi::Array<CallArg> args) {
   return prim_expr_args;
 }
 
-Call::Call(PrimType dtype, RelaxExpr op, ffi::Array<PrimExpr> args, Attrs attrs, Span span) {
+Call::Call(PrimType ret_ty, RelaxExpr op, ffi::Array<PrimExpr> args, Attrs attrs, Span span) {
   for (size_t i = 0; i < args.size(); ++i) {
     TVM_FFI_ICHECK(args[i].defined()) << "arg " << i << " is not defined()";
   }
 
   ffi::ObjectPtr<CallNode> node = ffi::make_object<CallNode>();
-  node->ty = std::move(dtype);
+  node->ty = std::move(ret_ty);
   node->op = std::move(op);
   node->args = std::move(args);
   node->attrs = std::move(attrs);
@@ -654,8 +660,8 @@ Call::Call(PrimType dtype, RelaxExpr op, ffi::Array<PrimExpr> args, Attrs attrs,
   data_ = std::move(node);
 }
 
-Call::Call(PrimType dtype, RelaxExpr op, ffi::Array<PrimExpr> args, Span span)
-    : Call(std::move(dtype), std::move(op), std::move(args), Attrs(), std::move(span)) {}
+Call::Call(PrimType ret_ty, RelaxExpr op, ffi::Array<PrimExpr> args, Span span)
+    : Call(std::move(ret_ty), std::move(op), std::move(args), Attrs(), std::move(span)) {}
 
 TVM_FFI_STATIC_INIT_BLOCK() {
   namespace refl = tvm::ffi::reflection;

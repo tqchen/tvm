@@ -69,9 +69,10 @@ inline Tensor instance_norm(const Tensor& data, const Tensor& gamma, const Tenso
   auto target_shape =
       MakeReduceTargetShape(real_axis, data, /*keepdims=*/false, /*atleast1d=*/true);
   auto func = MakeTupleSumReducer();
+  PrimType f32_ty = PrimType::Float(32);
 
-  auto compute = [ndim, is_float16, &real_axis, &reduce_axes, &func,
-                  &data](const ffi::Array<Var>& indices) {
+  auto compute = [ndim, is_float16, &real_axis, &reduce_axes, &func, &data,
+                  f32_ty](const ffi::Array<Var>& indices) {
     ffi::Array<PrimExpr> eval_range;
     int arg_counter = 0;
     int red_counter = 0;
@@ -86,15 +87,14 @@ inline Tensor instance_norm(const Tensor& data, const Tensor& gamma, const Tenso
         arg_counter++;
       }
     }
-    auto square = [is_float16](const PrimExpr& x) {
+    auto square = [is_float16, f32_ty](const PrimExpr& x) {
       if (is_float16) {
-        return Cast(PrimType::Float(32), x) * Cast(PrimType::Float(32), x);
+        return Cast(f32_ty, x) * Cast(f32_ty, x);
       }
       return x * x;
     };
     if (is_float16) {
-      return func({Cast(PrimType::Float(32), data(eval_range)), square(data(eval_range))},
-                  reduce_axes, nullptr);
+      return func({Cast(f32_ty, data(eval_range)), square(data(eval_range))}, reduce_axes, nullptr);
     } else {
       return func({data(eval_range), square(data(eval_range))}, reduce_axes, nullptr);
     }
