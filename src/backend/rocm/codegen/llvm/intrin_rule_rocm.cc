@@ -96,11 +96,11 @@ inline PrimExpr DispatchShuffle(const PrimExpr& e) {
   }
   // reinterprete var as int32
   bool is_int32 = var_ty.MatchesElementType(DLDataTypeCode::kDLInt, 32);
-  PrimExpr source = is_int32 ? var : reinterpret(DataType::Int(32), var);
+  PrimExpr source = is_int32 ? var : reinterpret(PrimType::Int(32), var);
   PrimExpr res = Call(i32_ty, builtin::call_pure_extern(),
                       {StringImm("llvm.amdgcn.ds.bpermute"), index << 2, source});
   if (!is_int32) {
-    res = reinterpret(DataType(var_ty.dtype()), res);
+    res = reinterpret(var_ty, res);
   }
   return res;
 }

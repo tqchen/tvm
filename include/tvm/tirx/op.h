@@ -39,6 +39,7 @@
 #include <algorithm>
 #include <limits>
 #include <type_traits>
+#include <utility>
 
 namespace tvm {
 
@@ -69,23 +70,31 @@ namespace tvm {
 TVM_DLL Type GetType(const PrimExpr& expr);
 
 /*!
- * \brief Get the type corresponding to DataType
- * \param dtype The data type
+ * \brief Get the type corresponding to a runtime DLPack dtype.
+ * \param dtype The runtime dtype.
  * \return The result type
  *
  * \sa tvm/ir/type.h for discussion about the relation between Type and runtime::DataType.
  */
-TVM_DLL Type GetTypeFromRuntimeDataType(const DataType& dtype);
+TVM_DLL Type GetTypeFromRuntimeDataType(DLDataType dtype);
+
+inline Type GetTypeFromRuntimeDataType(const DataType& dtype) {
+  return GetTypeFromRuntimeDataType(dtype.operator DLDataType());
+}
 
 /*!
- * \brief Get the implied DataType for storing values with type during runtime.
+ * \brief Get the implied DLPack dtype for storing values with type during runtime.
  *
  * \param type The input type.
- * \return The result runtime::DataType.
+ * \return The result DLPack dtype.
  *
  * \sa tvm/ir/type.h for discussion about the relation between Type and runtime::DataType.
  */
-TVM_DLL runtime::DataType GetRuntimeDataType(const Type& type);
+TVM_DLL DLDataType GetRuntimeDLDataType(const Type& type);
+
+inline runtime::DataType GetRuntimeDataType(const Type& type) {
+  return runtime::DataType(GetRuntimeDLDataType(type));
+}
 
 /*!
  * \brief Return the value.
@@ -120,27 +129,39 @@ TVM_DLL PrimExpr break_loop(Span span = Span());
 
 /*!
  * Query the maximum possible value of dtype.
- * \param dtype The data type.
+ * \param dtype The primitive type.
  * \param span The location of this operation in the source.
  * \return the maximum possible value in this format.
  */
-TVM_DLL PrimExpr max_value(const DataType& dtype, Span span = Span());
+TVM_DLL PrimExpr max_value(PrimType dtype, Span span = Span());
+
+inline PrimExpr max_value(const DataType& dtype, Span span = Span()) {
+  return max_value(PrimType(dtype), std::move(span));
+}
 
 /*!
  * Query the minimum possible value of dtype.
- * \param dtype The data type.
+ * \param dtype The primitive type.
  * \param span The location of this operation in the source.
  * \return the minimum possible value in this format.
  */
-TVM_DLL PrimExpr min_value(const DataType& dtype, Span span = Span());
+TVM_DLL PrimExpr min_value(PrimType dtype, Span span = Span());
+
+inline PrimExpr min_value(const DataType& dtype, Span span = Span()) {
+  return min_value(PrimType(dtype), std::move(span));
+}
 
 /*!
  * Get the value of infinity.
- * \param dtype The data type.
+ * \param dtype The primitive type.
  * \param span The location of this operation in the source.
  * \return the infinity value in this format.
  */
-TVM_DLL PrimExpr infinity(const DataType& dtype, Span span = Span());
+TVM_DLL PrimExpr infinity(PrimType dtype, Span span = Span());
+
+inline PrimExpr infinity(const DataType& dtype, Span span = Span()) {
+  return infinity(PrimType(dtype), std::move(span));
+}
 
 /*!
  * \brief cast value to type.
@@ -166,6 +187,16 @@ TVM_DLL PrimExpr cast(const DataType& t, PrimExpr value, Span span = Span());
  * \brief perform reinterpret cast value to type.
  *
  * \param t the target type.
+ * \param value The value
+ * \param span The location of this operation in the source.
+ * \return The result expression.
+ * \note This function may return value if the type is the same.
+ */
+TVM_DLL PrimExpr reinterpret(PrimType t, PrimExpr value, Span span = Span());
+/*!
+ * \brief perform reinterpret cast value to type.
+ *
+ * \param t the target data type.
  * \param value The value
  * \param span The location of this operation in the source.
  * \return The result expression.
@@ -820,14 +851,18 @@ namespace tirx {
  * \param element_type The corresponding element type.
  * \return The check results
  */
-inline bool IsPointerType(const Type& type, const DataType& element_type) {
+inline bool IsPointerType(const Type& type, DLDataType element_type) {
   if (!type.defined()) return false;
   if (const auto* ptr_type = type.as<PointerTypeNode>()) {
     if (const auto* prim_type = ptr_type->element_type.as<PrimTypeNode>()) {
-      return prim_type->dtype == static_cast<DLDataType>(element_type);
+      return prim_type->dtype == element_type;
     }
   }
   return false;
+}
+
+inline bool IsPointerType(const Type& type, const DataType& element_type) {
+  return IsPointerType(type, element_type.operator DLDataType());
 }
 
 /*!

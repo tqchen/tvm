@@ -65,13 +65,13 @@ bool IsVScaleCall(const PrimExpr& expr) {
   TVM_TIR_REGISTER_OP(OpName).set_num_inputs(2).set_attr<TCallEffectKind>( \
       "TCallEffectKind", static_cast<int64_t>(CallEffectKind::kPure))
 
-runtime::DataType GetRuntimeDataType(const Type& type) {
+DLDataType GetRuntimeDLDataType(const Type& type) {
   if (auto* n = type.as<PrimTypeNode>()) {
-    return DataType(n->dtype);
+    return n->dtype;
   } else if (type.as<PointerTypeNode>()) {
-    return DataType::Handle();
+    return DataType::Handle().operator DLDataType();
   } else if (IsVoidType(type)) {
-    return DataType::Void();
+    return DataType::Void().operator DLDataType();
   } else {
     TVM_FFI_THROW(InternalError) << "Type " << type
                                  << " does not have a corresponding runtime::DataType";
@@ -137,7 +137,7 @@ Type GetType(const PrimExpr& expr) {
   return expr.ty();
 }
 
-Type GetTypeFromRuntimeDataType(const DataType& dtype) { return PrimType(dtype); }
+Type GetTypeFromRuntimeDataType(DLDataType dtype) { return PrimType(dtype); }
 
 // LargeUIntImm
 PrimExpr LargeUIntImm(PrimType value_ty, int64_t low, int64_t high, Span span) {
@@ -215,7 +215,7 @@ PrimType PromoteBinaryOpType(PrimType lhs_ty, PrimType rhs_ty) {
     } else if (lhs_dtype.bits() > rhs_dtype.bits()) {
       return lhs_ty;
     } else {
-      return lhs_dtype.is_uint() ? lhs_ty : rhs_ty;
+      return lhs_dtype.is_uint() ? lhs_ty : lhs_ty.WithCode(DLDataTypeCode::kDLUInt);
     }
   } else {
     TVM_FFI_THROW(InternalError) << "Cannot match type " << lhs_dtype << " vs " << rhs_dtype;
@@ -289,10 +289,10 @@ TVM_FFI_STATIC_INIT_BLOCK() {
 };
 
 // maximum and min limits
-PrimExpr max_value(const DataType& dtype, Span span) {
+PrimExpr max_value(PrimType value_ty, Span span) {
   using namespace tirx;
+  DataType dtype(value_ty.dtype());
   TVM_FFI_ICHECK_EQ(dtype.lanes(), 1);
-  PrimType value_ty(dtype);
   if (dtype.is_int()) {
     if (dtype.bits() == 64) {
       return IntImm(value_ty, std::numeric_limits<int64_t>::max(), span);
@@ -349,10 +349,10 @@ PrimExpr max_value(const DataType& dtype, Span span) {
   TVM_FFI_THROW(InternalError) << "Cannot decide max_value for type" << dtype;
 }
 
-PrimExpr min_value(const DataType& dtype, Span span) {
+PrimExpr min_value(PrimType value_ty, Span span) {
   using namespace tirx;
+  DataType dtype(value_ty.dtype());
   TVM_FFI_ICHECK_EQ(dtype.lanes(), 1);
-  PrimType value_ty(dtype);
   if (dtype.is_int()) {
     if (dtype.bits() == 64) {
       return IntImm(value_ty, std::numeric_limits<int64_t>::lowest(), span);
@@ -405,10 +405,10 @@ PrimExpr min_value(const DataType& dtype, Span span) {
 }
 
 // infinity
-PrimExpr infinity(const DataType& dtype, Span span) {
+PrimExpr infinity(PrimType value_ty, Span span) {
   using namespace tirx;
+  DataType dtype(value_ty.dtype());
   TVM_FFI_ICHECK_EQ(dtype.lanes(), 1);
-  PrimType value_ty(dtype);
   if (dtype.is_float()) {
     if (dtype.bits() == 64) {
       return FloatImm(value_ty, std::numeric_limits<double>::infinity(), span);
@@ -506,15 +506,22 @@ PrimExpr cast(const DataType& t, PrimExpr value, Span span) {
 }
 
 // reinterpret
-PrimExpr reinterpret(const DataType& t, PrimExpr value, Span span) {
-  if (DType(value) == t) return value;
-  if (!t.is_scalable_vector() && !DType(value).is_scalable_vector()) {
-    TVM_FFI_ICHECK(DType(value).bits() * DType(value).lanes() == t.bits() * t.lanes() ||
-                   ((DType(value).is_float4_e2m1fn() || t.is_float4_e2m1fn()) &&
-                    DType(value).bytes() * DType(value).lanes() == t.bytes() * t.lanes()))
-        << "Reinterpret requires size match " << t << " vs " << DType(value);
+PrimExpr reinterpret(PrimType t, PrimExpr value, Span span) {
+  DataType target_dtype(t.dtype());
+  DataType value_dtype = DType(value);
+  if (runtime::TypeEqual(value.ty().dtype(), t.dtype())) return value;
+  if (!target_dtype.is_scalable_vector() && !value_dtype.is_scalable_vector()) {
+    TVM_FFI_ICHECK(
+        value_dtype.bits() * value_dtype.lanes() == target_dtype.bits() * target_dtype.lanes() ||
+        ((value_dtype.is_float4_e2m1fn() || target_dtype.is_float4_e2m1fn()) &&
+         value_dtype.bytes() * value_dtype.lanes() == target_dtype.bytes() * target_dtype.lanes()))
+        << "Reinterpret requires size match " << target_dtype << " vs " << value_dtype;
   }
-  return tirx::Call(PrimType(t), tirx::builtin::reinterpret(), {value}, {}, span);
+  return tirx::Call(std::move(t), tirx::builtin::reinterpret(), {value}, {}, span);
+}
+
+PrimExpr reinterpret(const DataType& t, PrimExpr value, Span span) {
+  return reinterpret(PrimType(t), std::move(value), std::move(span));
 }
 
 // operator+
@@ -959,7 +966,7 @@ PrimExpr isinf(PrimExpr x, Span span) {
   if (DType(x).is_int() || DType(x).is_uint()) {
     return MakeConst(t, false, span);
   } else if (DType(x).is_float()) {
-    PrimExpr infX = infinity(DType(x), span);
+    PrimExpr infX = infinity(x.ty(), span);
     return abs(x, span) == infX && !isnan(x, span);
   } else {
     TVM_FFI_THROW(InternalError) << "Data type " << DType(x)
@@ -999,7 +1006,7 @@ PrimExpr any(PrimExpr source, ffi::Array<IterVar> rdom, ffi::Array<PrimExpr> ini
 PrimExpr max(PrimExpr source, ffi::Array<IterVar> rdom, ffi::Array<PrimExpr> init, Span span) {
   Var x("x", DType(source), span), y("y", DType(source), span);
   PrimExpr result = tirx::Max(x, y, span);
-  PrimExpr identity_element = min_value(DType(source), span);
+  PrimExpr identity_element = min_value(source.ty(), span);
   tirx::CommReducer combiner = tirx::CommReducer({x}, {y}, {result}, {identity_element}, span);
   return tirx::Reduce(combiner, {source}, rdom, IntImm::Bool(true), 0, init, span);
 }
@@ -1007,7 +1014,7 @@ PrimExpr max(PrimExpr source, ffi::Array<IterVar> rdom, ffi::Array<PrimExpr> ini
 PrimExpr min(PrimExpr source, ffi::Array<IterVar> rdom, ffi::Array<PrimExpr> init, Span span) {
   Var x("x", DType(source), span), y("y", DType(source), span);
   PrimExpr result = tirx::Min(x, y, span);
-  PrimExpr identity_element = max_value(DType(source), span);
+  PrimExpr identity_element = max_value(source.ty(), span);
   tirx::CommReducer combiner = tirx::CommReducer({x}, {y}, {result}, {identity_element}, span);
   return tirx::Reduce(combiner, {source}, rdom, IntImm::Bool(true), 0, init, span);
 }
@@ -1198,9 +1205,9 @@ TVM_FFI_STATIC_INIT_BLOCK() {
                     }
                   })
       .def("node.LargeUIntImm", LargeUIntImm)
-      .def("tirx.min_value", min_value)
-      .def("tirx.max_value", max_value)
-      .def("tirx.infinity", infinity)
+      .def("tirx.min_value", static_cast<PrimExpr (*)(PrimType, Span)>(&min_value))
+      .def("tirx.max_value", static_cast<PrimExpr (*)(PrimType, Span)>(&max_value))
+      .def("tirx.infinity", static_cast<PrimExpr (*)(PrimType, Span)>(&infinity))
       .def("tirx.abs", tvm::abs)
       .def("tirx.likely", tvm::likely)
       .def("tirx.isnan", tvm::isnan)
@@ -1213,7 +1220,9 @@ TVM_FFI_STATIC_INIT_BLOCK() {
       .def("tirx.trunc", tvm::trunc)
       .def("tirx._cast",
            [](DataType dtype, PrimExpr value, Span span) { return tvm::cast(dtype, value, span); })
-      .def("tirx.reinterpret", tvm::reinterpret);
+      .def("tirx.reinterpret", [](DataType dtype, PrimExpr value, Span span) {
+        return tvm::reinterpret(dtype, value, span);
+      });
 }
 
 // operator overloading, smarter than make

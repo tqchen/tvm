@@ -338,8 +338,11 @@ class IntrinInjecter : public tvm::arith::IRMutatorWithAnalyzer {
     if (const_int_bound_a->min_value >= 0) {
       return std::nullopt;
     }
+    PrimType a_ty = a.ty();
+    // This overflow check is scalar element based, matching the old
+    // DataType::element_of() behavior. Lane count is intentionally ignored.
     const int64_t max_value_of_dtype =
-        tvm::max_value(DataType(a.ty().dtype()).element_of()).as_or_throw<IntImm>()->value;
+        tvm::max_value(PrimType(a_ty.code(), a_ty.bits())).as_or_throw<IntImm>()->value;
 
     // NOTE: ensures that (b-1) - a_min does not overflow
     // also note: max_value_of_dtype + const_int_bound_a->min_value won't overflow

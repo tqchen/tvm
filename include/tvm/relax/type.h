@@ -188,6 +188,9 @@ class TensorTypeNode : public TypeNode {
   /*! \return Whether the type contains unknown dtype. */
   bool IsUnknownDtype() const { return dtype.is_void(); }
 
+  /*! \return The primitive element type for compiler-side uses. */
+  tvm::PrimType GetPrimType() const { return tvm::PrimType(dtype); }
+
   /*! \return Shape if it is known. */
   ffi::Optional<ffi::Array<PrimExpr>> GetShape() const {
     if (!shape.defined()) return {};
@@ -233,6 +236,11 @@ class TensorType : public Type {
   TVM_DLL TensorType(Expr shape, DataType dtype, ffi::Optional<VDevice> vdevice = std::nullopt,
                      Span span = Span());
 
+  TensorType(Expr shape, tvm::PrimType dtype, ffi::Optional<VDevice> vdevice = std::nullopt,
+             Span span = Span())
+      : TensorType(std::move(shape), DataType(dtype.dtype()), std::move(vdevice), std::move(span)) {
+  }
+
   /*!
    * \brief Construction with an unknown shape expression.
    * \param dtype The data type of tensor's elements.
@@ -242,6 +250,10 @@ class TensorType : public Type {
    */
   TVM_DLL TensorType(DataType dtype, int ndim, ffi::Optional<VDevice> vdevice = std::nullopt,
                      Span span = Span());
+
+  TensorType(tvm::PrimType dtype, int ndim, ffi::Optional<VDevice> vdevice = std::nullopt,
+             Span span = Span())
+      : TensorType(DataType(dtype.dtype()), ndim, std::move(vdevice), std::move(span)) {}
 
   TVM_FFI_DEFINE_OBJECT_REF_METHODS_NOTNULLABLE(TensorType, Type, TensorTypeNode);
 };
