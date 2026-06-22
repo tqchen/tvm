@@ -217,7 +217,7 @@ Type InferTypeStatisticalExtension(const Call& call, const BlockBuilder& ctx) {
       return TensorType(ShapeExpr(ffi::Array<PrimExpr>()), data_ty->dtype, data_ty->vdevice);
     }
     return TupleType({TensorType(data_ty->dtype, out_ndim, data_ty->vdevice),
-                      TensorType(DataType::Int(64), out_ndim, data_ty->vdevice)});
+                      TensorType(PrimType::Int(64), out_ndim, data_ty->vdevice)});
   }
 
   ffi::Array<PrimExpr> out_shape;
@@ -235,7 +235,7 @@ Type InferTypeStatisticalExtension(const Call& call, const BlockBuilder& ctx) {
     return TensorType(ShapeExpr(out_shape), data_ty->dtype, data_ty->vdevice);
   else
     return TupleType({TensorType(ShapeExpr(out_shape), data_ty->dtype, data_ty->vdevice),
-                      TensorType(ShapeExpr(out_shape), DataType::Int(64), data_ty->vdevice)});
+                      TensorType(ShapeExpr(out_shape), PrimType::Int(64), data_ty->vdevice)});
 }
 
 /* relax.cumprod */

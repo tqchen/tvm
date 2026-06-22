@@ -61,7 +61,7 @@ class ExternFunctionRewriter : ExprMutator {
       // Append the workspace parameter to this function.
       ffi::Array<Var> new_params = func_node->params;
 
-      auto ty = TensorType(ShapeExpr({IntImm::Int32(max_workspace_size_)}), DataType::UInt(8));
+      auto ty = TensorType(ShapeExpr({IntImm::Int32(max_workspace_size_)}), PrimType::UInt(8));
       Var workspace_param(name_sup_->FreshName("workspace"), ty);
 
       if (func_node->GetAttr<ffi::String>(attr::kCodegen)) {

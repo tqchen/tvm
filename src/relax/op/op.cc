@@ -411,7 +411,7 @@ static ffi::Optional<Type> InferCallTIROutputTypeFromArguments(
         if (packed_tuple_ty->values) {
           return PrimType(packed_tuple_ty->values.value()[i].ty());
         } else {
-          return PrimType(DataType::Int(64));
+          return PrimType::Int(64);
         }
       }();
       dummy_args.push_back(Var("dummy_trailing_arg", dummy_arg_ty));
@@ -1120,7 +1120,7 @@ Type InferTypeSize(const Call& call, const BlockBuilder& ctx) {
   auto* tensor_ty = GetType(call->args[0]).as<TensorTypeNode>();
   TVM_FFI_ICHECK(tensor_ty) << "size expects a tensor input, but received " << arg_ty
                             << "; use MatchCast if necessary";
-  return TensorType(ShapeExpr(ffi::Array<PrimExpr>{}), DataType::Int(64));
+  return TensorType(ShapeExpr(ffi::Array<PrimExpr>{}), PrimType::Int(64));
 }
 
 TVM_REGISTER_OP("relax.size")
@@ -1183,7 +1183,7 @@ Type ReturnShapeToTensorType(const Call& call, const BlockBuilder& ctx) {
   const auto* ty = GetTypeAs<ShapeTypeNode>(call->args[0]);
   TVM_FFI_ICHECK(ty);
   int32_t ndim = ty->ndim;
-  return TensorType(ShapeExpr({PrimExpr(ndim)}), DataType::Int(64));
+  return TensorType(ShapeExpr({PrimExpr(ndim)}), PrimType::Int(64));
 }
 
 TVM_REGISTER_OP("relax.shape_to_tensor")
