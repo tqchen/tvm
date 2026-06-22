@@ -66,7 +66,7 @@ class LazyInputMutator : public ExprMutator {
     }
 
     Var fget_param("fget_param",
-                   FuncType({PrimType(DataType::Int(64)), ObjectType()}, ObjectType()));
+                   FuncType({PrimType::Int(64), ObjectType()}, ObjectType()));
 
     ffi::Array<Var> new_params(func->params.begin(), func->params.begin() + num_input_params);
     new_params.push_back(fget_param);
@@ -145,7 +145,7 @@ class LazyOutputMutator : public ExprMutator {
       define_lookup(0, func_body->body);
     }
 
-    Var fset_output("fset_output", FuncType({PrimType(DataType::Int(64)), ObjectType()},
+    Var fset_output("fset_output", FuncType({PrimType::Int(64), ObjectType()},
                                             TupleType(ffi::Array<Type>{}), /* purity = */ false));
     plan_ = FunctionPlan{std::move(output_lookup), fset_output};
 
