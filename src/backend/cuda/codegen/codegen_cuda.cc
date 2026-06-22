@@ -307,7 +307,8 @@ void CodeGenCUDA::BindThreadIndex(const IterVar& iv) {
   }
 }
 
-void CodeGenCUDA::PrintType(DataType t, std::ostream& os) {  // NOLINT(*)
+void CodeGenCUDA::PrintType(DLDataType raw_t, std::ostream& os) {  // NOLINT(*)
+  DataType t(raw_t);
   int lanes = t.lanes();
   if (t.is_handle()) {
     TVM_FFI_ICHECK(t.is_scalar()) << "do not yet support vector types";
