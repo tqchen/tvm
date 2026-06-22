@@ -46,28 +46,15 @@
 #ifndef TVM_IR_TYPE_H_
 #define TVM_IR_TYPE_H_
 
-#include <tvm/ffi/cast.h>
 #include <tvm/ffi/container/array.h>
 #include <tvm/ffi/reflection/registry.h>
-#include <tvm/ir/expr.h>
+#include <tvm/ir/base_expr.h>
 #include <tvm/ir/source_map.h>
 #include <tvm/runtime/data_type.h>
 
 #include <string>
 
 namespace tvm {
-
-namespace ffi {
-template <>
-inline constexpr bool use_default_type_traits_v<PrimType> = false;
-
-template <>
-struct TypeTraits<PrimType> : public ObjectRefWithFallbackTraitsBase<PrimType, runtime::DataType> {
-  TVM_FFI_INLINE static PrimType ConvertFallbackValue(runtime::DataType dtype) {
-    return PrimType(dtype);
-  }
-};
-}  // namespace ffi
 
 /*!
  * \brief Low-level raw pointer type.

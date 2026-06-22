@@ -27,13 +27,13 @@ namespace tvm {
 namespace tirx {
 
 PrimExpr ReinterpretAsUInt(PrimExpr value) {
-  return reinterpret(GetStorageUIntDType(value.dtype()), value);
+  return reinterpret(GetStorageUIntDType(DataType(value.ty().dtype())), value);
 }
 
 DataType GetStorageUIntDType(DataType dtype) { return DataType::UInt(dtype.bits(), dtype.lanes()); }
 
 PrimExpr DTypeConversion(PrimExpr src_value, DataType tgt_dtype, RoundingMode round_mode) {
-  DataType src_dtype = src_value.dtype();
+  DataType src_dtype(src_value.ty().dtype());
   // Step 1: check dtype
   // The lanes of src dtype and target dtype must match.
   TVM_FFI_ICHECK_EQ(src_dtype.lanes(), tgt_dtype.lanes())
@@ -44,13 +44,12 @@ PrimExpr DTypeConversion(PrimExpr src_value, DataType tgt_dtype, RoundingMode ro
   };
   // Both source dtype and target dtype should be floating point.
   TVM_FFI_ICHECK(is_floating_point(src_dtype) && is_floating_point(tgt_dtype));
-  FloatConfig src_fp = FloatConfig::FromDataType(src_value.dtype()),
+  FloatConfig src_fp = FloatConfig::FromDataType(src_dtype),
               tgt_fp = FloatConfig::FromDataType(tgt_dtype);
   int exponent_delta = tgt_fp.exponent - src_fp.exponent;
   int bias_delta = tgt_fp.bias - src_fp.bias;
   int mantissa_delta = tgt_fp.mantissa - src_fp.mantissa;
-  DataType src_uint = GetStorageUIntDType(src_value.dtype()),
-           tgt_uint = GetStorageUIntDType(tgt_dtype);
+  DataType src_uint = GetStorageUIntDType(src_dtype), tgt_uint = GetStorageUIntDType(tgt_dtype);
   PrimExpr src_uint_value = ReinterpretAsUInt(src_value);
   if (mantissa_delta < 0) {
     // use rounding

@@ -64,6 +64,18 @@ using arith::Analyzer;
 using arith::ConstIntBound;
 using arith::IRMutatorWithAnalyzer;
 
+namespace {
+
+DataType DType(const PrimType& ty) { return DataType(ty.dtype()); }
+
+DataType DType(const PrimExpr& expr) { return DType(expr.ty()); }
+
+bool SameDType(const PrimExpr& lhs, const PrimExpr& rhs) { return DType(lhs) == DType(rhs); }
+
+bool IsInt(const PrimType& ty) { return ty.code() == DLDataTypeCode::kDLInt; }
+
+}  // namespace
+
 // Determine the result dtype for Var, IntImm and Cast,
 // which will be stored in `vmap` eventually.
 //
@@ -79,7 +91,8 @@ class DataTypeVisitor final : public StmtExprVisitor {
   explicit DataTypeVisitor(int target_bits) : bits_(target_bits), target_bits_(target_bits) {}
 
   void VisitExpr(const PrimExpr& e) {
-    if (e.dtype().is_int()) {
+    PrimType e_ty = e.ty();
+    if (IsInt(e_ty)) {
       int bits = max_bits_;
       if (bound_.find(e) == bound_.end()) {
         analyzer_->const_int_bound(e, &bound_);
@@ -87,7 +100,7 @@ class DataTypeVisitor final : public StmtExprVisitor {
       ConstIntBound bound = bound_[e];
       int64_t ubound = Downcast<IntImm>(max_value(DataType::Int(target_bits_)))->value;
       int64_t lbound = Downcast<IntImm>(min_value(DataType::Int(target_bits_)))->value;
-      if (e.dtype().bits() <= target_bits_ ||
+      if (e_ty.bits() <= target_bits_ ||
           (bound->max_value <= ubound && bound->min_value >= lbound)) {
         bits = target_bits_;
       }
@@ -109,14 +122,14 @@ class DataTypeVisitor final : public StmtExprVisitor {
 
   void VisitStmt_(const ForNode* op) {
     analyzer_->Bind(op->loop_var, Range::FromMinExtent(op->min, op->extent));
-    vextent_[op->loop_var.as<VarNode>()] = op->extent.dtype();
+    vextent_[op->loop_var.as<VarNode>()] = DType(op->extent);
     return StmtExprVisitor::VisitStmt_(op);
   }
 
   void VisitStmt_(const SBlockNode* op) {
     for (const IterVar& iter : op->iter_vars) {
       analyzer_->Bind(iter->var, Range::FromMinExtent(iter->dom->min, iter->dom->extent));
-      vextent_[iter->var.as<VarNode>()] = iter->dom->extent.dtype();
+      vextent_[iter->var.as<VarNode>()] = DType(iter->dom->extent);
     }
     StmtExprVisitor::VisitStmt_(op);
   }
@@ -126,7 +139,7 @@ class DataTypeVisitor final : public StmtExprVisitor {
       IterVar iv = Downcast<IterVar>(op->node);
       TVM_FFI_ICHECK_NE(iv->thread_tag.length(), 0U);
       analyzer_->Bind(iv->var, Range::FromMinExtent(0, op->value));
-      vextent_[iv->var.as<VarNode>()] = op->value.dtype();
+      vextent_[iv->var.as<VarNode>()] = DType(op->value);
       StmtExprVisitor::VisitStmt_(op);
     } else {
       StmtExprVisitor::VisitStmt_(op);
@@ -137,7 +150,7 @@ class DataTypeVisitor final : public StmtExprVisitor {
     // Setup the domain information before simplification.
     for (const IterVar& iv : op->axis) {
       analyzer_->Bind(iv->var, iv->dom);
-      vextent_[iv->var.as<VarNode>()] = iv->dom->extent.dtype();
+      vextent_[iv->var.as<VarNode>()] = DType(iv->dom->extent);
     }
     // Recursively call simplification when necessary.
     StmtExprVisitor::VisitExpr_(op);
@@ -149,38 +162,40 @@ class DataTypeVisitor final : public StmtExprVisitor {
       // is upperbounded by its original dtype before rewrite.
       int bits = std::min(vextent_[op].bits(), bits_);
       if (vmap.find(op) == vmap.end()) {
-        vmap[op] = op->dtype().with_bits(bits);
+        vmap[op] = DType(op->ty()).with_bits(bits);
       } else {
         // We take maximum bits for all the possible Expr where a var occurs
-        vmap[op] = op->dtype().with_bits(std::max(vmap[op].bits(), bits));
+        vmap[op] = DType(op->ty()).with_bits(std::max(vmap[op].bits(), bits));
       }
     }
     StmtExprVisitor::VisitExpr_(op);
   }
 
   void VisitExpr_(const IntImmNode* op) {
-    if (op->dtype().is_int()) {
+    PrimType op_ty = op->ty();
+    if (IsInt(op_ty)) {
       // We only narrow and never promote, so the result dtype
       // is upperbounded by its original dtype before rewrite.
-      int bits = std::min(op->dtype().bits(), bits_);
+      int bits = std::min(op_ty.bits(), bits_);
       if (vmap.find(op) == vmap.end()) {
-        vmap[op] = op->dtype().with_bits(bits);
+        vmap[op] = DType(op_ty).with_bits(bits);
       } else {
-        vmap[op] = op->dtype().with_bits(std::max(vmap[op].bits(), bits));
+        vmap[op] = DType(op_ty).with_bits(std::max(vmap[op].bits(), bits));
       }
     }
     StmtExprVisitor::VisitExpr_(op);
   }
 
   void VisitExpr_(const CastNode* op) {
-    if (op->dtype().is_int()) {
+    PrimType op_ty = op->ty();
+    if (IsInt(op_ty)) {
       // We only narrow and never promote, so the result dtype
       // is upperbounded by its original dtype before rewrite.
-      int bits = std::min(op->dtype().bits(), bits_);
+      int bits = std::min(op_ty.bits(), bits_);
       if (vmap.find(op) == vmap.end()) {
-        vmap[op] = op->dtype().with_bits(bits);
+        vmap[op] = DType(op_ty).with_bits(bits);
       } else {
-        vmap[op] = op->dtype().with_bits(std::max(vmap[op].bits(), bits));
+        vmap[op] = DType(op_ty).with_bits(std::max(vmap[op].bits(), bits));
       }
     }
     StmtExprVisitor::VisitExpr_(op);
@@ -215,7 +230,7 @@ class NarrowDataTypeRewriter : public IndexDataTypeRewriter {
     visitor_(s);
     for (auto i = visitor_.vmap.begin(), last = visitor_.vmap.end(); i != last;) {
       PrimExpr e = ffi::GetRef<PrimExpr>(i->first);
-      if (e.dtype() == i->second) {
+      if (DType(e) == i->second) {
         i = visitor_.vmap.erase(i);
       } else {
         ++i;
@@ -257,7 +272,7 @@ class NarrowDataTypeRewriter : public IndexDataTypeRewriter {
                                         << ", but get " << e->GetTypeKey();
       PrimExpr new_value = new_op->value;
       DataType cast_type = visitor_.vmap[op];
-      if (new_value.dtype() != cast_type) {
+      if (DType(new_value) != cast_type) {
         new_value = Cast(PrimType(cast_type), new_value);
       }
       return new_value;
@@ -265,24 +280,24 @@ class NarrowDataTypeRewriter : public IndexDataTypeRewriter {
     return Parent::VisitExpr_(op);
   }
 
-#define TVM_DEFINE_BIOP_EXPR_MUTATE_WITH_TYPE_MATCH(OP, FUNC)             \
-  PrimExpr VisitExpr_(const OP* op) {                                     \
-    PrimExpr a = this->VisitExpr(op->a);                                  \
-    PrimExpr b = this->VisitExpr(op->b);                                  \
-    if (op->a.same_as(a) && op->b.same_as(b) && a.dtype() == b.dtype()) { \
-      return ffi::GetRef<PrimExpr>(op);                                   \
-    } else {                                                              \
-      if (a.dtype() != b.dtype()) {                                       \
-        bool is_enabled = is_enabled_;                                    \
-        is_enabled_ = true;                                               \
-        PrimExpr lhs = this->VisitExpr(op->a);                            \
-        PrimExpr rhs = this->VisitExpr(op->b);                            \
-        is_enabled_ = is_enabled;                                         \
-        return FUNC(lhs, rhs);                                            \
-      } else {                                                            \
-        return FUNC(a, b);                                                \
-      }                                                                   \
-    }                                                                     \
+#define TVM_DEFINE_BIOP_EXPR_MUTATE_WITH_TYPE_MATCH(OP, FUNC)      \
+  PrimExpr VisitExpr_(const OP* op) {                              \
+    PrimExpr a = this->VisitExpr(op->a);                           \
+    PrimExpr b = this->VisitExpr(op->b);                           \
+    if (op->a.same_as(a) && op->b.same_as(b) && SameDType(a, b)) { \
+      return ffi::GetRef<PrimExpr>(op);                            \
+    } else {                                                       \
+      if (!SameDType(a, b)) {                                      \
+        bool is_enabled = is_enabled_;                             \
+        is_enabled_ = true;                                        \
+        PrimExpr lhs = this->VisitExpr(op->a);                     \
+        PrimExpr rhs = this->VisitExpr(op->b);                     \
+        is_enabled_ = is_enabled;                                  \
+        return FUNC(lhs, rhs);                                     \
+      } else {                                                     \
+        return FUNC(a, b);                                         \
+      }                                                            \
+    }                                                              \
   }
 
   TVM_DEFINE_BIOP_EXPR_MUTATE_WITH_TYPE_MATCH(AddNode, operator+);

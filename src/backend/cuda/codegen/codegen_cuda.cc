@@ -299,9 +299,11 @@ void CodeGenCUDA::BindThreadIndex(const IterVar& iv) {
                                    ";\" : \"=r\"(ctaid) :);\n"
                                    "  return ctaid;\n"
                                    "}\n");
-    var_idmap_[iv->var.get()] = CastFromTo(func_name + "()", DataType::UInt(32), iv->var.dtype());
+    var_idmap_[iv->var.get()] =
+        CastFromTo(func_name + "()", DataType::UInt(32), DataType(iv->var.ty().dtype()));
   } else {
-    var_idmap_[iv->var.get()] = CastFromTo(iv->thread_tag, DataType::UInt(32), iv->var.dtype());
+    var_idmap_[iv->var.get()] =
+        CastFromTo(iv->thread_tag, DataType::UInt(32), DataType(iv->var.ty().dtype()));
   }
 }
 
@@ -579,22 +581,22 @@ void CodeGenCUDA::PrintVecBinaryOp(const std::string& op, DataType t, PrimExpr l
   int ssa_scope = BeginScope();
   {
     // Unpack into individual ops.
-    std::string vlhs = SSAGetID(PrintExpr(lhs), lhs.dtype());
-    std::string vrhs = SSAGetID(PrintExpr(rhs), rhs.dtype());
+    std::string vlhs = SSAGetID(PrintExpr(lhs), DataType(lhs.ty().dtype()));
+    std::string vrhs = SSAGetID(PrintExpr(rhs), DataType(rhs.ty().dtype()));
 
     for (int i = 0, lanes = t.lanes(); i < lanes; ++i) {
       std::ostringstream value_temp;
       if (isalpha(op[0])) {
         value_temp << op << "(";
-        PrintVecElemLoad(vlhs, lhs.dtype(), i, value_temp);
+        PrintVecElemLoad(vlhs, DataType(lhs.ty().dtype()), i, value_temp);
         value_temp << ", ";
-        PrintVecElemLoad(vrhs, rhs.dtype(), i, value_temp);
+        PrintVecElemLoad(vrhs, DataType(rhs.ty().dtype()), i, value_temp);
         value_temp << ")";
       } else {
         value_temp << "(";
-        PrintVecElemLoad(vlhs, lhs.dtype(), i, value_temp);
+        PrintVecElemLoad(vlhs, DataType(lhs.ty().dtype()), i, value_temp);
         value_temp << op;
-        PrintVecElemLoad(vrhs, rhs.dtype(), i, value_temp);
+        PrintVecElemLoad(vrhs, DataType(rhs.ty().dtype()), i, value_temp);
         value_temp << ")";
       }
       PrintVecElemStore(sret, t, i, value_temp.str());
@@ -794,8 +796,8 @@ void CodeGenCUDA::AddUtilFunction(const std::string& func_name, const std::strin
 }
 
 void CodeGenCUDA::VisitExpr_(const CastNode* op, std::ostream& os) {
-  DataType from_ty = op->value.dtype();
-  DataType target_ty = op->dtype();
+  DataType from_ty = DataType(op->value.ty().dtype());
+  DataType target_ty = DataType(op->ty().dtype());
   TVM_FFI_ICHECK_EQ(target_ty.lanes(), from_ty.lanes());
 
   // Emit simple C-style type conversion.
@@ -881,7 +883,7 @@ void CodeGenCUDA::PrintCallExtern(Type ret_type, ffi::String global_symbol,
       std::vector<std::string> sargs;
       size_t arg_begin = static_cast<size_t>(skip_first_arg);
       for (size_t i = arg_begin; i < args.size(); ++i) {
-        std::string val = SSAGetID(PrintExpr(args[i]), args[i].dtype());
+        std::string val = SSAGetID(PrintExpr(args[i]), DataType(args[i].ty().dtype()));
         sargs.push_back(std::move(val));
       }
 
@@ -891,7 +893,7 @@ void CodeGenCUDA::PrintCallExtern(Type ret_type, ffi::String global_symbol,
         scall << global_symbol << "(";
         for (size_t j = 0; j < sargs.size(); ++j) {
           if (j > 0) scall << ", ";
-          PrintVecElemLoad(sargs[j], args[arg_begin + j].dtype(), i, scall);
+          PrintVecElemLoad(sargs[j], DataType(args[arg_begin + j].ty().dtype()), i, scall);
         }
         scall << ")";
         PrintVecElemStore(sret, ret_dtype, i, scall.str());
@@ -1196,7 +1198,7 @@ void CodeGenCUDA::VisitExpr_(const CallNode* op, std::ostream& os) {
     std::string local_ptr = this->PrintExpr(op->args[3]);
     std::string local_offset = this->PrintExpr(op->args[4]);
     std::string smem_ptr = this->PrintExpr(op->args[5]);
-    if (trans && op->dtype().bits() == 8) {
+    if (trans && DataType(op->ty().dtype()).bits() == 8) {
       // ldmatrix can't transpose 8-bit elements (it assumes 16-bit), so
       // synthesize the equivalent manual gather loop. args[6] is the
       // shared-memory stride for this fallback.
@@ -1317,8 +1319,8 @@ void CodeGenCUDA::VisitExpr_(const CallNode* op, std::ostream& os) {
            << guard << ")\n";
     stream << ");\n";
   } else if (op->op.same_as(builtin::reinterpret())) {
-    DataType tgt_dtype = op->dtype();
-    DataType src_dtype = op->args[0].dtype();
+    DataType tgt_dtype = DataType(op->ty().dtype());
+    DataType src_dtype = DataType(op->args[0].ty().dtype());
     PrimExpr value = op->args[0];
 
     if (src_dtype.is_handle() && tgt_dtype.is_scalar() &&
@@ -1411,7 +1413,7 @@ void CodeGenCUDA::VisitExpr_(const CallNode* op, std::ostream& os) {
 
     const PrimExpr& arg = op->args[0];
     const auto* var_node = arg.as<VarNode>();
-    DataType dtype = op->dtype();
+    DataType dtype = DataType(op->ty().dtype());
     bool is_string = op->args[2].as<IntImmNode>()->value;
     bool is_scalar = op->args[3].as<IntImmNode>()->value;
     int num_dims = op->args[4].as<IntImmNode>()->value;
@@ -1693,9 +1695,9 @@ void CodeGenCUDA::VisitStmt_(const EvaluateNode* op) {
 }
 
 void CodeGenCUDA::VisitExpr_(const RampNode* op, std::ostream& os) {
-  int lanes = op->dtype().lanes();
+  int lanes = DataType(op->ty().dtype()).lanes();
   if (lanes <= 4) {
-    PrintVecConstructor(op->dtype(), os);
+    PrintVecConstructor(DataType(op->ty().dtype()), os);
     os << "(";
     for (int i = 0; i < lanes; i++) {
       os << "(" << PrintExpr(op->base) << ")"
@@ -1710,16 +1712,16 @@ void CodeGenCUDA::VisitExpr_(const RampNode* op, std::ostream& os) {
   // constructor argument layout does not match TIR vector lane layout.
   std::string sret = name_supply_->FreshName("_");
   this->PrintIndent();
-  this->PrintType(op->dtype(), stream);
+  this->PrintType(DataType(op->ty().dtype()), stream);
   stream << ' ' << sret << ";\n";
   int ssa_scope = BeginScope();
   {
-    std::string vbase = SSAGetID(PrintExpr(op->base), op->base.dtype());
-    std::string vstride = SSAGetID(PrintExpr(op->stride), op->stride.dtype());
+    std::string vbase = SSAGetID(PrintExpr(op->base), DataType(op->base.ty().dtype()));
+    std::string vstride = SSAGetID(PrintExpr(op->stride), DataType(op->stride.ty().dtype()));
     for (int i = 0; i < lanes; ++i) {
       std::ostringstream value_temp;
       value_temp << "(" << vbase << ")+(" << vstride << "*" << i << ")";
-      PrintVecElemStore(sret, op->dtype(), i, value_temp.str());
+      PrintVecElemStore(sret, DataType(op->ty().dtype()), i, value_temp.str());
     }
   }
   EndScope(ssa_scope);
@@ -1727,14 +1729,15 @@ void CodeGenCUDA::VisitExpr_(const RampNode* op, std::ostream& os) {
 }
 
 void CodeGenCUDA::VisitExpr_(const BroadcastNode* op, std::ostream& os) {  // NOLINT(*)
-  int lanes = op->dtype().lanes();
-  if ((op->dtype().is_int() || op->dtype().is_uint()) && op->dtype().bits() == 8 && lanes == 4) {
+  int lanes = DataType(op->ty().dtype()).lanes();
+  if ((DataType(op->ty().dtype()).is_int() || DataType(op->ty().dtype()).is_uint()) &&
+      DataType(op->ty().dtype()).bits() == 8 && lanes == 4) {
     // make_int8x4
     const int64_t* p = as_const_int(op->value);
     TVM_FFI_ICHECK(p);
     int64_t v = *p & 0xFF;
     v = (v << 24) | (v << 16) | (v << 8) | v;
-    if (op->dtype().is_uint()) {
+    if (DataType(op->ty().dtype()).is_uint()) {
       os << "(uint)" << v;
     } else {
       os << "(int)" << v;
@@ -1742,9 +1745,9 @@ void CodeGenCUDA::VisitExpr_(const BroadcastNode* op, std::ostream& os) {  // NO
     return;
   }
 
-  if (op->dtype().is_float16()) {
+  if (DataType(op->ty().dtype()).is_float16()) {
     std::string v = PrintExpr(op->value);
-    PrintVecConstructor(op->dtype(), os);
+    PrintVecConstructor(DataType(op->ty().dtype()), os);
     os << '(';
     if (lanes <= 4) {
       for (int i = 0; i < lanes / 2; ++i) {
@@ -1761,9 +1764,9 @@ void CodeGenCUDA::VisitExpr_(const BroadcastNode* op, std::ostream& os) {  // NO
     return;
   }
 
-  if (op->dtype().is_bfloat16()) {
+  if (DataType(op->ty().dtype()).is_bfloat16()) {
     std::string v = PrintExpr(op->value);
-    PrintVecConstructor(op->dtype(), os);
+    PrintVecConstructor(DataType(op->ty().dtype()), os);
     os << '(';
     if (lanes > 4) {
       for (int i = 0; i < lanes / 2; ++i) {
@@ -1780,12 +1783,12 @@ void CodeGenCUDA::VisitExpr_(const BroadcastNode* op, std::ostream& os) {  // NO
     return;
   }
 
-  if (op->dtype().is_float8() || op->dtype().is_float4()) {
-    int lanes = op->dtype().lanes();
+  if (DataType(op->ty().dtype()).is_float8() || DataType(op->ty().dtype()).is_float4()) {
+    int lanes = DataType(op->ty().dtype()).lanes();
     TVM_FFI_ICHECK(lanes == 1 || lanes == 2 || lanes == 4);
     std::string v = PrintExpr(op->value);
     // Implicit conversion from float back to fp8
-    PrintType(op->dtype(), os);
+    PrintType(DataType(op->ty().dtype()), os);
     os << "(make_float" << lanes << "(";
     for (int i = 0; i < lanes; ++i) {
       if (i != 0) os << ", ";
@@ -1795,7 +1798,8 @@ void CodeGenCUDA::VisitExpr_(const BroadcastNode* op, std::ostream& os) {  // NO
     return;
   }
 
-  if ((op->dtype().is_int() || op->dtype().is_uint()) && op->dtype().bits() == 4) {
+  if ((DataType(op->ty().dtype()).is_int() || DataType(op->ty().dtype()).is_uint()) &&
+      DataType(op->ty().dtype()).bits() == 4) {
     bool fail = false;
     const int64_t* p = as_const_int(op->value);
     TVM_FFI_ICHECK(p);
@@ -1803,7 +1807,7 @@ void CodeGenCUDA::VisitExpr_(const BroadcastNode* op, std::ostream& os) {  // NO
 
     if (lanes == 4) {
       v = (v << 12) | (v << 8) | (v << 4) | v;
-      if (op->dtype().is_uint()) {
+      if (DataType(op->ty().dtype()).is_uint()) {
         os << "(uint16_t)" << v;
       } else {
         os << "(int16_t)" << v;
@@ -1811,17 +1815,17 @@ void CodeGenCUDA::VisitExpr_(const BroadcastNode* op, std::ostream& os) {  // NO
     } else {
       v = (v << 28) | (v << 24) | (v << 20) | (v << 16) | (v << 12) | (v << 8) | (v << 4) | v;
       if (lanes == 8) {
-        if (op->dtype().is_uint()) {
+        if (DataType(op->ty().dtype()).is_uint()) {
           os << "(uint)" << v;
         } else {
           os << "(int)" << v;
         }
       } else if (lanes == 16 || lanes == 32) {
-        PrintVecConstructor(op->dtype(), os);
+        PrintVecConstructor(DataType(op->ty().dtype()), os);
         os << '(';
         for (int i = 0; i < lanes / 8; ++i) {
           if (i != 0) os << ", ";
-          if (op->dtype().is_uint()) {
+          if (DataType(op->ty().dtype()).is_uint()) {
             os << "(uint)" << v;
           } else {
             os << "(int)" << v;
@@ -1839,7 +1843,7 @@ void CodeGenCUDA::VisitExpr_(const BroadcastNode* op, std::ostream& os) {  // NO
   }
 
   std::string v = PrintExpr(op->value);
-  PrintVecConstructor(op->dtype(), os);
+  PrintVecConstructor(DataType(op->ty().dtype()), os);
   os << '(';
   for (int i = 0; i < lanes; ++i) {
     if (i != 0) os << ", ";
@@ -1850,26 +1854,28 @@ void CodeGenCUDA::VisitExpr_(const BroadcastNode* op, std::ostream& os) {  // NO
 
 void CodeGenCUDA::VisitExpr_(const SelectNode* op, std::ostream& os) {
   // Non-vector cases.
-  if (!op->dtype().is_fixed_length_vector()) {
+  if (!DataType(op->ty().dtype()).is_fixed_length_vector()) {
     CodeGenC::VisitExpr_(op, os);
     return;
   }
 
   // Codegen vector condition case by serializing the select op.
-  TVM_FFI_ICHECK(op->false_value.dtype() == op->dtype() && op->true_value.dtype() == op->dtype() &&
-                 op->dtype().lanes() == op->condition.dtype().lanes());
+  TVM_FFI_ICHECK(DataType(op->false_value.ty().dtype()) == DataType(op->ty().dtype()) &&
+                 DataType(op->true_value.ty().dtype()) == DataType(op->ty().dtype()) &&
+                 DataType(op->ty().dtype()).lanes() ==
+                     DataType(op->condition.ty().dtype()).lanes());
 
   std::string r_var = name_supply_->FreshName("_");
   this->PrintIndent();
-  this->PrintType(op->dtype(), stream);
+  this->PrintType(DataType(op->ty().dtype()), stream);
   stream << ' ' << r_var << ";\n";
   {
-    std::string c_var = SSAGetID(PrintExpr(op->condition), op->dtype());
-    std::string t_var = SSAGetID(PrintExpr(op->true_value), op->dtype());
-    std::string f_var = SSAGetID(PrintExpr(op->false_value), op->dtype());
+    std::string c_var = SSAGetID(PrintExpr(op->condition), DataType(op->ty().dtype()));
+    std::string t_var = SSAGetID(PrintExpr(op->true_value), DataType(op->ty().dtype()));
+    std::string f_var = SSAGetID(PrintExpr(op->false_value), DataType(op->ty().dtype()));
 
     // The condition is stored as an ushort vector.
-    int lanes = op->dtype().lanes();
+    int lanes = DataType(op->ty().dtype()).lanes();
     DataType memory_ty(DataType::TypeCode::kUInt, 16, lanes);
 
     for (int i = 0; i < lanes; ++i) {
@@ -1877,11 +1883,11 @@ void CodeGenCUDA::VisitExpr_(const SelectNode* op, std::ostream& os) {
       item << "(bool(";
       PrintVecElemLoad(c_var, memory_ty, i, item);
       item << ")?";
-      PrintVecElemLoad(t_var, op->dtype(), i, item);
+      PrintVecElemLoad(t_var, DataType(op->ty().dtype()), i, item);
       item << ':';
-      PrintVecElemLoad(f_var, op->dtype(), i, item);
+      PrintVecElemLoad(f_var, DataType(op->ty().dtype()), i, item);
       item << ')';
-      PrintVecElemStore(r_var, op->dtype(), i, item.str());
+      PrintVecElemStore(r_var, DataType(op->ty().dtype()), i, item.str());
     }
   }
   os << r_var;
@@ -1889,7 +1895,7 @@ void CodeGenCUDA::VisitExpr_(const SelectNode* op, std::ostream& os) {
 
 inline void PrintConst(const FloatImmNode* op, std::ostream& os, CodeGenCUDA* p) {  // NOLINT(*)
   // Type code is kBFloat
-  if (op->dtype().is_bfloat16()) {
+  if (DataType(op->ty().dtype()).is_bfloat16()) {
     os << "__float2bfloat16_rn";
     os << '(' << std::hexfloat << op->value << 'f';
     os << "/*" << std::scientific << op->value << "*/";
@@ -1897,15 +1903,15 @@ inline void PrintConst(const FloatImmNode* op, std::ostream& os, CodeGenCUDA* p)
     return;
   }
   // Type code is kFloat8_e5m2 or kE4M4Float
-  if (op->dtype().is_float8() || op->dtype().is_float4()) {
-    p->PrintType(op->dtype(), os);
+  if (DataType(op->ty().dtype()).is_float8() || DataType(op->ty().dtype()).is_float4()) {
+    p->PrintType(DataType(op->ty().dtype()), os);
     os << '(' << std::hexfloat << op->value << 'f';
     os << "/*" << std::scientific << op->value << "*/";
     os << ')';
     return;
   }
   // Type code is kFloat
-  switch (op->dtype().bits()) {
+  switch (DataType(op->ty().dtype()).bits()) {
     case 64: {
       std::ostringstream temp;
       if (std::isinf(op->value)) {
@@ -1951,7 +1957,8 @@ inline void PrintConst(const FloatImmNode* op, std::ostream& os, CodeGenCUDA* p)
       break;
     }
     default:
-      TVM_FFI_THROW(InternalError) << "Bad bit-width for float: " << op->dtype() << "\n";
+      TVM_FFI_THROW(InternalError)
+          << "Bad bit-width for float: " << DataType(op->ty().dtype()) << "\n";
   }
 }
 
@@ -2029,10 +2036,10 @@ void CodeGenCUDA::HandleVolatileLoads(const std::string& value, const BufferLoad
   // Cast away volatile qualifier for fp16 types. That is, only loads and
   // stores are volatile. The loaded objects are not marked as volatile.
   //
-  if ((op->dtype().is_float16() || op->dtype().is_bfloat16()) &&
+  if ((DataType(op->ty().dtype()).is_float16() || DataType(op->ty().dtype()).is_bfloat16()) &&
       IsVolatile(op->buffer->data.get())) {
     os << "(";
-    PrintType(op->dtype(), os);
+    PrintType(DataType(op->ty().dtype()), os);
     os << ")(" << value << ")";
   } else {
     os << value;

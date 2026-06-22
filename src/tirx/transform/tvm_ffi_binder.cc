@@ -72,7 +72,7 @@ TVMFFIABIBuilder::TVMFFIABIBuilder(const ffi::String& func_name, const ffi::Arra
       os << "], " << buf->dtype << ")";
       param_names_[static_cast<int>(i)] = buf_name;
     } else {
-      os << param->name_hint << ": " << param.dtype();
+      os << param->name_hint << ": " << DataType(param.ty().dtype());
       param_names_[static_cast<int>(i)] = param->name_hint;
     }
   }
@@ -163,7 +163,7 @@ int TVMFFIABIBuilder::GetParamIndex(const ffi::reflection::AccessPath& path) con
 
 bool TVMFFIABIBuilder::BindScalar(const PrimExpr& arg, const PrimExpr& value,
                                   const ffi::reflection::AccessPath& path, bool with_lets) {
-  TVM_FFI_ICHECK_EQ(arg.dtype(), value.dtype());
+  TVM_FFI_ICHECK_EQ(DataType(arg.ty().dtype()), DataType(value.ty().dtype()));
   if (arg.as<VarNode>()) {
     Var v_arg = Downcast<Var>(arg);
     auto it = var_defs_.find(v_arg.get());
@@ -446,8 +446,8 @@ PrimExpr TVMFFIABIBuilder::DecodeParamOpaqueHandle(int param_index, const Var& t
   // ── Load value and apply tensor offset ─────────────────────
   const int64_t object_cell_offset = sizeof(TVMFFIObject);
   static_assert(sizeof(TVMFFIObject) == 24);
-  PrimExpr arg_value =
-      LoadTVMFFIAnyUnionValue(v_packed_args_, param_index, params_[param_index].dtype());
+  PrimExpr arg_value = LoadTVMFFIAnyUnionValue(v_packed_args_, param_index,
+                                               DataType(params_[param_index].ty().dtype()));
   PrimExpr handle_from_tensor = Call(PrimType::Handle(), tirx::builtin::handle_add_byte_offset(),
                                      {arg_value, IntImm::Int32(object_cell_offset)});
   return Select(type_index == ffi::TypeIndex::kTVMFFITensor, handle_from_tensor, arg_value);
@@ -493,7 +493,7 @@ PrimExpr TVMFFIABIBuilder::DecodeParamFloat(int param_index, const Var& type_ind
 
 void TVMFFIABIBuilder::DecodeParam(int param_index) {
   Var param = params_[param_index];
-  DataType dtype = param.dtype();
+  DataType dtype = DataType(param.ty().dtype());
 
   // Extract type_index from packed_args
   Var type_index(param->name_hint + ".type_index", DataType::Int(32));
@@ -607,7 +607,7 @@ void TVMFFIABIBuilder::BindAutoBroadcastStrides(const Buffer& buffer, const Var&
   PrimExpr stride = MakeConst(stype, 1);
   for (size_t i = buffer->shape.size(); i != 0; --i) {
     size_t k = i - 1;
-    PrimExpr value = cast(buffer->shape[k].dtype(), LoadInt64ArrayElem(strides_ptr, k));
+    PrimExpr value = cast(buffer->shape[k].ty(), LoadInt64ArrayElem(strides_ptr, k));
     value = tvm::if_then_else(v_strides_is_null, stride, value);
     value = tvm::if_then_else(buffer->shape[k] == 1, 0, value);
     ffi::reflection::AccessPath strides_k_path =
@@ -622,13 +622,13 @@ void TVMFFIABIBuilder::BindRegularStrides(const Buffer& buffer, const Var& strid
                                           const ffi::reflection::AccessPath& param_path) {
   PrimExpr stride_from_shape = 1;
   for (int k = buffer->strides.size() - 1; k >= 0; k--) {
-    PrimExpr explicit_stride = cast(buffer->shape[k].dtype(), LoadInt64ArrayElem(strides_ptr, k));
+    PrimExpr explicit_stride = cast(buffer->shape[k].ty(), LoadInt64ArrayElem(strides_ptr, k));
     ffi::reflection::AccessPath strides_k_path =
         param_path->Attr(ffi::String("strides"))->ArrayItem(k);
     BindScalar(buffer->strides[k],
                tvm::if_then_else(v_strides_is_null, stride_from_shape, explicit_stride),
                strides_k_path, true);
-    stride_from_shape *= cast(buffer->shape[k].dtype(), LoadInt64ArrayElem(shape_ptr, k));
+    stride_from_shape *= cast(buffer->shape[k].ty(), LoadInt64ArrayElem(shape_ptr, k));
   }
 }
 
@@ -683,7 +683,7 @@ void TVMFFIABIBuilder::DecodeParamDLTensor(const Buffer& buffer, const PrimExpr&
       break;
     }
     ffi::reflection::AccessPath shape_k_path = param_path->Attr(ffi::String("shape"))->ArrayItem(k);
-    BindScalar(buffer->shape[k], cast(buffer->shape[k].dtype(), LoadInt64ArrayElem(shape_ptr, k)),
+    BindScalar(buffer->shape[k], cast(buffer->shape[k].ty(), LoadInt64ArrayElem(shape_ptr, k)),
                shape_k_path, true);
   }
 
@@ -707,7 +707,7 @@ void TVMFFIABIBuilder::DecodeParamDLTensor(const Buffer& buffer, const PrimExpr&
                byte_offset_path, true);
   } else {
     if (BindScalar(buffer->elem_offset,
-                   cast(buffer->elem_offset.dtype(),
+                   cast(buffer->elem_offset.ty(),
                         (TVMStructGet(DataType::UInt(64), handle, 0, builtin::kDLTensorByteOffset) /
                          MakeConst(DataType::UInt(64), data_bytes))),
                    byte_offset_path, true)) {

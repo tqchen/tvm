@@ -438,7 +438,7 @@ class CodeGenVMTIR : public ExprFunctor<ffi::Optional<PrimExpr>(const Expr&)> {
     TVM_FFI_ICHECK(tir_call->args[0].same_as(reg_anylist_handle_));
     const auto* p_dst_reg = tir_call->args[1].as<tirx::IntImmNode>();
     TVM_FFI_ICHECK(p_dst_reg != nullptr);
-    TVM_FFI_ICHECK(p_dst_reg->dtype() == DataType::Int(32));
+    TVM_FFI_ICHECK(p_dst_reg->ty().MatchesElementType(DLDataTypeCode::kDLInt, 32));
 
     int64_t dst_reg = p_dst_reg->value;
     this->EmitCallPacked("vm.builtin.null_value", {}, dst_reg);

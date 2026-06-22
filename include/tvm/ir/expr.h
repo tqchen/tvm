@@ -27,6 +27,7 @@
 #include <tvm/ffi/extra/dataclass.h>
 #include <tvm/ffi/reflection/registry.h>
 #include <tvm/ffi/string.h>
+#include <tvm/ir/base_expr.h>
 #include <tvm/ir/cast.h>
 #include <tvm/ir/cow.h>
 #include <tvm/ir/source_map.h>
@@ -55,141 +56,6 @@ class VirtualDevice;
  * There are also advanced types to support generic(polymorphic types).
  * \sa Type
  */
-class TypeNode : public ffi::Object {
- public:
-  /*!
-   * \brief Span that points to the original source code.
-   *        Reserved debug information.
-   */
-  mutable Span span;
-
-  static void RegisterReflection() {
-    namespace refl = tvm::ffi::reflection;
-    // span do not participate in structural equal and hash.
-    refl::ObjectDef<TypeNode>().def_ro("span", &TypeNode::span, refl::DefaultValue(Span()),
-                                       refl::AttachFieldFlag::SEqHashIgnore());
-  }
-
-  static constexpr TVMFFISEqHashKind _type_s_eq_hash_kind = kTVMFFISEqHashKindTreeNode;
-
-  static constexpr const uint32_t _type_child_slots = 14;
-  TVM_FFI_DECLARE_OBJECT_INFO("ir.Type", TypeNode, ffi::Object);
-};
-
-/*!
- * \brief Managed reference to TypeNode.
- * \sa TypeNode
- */
-class Type : public ffi::ObjectRef {
- public:
-  TVM_FFI_DEFINE_OBJECT_REF_METHODS_NULLABLE(Type, ffi::ObjectRef, TypeNode);
-};
-
-/*!
- * \brief Primitive data types used in the low-level IR.
- *
- * PrimType represents POD-values and handles that are
- * not automatically managed by the runtime.
- *
- * \sa PrimType
- */
-class PrimTypeNode : public TypeNode {
- public:
-  /*!
-   * \brief The corresponding dtype field.
-   */
-  runtime::DataType dtype;
-
-  static void RegisterReflection() {
-    namespace refl = tvm::ffi::reflection;
-    refl::ObjectDef<PrimTypeNode>().def_ro("dtype", &PrimTypeNode::dtype);
-  }
-  TVM_FFI_DECLARE_OBJECT_INFO_FINAL("ir.PrimType", PrimTypeNode, TypeNode);
-};
-
-/*
- * \brief Managed reference to PrimTypeNode.
- * \sa PrimTypeNode
- */
-class PrimType : public Type {
- public:
-  /*!
-   * \brief Constructor
-   * \param dtype The corresponding dtype.
-   * \param span The span
-   */
-  TVM_DLL explicit PrimType(runtime::DataType dtype, Span span = Span());
-
-  /*! \brief Construct an int type. */
-  TVM_DLL static PrimType Int(int bits, int lanes = 1);
-
-  /*! \brief Construct an uint type. */
-  TVM_DLL static PrimType UInt(int bits, int lanes = 1);
-
-  /*! \brief Construct a float type. */
-  TVM_DLL static PrimType Float(int bits, int lanes = 1);
-
-  /*! \brief Construct a bfloat type. */
-  TVM_DLL static PrimType BFloat(int bits, int lanes = 1);
-
-  /*! \brief Construct a bool type. */
-  TVM_DLL static PrimType Bool();
-
-  /*! \brief Construct a handle type. */
-  TVM_DLL static PrimType Handle(int bits = 64, int lanes = 1);
-
-  /*! \brief Construct a void type. */
-  TVM_DLL static PrimType Void();
-
-  TVM_FFI_DEFINE_OBJECT_REF_METHODS_NOTNULLABLE(PrimType, Type, PrimTypeNode);
-};
-
-/*!
- * \brief Base type of all the expressions.
- * \sa Expr
- */
-class BaseExprNode : public ffi::Object {
- public:
-  /*!
-   * \brief Span that points to the original source code.
-   *        Reserved debug information.
-   */
-  mutable Span span;
-
-  /*!
-   * \brief The deduced or annotated type of the expression.
-   *
-   * This field is intentionally nullable because type information may
-   * be populated by later analysis passes instead of expression
-   * constructors.
-   */
-  mutable Type ty;
-
-  static void RegisterReflection() {
-    namespace refl = tvm::ffi::reflection;
-    // span and ty do not participate in structural equal and hash.
-    refl::ObjectDef<BaseExprNode>()
-        .def_ro("span", &BaseExprNode::span, refl::DefaultValue(Span()),
-                refl::AttachFieldFlag::SEqHashIgnore())
-        .def_ro("ty", &BaseExprNode::ty, refl::DefaultValue(Type()),
-                refl::AttachFieldFlag::SEqHashIgnore());
-  }
-
-  static constexpr TVMFFISEqHashKind _type_s_eq_hash_kind = kTVMFFISEqHashKindTreeNode;
-
-  static constexpr const uint32_t _type_child_slots = 64;
-  TVM_FFI_DECLARE_OBJECT_INFO("ir.BaseExpr", BaseExprNode, ffi::Object);
-};
-
-/*!
- * \brief Managed reference to BaseExprNode.
- * \sa BaseExprNode
- */
-class BaseExpr : public ffi::ObjectRef {
- public:
-  TVM_FFI_DEFINE_OBJECT_REF_METHODS_NULLABLE(BaseExpr, ffi::ObjectRef, BaseExprNode);
-};
-
 /*!
  * \brief Base node of all primitive expressions.
  *
@@ -204,17 +70,11 @@ class BaseExpr : public ffi::ObjectRef {
  */
 class PrimExprNode : public BaseExprNode {
  public:
-  /*!
-   * \brief Return the runtime dtype represented by `ty`.
-   *
-   * The PrimExpr invariant is that `ty` is always a PrimType. Richer
-   * annotations such as pointer types are stored on the specific node, e.g.
-   * VarNode::type_annotation.
-   */
-  DataType dtype() const {
-    TVM_FFI_DCHECK(this->ty.defined());
-    TVM_FFI_DCHECK(this->ty->IsInstance<PrimTypeNode>());
-    return static_cast<const PrimTypeNode*>(this->ty.get())->dtype;
+  /*! \return the primitive type of this expression node. */
+  PrimType ty() const {
+    TVM_FFI_DCHECK(this->BaseExprNode::ty.defined());
+    TVM_FFI_DCHECK(this->BaseExprNode::ty->IsInstance<PrimTypeNode>());
+    return ffi::GetRef<PrimType>(static_cast<const PrimTypeNode*>(this->BaseExprNode::ty.get()));
   }
 
   static void RegisterReflection() {
@@ -243,14 +103,6 @@ class PrimExpr : public BaseExpr {
    */
   TVM_DLL PrimExpr(float value);  // NOLINT(*)
 
-  /*! \return the data type of this expression. */
-  DataType dtype() const {
-    const auto* node = static_cast<const PrimExprNode*>(get());
-    TVM_FFI_DCHECK(node->ty.defined());
-    TVM_FFI_DCHECK(node->ty->IsInstance<PrimTypeNode>());
-    return static_cast<const PrimTypeNode*>(node->ty.get())->dtype;
-  }
-
   /*! \return the primitive type of this expression. */
   PrimType ty() const;
 
@@ -265,9 +117,9 @@ class PrimExpr : public BaseExpr {
 
 TVM_FFI_INLINE PrimType PrimExpr::ty() const {
   const auto* node = static_cast<const PrimExprNode*>(get());
-  TVM_FFI_DCHECK(node->ty.defined());
-  TVM_FFI_DCHECK(node->ty->IsInstance<PrimTypeNode>());
-  return ffi::GetRef<PrimType>(static_cast<const PrimTypeNode*>(node->ty.get()));
+  TVM_FFI_DCHECK(node->BaseExprNode::ty.defined());
+  TVM_FFI_DCHECK(node->BaseExprNode::ty->IsInstance<PrimTypeNode>());
+  return ffi::GetRef<PrimType>(static_cast<const PrimTypeNode*>(node->BaseExprNode::ty.get()));
 }
 
 /*!

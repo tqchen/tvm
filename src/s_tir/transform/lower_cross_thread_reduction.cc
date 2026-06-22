@@ -861,7 +861,7 @@ class CrossThreadReductionTransformer : public StmtMutator {
     loop_vars.reserve(unbound_thread2range.size());
     for (auto [scope, range] : unbound_thread2range) {
       std::string dim_index(1, static_cast<char>(scope.dim_index + 'x'));
-      Var loop_var("t" + dim_index, range->min.dtype());
+      Var loop_var("t" + dim_index, range->min.ty());
       loop_vars.push_back(loop_var);
       predicate = (loop_var == range->min) && predicate;
     }
@@ -881,7 +881,7 @@ class CrossThreadReductionTransformer : public StmtMutator {
           /*kind=*/ForKind::kThreadBinding,                   //
           /*body=*/body,                                      //
           /*thread_binding=*/
-          IterVar(Range(), Var("", loop_vars[i].dtype()), IterVarType::kThreadIndex,
+          IterVar(Range(), Var("", loop_vars[i].ty()), IterVarType::kThreadIndex,
                   "threadIdx." + dim_index),
           /*annotations=*/{},
           /*step=*/std::nullopt);

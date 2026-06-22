@@ -148,7 +148,7 @@ class BufferNode : public ffi::Object {
 
   /*! \return preferred index type for this buffer node */
   DataType DefaultIndexType() const {
-    return shape.size() != 0 ? shape[0].dtype() : tvm::tirx::DefaultIndexType();
+    return shape.size() != 0 ? DataType(shape[0].ty().dtype()) : tvm::tirx::DefaultIndexType();
   }
 
   /*! \brief Determine the offset in the buffer of the given index.

@@ -775,11 +775,11 @@ class IRSubstitute : public StmtExprMutator {
     if (ret.defined()) {
       // Allow substitution of void variables with any expression. The TVM script parser
       // uses void variables for lambda parameters (since exact types are not known yet).
-      if (!var.dtype().is_void()) {
+      if (!var.ty().IsVoid()) {
         PrimExpr ret_ex = Downcast<PrimExpr>(ret.value());
-        TVM_FFI_ICHECK(ret_ex.dtype() == var.dtype())
-            << "substituting " << var << ":" << var.dtype() << " -> " << ret_ex << ":"
-            << ret_ex.dtype();
+        TVM_FFI_ICHECK(DataType(ret_ex.ty().dtype()) == DataType(var.ty().dtype()))
+            << "substituting " << var << ":" << DataType(var.ty().dtype()) << " -> " << ret_ex
+            << ":" << DataType(ret_ex.ty().dtype());
       }
       return ret.value();
     }

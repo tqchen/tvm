@@ -80,7 +80,7 @@ inline tvm::te::Tensor leaky_relu(const tvm::te::Tensor& t, double alpha = 0.1,
       t->shape,
       [&](const tvm::ffi::Array<tvm::tirx::Var>& i) {
         auto value = t(i);
-        auto calpha = tvm::tirx::MakeConst(value.dtype(), alpha);
+        auto calpha = tvm::tirx::MakeConst(value.ty(), alpha);
         return tvm::tirx::Select(value > 0, value, value * calpha);
       },
       name, tag);

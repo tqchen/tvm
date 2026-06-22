@@ -363,7 +363,8 @@ Type InferTypeArange(const Call& call, const BlockBuilder& ctx) {
   PrimExpr step = get_prim_value(call->args[2], "step");
   DataType dtype = call->attrs.as<InitAttrs>()->dtype;
   PrimExpr num_elem;
-  if (start.dtype().is_int() && end.dtype().is_int() && step.dtype().is_int()) {
+  if (start.ty().code() == DLDataTypeCode::kDLInt && end.ty().code() == DLDataTypeCode::kDLInt &&
+      step.ty().code() == DLDataTypeCode::kDLInt) {
     num_elem = tvm::floordiv((end - start + step - 1), step);
   } else {
     num_elem = tvm::cast(tvm::DataType::Int(64),

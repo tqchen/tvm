@@ -278,7 +278,7 @@ inline FCommReduce MakeCommReducer(FCombine fcombine, FIdentity fidentity,
     std::vector<DataType> dtypes;
 
     for (size_t i = 0; i < exprs.size(); ++i) {
-      auto dtype = exprs[i].dtype();
+      auto dtype = DataType(exprs[i].ty().dtype());
       dtypes.push_back(dtype);
       lhs.push_back(var(name + "_lhs_" + std::to_string(i), dtype));
       rhs.push_back(var(name + "_rhs_" + std::to_string(i), dtype));

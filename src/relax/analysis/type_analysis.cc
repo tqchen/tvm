@@ -88,7 +88,7 @@ Type TypeFromStaticType(const Type& type) {
   } else if (const PrimTypeNode* prim_type = type.as<PrimTypeNode>()) {
     return PrimType(prim_type->dtype, prim_type->span);
   } else if (const tvm::PrimTypeNode* prim_type = type.as<tvm::PrimTypeNode>()) {
-    return PrimType(prim_type->dtype, prim_type->span);
+    return PrimType(DataType(prim_type->dtype), prim_type->span);
   } else if (const ShapeTypeNode* shape_type = type.as<ShapeTypeNode>()) {
     return ShapeType(shape_type->ndim, type->span);
   } else if (const TensorTypeNode* tensor_type = type.as<TensorTypeNode>()) {
@@ -245,7 +245,7 @@ class WellDefinedEraser : public TypeMutator, public ExprMutatorBase, public tir
       if (value->IsInstance<IntImmNode>()) {
         return tvm::cast(DataType::Int(64), value);
       }
-      TVM_FFI_ICHECK(value.dtype() == DataType::Int(64))
+      TVM_FFI_ICHECK(value.ty().MatchesElementType(DLDataTypeCode::kDLInt, 64))
           << "Can only provide i64 expressions in shape";
       return value;
     } else {

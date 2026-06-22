@@ -55,7 +55,7 @@ class Int32DTypeNarrower : public IndexDataTypeNormalizer {
 
   PrimExpr VisitExpr_(const IntImmNode* op) final {
     // ignore the enabled condition and always rewrite i64
-    if (op->dtype() == DataType::Int(64)) {
+    if (op->ty().MatchesElementType(DLDataTypeCode::kDLInt, 64)) {
       TVM_FFI_ICHECK_LE(op->value, Downcast<IntImm>(max_value(target_data_type_))->value);
       return IntImm::Int32(op->value);
     }

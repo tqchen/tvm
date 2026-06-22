@@ -114,7 +114,7 @@ SLayout::SLayout(const ffi::Array<IterVar>& axes) {
 }
 
 SLayout::SLayout(const std::string& name, PrimType index_ty) {  // NOLINT(*)
-  DataType index_dtype = index_ty->dtype;
+  DataType index_dtype(index_ty.dtype());
   TVM_FFI_CHECK(index_dtype.is_int(), TypeError) << "The input dtype should be integer type";
   if (name == "__undef__") return;
 
@@ -502,9 +502,10 @@ inline ffi::Array<PrimExpr> TransformShape(const ffi::Array<PrimExpr>& src_shape
       }
       bind_map[orig_axis->var.get()] = IntImm(orig_axis->var.ty(), 0);
     } else {
-      bind_map[orig_axis->var.get()] = orig_axis->var.dtype() == orig_shape.dtype()
-                                           ? orig_shape
-                                           : cast(orig_axis->var.dtype(), orig_shape);
+      bind_map[orig_axis->var.get()] =
+          DataType(orig_axis->var.ty().dtype()) == DataType(orig_shape.ty().dtype())
+              ? orig_shape
+              : cast(orig_axis->var.ty(), orig_shape);
     }
   }
   // infer the target shape,

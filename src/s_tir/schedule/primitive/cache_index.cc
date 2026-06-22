@@ -261,7 +261,7 @@ ffi::Array<SBlock> MakeIndexCacheStage(IndexInfo* info, const ffi::String& stora
       });
     }
 
-    DataType data_type = index_expr.dtype();
+    DataType data_type(index_expr.ty().dtype());
     Var index_buffer_var("index_var_" + std::to_string(expr_index),
                          PointerType(PrimType(data_type), storage_scope));
     ffi::Array<PrimExpr> buffer_shape;
@@ -296,7 +296,7 @@ ffi::Array<SBlock> MakeIndexCacheStage(IndexInfo* info, const ffi::String& stora
     // Create block vars, block's accessed region and accessing indices
     for (size_t i = 0; i < info->origin_block_vars[expr_index].size(); i++) {
       const Var& block_var = info->origin_block_vars[expr_index][i];
-      Var var("v" + std::to_string(access_indices.size()), block_var.dtype());
+      Var var("v" + std::to_string(access_indices.size()), block_var.ty());
       Range range =
           Range::FromMinExtent(IntImm(block_var.ty(), 0), info->range_map.at(iter_vars[i])->extent);
       block_vars.push_back(IterVar(/*dom=*/range,
@@ -304,7 +304,7 @@ ffi::Array<SBlock> MakeIndexCacheStage(IndexInfo* info, const ffi::String& stora
                                    /*IterVarType=*/kDataPar));
 
       access_indices.push_back(var);
-      access_region.push_back(Range::FromMinExtent(var, MakeConst(var.dtype(), 1)));
+      access_region.push_back(Range::FromMinExtent(var, MakeConst(var.ty(), 1)));
       block_var_map.Set(block_var, var);
     }
 

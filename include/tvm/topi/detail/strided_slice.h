@@ -140,9 +140,9 @@ inline ffi::Array<PrimExpr> StridedSliceOutputShape(
           static_cast<int>((interval + std::abs(strides[i]) - 1) / std::abs(strides[i]));
       TVM_FFI_ICHECK(strides[i] < 0 ? (end_i <= begin_i) : (begin_i <= end_i))
           << ": Input [Begin=" << begin[i] << ", End=" << end[i] << "] is invalid for axis=" << i;
-      out_shape.Set(ax, cast(out_shape[i].dtype(), PrimExpr(slice_size)));
+      out_shape.Set(ax, cast(out_shape[i].ty(), PrimExpr(slice_size)));
     } else {
-      out_shape.Set(ax, tvm::tirx::Var("dim", out_shape[i].dtype()));
+      out_shape.Set(ax, tvm::tirx::Var("dim", out_shape[i].ty()));
     }
   }
 

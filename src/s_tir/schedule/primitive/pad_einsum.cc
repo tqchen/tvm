@@ -174,9 +174,9 @@ struct BufferPadding {
         dim = buffer->shape[i];
       }
       Range dom = Range::FromMinExtent(IntImm(dim.ty(), 0), dim);
-      loop_vars.push_back(Var("i" + std::to_string(i), dim.dtype()));
+      loop_vars.push_back(Var("i" + std::to_string(i), dim.ty()));
       loop_doms.push_back(dom);
-      IterVar iter_var(dom, Var("v" + std::to_string(i), dim.dtype()), kDataPar);
+      IterVar iter_var(dom, Var("v" + std::to_string(i), dim.ty()), kDataPar);
       instance_dom.push_back(Range::FromMinExtent(iter_var->var, IntImm(dim.ty(), 1)));
       iter_vars.push_back(iter_var);
       indices.push_back(iter_var->var);
@@ -190,8 +190,8 @@ struct BufferPadding {
         }
       }
       PrimExpr rhs = BufferLoad(buffer, indices);
-      body = BufferStore(padded_buffer, if_then_else(predicate, rhs, MakeConst(rhs.dtype(), 0)),
-                         indices);
+      body =
+          BufferStore(padded_buffer, if_then_else(predicate, rhs, MakeConst(rhs.ty(), 0)), indices);
     } else {
       body = BufferStore(buffer, BufferLoad(padded_buffer, indices), indices);
     }

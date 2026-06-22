@@ -44,7 +44,7 @@ inline std::optional<runtime::DataType> GetPointerType(const Type& type) {
   if (type.defined()) {
     if (auto* ptr_type = type.as<PointerTypeNode>()) {
       if (auto* prim_type = ptr_type->element_type.as<PrimTypeNode>()) {
-        return prim_type->dtype;
+        return runtime::DataType(prim_type->dtype);
       }
     }
   }

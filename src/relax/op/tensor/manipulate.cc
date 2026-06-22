@@ -724,9 +724,10 @@ Type InferTypeLayoutTransform(const Call& call, const BlockBuilder& ctx) {
   // Check pad_value has same dtype as input.
   if (optional_pad_value.defined()) {
     PrimExpr padded_value = optional_pad_value.value()->value;
-    if (padded_value.dtype() != data_ty->dtype) {
+    DataType padded_dtype(padded_value.ty().dtype());
+    if (padded_dtype != data_ty->dtype) {
       TVM_FFI_VISIT_THROW(TypeError, call)
-          << "layout_transform pad_value dtype (" << padded_value.dtype() << ") and input dtype ("
+          << "layout_transform pad_value dtype (" << padded_dtype << ") and input dtype ("
           << data_ty->dtype << ") must be the same";
     }
   }
@@ -915,9 +916,10 @@ Expr ConvertNewShapeToExpr(const Expr& data,
            "Array of PrimExprs. However, the given new shape is "
         << shape;
     PrimExpr len = ffi::GetRef<PrimExpr>(_len);
-    TVM_FFI_ICHECK(len.dtype().is_int()) << "Reshape requires the new shape values to be all "
-                                            "integers. However, the give new shape is "
-                                         << shape;
+    TVM_FFI_ICHECK(len.ty().code() == DLDataTypeCode::kDLInt)
+        << "Reshape requires the new shape values to be all "
+           "integers. However, the give new shape is "
+        << shape;
     const auto* int_len = len.as<IntImmNode>();
     if (int_len != nullptr && int_len->value == 0) {
       // Note that this dimension should be copied from the original shape.
@@ -2910,10 +2912,11 @@ Type InferTypeSliceScatter(const Call& call, const BlockBuilder& ctx) {
           << ") to be a PrimValue, but got " << arg_expr->GetTypeKey();
     }
     const PrimExpr& prim_expr = prim_value_node->value;
-    if (!prim_expr.dtype().is_int() && !prim_expr.dtype().is_uint()) {
+    tvm::PrimType prim_ty = prim_expr.ty();
+    if (prim_ty.code() != DLDataTypeCode::kDLInt && prim_ty.code() != DLDataTypeCode::kDLUInt) {
       TVM_FFI_VISIT_THROW(TypeError, call)
           << "SliceScatter expects `" << key << "` (" << prim_expr
-          << ") to be an integer PrimValue, but got dtype " << prim_expr.dtype();
+          << ") to be an integer PrimValue, but got dtype " << prim_ty.dtype();
     }
     return prim_expr;
   };
@@ -2992,8 +2995,8 @@ Expr one_hot(Expr indices, PrimValue on_value, PrimValue off_value, int depth, i
   attrs->axis = axis;
 
   // Check if on_value and off_value have the same dtype
-  DataType on_dtype = on_value->value.dtype();
-  DataType off_dtype = off_value->value.dtype();
+  DataType on_dtype(on_value->value.ty().dtype());
+  DataType off_dtype(off_value->value.ty().dtype());
   TVM_FFI_ICHECK(on_dtype == off_dtype)
       << "one_hot: on_value and off_value must have the same dtype, "
       << "but got " << on_dtype << " and " << off_dtype;
@@ -3015,10 +3018,12 @@ Type InferTypeOneHot(const Call& call, const BlockBuilder& ctx) {
   PrimValue on_value = Downcast<PrimValue>(call->args[1]);
   PrimValue off_value = Downcast<PrimValue>(call->args[2]);
   // Check if on_value and off_value have the same dtype
-  TVM_FFI_ICHECK(on_value->value.dtype() == off_value->value.dtype())
+  DataType on_dtype(on_value->value.ty().dtype());
+  DataType off_dtype(off_value->value.ty().dtype());
+  TVM_FFI_ICHECK(on_dtype == off_dtype)
       << "one_hot: on_value and off_value must have the same dtype, "
-      << "but got " << on_value->value.dtype() << " and " << off_value->value.dtype();
-  DataType dtype = on_value->value.dtype();
+      << "but got " << on_dtype << " and " << off_dtype;
+  DataType dtype = on_dtype;
 
   // Check if indices has an integer dtype
   if (indices_ty->IsUnknownDtype()) {

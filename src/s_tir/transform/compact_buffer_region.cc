@@ -181,7 +181,7 @@ class BufferAccessRegionCollector : public StmtExprVisitor {
 
   void VisitStmt_(const BindNode* op) final {
     StmtExprVisitor::VisitExpr(op->value);
-    if (arith::IsIndexType(op->value.dtype())) {
+    if (arith::IsIndexType(op->value.ty())) {
       dom_analyzer_->Bind(op->var, op->value);
       dom_map_.emplace(op->var.get(), arith::IntSet::SinglePoint(op->value));
     }
@@ -189,12 +189,12 @@ class BufferAccessRegionCollector : public StmtExprVisitor {
 
   void VisitExpr_(const LetNode* op) final {
     StmtExprVisitor::VisitExpr(op->value);
-    if (arith::IsIndexType(op->value.dtype())) {
+    if (arith::IsIndexType(op->value.ty())) {
       dom_analyzer_->Bind(op->var, op->value);
       dom_map_.emplace(op->var.get(), arith::IntSet::SinglePoint(op->value));
     }
     StmtExprVisitor::VisitExpr(op->body);
-    if (arith::IsIndexType(op->value.dtype())) {
+    if (arith::IsIndexType(op->value.ty())) {
       dom_map_.erase(op->var.get());
     }
   }
@@ -367,7 +367,7 @@ class BufferAccessRegionCollector : public StmtExprVisitor {
       }
       // Step 2. Relax the access region
       auto normalize_pred = [](const PrimExpr& pred) {
-        if (pred.dtype().is_bool()) return pred;
+        if (pred.ty().IsPredicate()) return pred;
         return pred != IntImm(pred.ty(), 0);
       };
       PrimExpr predicate = dom_analyzer_->Simplify(std::accumulate(
@@ -470,7 +470,7 @@ class BufferAccessRegionCollector : public StmtExprVisitor {
         // try estimate a constant upperbound on region's extent
         int64_t upperbound = dom_analyzer_->const_int_bound(extent)->max_value;
         if (upperbound != arith::ConstIntBound::kPosInf) {
-          extent = MakeConst(extent.dtype(), upperbound);
+          extent = MakeConst(extent.ty(), upperbound);
         } else {
           result_region.Set(i, original);
           continue;
@@ -699,15 +699,15 @@ ffi::Array<PrimExpr> CalcStrides(const BufferAllocInfo& alloc_info,
   if (alloc_info.dim_aligns.size()) {
     TVM_FFI_ICHECK(alloc_info.dim_aligns.size() == shape.size());
     strides.resize(shape.size());
-    PrimExpr stride = MakeConst(shape[0].dtype(), 1);
+    PrimExpr stride = MakeConst(shape[0].ty(), 1);
     for (size_t i = shape.size(); i != 0; --i) {
       size_t dim = i - 1;
       DimAlignInfo info = alloc_info.dim_aligns[dim];
       int align_factor = info.align_factor;
       int align_offset = info.align_offset;
       if (align_factor != 0) {
-        PrimExpr factor = MakeConst(stride.dtype(), align_factor);
-        PrimExpr offset = MakeConst(stride.dtype(), align_offset);
+        PrimExpr factor = MakeConst(stride.ty(), align_factor);
+        PrimExpr offset = MakeConst(stride.ty(), align_offset);
         stride = stride + indexmod(factor + offset - indexmod(stride, factor), factor);
       }
       strides[dim] = stride;

@@ -280,10 +280,11 @@ inline Tensor cast(const Tensor& x, DataType type, std::string name = "T_cast",
       x->shape,
       [&](const ffi::Array<Var>& i) -> PrimExpr {
         auto expr = x(i);
-        if (expr.dtype().code() == type.code() && expr.dtype().bits() == type.bits()) {
-          if (expr.dtype().lanes() == type.lanes()) {
+        PrimType expr_ty = expr.ty();
+        if (expr_ty.MatchesElementType(static_cast<DLDataTypeCode>(type.code()), type.bits())) {
+          if (expr_ty.lanes() == type.lanes()) {
             return expr;
-          } else if (expr.dtype().lanes() == 1 && type.is_vector()) {
+          } else if (expr_ty.lanes() == 1 && type.is_vector()) {
             return tvm::tirx::Broadcast(expr, type.lanes());
           }
         }

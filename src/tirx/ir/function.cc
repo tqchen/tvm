@@ -50,18 +50,18 @@ tvm::Type InferType(const PrimFunc& prim_func) {
       }
 
       if (auto prim_type = param->type_annotation.as<PrimTypeNode>();
-          prim_type && prim_type->dtype.is_handle()) {
+          prim_type && DataType(prim_type->dtype).is_handle()) {
         return relax::ObjectType();
       }
 
-      return relax::PrimType(param.dtype());
+      return relax::PrimType(DataType(param.ty().dtype()));
     }();
     params.push_back(param_ty);
   }
 
   tvm::Type ret = [&]() -> tvm::Type {
     if (const auto* prim = prim_func->ret_type.as<PrimTypeNode>()) {
-      return relax::PrimType(prim->dtype);
+      return relax::PrimType(DataType(prim->dtype));
     } else if (IsVoidType(prim_func->ret_type)) {
       return relax::TupleType(ffi::Array<tvm::Type>{});
     } else {
@@ -119,10 +119,10 @@ TensorIntrin::TensorIntrin(PrimFunc desc, PrimFunc impl) {
       << "The number of parameters of the description and the implementation of the "
          "tensor intrinsic doesn't match.";
   for (size_t i = 0; i < desc->params.size(); i++) {
-    TVM_FFI_CHECK(desc->params[i].dtype().is_handle(), ValueError)
+    TVM_FFI_CHECK(desc->params[i].ty().IsHandle(), ValueError)
         << "Parameters of the description of the "
            "tensor intrinsic should be handle only.";
-    TVM_FFI_CHECK(impl->params[i].dtype().is_handle(), ValueError)
+    TVM_FFI_CHECK(impl->params[i].ty().IsHandle(), ValueError)
         << "Parameters of the implementation of "
            "the tensor intrinsic should be handle only.";
   }

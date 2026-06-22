@@ -141,7 +141,7 @@ class HostDeviceSplitter : public StmtMutator {
         std::sort(params.begin(), params.end(), [](const Var& a, const Var& b) {
           auto sort_key = [](const Var& var) {
             return std::tuple{
-                !var->dtype().is_handle(),
+                !var->ty().IsHandle(),
                 var->name_hint,
             };
           };
@@ -202,7 +202,7 @@ class HostDeviceSplitter : public StmtMutator {
     ffi::Array<PrimExpr> args = params.Map([](const Var& var) -> PrimExpr { return var; });
 
     if (can_propagate_errors) {
-      Var kernel_error_code("kernel_error_code", success.dtype());
+      Var kernel_error_code("kernel_error_code", success.ty());
       Call kernel_call(success.ty(), kernel_symbol_global, args);
       AssertStmt assert_success(kernel_error_code == success, StringImm("RuntimeError"),
                                 {StringImm("Error executing compute kernel")});
@@ -607,7 +607,7 @@ class DeviceKernelMutator : public StmtExprMutator {
       call_args.push_back(Substitute(launch_arg, param_map));
     }
 
-    PrimType ret_ty = node->dtype().is_void() ? PrimType::Int(32) : node.ty();
+    PrimType ret_ty = node->ty().IsVoid() ? PrimType::Int(32) : node.ty();
 
     return Call(ret_ty, builtin::tvm_call_packed(), call_args);
   }
