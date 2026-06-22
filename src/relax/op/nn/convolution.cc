@@ -187,12 +187,11 @@ InferLayoutOutput InferLayoutConv1d(
   return InferLayoutOutput({data_layout, weight_layout}, {output_layout}, Attrs(new_attrs));
 }
 
-Call InferMixedPrecisionConv1d(const Call& call, const DataType& out_dtype) {
+Call InferMixedPrecisionConv1d(const Call& call, DLDataType out_dtype) {
   const auto* conv1d_attrs = call->attrs.as<Conv1DAttrs>();
   return conv1d(call->args[0], call->args[1], conv1d_attrs->strides, conv1d_attrs->padding,
                 conv1d_attrs->dilation, conv1d_attrs->groups, conv1d_attrs->data_layout,
-                conv1d_attrs->kernel_layout, conv1d_attrs->out_layout,
-                static_cast<DLDataType>(out_dtype))
+                conv1d_attrs->kernel_layout, conv1d_attrs->out_layout, out_dtype)
       .as_or_throw<Call>();
 }
 
@@ -400,12 +399,11 @@ InferLayoutOutput InferLayoutConv2d(
   return InferLayoutOutput({data_layout, weight_layout}, {output_layout}, Attrs(new_attrs));
 }
 
-Call InferMixedPrecisionConv2d(const Call& call, const DataType& out_dtype) {
+Call InferMixedPrecisionConv2d(const Call& call, DLDataType out_dtype) {
   const auto* conv2d_attrs = call->attrs.as<Conv2DAttrs>();
   return conv2d(call->args[0], call->args[1], conv2d_attrs->strides, conv2d_attrs->padding,
                 conv2d_attrs->dilation, conv2d_attrs->groups, conv2d_attrs->data_layout,
-                conv2d_attrs->kernel_layout, conv2d_attrs->out_layout,
-                static_cast<DLDataType>(out_dtype))
+                conv2d_attrs->kernel_layout, conv2d_attrs->out_layout, out_dtype)
       .as_or_throw<Call>();
 }
 
@@ -587,12 +585,11 @@ InferLayoutOutput InferLayoutConv3d(
   return InferLayoutOutput({data_layout, weight_layout}, {output_layout}, Attrs(new_attrs));
 }
 
-Call InferMixedPrecisionConv3d(const Call& call, const DataType& out_dtype) {
+Call InferMixedPrecisionConv3d(const Call& call, DLDataType out_dtype) {
   const auto* conv3d_attrs = call->attrs.as<Conv3DAttrs>();
   return conv3d(call->args[0], call->args[1], conv3d_attrs->strides, conv3d_attrs->padding,
                 conv3d_attrs->dilation, conv3d_attrs->groups, conv3d_attrs->data_layout,
-                conv3d_attrs->kernel_layout, conv3d_attrs->out_layout,
-                static_cast<DLDataType>(out_dtype))
+                conv3d_attrs->kernel_layout, conv3d_attrs->out_layout, out_dtype)
       .as_or_throw<Call>();
 }
 
@@ -765,14 +762,14 @@ InferLayoutOutput InferLayoutConv1dTranspose(
   return InferLayoutOutput({data_layout, weight_layout}, {output_layout}, Attrs(new_attrs));
 }
 
-Call InferMixedPrecisionConv1dTranspose(const Call& call, const DataType& out_dtype) {
+Call InferMixedPrecisionConv1dTranspose(const Call& call, DLDataType out_dtype) {
   const auto* conv1d_transpose_attrs = call->attrs.as<Conv1DTransposeAttrs>();
   return conv1d_transpose(call->args[0], call->args[1], conv1d_transpose_attrs->strides,
                           conv1d_transpose_attrs->padding, conv1d_transpose_attrs->output_padding,
                           conv1d_transpose_attrs->dilation, conv1d_transpose_attrs->groups,
                           conv1d_transpose_attrs->data_layout,
                           conv1d_transpose_attrs->kernel_layout, conv1d_transpose_attrs->out_layout,
-                          static_cast<DLDataType>(out_dtype))
+                          out_dtype)
       .as_or_throw<Call>();
 }
 
@@ -994,14 +991,14 @@ InferLayoutOutput InferLayoutConv2dTranspose(
   return InferLayoutOutput({data_layout, weight_layout}, {output_layout}, Attrs(new_attrs));
 }
 
-Call InferMixedPrecisionConv2dTranspose(const Call& call, const DataType& out_dtype) {
+Call InferMixedPrecisionConv2dTranspose(const Call& call, DLDataType out_dtype) {
   const auto* conv2d_transpose_attrs = call->attrs.as<Conv2DTransposeAttrs>();
   return conv2d_transpose(call->args[0], call->args[1], conv2d_transpose_attrs->strides,
                           conv2d_transpose_attrs->padding, conv2d_transpose_attrs->output_padding,
                           conv2d_transpose_attrs->dilation, conv2d_transpose_attrs->groups,
                           conv2d_transpose_attrs->data_layout,
                           conv2d_transpose_attrs->kernel_layout, conv2d_transpose_attrs->out_layout,
-                          static_cast<DLDataType>(out_dtype))
+                          out_dtype)
       .as_or_throw<Call>();
 }
 
@@ -1234,14 +1231,14 @@ InferLayoutOutput InferLayoutConv3dTranspose(
   return InferLayoutOutput({data_layout, weight_layout}, {output_layout}, Attrs(new_attrs));
 }
 
-Call InferMixedPrecisionConv3dTranspose(const Call& call, const DataType& out_dtype) {
+Call InferMixedPrecisionConv3dTranspose(const Call& call, DLDataType out_dtype) {
   const auto* conv3d_transpose_attrs = call->attrs.as<Conv3DTransposeAttrs>();
   return conv3d_transpose(call->args[0], call->args[1], conv3d_transpose_attrs->strides,
                           conv3d_transpose_attrs->padding, conv3d_transpose_attrs->output_padding,
                           conv3d_transpose_attrs->dilation, conv3d_transpose_attrs->groups,
                           conv3d_transpose_attrs->data_layout,
                           conv3d_transpose_attrs->kernel_layout, conv3d_transpose_attrs->out_layout,
-                          static_cast<DLDataType>(out_dtype))
+                          out_dtype)
       .as_or_throw<Call>();
 }
 
