@@ -33,7 +33,7 @@ Type InferDistTypeMatmul(const Call& call, const BlockBuilder& ctx) {
 
   const auto* attrs = call->attrs.as<MatmulAttrs>();
   PrimType out_dtype = attrs->out_dtype == PrimType::Void()->dtype
-                           ? PrimType(InferBinaryArithOpOutDtype(call, ctx, x1_ty, x2_ty))
+                           ? InferBinaryArithOpOutDtype(call, ctx, x1_ty, x2_ty)
                            : PrimType(attrs->out_dtype);
 
   if (x1_ty->IsUnknownNdim() || x2_ty->IsUnknownNdim()) {

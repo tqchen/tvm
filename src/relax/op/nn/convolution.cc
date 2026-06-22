@@ -93,7 +93,7 @@ Type InferTypeConv1d(const Call& call, const BlockBuilder& ctx) {
       CheckNdimPerLayoutAndGetShape(call, ctx, weight_ty, weight_layout);
 
   PrimType out_dtype = attrs->out_dtype == PrimType::Void()->dtype
-                           ? PrimType(InferBinaryArithOpOutDtype(call, ctx, data_ty, weight_ty))
+                           ? InferBinaryArithOpOutDtype(call, ctx, data_ty, weight_ty)
                            : PrimType(attrs->out_dtype);
   ffi::Optional<VDevice> vdevice = InferBinaryArithOpOutVDevice(call, ctx, data_ty, weight_ty);
   if (!data_shape.defined() || !weight_shape.defined()) {
@@ -264,7 +264,7 @@ Type InferTypeConv2d(const Call& call, const BlockBuilder& ctx) {
       CheckNdimPerLayoutAndGetShape(call, ctx, weight_ty, weight_layout);
 
   PrimType out_dtype = attrs->out_dtype == PrimType::Void()->dtype
-                           ? PrimType(InferBinaryArithOpOutDtype(call, ctx, data_ty, weight_ty))
+                           ? InferBinaryArithOpOutDtype(call, ctx, data_ty, weight_ty)
                            : PrimType(attrs->out_dtype);
   ffi::Optional<VDevice> vdevice = InferBinaryArithOpOutVDevice(call, ctx, data_ty, weight_ty);
   if (!data_shape.defined() || !weight_shape.defined()) {
@@ -479,7 +479,7 @@ Type InferTypeConv3d(const Call& call, const BlockBuilder& ctx) {
       CheckNdimPerLayoutAndGetShape(call, ctx, weight_ty, weight_layout);
 
   PrimType out_dtype = attrs->out_dtype == PrimType::Void()->dtype
-                           ? PrimType(InferBinaryArithOpOutDtype(call, ctx, data_ty, weight_ty))
+                           ? InferBinaryArithOpOutDtype(call, ctx, data_ty, weight_ty)
                            : PrimType(attrs->out_dtype);
   ffi::Optional<VDevice> vdevice = InferBinaryArithOpOutVDevice(call, ctx, data_ty, weight_ty);
   if (!data_shape.defined() || !weight_shape.defined()) {
@@ -668,7 +668,7 @@ Type InferTypeConv1dTranspose(const Call& call, const BlockBuilder& ctx) {
       CheckNdimPerLayoutAndGetShape(call, ctx, weight_ty, weight_layout);
 
   PrimType out_dtype = attrs->out_dtype == PrimType::Void()->dtype
-                           ? PrimType(InferBinaryArithOpOutDtype(call, ctx, data_ty, weight_ty))
+                           ? InferBinaryArithOpOutDtype(call, ctx, data_ty, weight_ty)
                            : PrimType(attrs->out_dtype);
   ffi::Optional<VDevice> vdevice = InferBinaryArithOpOutVDevice(call, ctx, data_ty, weight_ty);
   if (!data_shape.defined() || !weight_shape.defined()) {
@@ -860,7 +860,7 @@ Type InferTypeConv2dTranspose(const Call& call, const BlockBuilder& ctx) {
       CheckNdimPerLayoutAndGetShape(call, ctx, weight_ty, weight_layout);
 
   PrimType out_dtype = attrs->out_dtype == PrimType::Void()->dtype
-                           ? PrimType(InferBinaryArithOpOutDtype(call, ctx, data_ty, weight_ty))
+                           ? InferBinaryArithOpOutDtype(call, ctx, data_ty, weight_ty)
                            : PrimType(attrs->out_dtype);
   ffi::Optional<VDevice> vdevice = InferBinaryArithOpOutVDevice(call, ctx, data_ty, weight_ty);
   if (!data_shape.defined() || !weight_shape.defined()) {
@@ -1092,7 +1092,7 @@ Type InferTypeConv3dTranspose(const Call& call, const BlockBuilder& ctx) {
       CheckNdimPerLayoutAndGetShape(call, ctx, weight_ty, weight_layout);
 
   PrimType out_dtype = attrs->out_dtype == PrimType::Void()->dtype
-                           ? PrimType(InferBinaryArithOpOutDtype(call, ctx, data_ty, weight_ty))
+                           ? InferBinaryArithOpOutDtype(call, ctx, data_ty, weight_ty)
                            : PrimType(attrs->out_dtype);
   ffi::Optional<VDevice> vdevice = InferBinaryArithOpOutVDevice(call, ctx, data_ty, weight_ty);
   if (!data_shape.defined() || !weight_shape.defined()) {
