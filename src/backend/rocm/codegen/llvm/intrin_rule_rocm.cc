@@ -71,10 +71,11 @@ inline PrimExpr DispatchShuffle(const PrimExpr& e) {
   // get own lane in self (__lane_id)
   PrimExpr minus_one = IntImm::Int32(-1);
   PrimExpr zero = IntImm::Int32(0);
-  PrimExpr lo = Call(PrimType::Int(32), builtin::call_pure_extern(),
+  PrimType i32_ty = PrimType::Int(32);
+  PrimExpr lo = Call(i32_ty, builtin::call_pure_extern(),
                      {StringImm("llvm.amdgcn.mbcnt.lo"), minus_one, zero});
-  PrimExpr self = Call(PrimType::Int(32), builtin::call_pure_extern(),
-                       {StringImm("llvm.amdgcn.mbcnt.hi"), minus_one, lo});
+  PrimExpr self =
+      Call(i32_ty, builtin::call_pure_extern(), {StringImm("llvm.amdgcn.mbcnt.hi"), minus_one, lo});
 
   // compute lane to get from
   PrimExpr width = call->args[3];
@@ -95,7 +96,7 @@ inline PrimExpr DispatchShuffle(const PrimExpr& e) {
   // reinterprete var as int32
   bool is_int32 = var.dtype().is_int() && var.dtype().bits() == 32;
   PrimExpr source = is_int32 ? var : reinterpret(DataType::Int(32), var);
-  PrimExpr res = Call(PrimType::Int(32), builtin::call_pure_extern(),
+  PrimExpr res = Call(i32_ty, builtin::call_pure_extern(),
                       {StringImm("llvm.amdgcn.ds.bpermute"), index << 2, source});
   if (!is_int32) {
     res = reinterpret(var.dtype(), res);

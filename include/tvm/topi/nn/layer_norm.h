@@ -69,6 +69,7 @@ inline Tensor layer_norm(const Tensor& data, const Tensor& gamma, const Tensor& 
   auto reduce_axes = MakeReduceAxes(real_axis, data);
   auto target_shape =
       MakeReduceTargetShape(real_axis, data, /*keepdims=*/false, /*atleast1d=*/false);
+  PrimType f32_ty = PrimType::Float(32);
 
   auto make_eval_range = [&real_axis, &reduce_axes,
                           ndim](const ffi::Array<Var>& non_reduce_indices) {
@@ -91,11 +92,11 @@ inline Tensor layer_norm(const Tensor& data, const Tensor& gamma, const Tensor& 
 
   Tensor temp_sum = te::compute(
       target_shape,
-      [is_float16, &data, &reduce_axes, &make_eval_range](const ffi::Array<Var>& indices) {
+      [is_float16, &data, &reduce_axes, &make_eval_range, f32_ty](const ffi::Array<Var>& indices) {
         auto eval_range = make_eval_range(indices);
         PrimExpr x = data(eval_range);
         if (is_float16) {
-          x = Cast(PrimType::Float(32), x);
+          x = Cast(f32_ty, x);
         }
         return sum(x, reduce_axes);
       },
@@ -115,12 +116,12 @@ inline Tensor layer_norm(const Tensor& data, const Tensor& gamma, const Tensor& 
 
   Tensor temp_var_sum = te::compute(
       target_shape,
-      [is_float16, &data, &reduce_axes, &make_eval_range,
-       &temp_mean](const ffi::Array<Var>& indices) {
+      [is_float16, &data, &reduce_axes, &make_eval_range, &temp_mean,
+       f32_ty](const ffi::Array<Var>& indices) {
         auto eval_range = make_eval_range(indices);
         PrimExpr x = data(eval_range);
         if (is_float16) {
-          x = Cast(PrimType::Float(32), x);
+          x = Cast(f32_ty, x);
         }
         PrimExpr diff = x - temp_mean(indices);
         return sum(diff * diff, reduce_axes);

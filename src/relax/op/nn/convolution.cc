@@ -336,9 +336,10 @@ InferLayoutOutput InferLayoutConv2d(
     SLayout desired_data_layout = (*it).second[0];
     SLayout desired_weight_layout = (*it).second[1];
     SLayout desired_output_layout = (*it).second.size() == 3 ? (*it).second[2] : (*it).second[0];
-    tirx::SLayout input_layout(attrs->data_layout, DataType::Int(64));
-    tirx::SLayout kernel_layout(attrs->kernel_layout, DataType::Int(64));
-    tirx::SLayout out_layout(attrs->out_layout, DataType::Int(64));
+    tvm::PrimType i64_ty = tvm::PrimType::Int(64);
+    tirx::SLayout input_layout(attrs->data_layout, i64_ty);
+    tirx::SLayout kernel_layout(attrs->kernel_layout, i64_ty);
+    tirx::SLayout out_layout(attrs->out_layout, i64_ty);
 
     if ((desired_data_layout.ndim() == input_layout.ndim()) &&
         (desired_weight_layout.ndim() == kernel_layout.ndim()) &&

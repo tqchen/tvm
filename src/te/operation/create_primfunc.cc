@@ -404,7 +404,7 @@ Stmt GenerateBodyStmt(const ffi::Array<PrimExpr>& indices, const ffi::Array<Buff
       const Buffer& buffer = buffers[i];
       PrimExpr value{nullptr};
       if (n_buffers > 1) {
-        temp_vars.push_back(Var("v_" + buffer->name, PrimType(lhs[i].dtype())));
+        temp_vars.push_back(Var("v_" + buffer->name, lhs[i].ty()));
         value = temp_vars.back();
       } else {
         PrimExpr combined = reduce->combiner.get()->operator()(lhs, rhs)[i];
@@ -740,8 +740,9 @@ PrimFunc GenerateAndCompletePrimFunc(const ffi::Array<te::Tensor>& arg_list,
                                      const ffi::Array<Stmt>& root_stmts, CreateFuncInfo* info) {
   ffi::Array<Var> parameters;
   ffi::Map<Var, Buffer> buffer_map;
+  PrimType handle_ty = PrimType::Handle();
   for (const te::Tensor& tensor : arg_list) {
-    Var arg("var_" + tensor->GetNameHint(), PrimType(DataType::Handle()));
+    Var arg("var_" + tensor->GetNameHint(), handle_ty);
     parameters.push_back(arg);
     auto it = info->tensor2buffers.find(tensor);
     TVM_FFI_ICHECK(it != info->tensor2buffers.end());
@@ -806,10 +807,11 @@ PrimFunc GenerateAndCompletePrimFunc(const ffi::Array<ffi::ObjectRef>& arg_tir_v
                                      const ffi::Array<Stmt>& root_stmts, CreateFuncInfo* info) {
   ffi::Array<Var> parameters;
   ffi::Map<Var, Buffer> buffer_map;
+  PrimType handle_ty = PrimType::Handle();
   for (const ffi::ObjectRef& arg : arg_tir_var_list) {
     if (auto opt_tensor = arg.as<te::Tensor>()) {
       te::Tensor tensor = opt_tensor.value();
-      Var arg("var_" + tensor->GetNameHint(), PrimType(DataType::Handle()));
+      Var arg("var_" + tensor->GetNameHint(), handle_ty);
       parameters.push_back(arg);
       auto it = info->tensor2buffers.find(tensor);
       TVM_FFI_ICHECK(it != info->tensor2buffers.end());

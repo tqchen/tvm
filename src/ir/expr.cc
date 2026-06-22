@@ -53,8 +53,8 @@ PrimExpr::PrimExpr(float value) : PrimExpr(FloatImm(PrimType::Float(32), value))
 
 PrimExpr PrimExpr::ConvertFallbackValue(ffi::String value) { return tirx::StringImm(value); }
 
-IntImm::IntImm(PrimType dtype, int64_t value, Span span) {
-  DataType runtime_dtype = dtype->dtype;
+IntImm::IntImm(PrimType value_ty, int64_t value, Span span) {
+  DataType runtime_dtype = value_ty->dtype;
   TVM_FFI_CHECK(runtime_dtype.is_scalar(), ValueError)
       << "IntImm can only take scalar, but " << runtime_dtype << " was supplied.";
   TVM_FFI_CHECK(runtime_dtype.is_int() || runtime_dtype.is_uint() || runtime_dtype.is_bool(),
@@ -78,17 +78,11 @@ IntImm::IntImm(PrimType dtype, int64_t value, Span span) {
         << "Literal value " << value << " exceeds maximum of " << runtime_dtype;
   }
   ffi::ObjectPtr<IntImmNode> node = ffi::make_object<IntImmNode>();
-  node->ty = std::move(dtype);
+  node->ty = std::move(value_ty);
   node->value = value;
   node->span = span;
   data_ = std::move(node);
 }
-
-IntImm IntImm::Bool(bool value, Span span) { return IntImm(PrimType::Bool(), value, span); }
-
-IntImm IntImm::Int32(int64_t value, Span span) { return IntImm(PrimType::Int(32), value, span); }
-
-IntImm IntImm::Int64(int64_t value, Span span) { return IntImm(PrimType::Int(64), value, span); }
 
 TVM_FFI_STATIC_INIT_BLOCK() {
   namespace refl = tvm::ffi::reflection;
@@ -97,8 +91,8 @@ TVM_FFI_STATIC_INIT_BLOCK() {
   });
 }
 
-FloatImm::FloatImm(PrimType dtype, double value, Span span) {
-  DataType runtime_dtype = dtype->dtype;
+FloatImm::FloatImm(PrimType value_ty, double value, Span span) {
+  DataType runtime_dtype = value_ty->dtype;
   TVM_FFI_CHECK_EQ(runtime_dtype.lanes(), 1, ValueError) << "FloatImm can only take scalar.";
 
   TVM_FFI_CHECK(runtime_dtype.is_float() || runtime_dtype.is_bfloat16() ||
@@ -192,7 +186,7 @@ FloatImm::FloatImm(PrimType dtype, double value, Span span) {
     }
   }
   ffi::ObjectPtr<FloatImmNode> node = ffi::make_object<FloatImmNode>();
-  node->ty = std::move(dtype);
+  node->ty = std::move(value_ty);
   node->value = value;
   node->span = span;
   data_ = std::move(node);

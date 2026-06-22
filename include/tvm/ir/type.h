@@ -57,50 +57,6 @@
 
 namespace tvm {
 
-/*
- * \brief Managed reference to PrimTypeNode.
- * \sa PrimTypeNode
- */
-class PrimType : public Type {
- public:
-  /*!
-   * \brief Constructor
-   * \param dtype The corresponding dtype.
-   * \param span The span
-   */
-  TVM_DLL explicit PrimType(runtime::DataType dtype, Span span = Span());
-
-  /*! \brief Construct an int type. */
-  TVM_DLL static PrimType Int(int bits, int lanes = 1);
-
-  /*! \brief Construct an uint type. */
-  TVM_DLL static PrimType UInt(int bits, int lanes = 1, bool is_scalable = false);
-
-  /*! \brief Construct a float type. */
-  TVM_DLL static PrimType Float(int bits, int lanes = 1);
-
-  /*! \brief Construct a bfloat type. */
-  TVM_DLL static PrimType BFloat(int bits, int lanes = 1);
-
-  /*! \brief Construct a bool type. */
-  TVM_DLL static PrimType Bool(int lanes = 1, bool is_scalable = false);
-
-  /*! \brief Construct a handle type. */
-  TVM_DLL static PrimType Handle(int bits = 64, int lanes = 1);
-
-  /*! \brief Construct a void type. */
-  TVM_DLL static PrimType Void();
-
-  TVM_FFI_DEFINE_OBJECT_REF_METHODS_NOTNULLABLE(PrimType, Type, PrimTypeNode);
-};
-
-inline PrimType PrimExpr::ty() const {
-  const auto* node = static_cast<const PrimExprNode*>(get());
-  TVM_FFI_DCHECK(node->ty.defined());
-  TVM_FFI_DCHECK(node->ty->IsInstance<PrimTypeNode>());
-  return ffi::GetRef<PrimType>(static_cast<const PrimTypeNode*>(node->ty.get()));
-}
-
 namespace ffi {
 template <>
 inline constexpr bool use_default_type_traits_v<PrimType> = false;

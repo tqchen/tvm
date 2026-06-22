@@ -132,7 +132,8 @@ inline IntervalSet Combine(AnalyzerObj* analyzer, IntervalSet a, IntervalSet b, 
     return IntervalSet::SinglePoint(expr);
   }
   if (is_logical_op<Op>::value) {
-    return IntervalSet(IntImm(PrimType(dtype), 0), IntImm(PrimType(dtype), 1));
+    PrimType result_ty(dtype);
+    return IntervalSet(IntImm(result_ty, 0), IntImm(result_ty, 1));
   }
   if (a->IsEmpty()) return a;
   if (b->IsEmpty()) return b;
@@ -348,8 +349,8 @@ inline IntervalSet Combine<tirx::FloorMod>(AnalyzerObj* analyzer, IntervalSet a,
             int64_t max_mod_result = max_quotient * gcd + (dividend_mod->base % gcd);
 
             if (max_mod_result >= 0 && max_mod_result < div_val) {
-              PrimType result_type = ffi::GetRef<PrimExpr>(op).ty();
-              return IntervalSet(IntImm(result_type, 0), IntImm(result_type, max_mod_result));
+              PrimType result_ty = ffi::GetRef<PrimExpr>(op).ty();
+              return IntervalSet(IntImm(result_ty, 0), IntImm(result_ty, max_mod_result));
             }
           }
         }

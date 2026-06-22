@@ -559,8 +559,9 @@ inline ffi::Array<int64_t> GetCompletePadding3D(ffi::Array<int64_t> padding) {
 inline std::pair<tirx::SLayout, tirx::SBijectiveLayout> CheckTensorLayout(
     const Call& call, const BlockBuilder& ctx, const ffi::String& tensor_layout,
     const ffi::String& tgt_layout, const ffi::String& tensor_name) {
-  tirx::SLayout _tensor_layout(tensor_layout, DataType::Int(64));
-  tirx::SBijectiveLayout tensor2tgt(_tensor_layout, tirx::SLayout(tgt_layout, DataType::Int(64)));
+  tvm::PrimType i64_ty = tvm::PrimType::Int(64);
+  tirx::SLayout _tensor_layout(tensor_layout, i64_ty);
+  tirx::SBijectiveLayout tensor2tgt(_tensor_layout, tirx::SLayout(tgt_layout, i64_ty));
   if (!tensor2tgt.defined()) {
     TVM_FFI_VISIT_THROW(ValueError, call)
         << call->op << " requires the given " << tensor_name << " layout to be convertible from "
