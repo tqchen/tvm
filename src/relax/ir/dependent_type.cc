@@ -54,7 +54,7 @@ ShapeType::ShapeType(ffi::Array<PrimExpr> values, Span span) {
   n->ndim = static_cast<int>(values.size());
   n->values = values.Map([](PrimExpr value) {
     if (value->IsInstance<IntImmNode>()) {
-      return tvm::cast(DataType::Int(64), value);
+      return tvm::cast(PrimType::Int(64), value);
     }
     TVM_FFI_ICHECK(value.ty().MatchesElementType(DLDataTypeCode::kDLInt, 64))
         << "the value in ShapeType can only have dtype of int64";

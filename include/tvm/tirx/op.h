@@ -1098,7 +1098,7 @@ inline PrimExpr MakeConst(DataType dtype, ValueType value, Span span) {
 }
 
 inline PrimExpr ConstHandle(int64_t value, Span span) {
-  return reinterpret(DataType::Handle(), IntImm(PrimType::UInt(64), value, span));
+  return reinterpret(PrimType::Handle(), IntImm(PrimType::UInt(64), value, span));
 }
 
 }  // namespace tirx

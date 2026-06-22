@@ -1879,7 +1879,7 @@ llvm::Value* CodeGenLLVM::VisitExpr_(const RampNode* op) {
   int lanes = dtype.lanes();
   for (int i = 0; i < lanes; ++i) {
     vec = builder_->CreateInsertElement(
-        vec, MakeValue(op->base + op->stride * MakeConst(DataType(op->stride.ty()->dtype), i)),
+        vec, MakeValue(op->base + op->stride * MakeConst(op->stride.ty(), i)),
         ConstInt32(i));
   }
   return vec;

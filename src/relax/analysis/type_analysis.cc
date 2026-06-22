@@ -223,7 +223,7 @@ class WellDefinedEraser : public TypeMutator, public ExprMutatorBase, public tir
     if (ret.defined()) {
       PrimExpr value = ret.value();
       if (value->IsInstance<IntImmNode>()) {
-        return tvm::cast(DataType::Int(64), value);
+        return tvm::cast(PrimType::Int(64), value);
       }
       TVM_FFI_ICHECK(value.ty().MatchesElementType(DLDataTypeCode::kDLInt, 64))
           << "Can only provide i64 expressions in shape";

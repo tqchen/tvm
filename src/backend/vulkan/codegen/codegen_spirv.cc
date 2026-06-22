@@ -537,7 +537,7 @@ spirv::Value CodeGenSPIRV::VisitExpr_(const RampNode* op) {
   for (int i = 0; i < lanes; ++i) {
     spirv::Value v = base;
     if (i != 0) {
-      spirv::Value offset = MakeValue(MakeConst(DataType(op->stride.ty()->dtype), i) * op->stride);
+      spirv::Value offset = MakeValue(MakeConst(op->stride.ty(), i) * op->stride);
       v = builder_->Add(v, offset);
     }
     values.push_back(v);
@@ -702,7 +702,7 @@ void CodeGenSPIRV::VisitStmt_(const ForNode* op) {
     step = DataType(op->loop_var.ty()->dtype).is_int() ? builder_->IntImm(init_value.stype, 1)
                                                        : builder_->UIntImm(init_value.stype, 1);
   } else {
-    step = MakeValue(tvm::cast(DataType(end.ty()->dtype), *op->step));
+    step = MakeValue(tvm::cast(end.ty(), *op->step));
   }
 
   // Must get init label after making value(to make sure they are correct)

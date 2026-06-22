@@ -396,7 +396,7 @@ void CodeGenWebGPU::VisitExpr_(const BroadcastNode* op, std::ostream& os) {  // 
 }
 
 PrimExpr CodeGenWebGPU::EnforceU32(PrimExpr value) {
-  return cast(DataType::UInt(32, DataType(value.ty()->dtype).lanes()), value);
+  return cast(PrimType::UInt(32, value.ty().lanes()), value);
 }
 
 void CodeGenWebGPU::VisitExpr_(const CallNode* op, std::ostream& os) {  // NOLINT(*)
