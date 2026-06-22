@@ -2115,11 +2115,11 @@ inline Tensor one_hot(const Tensor& indices, const PrimExpr on_value, const Prim
  */
 inline Tensor sparse_to_dense(const Tensor& sparse_indices,
                               const ffi::Array<PrimExpr>& output_shape, const Tensor& sparse_values,
-                              const PrimExpr& default_value,
+  const PrimExpr& default_value,
                               const std::string name = "T_sparse_to_dense",
                               const std::string tag = kInjective) {
   // Sparse indices are validated by signed integer element kind; lane encoding is irrelevant here.
-  TVM_FFI_ICHECK(DataType(sparse_indices->dtype->dtype).is_int())
+  TVM_FFI_ICHECK_EQ(sparse_indices->dtype->dtype.code, DLDataTypeCode::kDLInt)
       << "sparse_indices only accepts integer values";
   TVM_FFI_ICHECK_LE(sparse_indices->shape.size(), 3)
       << "sparse_indices tensor should be 0D, 1D, or 2D only";

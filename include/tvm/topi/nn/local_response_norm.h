@@ -56,7 +56,8 @@ inline Tensor lrn(const Tensor& data, int size, int axis = 1, float alpha = 0.00
   TVM_FFI_ICHECK_EQ(size % 2, 1) << "size should be odd number";
   TVM_FFI_ICHECK(axis == 1 || axis == 3) << "axis should be 1 or 3 for NCHW and NHWC";
   // LRN only requires a floating-point element kind; lane encoding is irrelevant here.
-  TVM_FFI_ICHECK(DataType(data->dtype->dtype).is_float()) << "datatype should be float";
+  TVM_FFI_ICHECK_EQ(data->dtype->dtype.code, DLDataTypeCode::kDLFloat)
+      << "datatype should be float";
   auto input_shape = data->shape;
   ffi::Array<PrimExpr> pad_before{0, 0, 0, 0};
   ffi::Array<PrimExpr> pad_after{0, 0, 0, 0};
