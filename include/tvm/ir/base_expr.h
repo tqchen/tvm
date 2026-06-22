@@ -104,113 +104,99 @@ class PrimTypeNode : public TypeNode {
 class PrimType : public Type {
  public:
   /*!
-   * \brief Constructor
+   * \brief Construct from a raw DLPack dtype.
    * \param dtype The corresponding DLPack dtype.
-   * \param span The span
    */
-  TVM_DLL explicit PrimType(DLDataType dtype, Span span = Span());
+  TVM_DLL explicit PrimType(DLDataType dtype);
 
-  /*! \brief Construct an int type. */
+  /*!
+   * \brief Construct from DLPack dtype fields.
+   * \param code The DLPack dtype code.
+   * \param bits The scalar bit width.
+   * \param lanes The fixed lane count.
+   */
+  TVM_DLL PrimType(DLDataTypeCode code, int bits, int lanes = 1);
+
+  // Fast constructors.
   TVM_DLL static PrimType Int(int bits, int lanes = 1);
 
-  /*! \brief Construct an uint type. */
-  TVM_DLL static PrimType UInt(int bits, int lanes = 1);
+  static PrimType UInt(int bits, int lanes = 1) {
+    return PrimType(DLDataTypeCode::kDLUInt, bits, lanes);
+  }
 
-  /*! \brief Construct a float type. */
   TVM_DLL static PrimType Float(int bits, int lanes = 1);
 
-  /*! \brief Construct a bfloat type. */
-  TVM_DLL static PrimType BFloat(int bits, int lanes = 1);
+  static PrimType BFloat(int bits, int lanes = 1) {
+    return PrimType(DLDataTypeCode::kDLBfloat, bits, lanes);
+  }
 
-  /*! \brief Construct float8 e3m4 type. */
-  TVM_DLL static PrimType Float8E3M4(int lanes = 1);
-
-  /*! \brief Construct float8 e4m3 type. */
-  TVM_DLL static PrimType Float8E4M3(int lanes = 1);
-
-  /*! \brief Construct float8 e4m3b11fnuz type. */
-  TVM_DLL static PrimType Float8E4M3B11FNUZ(int lanes = 1);
-
-  /*! \brief Construct float8 e4m3fn type. */
-  TVM_DLL static PrimType Float8E4M3FN(int lanes = 1);
-
-  /*! \brief Construct float8 e4m3fnuz type. */
-  TVM_DLL static PrimType Float8E4M3FNUZ(int lanes = 1);
-
-  /*! \brief Construct float8 e5m2 type. */
-  TVM_DLL static PrimType Float8E5M2(int lanes = 1);
-
-  /*! \brief Construct float8 e5m2fnuz type. */
-  TVM_DLL static PrimType Float8E5M2FNUZ(int lanes = 1);
-
-  /*! \brief Construct float8 e8m0fnu type. */
-  TVM_DLL static PrimType Float8E8M0FNU(int lanes = 1);
-
-  /*! \brief Construct float6 e2m3fn type. */
-  TVM_DLL static PrimType Float6E2M3FN(int lanes = 1);
-
-  /*! \brief Construct float6 e3m2fn type. */
-  TVM_DLL static PrimType Float6E3M2FN(int lanes = 1);
-
-  /*! \brief Construct float4 e2m1fn type. */
-  TVM_DLL static PrimType Float4E2M1FN(int lanes = 1);
-
-  /*! \brief Construct a bool type. */
   TVM_DLL static PrimType Bool();
 
-  /*! \brief Construct a fixed-length bool vector type. */
-  TVM_DLL static PrimType Bool(int lanes);
+  static PrimType Bool(int lanes) {
+    if (lanes == 1) return Bool();
+    return PrimType(DLDataTypeCode::kDLBool, 8, lanes);
+  }
 
-  /*! \brief Construct a handle type. */
-  TVM_DLL static PrimType Handle(int bits = 64, int lanes = 1);
+  static PrimType Handle(int bits = 64, int lanes = 1) {
+    return PrimType(DLDataTypeCode::kDLOpaqueHandle, bits, lanes);
+  }
 
-  /*! \brief Construct a void type. */
-  TVM_DLL static PrimType Void();
+  static PrimType Void() { return PrimType(DLDataTypeCode::kDLOpaqueHandle, 0, 0); }
 
-  /*! \brief Construct a scalable vector type. */
   TVM_DLL static PrimType ScalableVector(DLDataTypeCode code, int bits, int lanes);
 
-  /*! \brief Check whether the scalar element type matches code and bits. */
-  TVM_DLL bool MatchesElementType(DLDataTypeCode code, int bits) const;
+  // Accessors.
+  DLDataTypeCode code() const {
+    return static_cast<DLDataTypeCode>(static_cast<int>(get()->dtype.code));
+  }
 
-  /*! \brief Whether the type is void. */
-  TVM_DLL bool IsVoid() const;
+  int32_t bits() const { return get()->dtype.bits; }
 
-  /*! \brief Whether the type is an opaque handle. */
-  TVM_DLL bool IsHandle() const;
+  int32_t lanes() const {
+    int16_t encoded_lanes = static_cast<int16_t>(get()->dtype.lanes);
+    if (encoded_lanes < 0) {
+      TVM_FFI_THROW(InternalError)
+          << "Can't fetch the lanes of a scalable vector at a compile time.";
+    }
+    return encoded_lanes;
+  }
 
-  /*! \brief Whether the type can be used as a predicate. */
-  TVM_DLL bool IsPredicate() const;
+  DLDataType dtype() const { return get()->dtype; }
 
-  /*! \brief Whether the type is a scalable vector. */
-  TVM_DLL bool IsScalableVector() const;
+  // Quick checks.
+  bool MatchesElementType(DLDataTypeCode code, int bits) const {
+    DLDataType dtype = this->dtype();
+    return dtype.code == static_cast<uint8_t>(code) && dtype.bits == bits;
+  }
 
-  /*! \brief Whether the type is a fixed-length vector. */
-  TVM_DLL bool IsFixedLengthVector() const;
+  bool IsVoid() const {
+    DLDataType dtype = this->dtype();
+    return dtype.code == static_cast<uint8_t>(DLDataTypeCode::kDLOpaqueHandle) && dtype.bits == 0 &&
+           static_cast<int16_t>(dtype.lanes) == 0;
+  }
 
-  /*! \brief Return a type with the same code/lanes and new bit width. */
+  bool IsHandle() const {
+    return this->code() == DLDataTypeCode::kDLOpaqueHandle && !this->IsVoid();
+  }
+
+  bool IsPredicate() const {
+    DLDataType dtype = this->dtype();
+    return dtype.code == static_cast<uint8_t>(DLDataTypeCode::kDLBool) ||
+           (dtype.code == static_cast<uint8_t>(DLDataTypeCode::kDLUInt) && dtype.bits == 1);
+  }
+
+  bool IsScalableVector() const { return static_cast<int16_t>(get()->dtype.lanes) < -1; }
+
+  bool IsFixedLengthVector() const { return static_cast<int16_t>(get()->dtype.lanes) > 1; }
+
+  // Rewriters.
+  TVM_DLL PrimType WithCode(DLDataTypeCode code) const;
+
   TVM_DLL PrimType WithBits(int bits) const;
 
-  /*! \brief Return a fixed-length type with the same code/bits and new lanes. */
   TVM_DLL PrimType WithLanes(int lanes) const;
 
-  /*! \brief Return the DLPack code. */
-  TVM_DLL DLDataTypeCode code() const;
-
-  /*! \brief Return the scalar bit width. */
-  TVM_DLL int32_t bits() const;
-
-  /*! \brief Return fixed lanes, or fail for scalable vectors. */
-  TVM_DLL int32_t lanes() const;
-
-  /*! \brief Return the vscale multiplier for scalable vectors. */
   TVM_DLL int32_t VScaleFactor() const;
-
-  /*! \brief Return the raw DLPack dtype. */
-  TVM_DLL DLDataType dtype() const;
-
-  /*! \brief Convert to the raw DLPack dtype. */
-  TVM_DLL operator DLDataType() const;
 
   TVM_FFI_DEFINE_OBJECT_REF_METHODS_NOTNULLABLE(PrimType, Type, PrimTypeNode);
 };
@@ -268,7 +254,7 @@ inline constexpr bool use_default_type_traits_v<PrimType> = false;
 template <>
 struct TypeTraits<PrimType> : public ObjectRefWithFallbackTraitsBase<PrimType, runtime::DataType> {
   TVM_FFI_INLINE static PrimType ConvertFallbackValue(runtime::DataType dtype) {
-    return PrimType(static_cast<DLDataType>(dtype));
+    return PrimType(dtype.operator DLDataType());
   }
 };
 }  // namespace ffi

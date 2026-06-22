@@ -727,7 +727,8 @@ TVM_FFI_STATIC_INIT_BLOCK() {
       .def_method("tirx.BufferVStore", &Buffer::vstore)
       .def_method("tirx.BufferStorageScope", &Buffer::scope)
       .def_method("tirx.BufferWithAllocatedAddr", &Buffer::with_allocated_addr)
-      .def_method("tirx.BufferWithDtype", &Buffer::with_dtype)
+      .def_method("tirx.BufferWithDtype",
+                  static_cast<Buffer (Buffer::*)(DataType) const>(&Buffer::with_dtype))
       .def_method("tirx.BufferWithData", &Buffer::with_data)
       .def_method("tirx.BufferIsScalar", &Buffer::IsScalar);
 }

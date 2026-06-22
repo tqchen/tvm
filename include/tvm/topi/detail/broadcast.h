@@ -42,10 +42,12 @@ struct BroadcastHelper {
   std::deque<tvm::tirx::Var> vars2;
 };
 
-static inline DataType CommonType(DataType type1, DataType type2) {
-  TVM_FFI_ICHECK(type1.is_scalar() && type2.is_scalar());
+static inline PrimType CommonType(PrimType type1, PrimType type2) {
+  TVM_FFI_ICHECK(!type1.IsScalableVector() && !type2.IsScalableVector());
+  TVM_FFI_ICHECK_EQ(type1.lanes(), 1);
+  TVM_FFI_ICHECK_EQ(type2.lanes(), 1);
   TVM_FFI_ICHECK(type1.code() == type2.code());
-  return DataType(type1.code(), std::max(type1.bits(), type2.bits()), /*lanes=*/1);
+  return type1.bits() < type2.bits() ? type1.WithBits(type2.bits()) : type1;
 }
 
 inline BroadcastHelper BroadcastShape(const tvm::ffi::Array<tvm::PrimExpr>& shape1,
@@ -56,16 +58,15 @@ inline BroadcastHelper BroadcastShape(const tvm::ffi::Array<tvm::PrimExpr>& shap
   tvm::PrimExpr one(1);
   int i;
 
-  auto cast_if_needed = [](DataType to_type, PrimExpr expr) {
-    return to_type != DataType(expr.ty().dtype()) ? cast(to_type, expr) : expr;
+  auto cast_if_needed = [](PrimType to_type, PrimExpr expr) {
+    return runtime::TypeEqual(to_type.dtype(), expr.ty().dtype()) ? expr : cast(to_type, expr);
   };
 
   for (i = 1; i <= std::min(s1_size, s2_size); ++i) {
     // TODO(@icemelon9): Need to revisit this part
     const IntImmNode* static_size1 = shape1[s1_size - i].as<IntImmNode>();
     const IntImmNode* static_size2 = shape2[s2_size - i].as<IntImmNode>();
-    DataType common_type = CommonType(DataType(shape1[s1_size - i].ty().dtype()),
-                                      DataType(shape2[s2_size - i].ty().dtype()));
+    PrimType common_type = CommonType(shape1[s1_size - i].ty(), shape2[s2_size - i].ty());
 
     bh.all_vars.push_front(tvm::tirx::Var("dim", common_type));
     if (topi::detail::EqualCheck(shape1[s1_size - i], shape2[s2_size - i])) {

@@ -104,7 +104,12 @@ class PrimExpr : public BaseExpr {
   TVM_DLL PrimExpr(float value);  // NOLINT(*)
 
   /*! \return the primitive type of this expression. */
-  PrimType ty() const;
+  PrimType ty() const {
+    const auto* node = static_cast<const PrimExprNode*>(get());
+    TVM_FFI_DCHECK(node->BaseExprNode::ty.defined());
+    TVM_FFI_DCHECK(node->BaseExprNode::ty->IsInstance<PrimTypeNode>());
+    return ffi::GetRef<PrimType>(static_cast<const PrimTypeNode*>(node->BaseExprNode::ty.get()));
+  }
 
   TVM_FFI_DEFINE_OBJECT_REF_METHODS_NULLABLE(PrimExpr, BaseExpr, PrimExprNode);
 
@@ -114,13 +119,6 @@ class PrimExpr : public BaseExpr {
    */
   TVM_DLL static PrimExpr ConvertFallbackValue(ffi::String value);  // NOLINT(*)
 };
-
-TVM_FFI_INLINE PrimType PrimExpr::ty() const {
-  const auto* node = static_cast<const PrimExprNode*>(get());
-  TVM_FFI_DCHECK(node->BaseExprNode::ty.defined());
-  TVM_FFI_DCHECK(node->BaseExprNode::ty->IsInstance<PrimTypeNode>());
-  return ffi::GetRef<PrimType>(static_cast<const PrimTypeNode*>(node->BaseExprNode::ty.get()));
-}
 
 /*!
  * \brief Base class for other IR constructs that can be converted to PrimExpr.

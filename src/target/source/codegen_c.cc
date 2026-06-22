@@ -660,7 +660,7 @@ void CodeGenC::VisitExpr_(const CallNode* op, std::ostream& os) {  // NOLINT(*)
         for (size_t i = 1; i < op->args.size(); i++) {
           arg_types.push_back(GetType(op->args[i]));
         }
-        Type ret_type = GetTypeFromRuntimeDataType(DataType(op->ty().dtype()));
+        Type ret_type = GetTypeFromRuntimeDataType(op->ty().dtype());
         this->GenerateForwardFunctionDeclarations(func->value, arg_types, ret_type);
       }
     } else if (op_attr_global_symbol_.count(call_op)) {
