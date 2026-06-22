@@ -418,12 +418,22 @@ class DataType {
  * \param dtype The data type.
  * \return Number of bytes needed.
  */
-inline int GetVectorBytes(DataType dtype) {
-  int data_bits = dtype.bits() * dtype.lanes();
+inline int GetVectorBytes(DLDataType dtype) {
+  int lanes = static_cast<int16_t>(dtype.lanes);
+  if (lanes < 0) {
+    TVM_FFI_THROW(InternalError)
+        << "Can't fetch the bytes of a scalable vector at a compile time.";
+  }
+  int data_bits = dtype.bits * lanes;
+  auto type_match = [](DLDataType type, int code, int bits, int lanes = 1) {
+    return type.code == code && type.bits == bits && type.lanes == lanes;
+  };
   // allow bool to exist
-  if (dtype == DataType::Bool() || dtype == DataType::Int(4) || dtype == DataType::UInt(4) ||
-      dtype == DataType::Int(1) || dtype == DataType::Float4E2M1FN() ||
-      dtype == DataType::Float6E2M3FN() || dtype == DataType::Float6E3M2FN()) {
+  if (type_match(dtype, kDLBool, 8) || type_match(dtype, kDLInt, 4) ||
+      type_match(dtype, kDLUInt, 4) || type_match(dtype, kDLInt, 1) ||
+      type_match(dtype, DataType::kFloat4_e2m1fn, 4) ||
+      type_match(dtype, DataType::kFloat6_e2m3fn, 6) ||
+      type_match(dtype, DataType::kFloat6_e3m2fn, 6)) {
     return 1;
   }
   TVM_FFI_ICHECK_EQ(data_bits % 8, 0U) << "Need to load/store by multiple of bytes";
