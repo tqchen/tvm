@@ -456,16 +456,17 @@ PrimExpr cast(PrimType t, PrimExpr value, Span span) {
     TVM_FFI_ICHECK(!value.dtype().is_handle()) << "Can't cast a handle to other types.";
     return tirx::Cast(std::move(t), value, span);
   } else {
-    DataType vtype = dtype.element_of();
+    DataType elem_dtype = dtype.element_of();
+    PrimType elem_ty(elem_dtype);
     if (!value.dtype().is_scalable_or_fixed_length_vector()) {
       // manually unroll cast
-      if (value.dtype() != vtype) {
+      if (value.dtype() != elem_dtype) {
         if (const IntImmNode* op = value.as<IntImmNode>()) {
-          value = MakeConst(vtype, op->value, op->span);
+          value = MakeConst(elem_dtype, op->value, op->span);
         } else if (const FloatImmNode* op = value.as<FloatImmNode>()) {
-          value = MakeConst(vtype, op->value, op->span);
+          value = MakeConst(elem_dtype, op->value, op->span);
         } else {
-          value = tirx::Cast(PrimType(vtype), value, span);
+          value = tirx::Cast(elem_ty, value, span);
         }
       }
       if (dtype.is_scalable_vector()) {
@@ -486,13 +487,12 @@ PrimExpr cast(PrimType t, PrimExpr value, Span span) {
       }
       TVM_FFI_ICHECK(lanes_match);
       if (const auto* broadcast = value.as<tirx::BroadcastNode>()) {
-        return tirx::Broadcast(cast(PrimType(vtype), broadcast->value, span), broadcast->lanes,
-                               span);
+        return tirx::Broadcast(cast(elem_ty, broadcast->value, span), broadcast->lanes, span);
       } else if (const auto* ramp = value.as<tirx::RampNode>()) {
         if (dtype.is_int() || dtype.is_uint()) {
           // only cast to index data type can be folded to ramp
-          return tirx::Ramp(cast(PrimType(vtype), ramp->base, span),
-                            cast(PrimType(vtype), ramp->stride, span), ramp->lanes, span);
+          return tirx::Ramp(cast(elem_ty, ramp->base, span), cast(elem_ty, ramp->stride, span),
+                            ramp->lanes, span);
         }
       }
       return tirx::Cast(std::move(t), value, span);
