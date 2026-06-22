@@ -1194,9 +1194,9 @@ TVM_FFI_STATIC_INIT_BLOCK() {
       .def_packed("node._const",
                   [](ffi::PackedArgs args, ffi::Any* ret) {
                     if (auto opt = args[0].try_cast<int64_t>()) {
-                      *ret = tirx::MakeConst(args[1].cast<DataType>(), *opt, args[2].cast<Span>());
+                      *ret = tirx::MakeConst(args[1].cast<PrimType>(), *opt, args[2].cast<Span>());
                     } else if (auto opt = args[0].try_cast<double>()) {
-                      *ret = tirx::MakeConst(args[1].cast<DataType>(), *opt, args[2].cast<Span>());
+                      *ret = tirx::MakeConst(args[1].cast<PrimType>(), *opt, args[2].cast<Span>());
                     } else {
                       TVM_FFI_THROW(InternalError)
                           << "First argument to tvm.tirx.const must be int, float, or bool, "
@@ -1219,8 +1219,8 @@ TVM_FFI_STATIC_INIT_BLOCK() {
       .def("tirx.nearbyint", tvm::nearbyint)
       .def("tirx.trunc", tvm::trunc)
       .def("tirx._cast",
-           [](DataType dtype, PrimExpr value, Span span) { return tvm::cast(dtype, value, span); })
-      .def("tirx.reinterpret", [](DataType dtype, PrimExpr value, Span span) {
+           [](PrimType dtype, PrimExpr value, Span span) { return tvm::cast(dtype, value, span); })
+      .def("tirx.reinterpret", [](PrimType dtype, PrimExpr value, Span span) {
         return tvm::reinterpret(dtype, value, span);
       });
 }

@@ -368,8 +368,8 @@ Type InferTypeArange(const Call& call, const BlockBuilder& ctx) {
       step.ty().code() == DLDataTypeCode::kDLInt) {
     num_elem = tvm::floordiv((end - start + step - 1), step);
   } else {
-    num_elem = tvm::cast(tvm::DataType::Int(64),
-                         tvm::ceil(tvm::cast(tvm::DataType::Float(32), end - start) / step));
+    num_elem = tvm::cast(tvm::PrimType::Int(64),
+                         tvm::ceil(tvm::cast(tvm::PrimType::Float(32), end - start) / step));
   }
   arith::Analyzer analyzer;
   num_elem = analyzer->Simplify(num_elem);

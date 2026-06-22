@@ -428,7 +428,7 @@ class ThreadAllreduceBuilder final : public StmtExprMutator {
                                         reduce_extent, group_extent, contiguous_reduce_extent));
       for (size_t idx = 0; idx < size; ++idx) {
         TVM_FFI_ICHECK(!load_remap_.count(buffers[idx]->data.get()));
-        PrimExpr pred = MakeConst(DataType::Bool(types[idx].lanes()), true);
+        PrimExpr pred = MakeConst(PrimType::Bool(types[idx].lanes()), true);
         BufferLoad load(shared_bufs[idx],
                         {BufIndex(IntImm(reduce_index.ty(), 0), group_index, reduce_extent)});
         TVM_FFI_ICHECK_EQ(DataType(load->ty()->dtype), types[idx]);
