@@ -701,13 +701,13 @@ TVM_DLL PrimExpr trunc(PrimExpr x, Span span = Span());
 
 /*!
  * \brief Construct a large uint constant by its low 32 bits and high 32bits.
- * \param dtype The final primitive type.
+ * \param value_ty The final primitive type.
  * \param low The lower 32 bits.
  * \param high The higher 32 bits.
  * \param span The location of this operation in the source.
  * \return The constructed expression.
  */
-TVM_DLL PrimExpr LargeUIntImm(PrimType dtype, int64_t low, int64_t high, Span span = Span());
+TVM_DLL PrimExpr LargeUIntImm(PrimType value_ty, int64_t low, int64_t high, Span span = Span());
 
 /*!
  * \brief Execute a multiplication between two Q-numbers x and y
@@ -747,23 +747,23 @@ inline void CheckMathUnaryOpInputDType(const char* op_name, DataType dtype) {
 }
 
 // Intrinsic operators
-#define TVM_DECLARE_INTRIN_UNARY_WITH_CHECK(OpName, CheckInputDType)        \
-  inline PrimExpr OpName(PrimExpr x, Span span = Span()) {                  \
-    static const Op op = Op::Get("tirx." #OpName);                          \
-    PrimType x_type = x.ty();                                               \
-    DataType x_dtype = x_type->dtype;                                       \
-    CheckInputDType(#OpName, x_dtype);                                      \
-    if (x_dtype.is_bfloat16()) {                                            \
-      DataType bf16_dtype = x_dtype;                                        \
-      DataType fp32_dtype(kDLFloat, 32, bf16_dtype.lanes());                \
-      PrimType bf16_type = x_type;                                          \
-      PrimType fp32_type = PrimType(fp32_dtype);                            \
-      PrimExpr x_fp32 = tirx::Cast(fp32_type, x, span);                     \
-      PrimExpr result_fp32 = tirx::Call(fp32_type, op, {x_fp32}, {}, span); \
-      return tirx::Cast(bf16_type, result_fp32, span);                      \
-    } else {                                                                \
-      return tirx::Call(x_type, op, {x}, {}, span);                         \
-    }                                                                       \
+#define TVM_DECLARE_INTRIN_UNARY_WITH_CHECK(OpName, CheckInputDType)     \
+  inline PrimExpr OpName(PrimExpr x, Span span = Span()) {               \
+    static const Op op = Op::Get("tirx." #OpName);                       \
+    PrimType x_ty = x.ty();                                              \
+    DataType x_dtype = x_ty->dtype;                                      \
+    CheckInputDType(#OpName, x_dtype);                                   \
+    if (x_dtype.is_bfloat16()) {                                         \
+      DataType bf16_dtype = x_dtype;                                     \
+      DataType fp32_dtype(kDLFloat, 32, bf16_dtype.lanes());             \
+      PrimType bf16_ty = x_ty;                                           \
+      PrimType f32_ty = PrimType(fp32_dtype);                            \
+      PrimExpr x_fp32 = tirx::Cast(f32_ty, x, span);                     \
+      PrimExpr result_fp32 = tirx::Call(f32_ty, op, {x_fp32}, {}, span); \
+      return tirx::Cast(bf16_ty, result_fp32, span);                     \
+    } else {                                                             \
+      return tirx::Call(x_ty, op, {x}, {}, span);                        \
+    }                                                                    \
   }
 
 #define TVM_DECLARE_INTRIN_UNARY(OpName) \
@@ -985,25 +985,25 @@ inline bool is_no_op(const tirx::Stmt& stmt) {
 
 template <typename ValueType>
 inline PrimExpr MakeConstScalar(DataType dtype, ValueType value, Span span = Span()) {
-  PrimType type(dtype);
-  if (dtype.is_int() || dtype.is_bool()) return IntImm(type, static_cast<int64_t>(value), span);
+  PrimType value_ty(dtype);
+  if (dtype.is_int() || dtype.is_bool()) return IntImm(value_ty, static_cast<int64_t>(value), span);
   if (dtype.is_uint()) {
     // Use IntImm if it is a small integer
     uint64_t uval = static_cast<uint64_t>(value);
     if (value < static_cast<ValueType>(0)) {
       TVM_FFI_THROW(InternalError) << "cannot make uint from negative value " << value;
     } else if (uval <= static_cast<uint64_t>(std::numeric_limits<int64_t>::max())) {
-      return IntImm(type, static_cast<int64_t>(value), span);
+      return IntImm(value_ty, static_cast<int64_t>(value), span);
     } else {
       uint64_t mask = (static_cast<uint64_t>(1) << 32U) - 1U;
       uint64_t low = uval & mask;
       uint64_t high = uval >> 32U;
-      return LargeUIntImm(type, static_cast<int64_t>(low), static_cast<int64_t>(high), span);
+      return LargeUIntImm(value_ty, static_cast<int64_t>(low), static_cast<int64_t>(high), span);
     }
   }
   if (dtype.is_float() || dtype.is_bfloat16() || dtype.is_float8() || dtype.is_float6() ||
       dtype.is_float4()) {
-    return FloatImm(type, static_cast<double>(value), span);
+    return FloatImm(value_ty, static_cast<double>(value), span);
   }
   TVM_FFI_THROW(InternalError) << "cannot make const for type " << dtype;
   throw;

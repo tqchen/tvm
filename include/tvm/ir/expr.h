@@ -106,7 +106,42 @@ class PrimTypeNode : public TypeNode {
   TVM_FFI_DECLARE_OBJECT_INFO_FINAL("ir.PrimType", PrimTypeNode, TypeNode);
 };
 
-class PrimType;
+/*
+ * \brief Managed reference to PrimTypeNode.
+ * \sa PrimTypeNode
+ */
+class PrimType : public Type {
+ public:
+  /*!
+   * \brief Constructor
+   * \param dtype The corresponding dtype.
+   * \param span The span
+   */
+  TVM_DLL explicit PrimType(runtime::DataType dtype, Span span = Span());
+
+  /*! \brief Construct an int type. */
+  TVM_DLL static PrimType Int(int bits, int lanes = 1);
+
+  /*! \brief Construct an uint type. */
+  TVM_DLL static PrimType UInt(int bits, int lanes = 1, bool is_scalable = false);
+
+  /*! \brief Construct a float type. */
+  TVM_DLL static PrimType Float(int bits, int lanes = 1);
+
+  /*! \brief Construct a bfloat type. */
+  TVM_DLL static PrimType BFloat(int bits, int lanes = 1);
+
+  /*! \brief Construct a bool type. */
+  TVM_DLL static PrimType Bool(int lanes = 1, bool is_scalable = false);
+
+  /*! \brief Construct a handle type. */
+  TVM_DLL static PrimType Handle(int bits = 64, int lanes = 1);
+
+  /*! \brief Construct a void type. */
+  TVM_DLL static PrimType Void();
+
+  TVM_FFI_DEFINE_OBJECT_REF_METHODS_NOTNULLABLE(PrimType, Type, PrimTypeNode);
+};
 
 /*!
  * \brief Base type of all the expressions.
@@ -226,6 +261,13 @@ class PrimExpr : public BaseExpr {
    */
   TVM_DLL static PrimExpr ConvertFallbackValue(ffi::String value);  // NOLINT(*)
 };
+
+TVM_FFI_INLINE PrimType PrimExpr::ty() const {
+  const auto* node = static_cast<const PrimExprNode*>(get());
+  TVM_FFI_DCHECK(node->ty.defined());
+  TVM_FFI_DCHECK(node->ty->IsInstance<PrimTypeNode>());
+  return ffi::GetRef<PrimType>(static_cast<const PrimTypeNode*>(node->ty.get()));
+}
 
 /*!
  * \brief Base class for other IR constructs that can be converted to PrimExpr.
@@ -583,32 +625,38 @@ class IntImm : public PrimExpr {
  public:
   /*!
    * \brief Constructor.
-   * \param dtype The primitive type of the value.
+   * \param value_ty The primitive type of the value.
    * \param value The internal value.
    * \param span The location of this object in the source code.
    */
-  TVM_DLL IntImm(PrimType dtype, int64_t value, Span span = Span());
+  TVM_DLL IntImm(PrimType value_ty, int64_t value, Span span = Span());
 
   /*!
    * \brief Construct a scalar boolean constant.
    * \param value The boolean value.
    * \param span The location of this object in the source code.
    */
-  TVM_DLL static IntImm Bool(bool value, Span span = Span());
+  static IntImm Bool(bool value, Span span = Span()) {
+    return IntImm(PrimType::Bool(), value, span);
+  }
 
   /*!
    * \brief Construct a scalar int32 constant.
    * \param value The integer value.
    * \param span The location of this object in the source code.
    */
-  TVM_DLL static IntImm Int32(int64_t value, Span span = Span());
+  static IntImm Int32(int64_t value, Span span = Span()) {
+    return IntImm(PrimType::Int(32), value, span);
+  }
 
   /*!
    * \brief Construct a scalar int64 constant.
    * \param value The integer value.
    * \param span The location of this object in the source code.
    */
-  TVM_DLL static IntImm Int64(int64_t value, Span span = Span());
+  static IntImm Int64(int64_t value, Span span = Span()) {
+    return IntImm(PrimType::Int(64), value, span);
+  }
 
   TVM_FFI_DEFINE_OBJECT_REF_METHODS_NULLABLE(IntImm, PrimExpr, IntImmNode);
   TVM_DEFINE_OBJECT_REF_COW_METHOD(IntImmNode);
@@ -639,11 +687,11 @@ class FloatImm : public PrimExpr {
  public:
   /*!
    * \brief Constructor.
-   * \param dtype The primitive type of the value.
+   * \param value_ty The primitive type of the value.
    * \param value The internal value.
    * \param span The location in the source code.
    */
-  TVM_DLL FloatImm(PrimType dtype, double value, Span span = Span());
+  TVM_DLL FloatImm(PrimType value_ty, double value, Span span = Span());
 
   TVM_FFI_DEFINE_OBJECT_REF_METHODS_NULLABLE(FloatImm, PrimExpr, FloatImmNode);
   TVM_DEFINE_OBJECT_REF_COW_METHOD(FloatImmNode);

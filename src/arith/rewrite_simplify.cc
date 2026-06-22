@@ -2319,13 +2319,13 @@ PrimExpr RewriteSimplifier::Impl::VisitExpr_(const CallNode* op) {
   static const Op& ceil_op = Op::Get("tirx.ceil");
   static const Op& log2_op = Op::Get("tirx.log2");
   static const Op& clz_op = Op::Get("tirx.clz");
-  PrimType ret_type = ffi::GetRef<PrimExpr>(op).ty();
+  PrimType ret_ty = ffi::GetRef<PrimExpr>(op).ty();
   if (op->op.same_as(ceil_op)) {
     PrimExpr ceil_arg = op->args[0];
     if (auto arg_int = op->args[0].as<IntImmNode>()) {
-      return cast(ret_type, IntImm(ffi::GetRef<PrimExpr>(arg_int).ty(), arg_int->value));
+      return cast(ret_ty, IntImm(ffi::GetRef<PrimExpr>(arg_int).ty(), arg_int->value));
     } else if (auto arg_float = ceil_arg.as<FloatImmNode>()) {
-      return cast(ret_type,
+      return cast(ret_ty,
                   FloatImm(ffi::GetRef<PrimExpr>(arg_float).ty(), std::ceil(arg_float->value)));
     } else if (auto arg_call = ceil_arg.as<CallNode>()) {
       // ceil(log2(cast(n,"float64"))) is used as the implementation of
@@ -2336,17 +2336,17 @@ PrimExpr RewriteSimplifier::Impl::VisitExpr_(const CallNode* op) {
           // ceil(log2(n)) can be simplified, and should produce the
           // same integer result regardless of the target's rounding
           // conventions.
-          return FloatImm(ret_type, std::ceil(std::log2(as_float->value)));
+          return FloatImm(ret_ty, std::ceil(std::log2(as_float->value)));
         }
       }
     }
   } else if (op->op.same_as(clz_op)) {
     if (const auto* arg_int = op->args[0].as<IntImmNode>()) {
       int bits = arg_int->dtype().bits();
-      if (arg_int->value == 0) return MakeConst(ret_type->dtype, bits);
+      if (arg_int->value == 0) return MakeConst(ret_ty->dtype, bits);
       for (int i = bits - 1; i >= 0; --i) {
         if ((int64_t(1) << i) & arg_int->value) {
-          return IntImm(ret_type, bits - i - 1);
+          return IntImm(ret_ty, bits - i - 1);
         }
       }
       TVM_FFI_THROW(InternalError) << "Should not reach here";
@@ -2375,7 +2375,7 @@ PrimExpr RewriteSimplifier::Impl::VisitExpr_(const CallNode* op) {
       // Only check constant cases to avoid recursion
       if (is_const_number(inner_else_expr) && is_const_number(else_expr) &&
           analyzer_->CanProve(inner_else_expr == else_expr)) {
-        return Call(ret_type, op->op, {cond && inner_cond, inner_then_expr, else_expr}, op->attrs,
+        return Call(ret_ty, op->op, {cond && inner_cond, inner_then_expr, else_expr}, op->attrs,
                     op->span);
       }
     }
