@@ -147,7 +147,8 @@ class TextureFlattener : public TextureLoweringBase {
     PrimExpr col_offset = SimplifyOffset(col_dims, col_indices);
     PrimExpr depth_offset = SimplifyOffset(depth_dims, depth_indices);
     PrimExpr channel_size = IntImm(
-        PrimType::Int(32, 1), *tirx::as_const_int(buffer->shape.back()) * buffer->dtype.bits());
+        PrimType::Int(32, 1),
+        *tirx::as_const_int(buffer->shape.back()) * DataType(buffer->dtype->dtype).bits());
     args.push_back(row_offset);
     args.push_back(col_offset);
     args.push_back(depth_offset);

@@ -64,24 +64,27 @@ Type InferTypeQuantize(const Call& call, const BlockBuilder& ctx) {
   TensorType input_ty = GetInputTensorType(call, ctx)[0];
   TensorType scale_ty = GetInputTensorType(call, ctx)[1];
   TensorType zp_ty = GetInputTensorType(call, ctx)[2];
+  DataType input_dtype(input_ty->dtype->dtype);
+  DataType scale_dtype(scale_ty->dtype->dtype);
+  DataType zp_dtype(zp_ty->dtype->dtype);
 
   // Check input datatype:
-  if (input_ty->dtype != DataType::Float(16) && input_ty->dtype != DataType::Float(32)) {
+  if (input_dtype != DataType::Float(16) && input_dtype != DataType::Float(32)) {
     TVM_FFI_VISIT_THROW(TypeError, call)
         << "Unsupported input datatype for operation: " << input_ty->dtype;
   }
 
   // Check datatype of scale param:
-  if (scale_ty->dtype != DataType::Float(32) && scale_ty->dtype != DataType::Float(16)) {
+  if (scale_dtype != DataType::Float(32) && scale_dtype != DataType::Float(16)) {
     TVM_FFI_VISIT_THROW(TypeError, call)
         << "scale param datatype should be one of [float16, float32], but got " << scale_ty->dtype;
   }
 
   // Check datatype of zero_point param:
-  if (zp_ty->dtype != DataType::Int(8) && zp_ty->dtype != DataType::UInt(8) &&
-      zp_ty->dtype != DataType::Int(16) && zp_ty->dtype != DataType::UInt(16) &&
-      zp_ty->dtype != DataType::Int(32) && zp_ty->dtype != DataType::UInt(32) &&
-      zp_ty->dtype != DataType::Float(16)) {
+  if (zp_dtype != DataType::Int(8) && zp_dtype != DataType::UInt(8) &&
+      zp_dtype != DataType::Int(16) && zp_dtype != DataType::UInt(16) &&
+      zp_dtype != DataType::Int(32) && zp_dtype != DataType::UInt(32) &&
+      zp_dtype != DataType::Float(16)) {
     TVM_FFI_VISIT_THROW(TypeError, call)
         << "zero_point param datatype should be one of "
         << "['int8', 'uint8', 'int16', 'uint16', 'int32', 'uint32', 'float16'], "
@@ -124,7 +127,7 @@ Type InferTypeQuantize(const Call& call, const BlockBuilder& ctx) {
   if (!is_scalar_or_singleton_vector(zp_ty)) check_param_size(zp_ty, input_ty, "zero_point");
 
   auto output_ty = ffi::make_object<TensorTypeNode>(*input_ty.get());
-  output_ty->dtype = attrs->out_dtype;
+  output_ty->dtype = PrimType(attrs->out_dtype);
   return TensorType(output_ty);
 }
 
@@ -162,28 +165,31 @@ Type InferTypeDequantize(const Call& call, const BlockBuilder& ctx) {
   TensorType input_ty = GetInputTensorType(call, ctx)[0];
   TensorType scale_ty = GetInputTensorType(call, ctx)[1];
   TensorType zp_ty = GetInputTensorType(call, ctx)[2];
+  DataType input_dtype(input_ty->dtype->dtype);
+  DataType scale_dtype(scale_ty->dtype->dtype);
+  DataType zp_dtype(zp_ty->dtype->dtype);
 
   // Check input datatype:
-  if (input_ty->dtype != DataType::Int(8) && input_ty->dtype != DataType::UInt(8) &&
-      input_ty->dtype != DataType::Int(16) && input_ty->dtype != DataType::UInt(16) &&
-      input_ty->dtype != DataType::Int(32) && input_ty->dtype != DataType::Float8E4M3FN() &&
-      input_ty->dtype != DataType::Float8E5M2() && input_ty->dtype != DataType::Float(16) &&
-      input_ty->dtype != DataType::Float(32)) {
+  if (input_dtype != DataType::Int(8) && input_dtype != DataType::UInt(8) &&
+      input_dtype != DataType::Int(16) && input_dtype != DataType::UInt(16) &&
+      input_dtype != DataType::Int(32) && input_dtype != DataType::Float8E4M3FN() &&
+      input_dtype != DataType::Float8E5M2() && input_dtype != DataType::Float(16) &&
+      input_dtype != DataType::Float(32)) {
     TVM_FFI_VISIT_THROW(TypeError, call)
         << "Unsupported input datatype for operation: " << attrs->out_dtype;
   }
 
   // Check datatype of scale param:
-  if (scale_ty->dtype != DataType::Float(32) && scale_ty->dtype != DataType::Float(16)) {
+  if (scale_dtype != DataType::Float(32) && scale_dtype != DataType::Float(16)) {
     TVM_FFI_VISIT_THROW(TypeError, call)
         << "scale param datatype should be one of [float16, float32], but got " << scale_ty->dtype;
   }
 
   // Check datatype of zero_point param:
-  if (zp_ty->dtype != DataType::Int(8) && zp_ty->dtype != DataType::UInt(8) &&
-      zp_ty->dtype != DataType::Int(16) && zp_ty->dtype != DataType::UInt(16) &&
-      zp_ty->dtype != DataType::Int(32) && zp_ty->dtype != DataType::UInt(32) &&
-      zp_ty->dtype != DataType::Float(16)) {
+  if (zp_dtype != DataType::Int(8) && zp_dtype != DataType::UInt(8) &&
+      zp_dtype != DataType::Int(16) && zp_dtype != DataType::UInt(16) &&
+      zp_dtype != DataType::Int(32) && zp_dtype != DataType::UInt(32) &&
+      zp_dtype != DataType::Float(16)) {
     TVM_FFI_VISIT_THROW(TypeError, call)
         << "zero_point param datatype should be one of "
         << "['int8', 'uint8', 'int16', 'uint16', 'int32', 'uint32', 'float16'], "
@@ -226,7 +232,7 @@ Type InferTypeDequantize(const Call& call, const BlockBuilder& ctx) {
   if (!is_scalar_or_singleton_vector(zp_ty)) check_param_size(zp_ty, input_ty, "zero_point");
 
   auto output_ty = ffi::make_object<TensorTypeNode>(*input_ty.get());
-  output_ty->dtype = attrs->out_dtype;
+  output_ty->dtype = PrimType(attrs->out_dtype);
   return TensorType(output_ty);
 }
 

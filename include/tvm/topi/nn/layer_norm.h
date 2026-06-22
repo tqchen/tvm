@@ -55,11 +55,12 @@ inline Tensor layer_norm(const Tensor& data, const Tensor& gamma, const Tensor& 
   const auto& data_type = data->dtype;
   const auto& gamma_type = gamma.defined() ? gamma->dtype : data_type;
   const auto& beta_type = beta.defined() ? beta->dtype : data_type;
-  TVM_FFI_ICHECK(data_type == gamma_type && data_type == beta_type)
+  TVM_FFI_ICHECK(data_type->dtype == gamma_type->dtype && data_type->dtype == beta_type->dtype)
       << "layer_norm: data, gamma and beta must have the same type";
-  TVM_FFI_ICHECK(data_type == DataType::Float(32) || data_type == DataType::Float(16))
+  TVM_FFI_ICHECK(data_type->dtype == PrimType::Float(32)->dtype ||
+                 data_type->dtype == PrimType::Float(16)->dtype)
       << "layer_norm: only support float32 and float16 for now";
-  bool is_float16 = data_type == DataType::Float(16);
+  bool is_float16 = data_type->dtype == PrimType::Float(16)->dtype;
   // Two-pass algorithm for improved numerical stability:
   //   pass1: mean = E[x]
   //   pass2: var = E[(x - mean)^2]
@@ -102,7 +103,7 @@ inline Tensor layer_norm(const Tensor& data, const Tensor& gamma, const Tensor& 
       },
       data->op->name + "_sum", kCommReduce);
 
-  DataType reduce_dtype = is_float16 ? DataType::Float(32) : data->dtype;
+  PrimType reduce_dtype = is_float16 ? PrimType::Float(32) : data->dtype;
   PrimExpr reduce_extent = MakeConst(reduce_dtype, 1);
   for (int i : real_axis) {
     reduce_extent *= data->shape[i];

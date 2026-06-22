@@ -884,10 +884,10 @@ void BufferLoadNode::LegalizeDType() {
   }
 
   if (indices.empty()) {
-    this->BaseExprNode::ty = PrimType(buffer->dtype);
+    this->BaseExprNode::ty = buffer->dtype;
   } else {
     PrimType index_ty = indices.back().ty();
-    bool is_buffer_dtype_scalable = buffer->dtype.is_scalable_vector();
+    bool is_buffer_dtype_scalable = buffer->dtype.IsScalableVector();
     bool is_index_scalable = index_ty.IsScalableVector();
 
     TVM_FFI_ICHECK(!(is_index_scalable && is_buffer_dtype_scalable))
@@ -900,10 +900,10 @@ void BufferLoadNode::LegalizeDType() {
     } else if (is_buffer_dtype_scalable) {
       this->BaseExprNode::ty = PrimType::ScalableVector(
           static_cast<DLDataTypeCode>(buffer->dtype.code()), buffer->dtype.bits(),
-          buffer->dtype.vscale_factor() * index_ty.lanes());
+          buffer->dtype.VScaleFactor() * index_ty.lanes());
     } else {
       this->BaseExprNode::ty =
-          PrimType(buffer->dtype.with_lanes(index_ty.lanes() * buffer->dtype.lanes()));
+          buffer->dtype.WithLanes(index_ty.lanes() * buffer->dtype.lanes());
     }
   }
 }
@@ -924,7 +924,7 @@ BufferLoad::BufferLoad(Buffer buffer, ffi::Array<PrimExpr> indices,
     TVM_FFI_ICHECK_EQ(is_index_scalable, is_predicate_scalable)
         << "Predicate mask dtype and load indices must both be scalable.";
 
-    int buffer_lanes = buffer->dtype.get_lanes_or_vscale_factor();
+    int buffer_lanes = GetLanesOrVScaleFactor(buffer->dtype);
     int index_lanes = indices.empty() ? 1 : GetLanesOrVScaleFactor(indices.back().ty());
     int predicate_lanes = predicate_dtype.get_lanes_or_vscale_factor();
     TVM_FFI_ICHECK_EQ(index_lanes * buffer_lanes, predicate_lanes)

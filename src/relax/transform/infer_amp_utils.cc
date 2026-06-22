@@ -27,7 +27,7 @@ NType NTypeFrom(const Type& ty, DataType dtype) {
     const auto* tensor = ty.as<TensorTypeNode>();
     TVM_FFI_ICHECK(tensor) << "Expected TensorType, but got " << ty;
     if (dtype == DataType::Void())
-      return NType(DLDataTypeToString(tensor->dtype));
+      return NType(DLDataTypeToString(tensor->dtype->dtype));
     else
       return NType(DLDataTypeToString(dtype));
   };

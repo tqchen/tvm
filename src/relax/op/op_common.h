@@ -199,15 +199,16 @@ std::tuple<ArgTypes...> GetArgType(const Call& call, const BlockBuilder& ctx) {
 template <bool require_float_dtype, typename FType>
 inline Type InferTypeUnary(const Call& call, const BlockBuilder& ctx, FType f_compute_out_dtype) {
   TensorType input_ty = GetUnaryInputTensorType(call, ctx);
+  DataType input_dtype(input_ty->dtype->dtype);
   if (require_float_dtype && !input_ty->IsUnknownDtype() &&
-      (!input_ty->dtype.is_float() && !input_ty->dtype.is_bfloat())) {
+      (!input_dtype.is_float() && !input_dtype.is_bfloat())) {
     TVM_FFI_VISIT_THROW(TypeError, call)
         << call->op
         << " requires the input tensor to have float dtype. However, the given input dtype is "
         << input_ty->dtype;
   }
   auto output_ty = ffi::make_object<TensorTypeNode>(*input_ty.get());
-  output_ty->dtype = f_compute_out_dtype(input_ty);
+  output_ty->dtype = PrimType(f_compute_out_dtype(input_ty));
   if (call->ty_args.size() > 0) {
     auto defined_ty = call->ty_args[0].as<TensorTypeNode>();
     TVM_FFI_ICHECK(defined_ty);
@@ -253,7 +254,7 @@ Type ReturnTypeFromArg(const Call& call, const BlockBuilder& ctx) {
 template <bool require_float_dtype>
 Type InferTypeUnaryArith(const Call& call, const BlockBuilder& ctx) {
   return InferTypeUnary<require_float_dtype>(
-      call, ctx, [](const TensorType& input_ty) { return input_ty->dtype; });
+      call, ctx, [](const TensorType& input_ty) { return DataType(input_ty->dtype->dtype); });
 }
 
 /*!
@@ -278,7 +279,7 @@ inline std::optional<DataType> GetElementDType(const Type& ty) {
   if (const auto* prim = ty.as<PrimTypeNode>()) {
     return DataType(prim->dtype);
   } else if (const auto* tensor = ty.as<TensorTypeNode>()) {
-    return tensor->dtype;
+    return DataType(tensor->dtype->dtype);
   } else {
     return std::nullopt;
     TVM_FFI_THROW(TypeError) << "Only PrimType and TensorType "

@@ -52,7 +52,8 @@ inline Tensor rms_norm(const Tensor& data, const Tensor& weight, const ffi::Arra
                        std::string tag = kInjective) {
   const auto& data_type = data->dtype;
   const auto& weight_type = weight.defined() ? weight->dtype : data_type;
-  TVM_FFI_ICHECK(data_type == weight_type) << "rms_norm: data and weight must have the same type";
+  TVM_FFI_ICHECK(data_type->dtype == weight_type->dtype)
+      << "rms_norm: data and weight must have the same type";
 
   const auto& data_fp32 = cast(data, DataType::Float(32));
   const auto& weight_fp32 = cast(weight, DataType::Float(32));

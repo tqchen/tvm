@@ -93,13 +93,14 @@ Type InferTypeMultiboxTransformLoc(const Call& call, const BlockBuilder& ctx) {
         << anchor_ty->ndim;
   }
 
-  if (!cls_ty->IsUnknownDtype() && !loc_ty->IsUnknownDtype() && cls_ty->dtype != loc_ty->dtype) {
+  if (!cls_ty->IsUnknownDtype() && !loc_ty->IsUnknownDtype() &&
+      cls_ty->dtype->dtype != loc_ty->dtype->dtype) {
     TVM_FFI_VISIT_THROW(TypeError, call)
         << "multibox_transform_loc: cls_pred and loc_pred dtype must match, got " << cls_ty->dtype
         << " vs " << loc_ty->dtype;
   }
   if (!cls_ty->IsUnknownDtype() && !anchor_ty->IsUnknownDtype() &&
-      cls_ty->dtype != anchor_ty->dtype) {
+      cls_ty->dtype->dtype != anchor_ty->dtype->dtype) {
     TVM_FFI_VISIT_THROW(TypeError, call)
         << "multibox_transform_loc: cls_pred and anchor dtype must match, got " << cls_ty->dtype
         << " vs " << anchor_ty->dtype;

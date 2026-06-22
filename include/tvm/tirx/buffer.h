@@ -70,8 +70,8 @@ class BufferNode : public ffi::Object {
    * \sa data_alignment The alignment of data in bytes.
    */
   Var data;
-  /*! \brief data type in the content of the tensor */
-  DataType dtype;
+  /*! \brief primitive type in the content of the tensor */
+  PrimType dtype{PrimType::Void()};
   /*! \brief The type of the buffer prior to flattening
    *
    * This contains the shape as it is accessed by
@@ -155,7 +155,7 @@ class BufferNode : public ffi::Object {
   }
 
   /*! \return primitive element type for compiler-side uses. */
-  PrimType ElementType() const { return PrimType(dtype); }
+  PrimType ElementType() const { return dtype; }
 
   /*! \brief Determine the offset in the buffer of the given index.
    *
@@ -182,16 +182,17 @@ class Buffer : public ffi::ObjectRef {
  public:
   // User can specify data_alignment and offset_factor to be 0
   // A default value will be picked.
-  TVM_DLL Buffer(Var data, DataType dtype, ffi::Array<PrimExpr> shape, ffi::Array<PrimExpr> strides,
-                 PrimExpr elem_offset, ffi::String name, int data_alignment, int offset_factor,
-                 BufferType buffer_type, ffi::Array<IntImm> axis_separators = {},
-                 Span span = Span(), ffi::Optional<Layout> layout = std::nullopt,
+  TVM_DLL Buffer(Var data, PrimType dtype, ffi::Array<PrimExpr> shape,
+                 ffi::Array<PrimExpr> strides, PrimExpr elem_offset, ffi::String name,
+                 int data_alignment, int offset_factor, BufferType buffer_type,
+                 ffi::Array<IntImm> axis_separators = {}, Span span = Span(),
+                 ffi::Optional<Layout> layout = std::nullopt,
                  ffi::Array<PrimExpr> allocated_addr = {});
-  Buffer(Var data, PrimType dtype, ffi::Array<PrimExpr> shape, ffi::Array<PrimExpr> strides,
+  Buffer(Var data, DataType dtype, ffi::Array<PrimExpr> shape, ffi::Array<PrimExpr> strides,
          PrimExpr elem_offset, ffi::String name, int data_alignment, int offset_factor,
          BufferType buffer_type, ffi::Array<IntImm> axis_separators = {}, Span span = Span(),
          ffi::Optional<Layout> layout = std::nullopt, ffi::Array<PrimExpr> allocated_addr = {})
-      : Buffer(std::move(data), DataType(dtype->dtype), std::move(shape), std::move(strides),
+      : Buffer(std::move(data), PrimType(dtype), std::move(shape), std::move(strides),
                std::move(elem_offset), std::move(name), data_alignment, offset_factor, buffer_type,
                std::move(axis_separators), std::move(span), std::move(layout),
                std::move(allocated_addr)) {}
@@ -291,9 +292,8 @@ class Buffer : public ffi::ObjectRef {
   /*!
    * \brief Return a new buffer with the dtype.
    */
-  TVM_DLL Buffer with_dtype(DataType dtype) const;
-
-  Buffer with_dtype(PrimType dtype) const { return with_dtype(DataType(dtype->dtype)); }
+  TVM_DLL Buffer with_dtype(PrimType dtype) const;
+  Buffer with_dtype(DataType dtype) const { return with_dtype(PrimType(dtype)); }
 
   /*! \return primitive element type for compiler-side uses. */
   PrimType ElementType() const { return (*this)->ElementType(); }

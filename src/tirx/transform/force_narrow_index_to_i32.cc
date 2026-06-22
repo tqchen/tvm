@@ -38,7 +38,7 @@ class Int32DTypeNarrower : public IndexDataTypeNormalizer {
   static PrimFunc RewriteDataType(PrimFunc func) {
     // Check if the integer parameter buffers have dtype other than int32.
     for (auto it : func->buffer_map) {
-      if (it.second->dtype.is_int() && it.second->dtype.bits() > 32) {
+      if (DataType(it.second->dtype->dtype).is_int() && it.second->dtype.bits() > 32) {
         TVM_FFI_THROW(InternalError)
             << "The buffer " << it.second << " in the function buffer map has dtype "
             << it.second->dtype << ". The function is " << func;
@@ -66,7 +66,7 @@ class Int32DTypeNarrower : public IndexDataTypeNormalizer {
     SBlock block_ = IndexDataTypeNormalizer::VisitStmt_(block).as_or_throw<SBlock>();
     // Check if the allocated integer buffers have dtype other than int32.
     for (const Buffer& buf : block_->alloc_buffers) {
-      if (buf->dtype.is_int() && buf->dtype.bits() > 32) {
+      if (DataType(buf->dtype->dtype).is_int() && buf->dtype.bits() > 32) {
         TVM_FFI_THROW(InternalError)
             << "The buffer " << buf << " allocated in the function has dtype " << buf->dtype
             << ". The function is " << func_;

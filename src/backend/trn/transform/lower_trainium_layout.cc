@@ -176,8 +176,8 @@ class TrainiumLayoutApplier : public arith::IRMutatorWithAnalyzer {
       flattened = buf.GetFlattenedBuffer();
       writer = flattened.CopyOnWrite();
     }
-    if (flattened->dtype == DataType::Bool()) {
-      writer->dtype = DataType::Int(8);
+    if (flattened->dtype->dtype == PrimType::Bool()->dtype) {
+      writer->dtype = PrimType::Int(8);
     }
     for (size_t i = 0; i < flattened->shape.size(); ++i) {
       writer->shape.Set(i, analyzer_->canonical_simplify(flattened->shape[i]));
@@ -195,7 +195,7 @@ class TrainiumLayoutApplier : public arith::IRMutatorWithAnalyzer {
     store = VisitBufferAccess(store);
 
     if (store_returns_bool) {
-      TVM_FFI_ICHECK_EQ(store->buffer->dtype, DataType::Int(8))
+      TVM_FFI_ICHECK_EQ(store->buffer->dtype->dtype, PrimType::Int(8)->dtype)
           << "Expected int8 backing array for boolean tensor";
       auto writer = store.CopyOnWrite();
       writer->value = tvm::cast(DataType::Int(8), store->value);
@@ -209,7 +209,7 @@ class TrainiumLayoutApplier : public arith::IRMutatorWithAnalyzer {
     BufferLoad load = StmtExprMutator::VisitExpr_(op).as_or_throw<BufferLoad>();
     load = VisitBufferAccess(load);
     if (load_returns_bool) {
-      TVM_FFI_ICHECK_EQ(load->buffer->dtype, DataType::Int(8))
+      TVM_FFI_ICHECK_EQ(load->buffer->dtype->dtype, PrimType::Int(8)->dtype)
           << "Expected int8 backing array for boolean tensor";
       load.CopyOnWrite()->BaseExprNode::ty = PrimType::Int(8);
       return tvm::cast(DataType::Bool(), load);

@@ -171,8 +171,8 @@ class LayoutApplier : public arith::IRMutatorWithAnalyzer {
     }
     // TODO(Lunderberg): Move the handling of boolean into a
     // dedicated pass.
-    if (flattened->dtype == DataType::Bool()) {
-      writer->dtype = DataType::Int(8);
+    if (flattened->dtype->dtype == PrimType::Bool()->dtype) {
+      writer->dtype = PrimType::Int(8);
     }
     // canonicalize shape
     for (size_t i = 0; i < flattened->shape.size(); ++i) {
@@ -195,7 +195,7 @@ class LayoutApplier : public arith::IRMutatorWithAnalyzer {
     // TODO(Lunderberg): Move the handling of boolean into a
     // dedicated pass.
     if (store_returns_bool) {
-      TVM_FFI_ICHECK_EQ(store->buffer->dtype, DataType::Int(8))
+      TVM_FFI_ICHECK_EQ(store->buffer->dtype->dtype, PrimType::Int(8)->dtype)
           << "Expected int8 backing array for boolean tensor";
       auto writer = store.CopyOnWrite();
       writer->value = tvm::cast(PrimType::Int(8), store->value);
@@ -212,7 +212,7 @@ class LayoutApplier : public arith::IRMutatorWithAnalyzer {
     // TODO(Lunderberg): Move the handling of boolean into a
     // dedicated pass.
     if (load_returns_bool) {
-      TVM_FFI_ICHECK_EQ(load->buffer->dtype, DataType::Int(8))
+      TVM_FFI_ICHECK_EQ(load->buffer->dtype->dtype, PrimType::Int(8)->dtype)
           << "Expected int8 backing array for boolean tensor";
       load.CopyOnWrite()->BaseExprNode::ty = PrimType::Int(8);
       return tvm::cast(PrimType::Bool(), load);

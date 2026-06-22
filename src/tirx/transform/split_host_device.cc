@@ -353,7 +353,7 @@ class DeviceInfoCollector : public StmtVisitor {
       for (const auto& extent : op->buffer->shape) {
         dyn_size *= extent;
       }
-      dyn_size *= op->buffer->dtype.bytes();
+      dyn_size *= DataType(op->buffer->dtype->dtype).bytes();
 
       // Inline any locally-bound variables (e.g. from CSE).
       if (bind_map_.size()) {

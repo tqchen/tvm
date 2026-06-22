@@ -125,7 +125,7 @@ class DataflowReshapeRewriter : public ExprMutator {
     TensorType inp_ty = inp->ty.as_or_throw<TensorType>();
     TensorType res_ty = call->ty.as_or_throw<TensorType>();
 
-    if (inp_ty->IsUnknownDtype() || inp_ty->dtype != res_ty->dtype) {
+    if (inp_ty->IsUnknownDtype() || inp_ty->dtype->dtype != res_ty->dtype->dtype) {
       return false;
     }
     TVM_FFI_ICHECK(inp_ty->shape.defined() && res_ty->shape.defined());

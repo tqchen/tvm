@@ -76,19 +76,17 @@ class GPUCodeVerifier : public StmtExprVisitor {
         break;
       }
     }
+    DataType dtype(op->buffer->dtype->dtype);
     if (storage_scope.rank == runtime::StorageRank::kLocal) {
-      local_memory_per_block_ +=
-          static_cast<size_t>(const_size) * op->buffer->dtype.bytes() * op->buffer->dtype.lanes();
+      local_memory_per_block_ += static_cast<size_t>(const_size) * dtype.bytes() * dtype.lanes();
     } else if (storage_scope.rank == runtime::StorageRank::kShared) {
-      shared_memory_per_block_ +=
-          static_cast<size_t>(const_size) * op->buffer->dtype.bytes() * op->buffer->dtype.lanes();
+      shared_memory_per_block_ += static_cast<size_t>(const_size) * dtype.bytes() * dtype.lanes();
     }
-    if (op->buffer->dtype.is_vector()) {
-      if (static_cast<size_t>(op->buffer->dtype.lanes() * op->buffer->dtype.bytes()) >
-          max_vector_bytes_) {
+    if (dtype.is_vector()) {
+      if (static_cast<size_t>(dtype.lanes() * dtype.bytes()) > max_vector_bytes_) {
         std::stringstream s;
-        s << "Number of lanes (" << op->buffer->dtype.lanes() << ") times number of bytes ("
-          << op->buffer->dtype.bytes() << ") for dtype " << op->buffer->dtype
+        s << "Number of lanes (" << dtype.lanes() << ") times number of bytes (" << dtype.bytes()
+          << ") for dtype " << op->buffer->dtype
           << " is greater than the maximum number of vector bytes (" << max_vector_bytes_ << ")";
         errors_.push_back(s.str());
       }

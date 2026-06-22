@@ -336,8 +336,8 @@ class ForMatcher : public TensorizeComparator {
         if (!VisitExpr(lhs->shape[i], rhs->shape[i])) return false;
       }
       // Remap both buffer itself and buffer data
-      equal =
-          DefEqual(lhs->data, rhs->data) && lhs->dtype == rhs->dtype && lhs.scope() == rhs.scope();
+      equal = DefEqual(lhs->data, rhs->data) && lhs->dtype->dtype == rhs->dtype->dtype &&
+              lhs.scope() == rhs.scope();
       if (equal) {
         rhs_buffer_map_[rhs] = lhs;
       }
@@ -752,7 +752,7 @@ class SplitMutator : public ExprMutator {
     TVM_FFI_ICHECK(lib_func->IsInstance<ExternFuncNode>());
     builder_->UpdateFunction(gv, lib_func);
     tirx::Buffer intermediate_buffer = func1->buffer_map.at(func1->params.back());
-    DataType dtype = intermediate_buffer->dtype;
+    PrimType dtype = intermediate_buffer->dtype;
     Call call1(call_dps_packed_, {lib_func, Tuple(args1)}, call->attrs,
                {TensorType(ShapeExpr(intermediate_buffer->shape), dtype)});
     Var call_var1 = builder_->Emit(call1);

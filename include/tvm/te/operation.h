@@ -110,8 +110,8 @@ class PlaceholderOpNode : public OperationNode {
  public:
   /*! \brief The shape of the input */
   ffi::Array<PrimExpr> shape;
-  /*! \brief The data type of the input. */
-  DataType dtype;
+  /*! \brief The primitive type of the input. */
+  PrimType dtype{PrimType::Void()};
   // override behavior.
   int num_outputs() const final;
   PrimType output_prim_type(size_t i) const final;
@@ -133,8 +133,9 @@ class PlaceholderOpNode : public OperationNode {
  */
 class PlaceholderOp : public Operation {
  public:
-  TVM_DLL PlaceholderOp(std::string name, ffi::Array<PrimExpr> shape, DataType dtype);
   TVM_DLL PlaceholderOp(std::string name, ffi::Array<PrimExpr> shape, PrimType dtype);
+  PlaceholderOp(std::string name, ffi::Array<PrimExpr> shape, DataType dtype)
+      : PlaceholderOp(std::move(name), std::move(shape), PrimType(dtype)) {}
 
   TVM_FFI_DEFINE_OBJECT_REF_METHODS_NULLABLE(PlaceholderOp, Operation, PlaceholderOpNode);
 };

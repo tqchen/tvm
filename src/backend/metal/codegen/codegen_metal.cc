@@ -328,7 +328,7 @@ void CodeGenMetal::VisitStmt_(const AllocBufferNode* op) {
 
   auto scope = GetPtrStorageScope(op->buffer->data);
   alloc_storage_scope_[op->buffer->data.get()] = scope;
-  DataType dtype = op->buffer->dtype;
+  DataType dtype(op->buffer->dtype->dtype);
   if (scope == "metal.simdgroup") {
     TVM_FFI_ICHECK(dtype == DataType::Float(16) || dtype == DataType::Float(32) ||
                    dtype == DataType::BFloat(16))

@@ -119,7 +119,7 @@ Type InferTypeWhere(const Call& call, const BlockBuilder& ctx) {
     }
   }
 
-  if (!cond_ty->dtype.is_bool()) {
+  if (!DataType(cond_ty->dtype->dtype).is_bool()) {
     TVM_FFI_VISIT_THROW(TypeError, call)
         << "Where requires the input condition tensor to have boolean dtype. However, "
            "the given condition dtype is "

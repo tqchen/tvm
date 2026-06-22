@@ -87,7 +87,7 @@ Type InferTypeView(const Call& call, const BlockBuilder& ctx) {
     }
   }();
 
-  auto view_dtype = [&]() -> std::optional<DataType> {
+  auto view_dtype = [&]() -> std::optional<PrimType> {
     Type ty = GetType(arg_dtype);
 
     if (HasVoidType(arg_dtype)) {
@@ -112,11 +112,11 @@ Type InferTypeView(const Call& call, const BlockBuilder& ctx) {
     // in this case.
     if (auto dtype_imm = arg_value.as<DataTypeImmNode>()) {
       // We know the datatype for the view.
-      return dtype_imm->value;
+      return PrimType(dtype_imm->value);
     } else if (ty.as<ObjectTypeNode>()) {
       // The view changes the datatype, but we don't know what it is
       // being changed into.
-      return DataType::Void();
+      return PrimType::Void();
     } else {
       TVM_FFI_THROW(TypeError) << "Operator " << call->op
                                << " expects the dtype argument to be a relax::DataTypeImm, "
@@ -167,12 +167,13 @@ Type InferTypeView(const Call& call, const BlockBuilder& ctx) {
     output_ndim = data_ty->ndim;
   }
 
-  DataType output_dtype = view_dtype.value_or(data_ty->dtype);
+  PrimType output_dtype = view_dtype.value_or(data_ty->dtype);
 
   // Helper function, returns the number of bytes per vectorized
   // element.  Cannot use `DataType::bytes`, as it returns the
   // number of bytes per scalar element.
-  auto get_size_bytes = [](const DataType& dtype) -> ffi::Optional<IntImm> {
+  auto get_size_bytes = [](const PrimType& prim_ty) -> ffi::Optional<IntImm> {
+    DataType dtype(prim_ty->dtype);
     if (dtype.is_void()) {
       return std::nullopt;
     } else {
@@ -329,14 +330,14 @@ Expr LowerBuiltinView(const BlockBuilder& bb, const Call& call) {
   }
 
   if (HasVoidType(dtype)) {
-    auto data_dtype = data->ty.as<TensorType>().value()->dtype;
-    TVM_FFI_ICHECK(!data_dtype.is_void())
+    PrimType data_dtype = data->ty.as<TensorType>().value()->dtype;
+    TVM_FFI_ICHECK(!data_dtype.IsVoid())
         << "Legalization of " << call->op
         << " requires that either the output dtype be explicitly specified, "
         << "or the input dtype is known.  "
         << "However, in expression " << call << ", no output dtype is specified, "
         << "and the input " << data << " of type " << data->ty << " has unknown dtype.";
-    dtype = relax::DataTypeImm(data_dtype);
+    dtype = relax::DataTypeImm(DataType(data_dtype->dtype));
   }
 
   if (HasVoidType(relative_byte_offset)) {

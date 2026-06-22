@@ -749,7 +749,7 @@ Var EnvThread(ffi::String thread_tag, DataType dtype) {
 
 void BufferStore(Buffer buffer, PrimExpr value, ffi::Array<PrimExpr> indices,
                  ffi::Optional<PrimExpr> predicate = std::nullopt) {
-  runtime::DataType buffer_dtype = buffer->dtype;
+  runtime::DataType buffer_dtype(buffer->dtype->dtype);
   PrimType index_ty = indices.empty() ? PrimType::Int(32) : indices.back().ty();
   bool is_index_scalable = !indices.empty() && index_ty.IsScalableVector();
   bool is_buffer_dtype_scalable = buffer_dtype.is_scalable_vector();

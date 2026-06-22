@@ -218,13 +218,13 @@ Type InferTypeEinsum(const Call& call, const BlockBuilder& ctx) {
 
   ffi::String subscripts = attrs->subscripts;
 
-  DataType operand_dtype = operands_tensor_ty[0]->dtype;
+  PrimType operand_dtype = operands_tensor_ty[0]->dtype;
   std::vector<ffi::Array<PrimExpr>> input_shapes;
   input_shapes.reserve(operands_tensor_ty.size());
 
   for (TensorType tensor_ty : operands_tensor_ty) {
     // Check the input tuple consists of tensors with same dtype
-    if (tensor_ty->dtype != operand_dtype) {
+    if (tensor_ty->dtype->dtype != operand_dtype->dtype) {
       TVM_FFI_VISIT_THROW(TypeError, call)
           << "Einsum expects all input tensors to have the same dtype. However, the "
              "input contains tensors with dtype "

@@ -419,7 +419,7 @@ BufferStore::BufferStore(Buffer buffer, PrimExpr value, ffi::Array<PrimExpr> ind
   }
 
   bool is_index_scalable = indices.empty() ? false : indices.back().ty().IsScalableVector();
-  bool is_buffer_dtype_scalable = buffer->dtype.is_scalable_vector();
+  bool is_buffer_dtype_scalable = buffer->dtype.IsScalableVector();
   PrimType value_ty = value.ty();
   bool is_value_dtype_scalable = value_ty.IsScalableVector();
 
@@ -437,7 +437,7 @@ BufferStore::BufferStore(Buffer buffer, PrimExpr value, ffi::Array<PrimExpr> ind
   }
 
   int index_lanes = indices.empty() ? 1 : GetLanesOrVScaleFactor(indices.back().ty());
-  int buffer_lanes = buffer->dtype.get_lanes_or_vscale_factor();
+  int buffer_lanes = GetLanesOrVScaleFactor(buffer->dtype);
   int value_dtype_lanes = GetLanesOrVScaleFactor(value_ty);
 
   TVM_FFI_ICHECK_EQ(index_lanes * buffer_lanes, value_dtype_lanes)
@@ -459,18 +459,19 @@ BufferStore::BufferStore(Buffer buffer, PrimExpr value, ffi::Array<PrimExpr> ind
         << ".";
   }
 
-  runtime::DataType buffer_dtype;
+  PrimType buffer_dtype = PrimType::Void();
   if (is_index_scalable || is_buffer_dtype_scalable) {
-    buffer_dtype = buffer->dtype.with_scalable_vscale_factor(buffer_lanes * index_lanes);
+    buffer_dtype =
+        PrimType::ScalableVector(buffer->dtype.code(), buffer->dtype.bits(), buffer_lanes * index_lanes);
   } else {
-    buffer_dtype = buffer->dtype.with_lanes(buffer_lanes * index_lanes);
+    buffer_dtype = buffer->dtype.WithLanes(buffer_lanes * index_lanes);
   }
   DataType value_dtype = DType(value_ty);
-  if (buffer_dtype != value_dtype) {
+  if (buffer_dtype->dtype != PrimType(value_dtype)->dtype) {
     TVM_FFI_THROW(TypeError) << "dtype mismatch on BufferStore: "                 //
                              << "buffer's dtype is `" << buffer->dtype            //
                              << "`, the lanes of indexing are: `" << index_lanes  //
-                             << "`, the scalability is: `" << buffer_dtype.is_scalable_vector()
+                             << "`, the scalability is: `" << buffer_dtype.IsScalableVector()
                              << "`, but RHS's dtype is `" << value_dtype << "`";
   }
 
@@ -696,9 +697,9 @@ TVM_FFI_STATIC_INIT_BLOCK() {
   });
 }
 
-PrimExpr TypeAnnotation(DataType dtype, Span span) {
+PrimExpr TypeAnnotation(PrimType dtype, Span span) {
   static const Op& type_annotation_op = Op::Get("tirx.type_annotation");
-  return tirx::Call(PrimType(dtype), type_annotation_op, {}, {}, span);
+  return tirx::Call(dtype, type_annotation_op, {}, {}, span);
 }
 
 TVM_TIRX_REGISTER_OP("type_annotation")

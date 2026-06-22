@@ -87,7 +87,7 @@ class CodeGenNVPTX : public CodeGenLLVM {
     }
 
     auto storage_scope = runtime::StorageScope::Create(GetPtrStorageScope(op->buffer->data));
-    DataType dtype = op->buffer->dtype;
+    DataType dtype(op->buffer->dtype->dtype);
 
     if (storage_scope.rank == runtime::StorageRank::kShared && storage_scope.tag == ".dyn") {
       // Shared memory: address space == 3

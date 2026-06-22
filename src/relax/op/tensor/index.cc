@@ -84,11 +84,14 @@ Type InferTypeTake(const Call& call, const BlockBuilder& ctx) {
 
   if (indices_ty->IsUnknownDtype()) {
     LOG(WARNING) << "Data type of indices has not been specified. Assume it has an integer type.";
-  } else if (!(indices_ty->dtype.is_int() || indices_ty->dtype.is_uint())) {
+  } else {
+    DataType indices_dtype(indices_ty->dtype->dtype);
+    if (!(indices_dtype.is_int() || indices_dtype.is_uint())) {
     TVM_FFI_VISIT_THROW(TypeError, call)
         << "Take op requires the input indices to have integer dtype. However, the "
            "given indices dtype is "
         << indices_ty->dtype;
+    }
   }
 
   const auto* attrs = call->attrs.as<TakeAttrs>();
@@ -347,7 +350,7 @@ Type InferTypeStridedSlice(const Call& call, const BlockBuilder& ctx) {
 
   const auto* data_ty = data->ty.as<TensorTypeNode>();
 
-  DataType dtype = DataType::Void();
+  PrimType dtype = PrimType::Void();
   ffi::Optional<VDevice> vdevice = std::nullopt;
   int ndim = kUnknownNDim;
   if (data_ty) {
@@ -545,7 +548,7 @@ Type InferTypeDynStridedSlice(const Call& call, const BlockBuilder& ctx) {
       LOG(WARNING) << "Dynamic strided slice assumes " << name
                    << " to be int64 when it is not specified.";
     } else {
-      TVM_FFI_ICHECK(ty->dtype == DataType::Int(64))
+      TVM_FFI_ICHECK(ty->dtype->dtype == PrimType::Int(64)->dtype)
           << "Dynamic strided_slice expects the input " << name
           << "values to be all int64. However, " << name << " has dtype " << ty->dtype << ".";
     }

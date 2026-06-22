@@ -249,7 +249,7 @@ std::string CodeGenC::GetBufferRef(DataType t, const BufferNode* buffer, PrimExp
     return ptr_os.str();
   };
 
-  DataType buffer_element_dtype = buffer->dtype;
+  DataType buffer_element_dtype(buffer->dtype->dtype);
 
   std::string buffer_str = vid;
   if (!HandleTypeMatch(buffer_var, buffer_element_dtype) || is_vol) {
@@ -722,7 +722,8 @@ void CodeGenC::VisitExpr_(const CallNode* op, std::ostream& os) {  // NOLINT(*)
         TVM_FFI_ICHECK_EQ(load->indices.size(), 1)
             << "CodeGenC only supports flat memory allocations.";
         const VarNode* data = load->buffer->data.get();
-        if (pointer_offset_vars_.count(data) && HandleTypeMatch(data, load->buffer->dtype) &&
+        if (pointer_offset_vars_.count(data) &&
+            HandleTypeMatch(data, DataType(load->buffer->dtype->dtype)) &&
             !IsVolatile(data)) {
           os << "(" << GetVarID(data) << " + ";
           this->PrintExpr(load->indices[0], os);
@@ -847,7 +848,7 @@ void CodeGenC::VisitExpr_(const BufferLoadNode* op, std::ostream& os) {  // NOLI
   DataType value_dtype = DataType(op->ty()->dtype);
   PrimExpr index = op->indices[0];
   Var buffer_var = op->buffer->data;
-  DataType element_dtype = op->buffer->dtype;
+  DataType element_dtype(op->buffer->dtype->dtype);
 
   int lanes = DataType(op->ty()->dtype).lanes();
   // delcare type.
@@ -921,7 +922,7 @@ void CodeGenC::VisitStmt_(const BufferStoreNode* op) {
   TVM_FFI_ICHECK(!op->predicate.defined()) << "Predicated buffer store is not supported.";
 
   DataType value_dtype = DataType(op->value.ty()->dtype);
-  DataType element_dtype = op->buffer->dtype;
+  DataType element_dtype(op->buffer->dtype->dtype);
   PrimExpr index_expr = op->indices[0];
   Var buffer_var = op->buffer->data;
 
@@ -1145,10 +1146,10 @@ void CodeGenC::VisitStmt_(const AllocBufferNode* op) {
   alloc_storage_scope_[op->buffer->data.get()] = scope;
   PrintStorageScope(scope, stream);
 
-  PrintType(op->buffer->dtype, stream);
+  PrintType(DataType(op->buffer->dtype->dtype), stream);
   stream << ' ' << vid << '[' << constant_size << "];\n";
 
-  RegisterHandleType(op->buffer->data.get(), op->buffer->dtype);
+  RegisterHandleType(op->buffer->data.get(), DataType(op->buffer->dtype->dtype));
   if (op->annotations.count(tirx::attr::kVolatile)) {
     MarkVolatile(op->buffer->data.get());
   }

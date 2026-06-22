@@ -791,7 +791,7 @@ class Vectorizer : public StmtMutator, public ExprFunctor<PrimExpr(const PrimExp
     PrimExpr value = this->VisitExpr(op->value);
 
     if (!indices.same_as(op->indices) || !value.same_as(op->value)) {
-      TVM_FFI_ICHECK(!op->buffer->dtype.is_scalable_vector())
+      TVM_FFI_ICHECK(!op->buffer->dtype.IsScalableVector())
           << "Vectorizing over scalable buffer elements is not supported in vectorizer.";
       // How many lanes of indexing are present in the index and
       // buffer element type, excluding the last index.
