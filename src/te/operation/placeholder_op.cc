@@ -35,9 +35,9 @@ TVM_FFI_STATIC_INIT_BLOCK() { PlaceholderOpNode::RegisterReflection(); }
 
 int PlaceholderOpNode::num_outputs() const { return 1; }
 
-DataType PlaceholderOpNode::output_dtype(size_t i) const {
+PrimType PlaceholderOpNode::output_prim_type(size_t i) const {
   TVM_FFI_ICHECK_EQ(i, 0U);
-  return dtype;
+  return PrimType(dtype);
 }
 
 ffi::Array<PrimExpr> PlaceholderOpNode::output_shape(size_t i) const {
@@ -52,6 +52,9 @@ PlaceholderOp::PlaceholderOp(std::string name, ffi::Array<PrimExpr> shape, DataT
   n->dtype = dtype;
   data_ = std::move(n);
 }
+
+PlaceholderOp::PlaceholderOp(std::string name, ffi::Array<PrimExpr> shape, PrimType dtype)
+    : PlaceholderOp(std::move(name), std::move(shape), DataType(dtype.dtype())) {}
 
 Tensor placeholder(ffi::Array<PrimExpr> shape, DataType dtype, std::string name) {
   return PlaceholderOp(name, shape, dtype).output(0);

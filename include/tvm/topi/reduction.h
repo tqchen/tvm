@@ -259,7 +259,7 @@ inline Tensor CommReduceIdx(const Tensor& data, const ffi::Optional<ffi::Array<i
 using FCombine = std::function<ffi::Array<PrimExpr>(ffi::Array<Var> lhs, ffi::Array<Var> rhs)>;
 
 /*! \brief An initializer function for a reduction */
-using FIdentity = std::function<ffi::Array<PrimExpr>(std::vector<DataType> types)>;
+using FIdentity = std::function<ffi::Array<PrimExpr>(std::vector<PrimType> types)>;
 
 /*!
  * \brief Create a commutative reducer for a reduction
@@ -275,10 +275,10 @@ inline FCommReduce MakeCommReducer(FCombine fcombine, FIdentity fidentity,
   return [fcombine, fidentity, name](ffi::Array<PrimExpr> exprs, const ffi::Array<IterVar>& axis,
                                      PrimExpr* condition) {
     ffi::Array<Var> lhs, rhs;
-    std::vector<DataType> dtypes;
+    std::vector<PrimType> dtypes;
 
     for (size_t i = 0; i < exprs.size(); ++i) {
-      auto dtype = DataType(exprs[i].ty().dtype());
+      PrimType dtype = exprs[i].ty();
       dtypes.push_back(dtype);
       lhs.push_back(var(name + "_lhs_" + std::to_string(i), dtype));
       rhs.push_back(var(name + "_rhs_" + std::to_string(i), dtype));
@@ -477,7 +477,7 @@ inline FCommReduce MakeArgminReducer(bool select_last_index = false) {
     result.push_back(tvm::tirx::Select(is_smaller, lhs[1], rhs[1]));    // val
     return result;
   };
-  auto fidentity = [&](std::vector<DataType> types) {
+  auto fidentity = [&](std::vector<PrimType> types) {
     ffi::Array<PrimExpr> result;
     result.push_back(tvm::tirx::MakeConst(types[0], -1));  // idx
     result.push_back(tvm::max_value(types[1]));            // val
@@ -539,7 +539,7 @@ inline FCommReduce MakeArgmaxReducer(bool select_last_index = false) {
     result.push_back(tvm::tirx::Select(is_bigger, lhs[1], rhs[1]));     // val
     return result;
   };
-  auto fidentity = [&](std::vector<DataType> types) {
+  auto fidentity = [&](std::vector<PrimType> types) {
     ffi::Array<PrimExpr> result;
     result.push_back(tvm::tirx::MakeConst(types[0], -1));  // idx
     result.push_back(tvm::min_value(types[1]));            // val
@@ -601,7 +601,7 @@ inline FCommReduce MakeTupleSumReducer() {
     }
     return result;
   };
-  auto fidentity = [](std::vector<DataType> types) {
+  auto fidentity = [](std::vector<PrimType> types) {
     ffi::Array<PrimExpr> result;
     for (size_t i = 0; i < types.size(); ++i) {
       result.push_back(tvm::tirx::MakeConst(types[i], 0));

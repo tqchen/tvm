@@ -82,22 +82,23 @@ TOPI_DECLARE_UNARY_OP(isinf);
 inline Tensor fast_tanh_float(const Tensor& in, std::string name, std::string tag) {
   // Clamp the inputs to the range [-9, 9] since anything outside
   // this range is +/-1.0f in single-precision.
-  auto x = maximum(MakeConst(in->dtype, -9.0), minimum(MakeConst(in->dtype, 9.0), in));
+  PrimType input_type = in->GetPrimType();
+  auto x = maximum(MakeConst(input_type, -9.0), minimum(MakeConst(input_type, 9.0), in));
 
   // The monomial coefficients of the numerator polynomial (odd).
-  auto alpha_1 = MakeConst(in->dtype, 4.89352455891786e-03);
-  auto alpha_3 = MakeConst(in->dtype, 6.37261928875436e-04);
-  auto alpha_5 = MakeConst(in->dtype, 1.48572235717979e-05);
-  auto alpha_7 = MakeConst(in->dtype, 5.12229709037114e-08);
-  auto alpha_9 = MakeConst(in->dtype, -8.60467152213735e-11);
-  auto alpha_11 = MakeConst(in->dtype, 2.00018790482477e-13);
-  auto alpha_13 = MakeConst(in->dtype, -2.76076847742355e-16);
+  auto alpha_1 = MakeConst(input_type, 4.89352455891786e-03);
+  auto alpha_3 = MakeConst(input_type, 6.37261928875436e-04);
+  auto alpha_5 = MakeConst(input_type, 1.48572235717979e-05);
+  auto alpha_7 = MakeConst(input_type, 5.12229709037114e-08);
+  auto alpha_9 = MakeConst(input_type, -8.60467152213735e-11);
+  auto alpha_11 = MakeConst(input_type, 2.00018790482477e-13);
+  auto alpha_13 = MakeConst(input_type, -2.76076847742355e-16);
 
   // The monomial coefficients of the denominator polynomial (even).
-  auto beta_0 = MakeConst(in->dtype, 4.89352518554385e-03);
-  auto beta_2 = MakeConst(in->dtype, 2.26843463243900e-03);
-  auto beta_4 = MakeConst(in->dtype, 1.18534705686654e-04);
-  auto beta_6 = MakeConst(in->dtype, 1.19825839466702e-06);
+  auto beta_0 = MakeConst(input_type, 4.89352518554385e-03);
+  auto beta_2 = MakeConst(input_type, 2.26843463243900e-03);
+  auto beta_4 = MakeConst(input_type, 1.18534705686654e-04);
+  auto beta_6 = MakeConst(input_type, 1.19825839466702e-06);
 
   return compute(
       x->shape,
@@ -130,7 +131,7 @@ inline Tensor fast_tanh_float(const Tensor& in, std::string name, std::string ta
  */
 inline Tensor fast_tanh(const Tensor& x, std::string name = "T_fast_tanh",
                         std::string tag = kElementWise) {
-  if (x->dtype == DataType::Float(32)) {
+  if (x->GetPrimType().MatchesElementType(DLDataTypeCode::kDLFloat, 32)) {
     // invoke fast_tanh_float implementation
     return fast_tanh_float(x, name, tag);
   } else {
@@ -209,9 +210,10 @@ inline Tensor sign(const Tensor& x, std::string name = "T_sign", std::string tag
   return compute(
       x->shape,
       [&](const ffi::Array<Var>& i) {
-        PrimExpr zero = MakeConst(x->dtype, 0);
-        PrimExpr one = MakeConst(x->dtype, 1);
-        PrimExpr minus_one = MakeConst(x->dtype, -1);
+        PrimType x_type = x->GetPrimType();
+        PrimExpr zero = MakeConst(x_type, 0);
+        PrimExpr one = MakeConst(x_type, 1);
+        PrimExpr minus_one = MakeConst(x_type, -1);
         auto s1 = tvm::tirx::Select((x(i) < zero), minus_one, zero);
         auto s2 = tvm::tirx::Select((x(i) > zero), one, s1);
         return s2;
@@ -232,7 +234,7 @@ inline Tensor rsqrt(const Tensor& x, std::string name = "tensor", std::string ta
   return compute(
       x->shape,
       [&](const ffi::Array<Var>& i) {
-        PrimExpr one = MakeConst(x->dtype, 1);
+        PrimExpr one = MakeConst(x->GetPrimType(), 1);
         return one / tvm::sqrt(x(i));
       },
       name, tag);
@@ -255,8 +257,9 @@ inline Tensor clip(const Tensor& x, const PrimExpr& a_min, const PrimExpr& a_max
   return compute(
       x->shape,
       [&](const ffi::Array<Var>& i) {
-        auto min_val = tvm::cast(x->dtype, a_min);
-        auto max_val = tvm::cast(x->dtype, a_max);
+        PrimType x_type = x->GetPrimType();
+        auto min_val = tvm::cast(x_type, a_min);
+        auto max_val = tvm::cast(x_type, a_max);
         return tvm::max(tvm::min(x(i), max_val), min_val);  // NOLINT(*)
       },
       name, tag);
@@ -274,17 +277,24 @@ inline Tensor clip(const Tensor& x, const PrimExpr& a_min, const PrimExpr& a_max
  *
  * \return A Tensor whose op member is the cast operation
  */
+inline Tensor cast(const Tensor& x, PrimType type, std::string name, std::string tag);
+
 inline Tensor cast(const Tensor& x, DataType type, std::string name = "T_cast",
+                   std::string tag = kElementWise) {
+  return cast(x, PrimType(type), std::move(name), std::move(tag));
+}
+
+inline Tensor cast(const Tensor& x, PrimType type, std::string name = "T_cast",
                    std::string tag = kElementWise) {
   return compute(
       x->shape,
       [&](const ffi::Array<Var>& i) -> PrimExpr {
         auto expr = x(i);
         PrimType expr_ty = expr.ty();
-        if (expr_ty.MatchesElementType(static_cast<DLDataTypeCode>(type.code()), type.bits())) {
+        if (expr_ty.MatchesElementType(type.code(), type.bits())) {
           if (expr_ty.lanes() == type.lanes()) {
             return expr;
-          } else if (expr_ty.lanes() == 1 && type.is_vector()) {
+          } else if (expr_ty.lanes() == 1 && type.IsFixedLengthVector()) {
             return tvm::tirx::Broadcast(expr, type.lanes());
           }
         }
@@ -304,7 +314,14 @@ inline Tensor cast(const Tensor& x, DataType type, std::string name = "T_cast",
  *
  * \return A Tensor whose op member is the reinterpret operation
  */
+inline Tensor reinterpret(const Tensor& x, PrimType type, std::string name, std::string tag);
+
 inline Tensor reinterpret(const Tensor& x, DataType type, std::string name = "tensor",
+                          std::string tag = kElementWise) {
+  return reinterpret(x, PrimType(type), std::move(name), std::move(tag));
+}
+
+inline Tensor reinterpret(const Tensor& x, PrimType type, std::string name = "tensor",
                           std::string tag = kElementWise) {
   return compute(
       x->shape, [&](const ffi::Array<Var>& i) { return reinterpret(type, x(i)); }, name, tag);
@@ -345,7 +362,15 @@ inline Tensor elemwise_sum(const ffi::Array<Tensor>& xs, std::string name = "T_e
  *
  * \return A Tensor whose op member is the full operation
  */
+inline Tensor full(const ffi::Array<PrimExpr>& shape, PrimType dtype, const PrimExpr fill_value,
+                   std::string name, std::string tag);
+
 inline Tensor full(const ffi::Array<PrimExpr>& shape, DataType dtype, const PrimExpr fill_value,
+                   std::string name = "T_full", std::string tag = kElementWise) {
+  return full(shape, PrimType(dtype), fill_value, std::move(name), std::move(tag));
+}
+
+inline Tensor full(const ffi::Array<PrimExpr>& shape, PrimType dtype, const PrimExpr fill_value,
                    std::string name = "T_full", std::string tag = kElementWise) {
   PrimExpr ev = cast(dtype, fill_value);
   if (!ev.defined()) {
@@ -367,7 +392,7 @@ inline Tensor full(const ffi::Array<PrimExpr>& shape, DataType dtype, const Prim
  */
 inline Tensor full_like(const Tensor& x, const PrimExpr fill_value,
                         std::string name = "T_full_like", std::string tag = kElementWise) {
-  PrimExpr ev = cast(x->dtype, fill_value);
+  PrimExpr ev = cast(x->GetPrimType(), fill_value);
   return compute(x->shape, [&](const ffi::Array<Var>& i) { return ev; }, name, tag);
 }
 
@@ -436,7 +461,7 @@ inline Tensor fast_exp_float32(const Tensor& _x, std::string name, std::string t
  */
 inline Tensor fast_exp(const Tensor& x, std::string name = "T_fast_exp",
                        std::string tag = kElementWise) {
-  if (x->dtype == DataType::Float(32)) {
+  if (x->GetPrimType().MatchesElementType(DLDataTypeCode::kDLFloat, 32)) {
     auto ret = fast_exp_float32(x, name, tag);
     return ret;
   } else {
@@ -473,10 +498,11 @@ inline Tensor fast_erf_float16(const Tensor& data, std::string name, std::string
  */
 inline Tensor fast_erf(const Tensor& x, std::string name = "T_fast_erf",
                        std::string tag = kElementWise) {
-  if (x->dtype == DataType::Float(32)) {
+  PrimType x_type = x->GetPrimType();
+  if (x_type.MatchesElementType(DLDataTypeCode::kDLFloat, 32)) {
     auto ret = fast_erf_float32(x, name, tag);
     return ret;
-  } else if (x->dtype == DataType::Float(16)) {
+  } else if (x_type.MatchesElementType(DLDataTypeCode::kDLFloat, 16)) {
     auto ret = fast_erf_float16(x, name, tag);
     return ret;
   } else {
