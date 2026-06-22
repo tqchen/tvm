@@ -92,9 +92,7 @@ PrimType PrimType::Int(int bits, int lanes) {
   return PrimType(DataType::Int(bits, lanes));
 }
 
-PrimType PrimType::UInt(int bits, int lanes, bool is_scalable) {
-  return PrimType(DataType::UInt(bits, lanes, is_scalable));
-}
+PrimType PrimType::UInt(int bits, int lanes) { return PrimType(DataType::UInt(bits, lanes)); }
 
 PrimType PrimType::Float(int bits, int lanes) {
   if (bits == 32 && lanes == 1) {
@@ -106,12 +104,9 @@ PrimType PrimType::Float(int bits, int lanes) {
 
 PrimType PrimType::BFloat(int bits, int lanes) { return PrimType(DataType::BFloat(bits, lanes)); }
 
-PrimType PrimType::Bool(int lanes, bool is_scalable) {
-  if (lanes == 1 && !is_scalable) {
-    thread_local PrimType bool_ty(DataType::Bool());
-    return bool_ty;
-  }
-  return PrimType(DataType::Bool(lanes, is_scalable));
+PrimType PrimType::Bool() {
+  thread_local PrimType bool_ty(DataType::Bool());
+  return bool_ty;
 }
 
 PrimType PrimType::Handle(int bits, int lanes) { return PrimType(DataType::Handle(bits, lanes)); }
