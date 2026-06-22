@@ -896,7 +896,7 @@ Type InferTypeCrossEntropy(const Call& call, const BlockBuilder& ctx) {
   TensorType label_ty = input_ty[1];
 
   // infer dtype
-  DataType dtype = InferBinaryArithOpOutDtype(call, ctx, pred_ty, label_ty);
+  PrimType dtype = InferBinaryArithOpOutDtype(call, ctx, pred_ty, label_ty);
 
   // infer vdevice
   ffi::Optional<VDevice> vdevice = InferBinaryArithOpOutVDevice(call, ctx, pred_ty, label_ty);
@@ -1008,25 +1008,26 @@ Type InferTypeNLLLoss(const Call& call, const BlockBuilder& ctx) {
   }
 
   // infer dtype, vdevice
-  DataType output_dtype;
-  ffi::Optional<VDevice> vdevice;
-  if (wgt_ty != nullptr) {
-    output_dtype = InferBinaryArithOpOutDtype(call, ctx, ffi::GetRef<TensorType>(pred_ty),
-                                              ffi::GetRef<TensorType>(wgt_ty));
-    vdevice = InferBinaryArithOpOutVDevice(call, ctx, ffi::GetRef<TensorType>(pred_ty),
-                                           ffi::GetRef<TensorType>(wgt_ty));
-  } else {
-    output_dtype = DataType(pred_ty->dtype->dtype);
-    vdevice = pred_ty->vdevice;
-  }
+  PrimType output_dtype =
+      wgt_ty != nullptr
+          ? InferBinaryArithOpOutDtype(call, ctx, ffi::GetRef<TensorType>(pred_ty),
+                                       ffi::GetRef<TensorType>(wgt_ty))
+          : pred_ty->dtype;
+  ffi::Optional<VDevice> vdevice =
+      wgt_ty != nullptr
+          ? InferBinaryArithOpOutVDevice(call, ctx, ffi::GetRef<TensorType>(pred_ty),
+                                         ffi::GetRef<TensorType>(wgt_ty))
+          : pred_ty->vdevice;
 
   // the type of targets must be int/uint.
   if (!tgt_ty->IsUnknownDtype()) {
-    DataType target_dtype(tgt_ty->dtype->dtype);
-    if (!target_dtype.is_int() && !target_dtype.is_uint()) {
-    TVM_FFI_VISIT_THROW(TypeError, call)
-        << "NLLLoss expects the dtype of targets to be int/uint. However, the dtype of targets is "
-        << tgt_ty->dtype;
+    const DLDataType target_dtype = tgt_ty->dtype->dtype;
+    // NLLLoss only needs the target element kind; vector lanes do not affect target indexing.
+    if (target_dtype.code != DLDataTypeCode::kDLInt &&
+        target_dtype.code != DLDataTypeCode::kDLUInt) {
+      TVM_FFI_VISIT_THROW(TypeError, call)
+          << "NLLLoss expects the dtype of targets to be int/uint. However, the dtype of targets is "
+          << tgt_ty->dtype;
     }
   }
 
