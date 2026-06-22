@@ -85,7 +85,7 @@ class LowerRuntimeBuiltinMutator : public ExprMutator {
   Expr MakeMemAllocStorage(const Call& call) {
     PrimValue runtime_device_index = call->args[1].as_or_throw<PrimValue>();
     StringImm storage_scope = call->args[2].as_or_throw<StringImm>();
-    DataTypeImm output_dtype = DataTypeImm(DataType::UInt(8));
+    DataTypeImm output_dtype = DataTypeImm(PrimType::UInt(8)->dtype);
     return Call(vm_alloc_storage_op_,
                 {call->args[0], runtime_device_index, output_dtype, storage_scope}, Attrs());
   }

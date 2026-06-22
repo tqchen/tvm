@@ -47,7 +47,7 @@ TVM_FFI_STATIC_INIT_BLOCK() {
 Expr conv1d(Expr data, Expr weight, ffi::Array<int64_t> strides, ffi::Array<int64_t> padding,
             ffi::Array<int64_t> dilation, int groups, ffi::String data_layout,
             ffi::String kernel_layout, ffi::Optional<ffi::String> out_layout,
-            ffi::Optional<DataType> out_dtype) {
+            ffi::Optional<DLDataType> out_dtype) {
   padding = GetCompletePadding1D(std::move(padding));
 
   TVM_FFI_ICHECK_GT(groups, 0)
@@ -62,7 +62,8 @@ Expr conv1d(Expr data, Expr weight, ffi::Array<int64_t> strides, ffi::Array<int6
   return MakeConv<Conv1DAttrs>(std::move(data), std::move(weight), std::move(strides),
                                std::move(padding), std::move(dilation), groups, data_layout,
                                std::move(kernel_layout), out_layout.value_or(data_layout),
-                               out_dtype.value_or(DataType::Void()), /*op_name=*/"relax.nn.conv1d");
+                               out_dtype.value_or(PrimType::Void()->dtype),
+                               /*op_name=*/"relax.nn.conv1d");
 }
 
 TVM_FFI_STATIC_INIT_BLOCK() {
@@ -91,9 +92,9 @@ Type InferTypeConv1d(const Call& call, const BlockBuilder& ctx) {
   ffi::Optional<ShapeExpr> weight_shape =
       CheckNdimPerLayoutAndGetShape(call, ctx, weight_ty, weight_layout);
 
-  DataType out_dtype = attrs->out_dtype.is_void()
-                           ? InferBinaryArithOpOutDtype(call, ctx, data_ty, weight_ty)
-                           : attrs->out_dtype;
+  PrimType out_dtype = attrs->out_dtype == PrimType::Void()->dtype
+                           ? PrimType(InferBinaryArithOpOutDtype(call, ctx, data_ty, weight_ty))
+                           : PrimType(attrs->out_dtype);
   ffi::Optional<VDevice> vdevice = InferBinaryArithOpOutVDevice(call, ctx, data_ty, weight_ty);
   if (!data_shape.defined() || !weight_shape.defined()) {
     return TensorType(out_dtype, out_layout.ndim(), vdevice);
@@ -190,7 +191,8 @@ Call InferMixedPrecisionConv1d(const Call& call, const DataType& out_dtype) {
   const auto* conv1d_attrs = call->attrs.as<Conv1DAttrs>();
   return conv1d(call->args[0], call->args[1], conv1d_attrs->strides, conv1d_attrs->padding,
                 conv1d_attrs->dilation, conv1d_attrs->groups, conv1d_attrs->data_layout,
-                conv1d_attrs->kernel_layout, conv1d_attrs->out_layout, out_dtype)
+                conv1d_attrs->kernel_layout, conv1d_attrs->out_layout,
+                static_cast<DLDataType>(out_dtype))
       .as_or_throw<Call>();
 }
 
@@ -210,7 +212,7 @@ TVM_REGISTER_OP("relax.nn.conv1d")
 Expr conv2d(Expr data, Expr weight, ffi::Array<int64_t> strides, ffi::Array<int64_t> padding,
             ffi::Array<int64_t> dilation, int groups, ffi::String data_layout,
             ffi::String kernel_layout, ffi::Optional<ffi::String> out_layout,
-            ffi::Optional<DataType> out_dtype) {
+            ffi::Optional<DLDataType> out_dtype) {
   padding = GetCompletePadding2D(std::move(padding));
   if (strides.size() == 1) {
     strides.push_back(strides[0]);
@@ -231,7 +233,8 @@ Expr conv2d(Expr data, Expr weight, ffi::Array<int64_t> strides, ffi::Array<int6
   return MakeConv<Conv2DAttrs>(std::move(data), std::move(weight), std::move(strides),
                                std::move(padding), std::move(dilation), groups, data_layout,
                                std::move(kernel_layout), out_layout.value_or(data_layout),
-                               out_dtype.value_or(DataType::Void()), /*op_name=*/"relax.nn.conv2d");
+                               out_dtype.value_or(PrimType::Void()->dtype),
+                               /*op_name=*/"relax.nn.conv2d");
 }
 
 TVM_FFI_STATIC_INIT_BLOCK() {
@@ -260,9 +263,9 @@ Type InferTypeConv2d(const Call& call, const BlockBuilder& ctx) {
   ffi::Optional<ShapeExpr> weight_shape =
       CheckNdimPerLayoutAndGetShape(call, ctx, weight_ty, weight_layout);
 
-  DataType out_dtype = attrs->out_dtype.is_void()
-                           ? InferBinaryArithOpOutDtype(call, ctx, data_ty, weight_ty)
-                           : attrs->out_dtype;
+  PrimType out_dtype = attrs->out_dtype == PrimType::Void()->dtype
+                           ? PrimType(InferBinaryArithOpOutDtype(call, ctx, data_ty, weight_ty))
+                           : PrimType(attrs->out_dtype);
   ffi::Optional<VDevice> vdevice = InferBinaryArithOpOutVDevice(call, ctx, data_ty, weight_ty);
   if (!data_shape.defined() || !weight_shape.defined()) {
     return TensorType(out_dtype, out_layout.ndim(), vdevice);
@@ -401,7 +404,8 @@ Call InferMixedPrecisionConv2d(const Call& call, const DataType& out_dtype) {
   const auto* conv2d_attrs = call->attrs.as<Conv2DAttrs>();
   return conv2d(call->args[0], call->args[1], conv2d_attrs->strides, conv2d_attrs->padding,
                 conv2d_attrs->dilation, conv2d_attrs->groups, conv2d_attrs->data_layout,
-                conv2d_attrs->kernel_layout, conv2d_attrs->out_layout, out_dtype)
+                conv2d_attrs->kernel_layout, conv2d_attrs->out_layout,
+                static_cast<DLDataType>(out_dtype))
       .as_or_throw<Call>();
 }
 
@@ -421,7 +425,7 @@ TVM_REGISTER_OP("relax.nn.conv2d")
 Expr conv3d(Expr data, Expr weight, ffi::Array<int64_t> strides, ffi::Array<int64_t> padding,
             ffi::Array<int64_t> dilation, int groups, ffi::String data_layout,
             ffi::String kernel_layout, ffi::Optional<ffi::String> out_layout,
-            ffi::Optional<DataType> out_dtype) {
+            ffi::Optional<DLDataType> out_dtype) {
   padding = GetCompletePadding3D(std::move(padding));
   if (strides.size() == 1) {
     strides.push_back(strides[0]);
@@ -444,7 +448,8 @@ Expr conv3d(Expr data, Expr weight, ffi::Array<int64_t> strides, ffi::Array<int6
   return MakeConv<Conv3DAttrs>(std::move(data), std::move(weight), std::move(strides),
                                std::move(padding), std::move(dilation), groups, data_layout,
                                std::move(kernel_layout), out_layout.value_or(data_layout),
-                               out_dtype.value_or(DataType::Void()), /*op_name=*/"relax.nn.conv3d");
+                               out_dtype.value_or(PrimType::Void()->dtype),
+                               /*op_name=*/"relax.nn.conv3d");
 }
 
 TVM_FFI_STATIC_INIT_BLOCK() {
@@ -473,9 +478,9 @@ Type InferTypeConv3d(const Call& call, const BlockBuilder& ctx) {
   ffi::Optional<ShapeExpr> weight_shape =
       CheckNdimPerLayoutAndGetShape(call, ctx, weight_ty, weight_layout);
 
-  DataType out_dtype = attrs->out_dtype.is_void()
-                           ? InferBinaryArithOpOutDtype(call, ctx, data_ty, weight_ty)
-                           : attrs->out_dtype;
+  PrimType out_dtype = attrs->out_dtype == PrimType::Void()->dtype
+                           ? PrimType(InferBinaryArithOpOutDtype(call, ctx, data_ty, weight_ty))
+                           : PrimType(attrs->out_dtype);
   ffi::Optional<VDevice> vdevice = InferBinaryArithOpOutVDevice(call, ctx, data_ty, weight_ty);
   if (!data_shape.defined() || !weight_shape.defined()) {
     return TensorType(out_dtype, out_layout.ndim(), vdevice);
@@ -586,7 +591,8 @@ Call InferMixedPrecisionConv3d(const Call& call, const DataType& out_dtype) {
   const auto* conv3d_attrs = call->attrs.as<Conv3DAttrs>();
   return conv3d(call->args[0], call->args[1], conv3d_attrs->strides, conv3d_attrs->padding,
                 conv3d_attrs->dilation, conv3d_attrs->groups, conv3d_attrs->data_layout,
-                conv3d_attrs->kernel_layout, conv3d_attrs->out_layout, out_dtype)
+                conv3d_attrs->kernel_layout, conv3d_attrs->out_layout,
+                static_cast<DLDataType>(out_dtype))
       .as_or_throw<Call>();
 }
 
@@ -605,7 +611,7 @@ Expr conv1d_transpose(Expr data, Expr weight, ffi::Array<int64_t> strides,
                       ffi::Array<int64_t> padding, ffi::Array<int64_t> output_padding,
                       ffi::Array<int64_t> dilation, int groups, ffi::String data_layout,
                       ffi::String kernel_layout, ffi::Optional<ffi::String> out_layout,
-                      ffi::Optional<DataType> out_dtype) {
+                      ffi::Optional<DLDataType> out_dtype) {
   padding = GetCompletePadding1D(std::move(padding));
 
   TVM_FFI_ICHECK_GT(groups, 0)
@@ -631,7 +637,7 @@ Expr conv1d_transpose(Expr data, Expr weight, ffi::Array<int64_t> strides,
   attrs->data_layout = data_layout;
   attrs->kernel_layout = std::move(kernel_layout);
   attrs->out_layout = out_layout.value_or(data_layout);
-  attrs->out_dtype = std::move(out_dtype.value_or(DataType::Void()));
+  attrs->out_dtype = out_dtype.value_or(PrimType::Void()->dtype);
   const Op& op = Op::Get("relax.nn.conv1d_transpose");
   return Call(op, {data, weight}, Attrs(attrs), {});
 }
@@ -661,9 +667,9 @@ Type InferTypeConv1dTranspose(const Call& call, const BlockBuilder& ctx) {
   ffi::Optional<ShapeExpr> weight_shape =
       CheckNdimPerLayoutAndGetShape(call, ctx, weight_ty, weight_layout);
 
-  DataType out_dtype = attrs->out_dtype.is_void()
-                           ? InferBinaryArithOpOutDtype(call, ctx, data_ty, weight_ty)
-                           : attrs->out_dtype;
+  PrimType out_dtype = attrs->out_dtype == PrimType::Void()->dtype
+                           ? PrimType(InferBinaryArithOpOutDtype(call, ctx, data_ty, weight_ty))
+                           : PrimType(attrs->out_dtype);
   ffi::Optional<VDevice> vdevice = InferBinaryArithOpOutVDevice(call, ctx, data_ty, weight_ty);
   if (!data_shape.defined() || !weight_shape.defined()) {
     return TensorType(out_dtype, out_layout.ndim(), vdevice);
@@ -766,7 +772,7 @@ Call InferMixedPrecisionConv1dTranspose(const Call& call, const DataType& out_dt
                           conv1d_transpose_attrs->dilation, conv1d_transpose_attrs->groups,
                           conv1d_transpose_attrs->data_layout,
                           conv1d_transpose_attrs->kernel_layout, conv1d_transpose_attrs->out_layout,
-                          out_dtype)
+                          static_cast<DLDataType>(out_dtype))
       .as_or_throw<Call>();
 }
 
@@ -787,7 +793,7 @@ Expr conv2d_transpose(Expr data, Expr weight, ffi::Array<int64_t> strides,
                       ffi::Array<int64_t> padding, ffi::Array<int64_t> output_padding,
                       ffi::Array<int64_t> dilation, int groups, ffi::String data_layout,
                       ffi::String kernel_layout, ffi::Optional<ffi::String> out_layout,
-                      ffi::Optional<DataType> out_dtype) {
+                      ffi::Optional<DLDataType> out_dtype) {
   padding = GetCompletePadding2D(std::move(padding));
   if (output_padding.size() == 1) {
     output_padding.push_back(output_padding[0]);
@@ -822,7 +828,7 @@ Expr conv2d_transpose(Expr data, Expr weight, ffi::Array<int64_t> strides,
   attrs->data_layout = data_layout;
   attrs->kernel_layout = std::move(kernel_layout);
   attrs->out_layout = out_layout.value_or(data_layout);
-  attrs->out_dtype = std::move(out_dtype.value_or(DataType::Void()));
+  attrs->out_dtype = out_dtype.value_or(PrimType::Void()->dtype);
   const Op& op = Op::Get("relax.nn.conv2d_transpose");
   return Call(op, {data, weight}, Attrs(attrs), {});
 }
@@ -853,9 +859,9 @@ Type InferTypeConv2dTranspose(const Call& call, const BlockBuilder& ctx) {
   ffi::Optional<ShapeExpr> weight_shape =
       CheckNdimPerLayoutAndGetShape(call, ctx, weight_ty, weight_layout);
 
-  DataType out_dtype = attrs->out_dtype.is_void()
-                           ? InferBinaryArithOpOutDtype(call, ctx, data_ty, weight_ty)
-                           : attrs->out_dtype;
+  PrimType out_dtype = attrs->out_dtype == PrimType::Void()->dtype
+                           ? PrimType(InferBinaryArithOpOutDtype(call, ctx, data_ty, weight_ty))
+                           : PrimType(attrs->out_dtype);
   ffi::Optional<VDevice> vdevice = InferBinaryArithOpOutVDevice(call, ctx, data_ty, weight_ty);
   if (!data_shape.defined() || !weight_shape.defined()) {
     return TensorType(out_dtype, out_layout.ndim(), vdevice);
@@ -995,7 +1001,7 @@ Call InferMixedPrecisionConv2dTranspose(const Call& call, const DataType& out_dt
                           conv2d_transpose_attrs->dilation, conv2d_transpose_attrs->groups,
                           conv2d_transpose_attrs->data_layout,
                           conv2d_transpose_attrs->kernel_layout, conv2d_transpose_attrs->out_layout,
-                          out_dtype)
+                          static_cast<DLDataType>(out_dtype))
       .as_or_throw<Call>();
 }
 
@@ -1016,7 +1022,7 @@ Expr conv3d_transpose(Expr data, Expr weight, ffi::Array<int64_t> strides,
                       ffi::Array<int64_t> padding, ffi::Array<int64_t> output_padding,
                       ffi::Array<int64_t> dilation, int groups, ffi::String data_layout,
                       ffi::String kernel_layout, ffi::Optional<ffi::String> out_layout,
-                      ffi::Optional<DataType> out_dtype) {
+                      ffi::Optional<DLDataType> out_dtype) {
   padding = GetCompletePadding3D(std::move(padding));
   if (output_padding.size() == 1) {
     output_padding.push_back(output_padding[0]);
@@ -1054,7 +1060,7 @@ Expr conv3d_transpose(Expr data, Expr weight, ffi::Array<int64_t> strides,
   attrs->data_layout = data_layout;
   attrs->kernel_layout = std::move(kernel_layout);
   attrs->out_layout = out_layout.value_or(data_layout);
-  attrs->out_dtype = std::move(out_dtype.value_or(DataType::Void()));
+  attrs->out_dtype = out_dtype.value_or(PrimType::Void()->dtype);
   const Op& op = Op::Get("relax.nn.conv3d_transpose");
   return Call(op, {data, weight}, Attrs(attrs), {});
 }
@@ -1085,9 +1091,9 @@ Type InferTypeConv3dTranspose(const Call& call, const BlockBuilder& ctx) {
   ffi::Optional<ShapeExpr> weight_shape =
       CheckNdimPerLayoutAndGetShape(call, ctx, weight_ty, weight_layout);
 
-  DataType out_dtype = attrs->out_dtype.is_void()
-                           ? InferBinaryArithOpOutDtype(call, ctx, data_ty, weight_ty)
-                           : attrs->out_dtype;
+  PrimType out_dtype = attrs->out_dtype == PrimType::Void()->dtype
+                           ? PrimType(InferBinaryArithOpOutDtype(call, ctx, data_ty, weight_ty))
+                           : PrimType(attrs->out_dtype);
   ffi::Optional<VDevice> vdevice = InferBinaryArithOpOutVDevice(call, ctx, data_ty, weight_ty);
   if (!data_shape.defined() || !weight_shape.defined()) {
     return TensorType(out_dtype, out_layout.ndim(), vdevice);
@@ -1235,7 +1241,7 @@ Call InferMixedPrecisionConv3dTranspose(const Call& call, const DataType& out_dt
                           conv3d_transpose_attrs->dilation, conv3d_transpose_attrs->groups,
                           conv3d_transpose_attrs->data_layout,
                           conv3d_transpose_attrs->kernel_layout, conv3d_transpose_attrs->out_layout,
-                          out_dtype)
+                          static_cast<DLDataType>(out_dtype))
       .as_or_throw<Call>();
 }
 

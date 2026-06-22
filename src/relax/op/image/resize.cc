@@ -41,7 +41,7 @@ TVM_FFI_STATIC_INIT_BLOCK() { Resize3DAttrs::RegisterReflection(); }
 Expr resize2d(Expr data, Expr size, ffi::Array<FloatImm> roi, ffi::String layout,
               ffi::String method, ffi::String coordinate_transformation_mode,
               ffi::String rounding_method, double cubic_alpha, int cubic_exclude,
-              double extrapolation_value, ffi::Optional<DataType> out_dtype) {
+              double extrapolation_value, ffi::Optional<DLDataType> out_dtype) {
   ffi::ObjectPtr<Resize2DAttrs> attrs = ffi::make_object<Resize2DAttrs>();
   attrs->roi = std::move(roi);
   attrs->layout = std::move(layout);
@@ -51,7 +51,7 @@ Expr resize2d(Expr data, Expr size, ffi::Array<FloatImm> roi, ffi::String layout
   attrs->cubic_alpha = cubic_alpha;
   attrs->cubic_exclude = cubic_exclude;
   attrs->extrapolation_value = extrapolation_value;
-  attrs->out_dtype = out_dtype.value_or(DataType::Void());
+  attrs->out_dtype = out_dtype.value_or(PrimType::Void()->dtype);
 
   static const Op& op = Op::Get("relax.image.resize2d");
   return Call(op, {std::move(data), std::move(size)}, Attrs(attrs), {});
@@ -93,7 +93,8 @@ Type InferTypeResize2D(const Call& call, const BlockBuilder& ctx) {
                                                     /*tgt_layout=*/"NCHW",     //
                                                     /*tensor_name=*/"data");
 
-  PrimType out_dtype = attrs->out_dtype.is_void() ? data_ty->dtype : PrimType(attrs->out_dtype);
+  PrimType out_dtype =
+      attrs->out_dtype == PrimType::Void()->dtype ? data_ty->dtype : PrimType(attrs->out_dtype);
 
   ffi::Optional<ShapeExpr> data_shape =
       CheckNdimPerLayoutAndGetShape(call, ctx, ffi::GetRef<TensorType>(data_ty), data_layout);
@@ -155,7 +156,7 @@ TVM_REGISTER_OP("relax.image.resize2d")
 Expr resize3d(Expr data, Expr size, ffi::Array<FloatImm> roi, ffi::String layout,
               ffi::String method, ffi::String coordinate_transformation_mode,
               ffi::String rounding_method, double cubic_alpha, int cubic_exclude,
-              double extrapolation_value, ffi::Optional<DataType> out_dtype) {
+              double extrapolation_value, ffi::Optional<DLDataType> out_dtype) {
   ffi::ObjectPtr<Resize3DAttrs> attrs = ffi::make_object<Resize3DAttrs>();
   attrs->roi = std::move(roi);
   attrs->layout = std::move(layout);
@@ -165,7 +166,7 @@ Expr resize3d(Expr data, Expr size, ffi::Array<FloatImm> roi, ffi::String layout
   attrs->cubic_alpha = cubic_alpha;
   attrs->cubic_exclude = cubic_exclude;
   attrs->extrapolation_value = extrapolation_value;
-  attrs->out_dtype = out_dtype.value_or(DataType::Void());
+  attrs->out_dtype = out_dtype.value_or(PrimType::Void()->dtype);
 
   static const Op& op = Op::Get("relax.image.resize3d");
   return Call(op, {std::move(data), std::move(size)}, Attrs(attrs), {});
@@ -207,7 +208,8 @@ Type InferTypeResize3D(const Call& call, const BlockBuilder& ctx) {
                                                      /*tgt_layout=*/"NCDHW",    //
                                                      /*tensor_name=*/"data");
 
-  PrimType out_dtype = attrs->out_dtype.is_void() ? data_ty->dtype : PrimType(attrs->out_dtype);
+  PrimType out_dtype =
+      attrs->out_dtype == PrimType::Void()->dtype ? data_ty->dtype : PrimType(attrs->out_dtype);
 
   ffi::Optional<ShapeExpr> data_shape =
       CheckNdimPerLayoutAndGetShape(call, ctx, ffi::GetRef<TensorType>(data_ty), data_layout);

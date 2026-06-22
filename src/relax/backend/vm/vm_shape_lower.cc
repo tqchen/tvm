@@ -646,7 +646,7 @@ class VMShapeLowerMutator
     if (always_check || !IsBaseOf(PrimType(op->dtype), GetType(value))) {
       // check_shape_info(value, ndim, err_ctx)
       Call call(builtin_check_prim_value_info_,
-                {value, DataTypeImm(DataType(op->dtype)), GetErrContext(err_ctx)}, Attrs(),
+                {value, DataTypeImm(op->dtype), GetErrContext(err_ctx)}, Attrs(),
                 {void_ty_});
       builder_->Emit(call, "_");
     }
@@ -683,7 +683,7 @@ class VMShapeLowerMutator
     if (always_check || !IsBaseOf(TensorType(op->dtype, op->ndim), GetType(value))) {
       // check_tensor_info(value, ndim, dtype, err_ctx)
       Call call(builtin_check_tensor_info_,
-                {value, PrimValue::Int64(op->ndim), DataTypeImm(DataType(op->dtype->dtype)),
+                {value, PrimValue::Int64(op->ndim), DataTypeImm(op->dtype->dtype),
                  GetErrContext(err_ctx)},
                 Attrs(), {void_ty_});
       builder_->Emit(call, "_");

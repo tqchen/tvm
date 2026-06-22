@@ -1210,10 +1210,10 @@ Type InferTypeAllocateTensor(const Call& call, const BlockBuilder& ctx) {
       << "must be ShapeExpr, but got " << call->args[0]->GetTypeKey();
   TVM_FFI_ICHECK(call->args[1].as<DataTypeImmNode>())
       << "must be DataTypeImm, but got " << call->args[1]->GetTypeKey();
-  DataType out_dtype;
+  PrimType out_dtype = PrimType::Void();
   if (const auto* dtype_node = call->args[1].as<DataTypeImmNode>()) {
     const DataTypeImm dtype_imm = ffi::GetRef<DataTypeImm>(dtype_node);
-    out_dtype = dtype_imm->value;
+    out_dtype = PrimType(dtype_imm->value);
   }
   int64_t vdevice_index = -1;
   if (auto* prim_value_node = call->args[2].as<PrimValueNode>()) {
@@ -1285,10 +1285,10 @@ TVM_FFI_STATIC_INIT_BLOCK() {
 Type InferTypeMemAllocTensor(const Call& call, const BlockBuilder& ctx) {
   TVM_FFI_ICHECK(GetTypeAs<ShapeTypeNode>(call->args[2]))
       << "must be a Expr of ShapeType, but got " << call->args[1]->GetTypeKey();
-  DataType out_dtype;
+  PrimType out_dtype = PrimType::Void();
   if (const auto* dtype_node = call->args[3].as<DataTypeImmNode>()) {
     const DataTypeImm dtype_imm = ffi::GetRef<DataTypeImm>(dtype_node);
-    out_dtype = dtype_imm->value;
+    out_dtype = PrimType(dtype_imm->value);
   }
 
   if (call->args.size() == 5) {
@@ -1409,10 +1409,10 @@ TVM_FFI_STATIC_INIT_BLOCK() {
 // vm alloc_tensor
 
 Type InferTypeVMAllocTensor(const Call& call, const BlockBuilder& ctx) {
-  DataType out_dtype;
+  PrimType out_dtype = PrimType::Void();
   if (const auto* dtype_node = call->args[3].as<DataTypeImmNode>()) {
     const DataTypeImm dtype_imm = ffi::GetRef<DataTypeImm>(dtype_node);
-    out_dtype = dtype_imm->value;
+    out_dtype = PrimType(dtype_imm->value);
   }
   int64_t vdevice_index = -1;
   if (auto* prim_value_node = call->args[4].as<PrimValueNode>()) {
