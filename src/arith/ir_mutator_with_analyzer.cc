@@ -54,7 +54,7 @@ void AppendFloorDivConstraints(const FloorDivNode* div, int64_t value, CompareKi
   int64_t divisor_value = 0;
   if (!TryGetIntImm(div->b, &divisor_value) || divisor_value <= 0) return;
 
-  DataType dtype = div->a.dtype();
+  PrimType dtype = div->a.ty();
   PrimExpr divisor = MakeConst(dtype, divisor_value);
   PrimExpr k = MakeConst(dtype, value);
   PrimExpr lo = k * divisor;
@@ -117,7 +117,8 @@ void CollectDerivedConstraintFacts(const PrimExpr& condition, std::vector<PrimEx
   }
   if (const auto* call = condition.as<CallNode>()) {
     if (call->op.same_as(tirx::builtin::bitwise_and()) && call->args.size() == 2 &&
-        call->args[0].dtype().is_bool() && call->args[1].dtype().is_bool()) {
+        call->args[0].ty().MatchesElementType(DLDataTypeCode::kDLBool, 8) &&
+        call->args[1].ty().MatchesElementType(DLDataTypeCode::kDLBool, 8)) {
       CollectDerivedConstraintFacts(call->args[0], out);
       CollectDerivedConstraintFacts(call->args[1], out);
       return;

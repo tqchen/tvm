@@ -125,8 +125,9 @@ inline PrimExpr AddressOffset(Var handle, DataType dtype, int offset) {
  */
 inline PrimExpr AddressOffset(Var handle, DataType dtype, PrimExpr offset) {
   if (dtype.lanes() != 1) {
-    offset = offset * MakeConst(offset.dtype(), dtype.lanes());
-    offset = Ramp(offset, MakeConst(offset.dtype(), 1), dtype.lanes());
+    PrimType offset_ty = offset.ty();
+    offset = offset * MakeConst(offset_ty, dtype.lanes());
+    offset = Ramp(offset, MakeConst(offset_ty, 1), dtype.lanes());
   }
 
   ffi::Array<PrimExpr> shape = {offset + 1};

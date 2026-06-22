@@ -776,7 +776,7 @@ void Tensorize(ScheduleState self, const StmtSRef& sref, const TensorIntrin& int
   auto f_update_max_dtype_bits_from_region = [&](const ffi::Array<BufferRegion>& buffer_regions) {
     for (const BufferRegion& buffer_region : buffer_regions) {
       for (const auto& range : buffer_region->region) {
-        index_dtype_bits = std::max(index_dtype_bits, range->min.dtype().bits());
+        index_dtype_bits = std::max(index_dtype_bits, range->min.ty().bits());
       }
     }
   };
@@ -829,12 +829,12 @@ void Tensorize(ScheduleState self, const StmtSRef& sref, const TensorIntrin& int
     new_region.reserve(cur->shape.size());
     for (int i = 0; i < offset; i++) {
       PrimExpr min = indices_base[i];
-      PrimExpr extent = MakeConst(min.dtype(), 1);
+      PrimExpr extent = MakeConst(min.ty(), 1);
       new_region.push_back(Range::FromMinExtent(min, extent));
     }
     for (int i = 0; i < static_cast<int>(old_region.size()); i++) {
       PrimExpr min = indices_base[i + offset];
-      PrimExpr extent = cast(min.dtype(), old_region[i]->extent);
+      PrimExpr extent = cast(min.ty(), old_region[i]->extent);
       new_region.push_back(Range::FromMinExtent(min, extent));
     }
     match_buffer_regions.push_back(MatchBufferRegion(impl, BufferRegion(cur, new_region)));

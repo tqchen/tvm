@@ -391,7 +391,7 @@ class ConstantFolder : public ExprMutator {
         for (size_t i = 0; i < values.size(); i++) {
           PrimExpr val = values[i];
           arr.push_back(val.as<IntImmNode>()->value);
-          is_known &= (val.dtype() == DataType::Int(64));
+          is_known &= val.ty().MatchesElementType(DLDataTypeCode::kDLInt, 64);
         }
         if (is_known) {
           const auto func = tvm::ffi::Function::GetGlobalRequired("relax.run.shape_to_tensor");

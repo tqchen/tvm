@@ -41,12 +41,12 @@ void TensorNode::RegisterReflection() {
 TVM_FFI_STATIC_INIT_BLOCK() { TensorNode::RegisterReflection(); }
 
 IterVar thread_axis(Range dom, std::string tag) {
-  return IterVar(dom, Var(tag, dom.defined() ? dom->extent.dtype() : DataType::Int(32)),
-                 kThreadIndex, tag);
+  return IterVar(dom, Var(tag, dom.defined() ? dom->extent.ty() : PrimType::Int(32)), kThreadIndex,
+                 tag);
 }
 
 IterVar reduce_axis(Range dom, std::string name) {
-  return IterVar(dom, Var(name, dom->extent.dtype()), kCommReduce);
+  return IterVar(dom, Var(name, dom->extent.ty()), kCommReduce);
 }
 
 Var var(std::string name_hint, DataType t) { return Var(name_hint, t); }

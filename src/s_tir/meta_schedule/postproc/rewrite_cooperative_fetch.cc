@@ -93,9 +93,10 @@ size_t GetMaxUsedDtypeBytes(SBlock block) {
 
   tirx::PostOrderVisit(block->body, [&](const ffi::ObjectRef& obj) {
     if (const auto* store = obj.as<tirx::BufferStoreNode>()) {
-      max_bytes = std::max(max_bytes, static_cast<size_t>(store->value.dtype().bytes()));
+      max_bytes =
+          std::max(max_bytes, static_cast<size_t>(DataType(store->value.ty().dtype()).bytes()));
     } else if (const auto* load = obj.as<tirx::BufferLoadNode>()) {
-      max_bytes = std::max(max_bytes, static_cast<size_t>(load->dtype().bytes()));
+      max_bytes = std::max(max_bytes, static_cast<size_t>(DataType(load->ty().dtype()).bytes()));
     } else if (const auto* call = obj.as<tirx::CallNode>()) {
       static const Op& q_multiply_shift_per_axis_op = Op::Get("tirx.q_multiply_shift_per_axis");
       static const Op& q_multiply_shift_op = Op::Get("tirx.q_multiply_shift");
@@ -104,7 +105,7 @@ size_t GetMaxUsedDtypeBytes(SBlock block) {
         max_bytes = std::max<size_t>(max_bytes, 8);
       }
     } else if (const auto* cast = obj.as<tirx::CastNode>()) {
-      max_bytes = std::max<size_t>(max_bytes, cast->dtype().bytes());
+      max_bytes = std::max<size_t>(max_bytes, DataType(cast->ty().dtype()).bytes());
     }
   });
 

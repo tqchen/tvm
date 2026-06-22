@@ -478,8 +478,8 @@ bool HasReshapePattern(const PrimFunc& func) {
       }
 
       if (nontrivial_indices.defined()) {
-        DataType dtype =
-            !block->iter_vars.empty() ? block->iter_vars[0]->var->dtype() : DataType::Int(64);
+        DataType dtype = !block->iter_vars.empty() ? DataType(block->iter_vars[0]->var.ty().dtype())
+                                                   : DataType::Int(64);
         tirx::Var fused_var("fused", dtype);
         ffi::Map<tirx::Var, PrimExpr> inverse_indices_map;
         PrimExpr stride = IntImm(tvm::PrimType(dtype), /*value=*/1);

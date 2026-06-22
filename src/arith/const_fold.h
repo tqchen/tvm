@@ -77,6 +77,11 @@ inline bool IsIndexType(const DataType& type) {
          (type.bits() == 32 || type.bits() == 64);
 }
 
+inline bool IsIndexType(const PrimType& type) {
+  return type.code() == DLDataTypeCode::kDLInt && !type.IsScalableVector() &&
+         !type.IsFixedLengthVector() && (type.bits() == 32 || type.bits() == 64);
+}
+
 /*! \brief Helper to get const folding result repr in int64. */
 inline int64_t GetFoldResultInt64Repr(int64_t x, const DataType& dtype) {
   if (dtype.bits() < 64) {
@@ -84,6 +89,18 @@ inline int64_t GetFoldResultInt64Repr(int64_t x, const DataType& dtype) {
   }
   if (dtype.is_int()) {
     // get sign extended value of integer with specified bits
+    int64_t m = 1LL << (dtype.bits() - 1);
+    x = (x ^ m) - m;
+  }
+  return x;
+}
+
+/*! \brief Helper to get const folding result repr in int64. */
+inline int64_t GetFoldResultInt64Repr(int64_t x, const PrimType& dtype) {
+  if (dtype.bits() < 64) {
+    x &= (1LL << dtype.bits()) - 1;
+  }
+  if (dtype.code() == DLDataTypeCode::kDLInt) {
     int64_t m = 1LL << (dtype.bits() - 1);
     x = (x ^ m) - m;
   }
@@ -121,8 +138,8 @@ inline double GetFoldResultDoubleRepr(float x) {
 #define TVM_INDEX_CONST_PROPAGATION(BODY)                 \
   const IntImmNode* pa = a.as<IntImmNode>();              \
   const IntImmNode* pb = b.as<IntImmNode>();              \
-  const DataType& ta = a.dtype();                         \
-  const DataType& tb = b.dtype();                         \
+  PrimType ta = a.ty();                                   \
+  PrimType tb = b.ty();                                   \
   if (arith::IsIndexType(ta) && arith::IsIndexType(tb)) { \
     BODY;                                                 \
   }
@@ -132,7 +149,7 @@ template <>
 inline ffi::Optional<PrimExpr> TryConstFold<tirx::Add>(PrimExpr a, PrimExpr b) {
   TVM_ARITH_CONST_PROPAGATION({
     PrimType result_ty = a.ty();
-    const DataType& result_dtype = result_ty->dtype;
+    const PrimType& result_dtype = result_ty;
     if (pa && pb) {
       int64_t res = pa->value + pb->value;
       return IntImm(result_ty, GetFoldResultInt64Repr(res, result_dtype));
@@ -156,12 +173,12 @@ inline ffi::Optional<PrimExpr> TryConstFold<tirx::Add>(PrimExpr a, PrimExpr b) {
 template <>
 inline ffi::Optional<PrimExpr> TryConstFold<tirx::Sub>(PrimExpr a, PrimExpr b) {
   TVM_ARITH_CONST_PROPAGATION({
-    TVM_FFI_ICHECK(!((pa && pa->dtype().is_uint() && pa->value == 0U) &&
-                     (pb && pb->dtype().is_uint() && pb->value > 0U)))
+    TVM_FFI_ICHECK(!((pa && pa->ty().code() == DLDataTypeCode::kDLUInt && pa->value == 0U) &&
+                     (pb && pb->ty().code() == DLDataTypeCode::kDLUInt && pb->value > 0U)))
         << "Checked failed. Minuend 's value is 0U and it's dtype is uint "
         << "while Subtrahend's dtype is uint; which will cause a negative uint";
     PrimType result_ty = a.ty();
-    const DataType& result_dtype = result_ty->dtype;
+    const PrimType& result_dtype = result_ty;
     if (pa && pb) {
       int64_t res = pa->value - pb->value;
       return IntImm(result_ty, GetFoldResultInt64Repr(res, result_dtype));
@@ -184,7 +201,7 @@ template <>
 inline ffi::Optional<PrimExpr> TryConstFold<tirx::Mul>(PrimExpr a, PrimExpr b) {
   TVM_ARITH_CONST_PROPAGATION({
     PrimType result_ty = a.ty();
-    const DataType& result_dtype = result_ty->dtype;
+    const PrimType& result_dtype = result_ty;
     if (pa && pb) {
       int64_t res = pa->value * pb->value;
       return IntImm(result_ty, GetFoldResultInt64Repr(res, result_dtype));
@@ -221,7 +238,7 @@ template <>
 inline ffi::Optional<PrimExpr> TryConstFold<tirx::Div>(PrimExpr a, PrimExpr b) {
   TVM_ARITH_CONST_PROPAGATION({
     PrimType result_ty = a.ty();
-    const DataType& result_dtype = result_ty->dtype;
+    const PrimType& result_dtype = result_ty;
     if (pa && pb) {
       // due to division and mod can have different modes
       // NOTE: this will assumes truc div.
@@ -258,7 +275,7 @@ template <>
 inline ffi::Optional<PrimExpr> TryConstFold<tirx::Mod>(PrimExpr a, PrimExpr b) {
   TVM_INDEX_CONST_PROPAGATION({
     PrimType result_ty = a.ty();
-    const DataType& result_dtype = result_ty->dtype;
+    const PrimType& result_dtype = result_ty;
     if (pa && pb) {
       TVM_FFI_ICHECK_NE(pb->value, 0) << "Divide by zero";
       int64_t res = pa->value % pb->value;
@@ -280,7 +297,7 @@ template <>
 inline ffi::Optional<PrimExpr> TryConstFold<tirx::FloorDiv>(PrimExpr a, PrimExpr b) {
   TVM_ARITH_CONST_PROPAGATION({
     PrimType result_ty = a.ty();
-    const DataType& result_dtype = result_ty->dtype;
+    const PrimType& result_dtype = result_ty;
     if (pa && pb) {
       TVM_FFI_ICHECK_NE(pb->value, 0) << "Divide by zero";
       int64_t res = arith::floordiv(pa->value, pb->value);
@@ -317,7 +334,7 @@ template <>
 inline ffi::Optional<PrimExpr> TryConstFold<tirx::FloorMod>(PrimExpr a, PrimExpr b) {
   TVM_INDEX_CONST_PROPAGATION({
     PrimType result_ty = a.ty();
-    const DataType& result_dtype = result_ty->dtype;
+    const PrimType& result_dtype = result_ty;
     if (pa && pb) {
       TVM_FFI_ICHECK_NE(pb->value, 0) << "Divide by zero";
       int64_t res = arith::floormod(pa->value, pb->value);

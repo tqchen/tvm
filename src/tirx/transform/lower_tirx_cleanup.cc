@@ -187,7 +187,7 @@ class LayoutApplier : public arith::IRMutatorWithAnalyzer {
 
   Stmt VisitStmt_(const BufferStoreNode* op) final {
     BufferStore store = StmtExprMutator::VisitStmt_(op).as_or_throw<BufferStore>();
-    bool store_returns_bool = (op->value.dtype() == DataType::Bool());
+    bool store_returns_bool = op->value.ty().IsPredicate();
     store = VisitBufferAccess(store);
 
     // Handle casts from the value's dtype to the dtype of the
@@ -205,7 +205,7 @@ class LayoutApplier : public arith::IRMutatorWithAnalyzer {
   }
 
   PrimExpr VisitExpr_(const BufferLoadNode* op) final {
-    bool load_returns_bool = (op->dtype() == DataType::Bool());
+    bool load_returns_bool = op->ty().IsPredicate();
     BufferLoad load = StmtExprMutator::VisitExpr_(op).as_or_throw<BufferLoad>();
     load = VisitBufferAccess(load);
     // Handle casts from dtype of the backing array to value's dtype.
@@ -214,7 +214,7 @@ class LayoutApplier : public arith::IRMutatorWithAnalyzer {
     if (load_returns_bool) {
       TVM_FFI_ICHECK_EQ(load->buffer->dtype, DataType::Int(8))
           << "Expected int8 backing array for boolean tensor";
-      load.CopyOnWrite()->ty = PrimType::Int(8);
+      load.CopyOnWrite()->BaseExprNode::ty = PrimType::Int(8);
       return tvm::cast(PrimType::Bool(), load);
     } else {
       return std::move(load);

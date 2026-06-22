@@ -72,8 +72,10 @@ TVM_FFI_STATIC_INIT_BLOCK() {
 IntervalSet Intersect(AnalyzerObj* analyzer, IntervalSet a, IntervalSet b) {
   PrimExpr max_value = min(a->max_value, b->max_value);
   PrimExpr min_value = max(a->min_value, b->min_value);
-  if ((max_value.dtype().is_int() || max_value.dtype().is_uint()) &&
-      (min_value.dtype().is_int() || min_value.dtype().is_uint()) &&
+  PrimType max_ty = max_value.ty();
+  PrimType min_ty = min_value.ty();
+  if ((max_ty.code() == DLDataTypeCode::kDLInt || max_ty.code() == DLDataTypeCode::kDLUInt) &&
+      (min_ty.code() == DLDataTypeCode::kDLInt || min_ty.code() == DLDataTypeCode::kDLUInt) &&
       analyzer->CanProve(max_value < min_value)) {
     return IntervalSet::Empty();
   } else {
@@ -121,7 +123,7 @@ TVM_DECLARE_LOGICAL_OP(Not);
  */
 template <typename Op, typename OpNode>
 inline IntervalSet Combine(AnalyzerObj* analyzer, IntervalSet a, IntervalSet b, const OpNode* op) {
-  DataType dtype = op->dtype();
+  PrimType dtype = op->ty();
   if (a->IsSinglePoint() && b->IsSinglePoint()) {
     PrimExpr expr;
     if (auto res = TryConstFold<Op>(a->min_value, b->min_value)) {
@@ -132,8 +134,7 @@ inline IntervalSet Combine(AnalyzerObj* analyzer, IntervalSet a, IntervalSet b, 
     return IntervalSet::SinglePoint(expr);
   }
   if (is_logical_op<Op>::value) {
-    PrimType result_ty(dtype);
-    return IntervalSet(IntImm(result_ty, 0), IntImm(result_ty, 1));
+    return IntervalSet(IntImm(dtype, 0), IntImm(dtype, 1));
   }
   if (a->IsEmpty()) return a;
   if (b->IsEmpty()) return b;
@@ -196,7 +197,7 @@ inline IntervalSet Combine<tirx::Mul>(AnalyzerObj* analyzer, IntervalSet a, Inte
       return IntervalSet(min_value, max_value);
     } else if (a->HasUpperBound() && a->HasLowerBound()) {
       using tirx::Select;
-      PrimExpr sign = b->min_value >= IntImm(PrimType(b->min_value.dtype().element_of()), 0);
+      PrimExpr sign = b->min_value >= IntImm(b->min_value.ty().WithLanes(1), 0);
       PrimExpr e1 = a->min_value * b->min_value;
       PrimExpr e2 = a->max_value * b->min_value;
       return IntervalSet(Select(sign, e1, e2), Select(sign, e2, e1));
@@ -230,7 +231,7 @@ inline IntervalSet Combine<tirx::Div>(AnalyzerObj* analyzer, IntervalSet a, Inte
       return IntervalSet(min_value, max_value);
     } else if (a->HasUpperBound() && a->HasLowerBound()) {
       using tirx::Select;
-      PrimExpr sign = b->min_value >= IntImm(PrimType(b->min_value.dtype().element_of()), 0);
+      PrimExpr sign = b->min_value >= IntImm(b->min_value.ty().WithLanes(1), 0);
       PrimExpr e1 = a->min_value / b->min_value;
       PrimExpr e2 = a->max_value / b->min_value;
       return IntervalSet(Select(sign, e1, e2), Select(sign, e2, e1));
@@ -293,7 +294,7 @@ inline IntervalSet Combine<tirx::FloorDiv>(AnalyzerObj* analyzer, IntervalSet a,
       return IntervalSet(min_value, max_value);
     } else if (a->HasUpperBound() && a->HasLowerBound()) {
       using tirx::Select;
-      PrimExpr sign = b->min_value >= IntImm(PrimType(b->min_value.dtype().element_of()), 0);
+      PrimExpr sign = b->min_value >= IntImm(b->min_value.ty().WithLanes(1), 0);
       PrimExpr e1 = floordiv(a->min_value, b->min_value);
       PrimExpr e2 = floordiv(a->max_value, b->min_value);
       return IntervalSet(Select(sign, e1, e2), Select(sign, e2, e1));
@@ -324,7 +325,7 @@ inline IntervalSet Combine<tirx::FloorMod>(AnalyzerObj* analyzer, IntervalSet a,
         auto qmin = a->HasLowerBound() ? floordiv(a->min_value, divisor) : neg_inf();
         // We can compare +/- inf against each other, but cannot use
         // operator== between the symbolic limits and an integer.
-        bool compatible_dtypes = !(qmin.dtype().is_handle() ^ qmax.dtype().is_handle());
+        bool compatible_dtypes = !(qmin.ty().IsHandle() ^ qmax.ty().IsHandle());
         if (compatible_dtypes && analyzer->CanProve(qmax == qmin)) {
           auto tmax = a->max_value - divisor * qmin;
           auto tmin = a->min_value - divisor * qmin;
@@ -524,7 +525,7 @@ class IntervalSetEvaluator : public ExprFunctor<IntervalSet(const PrimExpr&)> {
     IntervalSet base = Eval(op->base);
     PVar<IntImm> stride;
     if (stride.Match(op->stride)) {
-      DataType t = op->base.dtype();
+      PrimType t = op->base.ty();
       int64_t vstride = stride.Eval()->value;
       if (op->lanes->IsInstance<IntImmNode>()) {
         int lanes = static_cast<int>(op->lanes.as_or_throw<IntImm>()->value);
@@ -532,26 +533,22 @@ class IntervalSetEvaluator : public ExprFunctor<IntervalSet(const PrimExpr&)> {
           PrimExpr stride_expr = MakeConst(t, vstride * (lanes - 1));
           auto add_op = tirx::Add(op->base, stride_expr);
           auto add_node = add_op.as<tirx::AddNode>();
-          return Combine<Add>(analyzer_, base, IntervalSet(IntImm(PrimType(t), 0), stride_expr),
-                              add_node);
+          return Combine<Add>(analyzer_, base, IntervalSet(IntImm(t, 0), stride_expr), add_node);
         } else {
           PrimExpr stride_expr = MakeConst(t, vstride * (lanes - 1));
           auto add_op = tirx::Add(op->base, stride_expr);
           auto add_node = add_op.as<tirx::AddNode>();
-          return Combine<Add>(analyzer_, base, IntervalSet(stride_expr, IntImm(PrimType(t), 0)),
-                              add_node);
+          return Combine<Add>(analyzer_, base, IntervalSet(stride_expr, IntImm(t, 0)), add_node);
         }
       } else { /* Scalable vector */
         if (vstride > 0) {
-          auto add_op = tirx::Add(op->base, IntImm(PrimType(t), 0));
+          auto add_op = tirx::Add(op->base, IntImm(t, 0));
           auto add_node = add_op.as<tirx::AddNode>();
-          return Combine<Add>(analyzer_, base, IntervalSet(IntImm(PrimType(t), 0), pos_inf()),
-                              add_node);
+          return Combine<Add>(analyzer_, base, IntervalSet(IntImm(t, 0), pos_inf()), add_node);
         } else {
-          auto add_op = tirx::Add(op->base, IntImm(PrimType(t), 0));
+          auto add_op = tirx::Add(op->base, IntImm(t, 0));
           auto add_node = add_op.as<tirx::AddNode>();
-          return Combine<Add>(analyzer_, base, IntervalSet(neg_inf(), IntImm(PrimType(t), 0)),
-                              add_node);
+          return Combine<Add>(analyzer_, base, IntervalSet(neg_inf(), IntImm(t, 0)), add_node);
         }
       }
     }
@@ -575,18 +572,19 @@ class IntervalSetEvaluator : public ExprFunctor<IntervalSet(const PrimExpr&)> {
     // short cut for the int set.
     if (value_set->min_value.same_as(value_set->max_value)) {
       if (value_set->IsEmpty()) return value_set;
-      return IntervalSet::SinglePoint(cast(op->dtype(), value_set->min_value));
+      return IntervalSet::SinglePoint(cast(op->ty(), value_set->min_value));
     }
     PrimExpr min_value =
-        value_set->HasLowerBound() ? cast(op->dtype(), value_set->min_value) : neg_inf();
+        value_set->HasLowerBound() ? cast(op->ty(), value_set->min_value) : neg_inf();
     PrimExpr max_value =
-        value_set->HasUpperBound() ? cast(op->dtype(), value_set->max_value) : pos_inf();
+        value_set->HasUpperBound() ? cast(op->ty(), value_set->max_value) : pos_inf();
     return IntervalSet(min_value, max_value);
   }
 
   IntervalSet VisitExpr_(const BufferLoadNode* op) final {
-    if (!(op->dtype().is_int() || op->dtype().is_uint())) {
-      DLOG(WARNING) << "cannot evaluate set BufferLoad which loads from a " << op->dtype()
+    PrimType op_ty = op->ty();
+    if (!(op_ty.code() == DLDataTypeCode::kDLInt || op_ty.code() == DLDataTypeCode::kDLUInt)) {
+      DLOG(WARNING) << "cannot evaluate set BufferLoad which loads from a " << op_ty.dtype()
                     << " buffer";
       return IntervalSet::Everything();
     }
@@ -1054,7 +1052,7 @@ IntSet EvalSet(PrimExpr e, const ffi::Map<Var, IntSet>& dom_map) {
 
 IntSet IntSet::Vector(PrimExpr x) {
   // short cut: simply get single point
-  if (!x.dtype().is_scalable_or_fixed_length_vector()) {
+  if (!x.ty().IsScalableVector() && !x.ty().IsFixedLengthVector()) {
     return IntSet::SinglePoint(x);
   } else {
     // vector case.
@@ -1074,7 +1072,9 @@ IntSet EvalSet(PrimExpr e, const std::unordered_map<const VarNode*, IntSet>& dom
 
 IntSet EvalSet(Range r, const ffi::Map<Var, IntSet>& dom_map) {
   Analyzer ana;
-  if ((r->min->dtype().is_int() || r->min->dtype().is_uint()) && ana->CanProveEqual(r->extent, 1)) {
+  PrimType min_ty = r->min.ty();
+  if ((min_ty.code() == DLDataTypeCode::kDLInt || min_ty.code() == DLDataTypeCode::kDLUInt) &&
+      ana->CanProveEqual(r->extent, 1)) {
     return EvalSet(r->min, dom_map);
   }
   IntervalSetEvaluator m(ana.get(), dom_map);

@@ -499,7 +499,7 @@ class BuiltinLower : public StmtExprMutator {
     prep_seq.emplace_back(TVMStructSet(scope.stack_array, idx, builtin::kDLTensorStrides, strides));
     prep_seq.emplace_back(
         TVMStructSet(scope.stack_array, idx, builtin::kDLTensorNDim, op->args[3]));
-    DataType dtype = op->args[4].dtype();
+    DataType dtype = DataType(op->args[4].ty().dtype());
     prep_seq.emplace_back(TVMStructSet(scope.stack_array, idx, builtin::kDLTensorTypeCode,
                                        IntImm(PrimType::UInt(8), static_cast<int>(dtype.code()))));
     prep_seq.emplace_back(TVMStructSet(scope.stack_array, idx, builtin::kDLTensorTypeBits,
@@ -511,7 +511,7 @@ class BuiltinLower : public StmtExprMutator {
     PrimExpr elem_offset = op->args[5];
     PrimExpr byte_offset;
     if (!is_zero(elem_offset)) {
-      byte_offset = elem_offset * MakeConst(elem_offset.dtype(), data_bytes);
+      byte_offset = elem_offset * MakeConst(elem_offset.ty(), data_bytes);
     } else {
       byte_offset = elem_offset;
     }
@@ -536,8 +536,9 @@ class BuiltinLower : public StmtExprMutator {
           PrimType::Int(32), anylist_set_packed_arg_op,
           {call_pattern->args[0], call_pattern->args[1], args_stack, ConstInt32(stack_offset)})));
     } else {
-      DataType api_dtype = APIType(arg.dtype());
-      if (arg.dtype() != api_dtype) {
+      DataType arg_dtype = DataType(arg.ty().dtype());
+      DataType api_dtype = APIType(arg_dtype);
+      if (arg_dtype != api_dtype) {
         arg = Cast(PrimType(api_dtype), arg);
       }
 
@@ -660,8 +661,8 @@ class BuiltinLower : public StmtExprMutator {
     TVM_FFI_ICHECK(device_id_) << "Unknown device id in current IR";
     Stmt throw_last_error = Evaluate(Call(PrimType::Int(32), builtin::tvm_throw_last_error(), {}));
 
-    DataType dtype =
-        let->var->type_annotation.as<PointerTypeNode>()->element_type.as<PrimTypeNode>()->dtype;
+    DataType dtype(
+        let->var->type_annotation.as<PointerTypeNode>()->element_type.as<PrimTypeNode>()->dtype);
 
     ffi::Array<PrimExpr> args = {
         GetDeviceMethodName("alloc_nd"), device_type_.value(),        device_id_.value(),

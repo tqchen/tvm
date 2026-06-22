@@ -99,7 +99,7 @@ TEST(AnalyzerObjectRef, CloneIsIndependent) {
 TEST(ConstantFold, Broadcast) {
   tvm::ffi::StructuralEqual checker;
   auto i32x4 = tvm::tirx::Broadcast(tvm::IntImm::Int32(10), 4);
-  auto i64x4 = tvm::cast(tvm::PrimType(i32x4.dtype().with_bits(64)), i32x4);
+  auto i64x4 = tvm::cast(i32x4.ty().WithBits(64), i32x4);
   auto i64x4_expected = tvm::tirx::Broadcast(tvm::IntImm::Int64(10), 4);
   ASSERT_TRUE(checker(i64x4, i64x4_expected));
 }
@@ -107,7 +107,7 @@ TEST(ConstantFold, Broadcast) {
 TEST(ConstantFold, Ramp) {
   tvm::ffi::StructuralEqual checker;
   auto i32x4 = tvm::tirx::Ramp(tvm::IntImm::Int32(10), tvm::IntImm::Int32(1), 4);
-  auto i64x4 = tvm::cast(tvm::PrimType(i32x4.dtype().with_bits(64)), i32x4);
+  auto i64x4 = tvm::cast(i32x4.ty().WithBits(64), i32x4);
   auto i64x4_expected = tvm::tirx::Ramp(tvm::IntImm::Int64(10), tvm::IntImm::Int64(1), 4);
   ASSERT_TRUE(checker(i64x4, i64x4_expected));
 

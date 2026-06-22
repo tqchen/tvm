@@ -42,7 +42,7 @@ class MatchBufferLower : public StmtExprMutator {
   explicit MatchBufferLower(const PrimFunc& func) {
     for (const Var& param : func->params) {
       // Mark input var as const variable.
-      if (!param.dtype().is_handle()) var_map_.Set(param, param);
+      if (!param.ty().IsHandle()) var_map_.Set(param, param);
     }
   }
 
@@ -223,7 +223,7 @@ class MatchBufferLower : public StmtExprMutator {
     if (!buffer->strides.empty()) {
       TVM_FFI_ICHECK_EQ(buffer->strides.size(), buffer->shape.size());
       if (source_buffer->strides.empty()) {
-        PrimExpr stride = MakeConst(buffer->strides.back().dtype(), 1);
+        PrimExpr stride = MakeConst(buffer->strides.back().ty(), 1);
         for (size_t i = buffer->shape.size(); i > 0; --i) {
           const PrimExpr& shape = source_buffer->shape[i - 1 + offset];
           Bind(buffer->strides[i - 1], stride, buffer->name + ".strides_" + std::to_string(i - 1));
@@ -246,13 +246,22 @@ class MatchBufferLower : public StmtExprMutator {
   }
 
   void Bind(const PrimExpr& arg, PrimExpr value, const std::string& arg_name = "argument") {
-    if (arg.dtype() != value.dtype()) {
-      if (arg.dtype().is_int() && value.dtype().is_int() &&
-          arg.dtype().lanes() == value.dtype().lanes()) {
-        value = cast(arg.dtype(), value);
+    PrimType arg_ty = arg.ty();
+    PrimType value_ty = value.ty();
+    DataType arg_dtype(arg_ty.dtype());
+    DataType value_dtype(value_ty.dtype());
+    if (arg_dtype != value_dtype) {
+      bool same_lanes = arg_ty.IsScalableVector() == value_ty.IsScalableVector();
+      if (same_lanes) {
+        same_lanes = arg_ty.IsScalableVector() ? arg_ty.VScaleFactor() == value_ty.VScaleFactor()
+                                               : arg_ty.lanes() == value_ty.lanes();
+      }
+      if (arg_ty.code() == DLDataTypeCode::kDLInt && value_ty.code() == DLDataTypeCode::kDLInt &&
+          same_lanes) {
+        value = cast(arg_ty, value);
       } else {
-        TVM_FFI_ICHECK_EQ(arg.dtype(), value.dtype())
-            << "The data type mismatched: " << arg.dtype() << " vs. " << value.dtype();
+        TVM_FFI_ICHECK_EQ(arg_dtype, value_dtype)
+            << "The data type mismatched: " << arg_dtype << " vs. " << value_dtype;
       }
     }
     // Handle recursive case

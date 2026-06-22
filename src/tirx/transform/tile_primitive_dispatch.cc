@@ -605,7 +605,7 @@ class TilePrimitiveDispatcher : public StmtExprMutator {
     // Synthesize the warp_id_in_cta helper (CUDA only) when threadIdx is set.
     if (launch_params_.count("threadIdx.x") > 0) {
       PrimExpr shuffled = ScopeIdResolve::ComputeWarpIdInCta(launch_params_);
-      Var warp_id_in_cta_var("warp_id_in_cta", shuffled.dtype());
+      Var warp_id_in_cta_var("warp_id_in_cta", shuffled.ty());
       scope_binds->push_back({warp_id_in_cta_var, shuffled});
       IterVar warp_iv(Range::FromMinExtent(0, 1), warp_id_in_cta_var, kThreadIndex,
                       "warp_id_in_cta");
@@ -664,7 +664,7 @@ class TilePrimitiveDispatcher : public StmtExprMutator {
         // to map Vars back to their ScopeBinding.
         Var bind_var = def->def_ids[i];
         PrimExpr value = resolved[i];
-        if (bind_var.dtype() != value.dtype()) {
+        if (DataType(bind_var.ty().dtype()) != DataType(value.ty().dtype())) {
           value = Cast(bind_var.ty(), value);
         }
         scope_binds->push_back({bind_var, value});
@@ -1407,7 +1407,7 @@ class TilePrimitiveDispatcher : public StmtExprMutator {
   }
 
   PrimExpr AsBool(PrimExpr pred) const {
-    if (pred.dtype().is_bool()) {
+    if (pred.ty().IsPredicate()) {
       return pred;
     }
     return pred != IntImm(pred.ty(), 0);

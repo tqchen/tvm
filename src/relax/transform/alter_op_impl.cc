@@ -214,8 +214,8 @@ class AlterOpImplMutator : public ExprMutator {
     // Create dynamic shapes for input and output tensors
     ffi::Array<PrimExpr> dyn_padded_shape, dyn_old_shape;
     for (int i = 0; i < t_shape; i++) {
-      tirx::Var var1("p" + std::to_string(i), old_shape[i].dtype());
-      tirx::Var var2("i" + std::to_string(i), old_shape[i].dtype());
+      tirx::Var var1("p" + std::to_string(i), old_shape[i].ty());
+      tirx::Var var2("i" + std::to_string(i), old_shape[i].ty());
       dyn_padded_shape.push_back(var1);
       dyn_old_shape.push_back(var2);
     }

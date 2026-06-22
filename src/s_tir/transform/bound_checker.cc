@@ -175,7 +175,9 @@ class BoundChecker : public StmtExprMutator {
   }
 
   bool IsValidScalar(const PrimExpr& expr) const {
-    return expr.defined() && expr.dtype().is_scalar();
+    if (!expr.defined()) return false;
+    PrimType ty = expr.ty();
+    return !ty.IsFixedLengthVector() && !ty.IsScalableVector();
   }
 
   bool CanInstrument(const ffi::Array<PrimExpr>& indices, const Var& buffer_var) const {

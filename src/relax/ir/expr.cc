@@ -259,7 +259,7 @@ ShapeExpr::ShapeExpr(ffi::Array<PrimExpr> values, Span span) {
     if (value->IsInstance<IntImmNode>()) {
       return tvm::cast(DataType::Int(64), value);
     }
-    TVM_FFI_ICHECK(value.dtype() == DataType::Int(64))
+    TVM_FFI_ICHECK(value.ty().MatchesElementType(DLDataTypeCode::kDLInt, 64))
         << "the value in ShapeType can only have dtype of int64";
     return value;
   });

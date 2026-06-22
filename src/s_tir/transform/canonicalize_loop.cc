@@ -47,7 +47,7 @@ class LoopCanonicalizer : public StmtExprMutator {
       return StmtExprMutator::VisitStmt_(op);
     }
     const auto* loop_var = op->loop_var.get();
-    PrimExpr step = op->step.value_or(MakeConst(loop_var->dtype(), 1));
+    PrimExpr step = op->step.value_or(MakeConst(loop_var->ty(), 1));
 
     // report warning for negative step, since it would be a forever loop
     if (!analyzer_->CanProveGreaterEqual(step, 1)) {
