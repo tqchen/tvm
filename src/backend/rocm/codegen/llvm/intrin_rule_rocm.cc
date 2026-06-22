@@ -50,7 +50,7 @@ inline PrimExpr DispatchPureExternOCML(const PrimExpr& e) {
   TVM_FFI_ICHECK_EQ(name.substr(0, 5), "tirx.");
 
   std::ostringstream intrinsic_name;
-  intrinsic_name << "__ocml_" << name.substr(5) << "_f" << call->dtype.bits();
+  intrinsic_name << "__ocml_" << name.substr(5) << "_f" << call->ty().bits();
 
   ffi::Array<PrimExpr> new_args = {StringImm(intrinsic_name.str())};
   for (auto arg : call->args) {
@@ -66,7 +66,8 @@ inline PrimExpr DispatchShuffle(const PrimExpr& e) {
   TVM_FFI_ICHECK(call != nullptr);
   TVM_FFI_ICHECK_EQ(call->args.size(), 5);  // mask, value, warp_id, width, warp_size
   PrimExpr var = call->args[1];
-  TVM_FFI_ICHECK_EQ(var.dtype().bits(), 32);
+  PrimType var_ty = var.ty();
+  TVM_FFI_ICHECK_EQ(var_ty.bits(), 32);
 
   // get own lane in self (__lane_id)
   PrimExpr minus_one = IntImm::Int32(-1);
@@ -94,12 +95,12 @@ inline PrimExpr DispatchShuffle(const PrimExpr& e) {
     index = Select((self & (width - 1)) + delta >= width, self, index);
   }
   // reinterprete var as int32
-  bool is_int32 = var.dtype().is_int() && var.dtype().bits() == 32;
+  bool is_int32 = var_ty.MatchesElementType(DLDataTypeCode::kDLInt, 32);
   PrimExpr source = is_int32 ? var : reinterpret(DataType::Int(32), var);
   PrimExpr res = Call(i32_ty, builtin::call_pure_extern(),
                       {StringImm("llvm.amdgcn.ds.bpermute"), index << 2, source});
   if (!is_int32) {
-    res = reinterpret(var.dtype(), res);
+    res = reinterpret(DataType(var_ty.dtype()), res);
   }
   return res;
 }

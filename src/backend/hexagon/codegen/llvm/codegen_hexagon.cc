@@ -149,8 +149,9 @@ void CodeGenHexagon::InitTarget() {
 llvm::Value* CodeGenHexagon::CreateCallExternQHL(Type ret_type, ffi::String global_symbol,
                                                  const ffi::Array<PrimExpr>& args,
                                                  bool skip_first_arg) {
-  int num_lanes = args[1].dtype().lanes();
-  int vector_length = native_vector_bits_ / args[1].dtype().bits();
+  PrimType arg_ty = args[1].ty();
+  int num_lanes = arg_ty.lanes();
+  int vector_length = native_vector_bits_ / arg_ty.bits();
   num_lanes = ((num_lanes + vector_length - 1) / vector_length) * vector_length;
   std::vector<llvm::Value*> vect_split;
   for (int i = 0; i < num_lanes / vector_length; ++i) {
@@ -181,8 +182,9 @@ bool CodeGenHexagon::IsQHLFunction(const std::string& func) {
 llvm::Value* CodeGenHexagon::CreateCallExtern(Type ret_type, ffi::String global_symbol,
                                               const ffi::Array<PrimExpr>& args,
                                               bool skip_first_arg) {
-  int num_lanes = args[1].dtype().lanes();
-  int vector_length = native_vector_bits_ / args[1].dtype().bits();
+  PrimType arg_ty = args[1].ty();
+  int num_lanes = arg_ty.lanes();
+  int vector_length = native_vector_bits_ / arg_ty.bits();
   if (IsQHLFunction(global_symbol) && (num_lanes > vector_length))
     return CreateCallExternQHL(ret_type, global_symbol, args, skip_first_arg);
   return CodeGenCPU::CreateCallExtern(ret_type, global_symbol, args, skip_first_arg);
@@ -192,7 +194,7 @@ llvm::Value* CodeGenHexagon::VisitExpr_(const BufferLoadNode* op) {
   if (!op->buffer.same_as(op->buffer->data)) {
     // Check if we can generate a vector lookup.
     if (!op->indices[0].as<RampNode>()) {
-      if (auto* vlut = VectorLookupLoad(op->buffer, op->dtype, op->indices)) {
+      if (auto* vlut = VectorLookupLoad(op->buffer, DataType(op->ty().dtype()), op->indices)) {
         return vlut;
       }
     }
@@ -320,7 +322,8 @@ llvm::Value* CodeGenHexagon::Intrinsic(llvm::Intrinsic::ID IntID,
 llvm::Value* CodeGenHexagon::VectorLookupLoad(Buffer buffer, DataType buffer_type,
                                               ffi::Array<PrimExpr> indices) {
   PrimExpr index = indices[0];
-  if (!index.dtype().is_fixed_length_vector()) {
+  PrimType index_ty = index.ty();
+  if (!index_ty.IsFixedLengthVector()) {
     return nullptr;
   }
 
@@ -333,7 +336,7 @@ llvm::Value* CodeGenHexagon::VectorLookupLoad(Buffer buffer, DataType buffer_typ
   auto native_vector_bytes = native_vector_bits_ / 8;
 
   // Indexes
-  llvm::Value* trunc = MakeValue(Cast(PrimType(index.dtype().with_bits(8)), index));
+  llvm::Value* trunc = MakeValue(Cast(index_ty.WithBits(8), index));
   llvm::Value* index_pad = CreateVecPad(trunc, native_vector_bytes);
 
   // Values
