@@ -1527,6 +1527,7 @@ inline Tensor gather(const Tensor& data, int axis, const Tensor& indices,
     size_t indices_dim_i = static_cast<size_t>(GetConstInt(indices->shape[axis]));
     TVM_FFI_ICHECK_GE(indices_dim_i, 1);
   }
+  // Index tensors are validated by integer element kind; vector lane encoding is irrelevant here.
   DataType indices_dtype(indices->dtype->dtype);
   TVM_FFI_ICHECK(indices_dtype.is_int() || indices_dtype.is_uint());
 
@@ -1595,11 +1596,13 @@ inline Tensor gather_nd(const Tensor& data, const Tensor& indices, int batch_dim
         }
         for (size_t i = 0; i < indices_dim0; ++i) {
           indices_position.Set(0, IntImm::Int32(i));
+          // Index tensors are validated by integer element kind; vector lane encoding is
+          // irrelevant for choosing whether an index cast is needed.
           DataType indices_dtype(indices->dtype->dtype);
           if (indices_dtype.is_int() || indices_dtype.is_uint()) {
             real_indices.push_back(indices(indices_position));
           } else {
-            real_indices.push_back(tvm::cast(tvm::DataType::Int(32), indices(indices_position)));
+            real_indices.push_back(tvm::cast(tvm::PrimType::Int(32), indices(indices_position)));
           }
         }
         if (real_indices.size() == ndim_d) {
@@ -1761,7 +1764,7 @@ inline Tensor arange(const PrimExpr& start, const PrimExpr& stop, const PrimExpr
   } else {
     // fallback path for non-integer or step of unknown sign
     num_elem = tvm::cast(DefaultIndexType(),
-                         tvm::ceil(tvm::cast(tvm::DataType::Float(32), stop - start) / step));
+                         tvm::ceil(tvm::cast(tvm::PrimType::Float(32), stop - start) / step));
   }
   num_elem = analyzer->Simplify(num_elem);
 
@@ -2115,6 +2118,7 @@ inline Tensor sparse_to_dense(const Tensor& sparse_indices,
                               const PrimExpr& default_value,
                               const std::string name = "T_sparse_to_dense",
                               const std::string tag = kInjective) {
+  // Sparse indices are validated by signed integer element kind; lane encoding is irrelevant here.
   TVM_FFI_ICHECK(DataType(sparse_indices->dtype->dtype).is_int())
       << "sparse_indices only accepts integer values";
   TVM_FFI_ICHECK_LE(sparse_indices->shape.size(), 3)
