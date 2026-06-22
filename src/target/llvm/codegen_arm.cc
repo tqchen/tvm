@@ -66,12 +66,13 @@ llvm::Value* CodeGenARM::CreateIntrinsic(const CallNode* op) {
 PrimExpr CodeGenARM::ARMPopcount(const CallNode* call) {
   using namespace tirx;
   const PrimExpr& e = call->args[1];
+  PrimType call_ty = call->ty();
   llvm::Intrinsic::ID ctpop_id = llvm::Intrinsic::ctpop;
   llvm::Intrinsic::ID vpaddlu_id = llvm::Intrinsic::arm_neon_vpaddlu;
 
   // Fallback to default llvm lowering rule if input type not a full vector or half vector length
-  int total_size = call->dtype.bits() * call->dtype.lanes();
-  if (!call->dtype.is_fixed_length_vector() || call->dtype.bits() == 8 ||
+  int total_size = call_ty.bits() * call_ty.lanes();
+  if (!call_ty.IsFixedLengthVector() || call_ty.bits() == 8 ||
       (total_size != 128 && total_size != 64)) {
     ffi::Array<PrimExpr> vcnt_args;
     vcnt_args.push_back(IntImm(PrimType::UInt(32), ctpop_id));
@@ -85,7 +86,8 @@ PrimExpr CodeGenARM::ARMPopcount(const CallNode* call) {
   // to return back to original input type
 
   // Dvisions are always divisible (number of bits = 64 or 128)
-  DataType uint8_type = DataType(e.dtype().code(), 8, e.dtype().bits() * e.dtype().lanes() / 8);
+  DataType e_dtype(e.ty().dtype());
+  DataType uint8_type = DataType(e_dtype.code(), 8, e_dtype.bits() * e_dtype.lanes() / 8);
   DataType uint16_type =
       DataType(uint8_type.code(), 16, uint8_type.bits() * uint8_type.lanes() / 16);
   DataType uint32_type =
@@ -106,7 +108,7 @@ PrimExpr CodeGenARM::ARMPopcount(const CallNode* call) {
   vcnt16_args.push_back(IntImm(PrimType::UInt(32), vpaddlu_id));
   vcnt16_args.push_back(vcnt8);
   PrimExpr vcnt16 = tirx::Call(uint16_type, builtin_call_llvm_pure_intrin_, vcnt16_args);
-  if (call->dtype.bits() == 16) {
+  if (call_ty.bits() == 16) {
     return vcnt16;
   }
 
@@ -115,7 +117,7 @@ PrimExpr CodeGenARM::ARMPopcount(const CallNode* call) {
   vcnt32_args.push_back(IntImm(PrimType::UInt(32), vpaddlu_id));
   vcnt32_args.push_back(vcnt16);
   PrimExpr vcnt32 = tirx::Call(uint32_type, builtin_call_llvm_pure_intrin_, vcnt32_args);
-  if (call->dtype.bits() == 32) {
+  if (call_ty.bits() == 32) {
     return vcnt32;
   }
 
