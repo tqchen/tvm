@@ -71,6 +71,7 @@
 #include <tvm/tirx/expr.h>
 
 #include <cmath>
+#include <optional>
 #include <tuple>
 
 #include "const_fold.h"
@@ -199,7 +200,10 @@ class PVar : public Pattern<PVar<T>> {
   // Store PVars by reference in the expression.
   using Nested = const PVar<T>&;
 
-  void InitMatch_() const { filled_ = false; }
+  void InitMatch_() const {
+    value_.reset();
+    filled_ = false;
+  }
 
   bool Match_(const T& value) const {
     if (!filled_) {
@@ -207,7 +211,7 @@ class PVar : public Pattern<PVar<T>> {
       filled_ = true;
       return true;
     } else {
-      return PEqualChecker<T>()(value_, value);
+      return PEqualChecker<T>()(value_.value(), value);
     }
   }
 
@@ -223,14 +227,14 @@ class PVar : public Pattern<PVar<T>> {
 
   T Eval() const {
     TVM_FFI_ICHECK(filled_);
-    return value_;
+    return value_.value();
   }
 
-  T EvalOr(const T& default_value) const { return filled_ ? value_ : default_value; }
+  T EvalOr(const T& default_value) const { return filled_ ? value_.value() : default_value; }
 
  protected:
   /*! \brief The matched value */
-  mutable T value_;
+  mutable std::optional<T> value_;
   /*! \brief whether the variable has been filled */
   mutable bool filled_{false};
 };
@@ -282,7 +286,7 @@ class PVarWithDataType : public PVarWithCheck<PVarWithDataType<T, DType>, T> {
  public:
   explicit PVarWithDataType(const DType& dtype) : dtype_(dtype) {}
 
-  bool Match_(const T& value) const { return dtype_.Match_(value.ty()->dtype); }
+  bool Match_(const T& value) const { return dtype_.Match_(value.ty()); }
 
  protected:
   typename DType::Nested dtype_;
@@ -291,15 +295,15 @@ class PVarWithDataType : public PVarWithCheck<PVarWithDataType<T, DType>, T> {
 /*!
  * \brief Pattern variable container for data type with lanes.
  */
-class PVecDataType : public PVarWithCheck<PVecDataType, DLDataType> {
+class PVecDataType : public PVarWithCheck<PVecDataType, PrimType> {
  public:
   /*! \brief construct vector dtype placeholder with element type check */
-  explicit PVecDataType(DLDataType elem_dtype) : elem_dtype_(elem_dtype) {}
+  explicit PVecDataType(PrimType elem_dtype) : elem_dtype_(elem_dtype) {}
 
-  bool Match_(DLDataType dtype) const { return dtype.code == elem_dtype_.code; }
+  bool Match_(PrimType dtype) const { return dtype.code() == elem_dtype_.code(); }
 
  protected:
-  DLDataType elem_dtype_;
+  PrimType elem_dtype_;
 };
 
 /*!
@@ -548,7 +552,7 @@ class PCastExpr : public Pattern<PCastExpr<DType, TA>> {
     }
   }
 
-  PrimExpr Eval() const { return tirx::Cast(PrimType(dtype_.Eval()), value_.Eval()); }
+  PrimExpr Eval() const { return tirx::Cast(dtype_.Eval(), value_.Eval()); }
 
  private:
   typename DType::Nested dtype_;

@@ -39,8 +39,8 @@ TEST(Expr, Basic) {
 TEST(Expr, VarTypeAnnotation) {
   using namespace tvm;
   using namespace tvm::tirx;
-  Var x("x", DataType::Float(32));
-  Var y("y", PrimType(DataType::Float(32)));
+  Var x("x", PrimType::Float(32));
+  Var y("y", PrimType::Float(32));
   tvm::ffi::StructuralEqual checker;
   TVM_FFI_ICHECK(checker(x.ty(), y.ty()));
   TVM_FFI_ICHECK(checker(x->type_annotation, y->type_annotation));
