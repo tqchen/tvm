@@ -65,6 +65,23 @@ class PrimType(Type):
         dtype = self.dtype
         return hash((dtype.type_code, dtype.bits, dtype.lanes))
 
+    def __str__(self):
+        return str(self.dtype)
+
+    def matches_code(self, *codes) -> bool:
+        """Return whether this type has any of the given DLPack dtype codes."""
+        type_code = self.dtype.type_code
+        return any(type_code == int(code) for code in codes)
+
+    def matches_element_type(self, code, bits: int) -> bool:
+        """Return whether this type has the given scalar element code and bits."""
+        dtype = self.dtype
+        return dtype.type_code == int(code) and dtype.bits == bits
+
+    def is_scalar(self) -> bool:
+        """Return whether this type has exactly one fixed lane."""
+        return self.dtype.lanes == 1
+
 
 @tvm_ffi.register_object("ir.PointerType")
 class PointerType(Type):

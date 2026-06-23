@@ -34,7 +34,7 @@ import tvm.ir._ffi_api
 from tvm import ir
 from tvm.ir import Op, PrimExpr
 from tvm.ir.base import Span
-from tvm.runtime import DataType, DataTypeCode, Object, ObjectConvertible, Scriptable, const
+from tvm.runtime import DataTypeCode, Object, ObjectConvertible, Scriptable, const
 
 from . import _ffi_api
 from . import generic as _generic
@@ -57,10 +57,7 @@ def _dtype_is_int(value):
     if isinstance(value, int):
         return True
     if isinstance(value, ExprOp):
-        dtype = value.dtype  # type: ignore
-        if isinstance(dtype, ir.PrimType):
-            dtype = dtype.dtype
-        return DataType(dtype).type_code == DataTypeCode.INT
+        return value.expr_ty().matches_code(DataTypeCode.INT)
     return False
 
 
@@ -68,10 +65,7 @@ def _dtype_is_float(value):
     if isinstance(value, float):
         return True
     if isinstance(value, ExprOp):
-        dtype = value.dtype  # type: ignore
-        if isinstance(dtype, ir.PrimType):
-            dtype = dtype.dtype
-        return DataType(dtype).type_code == DataTypeCode.FLOAT
+        return value.expr_ty().matches_code(DataTypeCode.FLOAT)
     return False
 
 
@@ -79,6 +73,13 @@ class ExprOp:
     """Operator overloading for Expr like expressions."""
 
     # TODO(tkonolige): use inspect to add source information to these objects
+
+    def expr_ty(self) -> ir.PrimType:
+        """Return the compile-time primitive type for expression operators."""
+        ty = getattr(self, "ty", None)
+        if isinstance(ty, ir.PrimType):
+            return ty
+        raise TypeError(f"Cannot determine PrimType for {type(self).__name__}")
 
     def __add__(self, other: PrimExpr) -> PrimExpr:
         return _generic.add(self, other)
@@ -269,6 +270,10 @@ class EqualOp(ObjectConvertible, ExprOp):
         """Convert object."""
         return _ffi_api._OpEQ(self.a, self.b, self.span)  # type: ignore
 
+    def expr_ty(self) -> ir.PrimType:
+        """Compile-time type of the equality result."""
+        return ir.PrimType("bool")
+
     def __repr__(self) -> str:
         return f"EqualOp({self.a!r}, {self.b!r})"
 
@@ -308,6 +313,10 @@ class NotEqualOp(ObjectConvertible, ExprOp):
     def asobject(self) -> PrimExpr:
         """Convert object."""
         return _ffi_api._OpNE(self.a, self.b, self.span)  # type: ignore
+
+    def expr_ty(self) -> ir.PrimType:
+        """Compile-time type of the inequality result."""
+        return ir.PrimType("bool")
 
     def __repr__(self) -> str:
         return f"NotEqualOp({self.a!r}, {self.b!r})"
@@ -482,6 +491,10 @@ class IterVar(ExprOp, Object, Scriptable):
             thread_tag,
             span,  # type: ignore
         )
+
+    def expr_ty(self) -> ir.PrimType:
+        """Compile-time type of the iteration variable."""
+        return self.var.ty
 
 
 @tvm_ffi.register_object("tirx.CommReducer")
@@ -1343,7 +1356,7 @@ class Call(PrimExprWithOp):
         if isinstance(attrs, dict):
             attrs = ir.make_node("ir.DictAttrs", **attrs)
         if not isinstance(dtype, ir.PrimType):
-            dtype = DataType(dtype)
+            dtype = ir.PrimType(dtype)
         if attrs:
             self.__init_handle_by_constructor__(  # type: ignore
                 _ffi_api.CallWithAttrs, dtype, op, args, attrs, span

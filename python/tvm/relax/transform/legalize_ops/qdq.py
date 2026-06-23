@@ -19,14 +19,11 @@
 
 import tvm
 from tvm import te, tirx
+from tvm.runtime import DataTypeCode
 
 from ...block_builder import BlockBuilder
 from ...expr import Call, Expr
 from .common import _try_convert_to_scalar_const, register_legalize
-
-
-def _dtype_str(dtype) -> str:
-    return str(dtype.dtype) if hasattr(dtype, "dtype") else str(dtype)
 
 
 def clip_cast(val, dtype):
@@ -144,7 +141,11 @@ def _dequantize(bb: BlockBuilder, call: Call) -> Expr:
                 zp_value = zp[(0,) * len(zp.shape)]
             else:
                 zp_value = zp[indices[axis]]
-            dtype = "float32" if "float" in _dtype_str(data.dtype) else "int32"
+            dtype = (
+                "float32"
+                if data.dtype.matches_code(DataTypeCode.FLOAT, DataTypeCode.BFLOAT)
+                else "int32"
+            )
             sub = te.subtract(data[indices].astype(dtype), zp_value)
             out = te.multiply(sub, scale_value.astype("float32"))
             if out_dtype == "float32":
