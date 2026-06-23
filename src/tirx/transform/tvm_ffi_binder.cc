@@ -69,10 +69,10 @@ TVMFFIABIBuilder::TVMFFIABIBuilder(const ffi::String& func_name, const ffi::Arra
         shape_os << buf->shape[j];
         os << shape_os.str();
       }
-      os << "], " << buf->dtype << ")";
+      os << "], " << buf->dtype->dtype << ")";
       param_names_[static_cast<int>(i)] = buf_name;
     } else {
-      os << param->name_hint << ": " << param.ty();
+      os << param->name_hint << ": " << param.ty()->dtype;
       param_names_[static_cast<int>(i)] = param->name_hint;
     }
   }
@@ -658,12 +658,15 @@ void TVMFFIABIBuilder::DecodeParamDLTensor(const Buffer& buffer, const PrimExpr&
 
   // ── Section: dtype ───────────────────────────────────────────
   {
-    PrimExpr cond = (TVMStructGet(PrimType::UInt(8), handle, 0, builtin::kDLTensorTypeCode) ==
-                         IntImm(PrimType::UInt(8), buffer->dtype.code()) &&
-                     TVMStructGet(PrimType::UInt(8), handle, 0, builtin::kDLTensorTypeBits) ==
-                         IntImm(PrimType::UInt(8), buffer->dtype.bits()) &&
-                     TVMStructGet(PrimType::UInt(16), handle, 0, builtin::kDLTensorTypeLanes) ==
-                         IntImm(PrimType::UInt(16), buffer->dtype.lanes()));
+    PrimExpr code_matches = TVMStructGet(PrimType::UInt(8), handle, 0, builtin::kDLTensorTypeCode) ==
+                            IntImm(PrimType::UInt(8), buffer->dtype.code());
+    PrimExpr bits_matches = TVMStructGet(PrimType::UInt(8), handle, 0, builtin::kDLTensorTypeBits) ==
+                            IntImm(PrimType::UInt(8), buffer->dtype.bits());
+    PrimExpr lanes_matches =
+        TVMStructGet(PrimType::UInt(16), handle, 0, builtin::kDLTensorTypeLanes) ==
+        IntImm(PrimType::UInt(16), buffer->dtype.lanes());
+    PrimExpr cond = cast(PrimType::Bool(), code_matches) && cast(PrimType::Bool(), bits_matches) &&
+                    cast(PrimType::Bool(), lanes_matches);
     if (!(buffer->dtype == PrimType::Int(1) || buffer->dtype == PrimType::Int(4) ||
           buffer->dtype == PrimType::UInt(4))) {
       std::ostringstream dtype_os;
@@ -769,8 +772,10 @@ void TVMFFIABIBuilder::DecodeParamDLTensor(const Buffer& buffer, const PrimExpr&
       }();
       // Data pointer null and alignment checks go to asserts_ because alloc_size
       // references buffer->shape which may contain forward-referenced symbolic vars.
+      PrimExpr empty_alloc = cast(PrimType::Bool(), alloc_size == 0);
+      PrimExpr data_non_null = !Call(PrimType::Bool(), builtin::isnullptr(), {vptr});
       asserts_.emplace_back(AssertStmt(
-          alloc_size == 0 || !Call(PrimType::Bool(), builtin::isnullptr(), {vptr}),
+          empty_alloc || data_non_null,
           StringImm("ValueError"),
           ffi::Array<StringImm>({StringImm(buf_name),
                                  StringImm(" data pointer is NULL on argument #"),
