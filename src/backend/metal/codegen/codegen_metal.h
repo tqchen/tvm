@@ -46,10 +46,11 @@ class CodeGenMetal final : public CodeGenC {
   void PrintType(DLDataType t, std::ostream& os) final;                      // NOLINT(*)
   void BindThreadIndex(const IterVar& iv) final;                             // NOLINT(*)
   // print load of single element
-  void PrintVecElemLoad(const std::string& vec, DataType t, int i,
+  void PrintVecElemLoad(const std::string& vec, DLDataType t, int i,
                         std::ostream& os) final;  // NOLINT(*)
   // print store of single element.
-  void PrintVecElemStore(const std::string& vec, DataType t, int i, const std::string& value) final;
+  void PrintVecElemStore(const std::string& vec, DLDataType t, int i,
+                         const std::string& value) final;
   // overload visitor
   void VisitStmt_(const AllocBufferNode* op) final;                  // NOLINT(*)
   void VisitExpr_(const SelectNode* op, std::ostream& os) final;     // NOLINT(*)

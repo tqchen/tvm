@@ -59,8 +59,9 @@ class CodeGenWebGPU final : public CodeGenC {
   void PrintSSAAssign(const std::string& target, const std::string& src, PrimType type) final;
 
   // overload printing vector element load/store
-  void PrintVecElemLoad(const std::string& vec, DataType t, int i, std::ostream& os) final;
-  void PrintVecElemStore(const std::string& vec, DataType t, int i, const std::string& value) final;
+  void PrintVecElemLoad(const std::string& vec, DLDataType t, int i, std::ostream& os) final;
+  void PrintVecElemStore(const std::string& vec, DLDataType t, int i,
+                         const std::string& value) final;
 
   // overload visitor
   void VisitExpr_(const BroadcastNode* op, std::ostream& os) final;   // NOLINT(*)
@@ -90,7 +91,7 @@ class CodeGenWebGPU final : public CodeGenC {
   /*!
    * \brief Storage type of bool values.
    */
-  DataType boolean_storage_type_{DataType::Int(8)};
+  PrimType boolean_storage_type_{PrimType::Int(8)};
 
   // whether enable fp16
   bool enable_fp16_{false};
