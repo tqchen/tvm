@@ -426,7 +426,7 @@ TVM_FFI_STATIC_INIT_BLOCK() {
     TVM_FFI_ICHECK_GE(args.size(), 4) << "init_cuTensorMap expects at least 4 arguments";
     size_t arg_cnt = 0;
     CUtensorMap* tensor_map = static_cast<CUtensorMap*>(args[arg_cnt++].cast<void*>());
-    runtime::DataType tensor_dtype = args[arg_cnt++].cast<runtime::DataType>();
+    DLDataType tensor_dtype = args[arg_cnt++].cast<DLDataType>();
     int32_t raw_tensor_rank = args[arg_cnt++].cast<int32_t>();
     TVM_FFI_ICHECK_GT(raw_tensor_rank, 0) << "tensorRank must be non-zero";
     TVM_FFI_ICHECK_LE(raw_tensor_rank, 5)
@@ -482,7 +482,7 @@ TVM_FFI_STATIC_INIT_BLOCK() {
         << "Expect tensor_dtype to have lanes=1, but get " << tensor_dtype;
     CUtensorMapDataType cu_dtype;
     switch (tensor_dtype.code()) {
-      case DataType::kInt:
+      case kDLInt:
         // int
         switch (tensor_dtype.bits()) {
           case 8:
@@ -499,7 +499,7 @@ TVM_FFI_STATIC_INIT_BLOCK() {
                 << "Unsupported data type " << ffi::DLDataTypeToString(tensor_dtype);
         }
         break;
-      case DataType::kUInt:
+      case kDLUInt:
         // unsigned int
         switch (tensor_dtype.bits()) {
           case 8:
@@ -519,7 +519,7 @@ TVM_FFI_STATIC_INIT_BLOCK() {
                 << "Unsupported data type " << ffi::DLDataTypeToString(tensor_dtype);
         }
         break;
-      case DataType::kFloat:
+      case kDLFloat:
         // float
         switch (tensor_dtype.bits()) {
           case 16:
@@ -536,7 +536,7 @@ TVM_FFI_STATIC_INIT_BLOCK() {
                 << "Unsupported data type " << ffi::DLDataTypeToString(tensor_dtype);
         }
         break;
-      case DataType::kBFloat:
+      case kDLBfloat:
         // bfloat
         switch (tensor_dtype.bits()) {
           case 16:
@@ -547,15 +547,15 @@ TVM_FFI_STATIC_INIT_BLOCK() {
                 << "Unsupported data type " << ffi::DLDataTypeToString(tensor_dtype);
         }
         break;
-      case DataType::kFloat8_e4m3fn:
+      case kDLFloat8_e4m3fn:
         // NV float8 e4m3
         cu_dtype = CU_TENSOR_MAP_DATA_TYPE_UINT8;
         break;
-      case DataType::kFloat8_e5m2:
+      case kDLFloat8_e5m2:
         // NV float8 e5m2
         cu_dtype = CU_TENSOR_MAP_DATA_TYPE_UINT8;
         break;
-      case DataType::kFloat4_e2m1fn:
+      case kDLFloat4_e2m1fn:
 #if (CUDA_VERSION >= 12080)
         // Packed FP4 in GMEM, unpacked into SMEM/TMEM-facing tiles.
         cu_dtype = CU_TENSOR_MAP_DATA_TYPE_16U4_ALIGN16B;

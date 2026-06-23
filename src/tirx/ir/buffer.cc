@@ -428,7 +428,7 @@ Buffer Buffer::GetFlattenedBuffer() const {
 
 PrimExpr Buffer::vload(ffi::Array<PrimExpr> begin, PrimType value_dtype,
                        ffi::Optional<PrimExpr> predicate) const {
-  // specially handle bool, stored as DataType::Int(8)
+  // Specially handle bool, stored as int8 in buffers.
   const BufferNode* n = operator->();
   TVM_FFI_ICHECK(n != nullptr);
   PrimType buffer_dtype(n->dtype);
@@ -453,7 +453,7 @@ PrimExpr Buffer::vload(ffi::Array<PrimExpr> begin, PrimType value_dtype,
 
 Stmt Buffer::vstore(ffi::Array<PrimExpr> begin, PrimExpr value,
                     ffi::Optional<PrimExpr> predicate) const {
-  // specially handle bool, stored as DataType::Int(8)
+  // Specially handle bool, stored as int8 in buffers.
   const BufferNode* n = operator->();
   TVM_FFI_ICHECK(n != nullptr);
   PrimType value_dtype = value.ty();

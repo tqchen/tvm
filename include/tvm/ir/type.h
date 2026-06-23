@@ -26,17 +26,18 @@
  *
  * This file contains types that are common across IR variants.
  *
- * ## Relation between Type and runtime::DataType
+ * ## Relation between Type and DLPack dtype
  *
- * PrimExpr stores a PrimType in its `ty` field. runtime::DataType(dtype)
- * provides coarse grained type information during compile time and runtime.
- * It is eagerly built in low-level expression construction and can be used
- * for quick type checking in the low-level IR. For example, when an Expr's
- * dtype is int32, we know for sure that its PrimType is also int32.
+ * PrimExpr stores a PrimType in its `ty` field, backed by a DLPack
+ * `DLDataType`. This provides coarse grained scalar/vector element type
+ * information during compile time and runtime. It is eagerly built in
+ * low-level expression construction and can be used for quick type checking
+ * in the low-level IR. For example, when an Expr's dtype is int32, we know
+ * for sure that its PrimType is also int32.
  *
  * On the other hand, Type provides more fine grained information.
- * For example, a low level expression can have DataType::Handle() as
- * its runtime dtype while a node-specific type annotation records a
+ * For example, a low level expression can have a handle dtype while a
+ * node-specific type annotation records a
  * PointerType to a float32 element.
  *
  * The unified Type serves as a common bridge across IR dialects.

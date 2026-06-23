@@ -65,7 +65,7 @@ namespace tvm {
  * \param expr The input parameter.
  * \return The result type.
  *
- * \sa tvm/ir/type.h for discussion about the relation between Type and runtime::DataType.
+ * \sa tvm/ir/type.h for discussion about the relation between Type and DLPack dtype.
  */
 TVM_DLL Type GetType(const PrimExpr& expr);
 
@@ -74,7 +74,7 @@ TVM_DLL Type GetType(const PrimExpr& expr);
  * \param dtype The runtime dtype.
  * \return The result type
  *
- * \sa tvm/ir/type.h for discussion about the relation between Type and runtime::DataType.
+ * \sa tvm/ir/type.h for discussion about the relation between Type and DLPack dtype.
  */
 TVM_DLL Type GetTypeFromRuntimeDataType(DLDataType dtype);
 
@@ -84,7 +84,7 @@ TVM_DLL Type GetTypeFromRuntimeDataType(DLDataType dtype);
  * \param type The input type.
  * \return The result DLPack dtype.
  *
- * \sa tvm/ir/type.h for discussion about the relation between Type and runtime::DataType.
+ * \sa tvm/ir/type.h for discussion about the relation between Type and DLPack dtype.
  */
 TVM_DLL DLDataType GetRuntimeDLDataType(const Type& type);
 
