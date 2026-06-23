@@ -29,14 +29,14 @@ def test_tir_buffer_proxy():
     assert (
         isinstance(buffer_0, tirx.Buffer)
         and list(buffer_0.shape) == [128, 128]
-        and buffer_0.dtype == "float32"
+        and buffer_0.dtype == ir.PrimType("float32")
     )
 
     buffer_1 = T.Buffer((64, 64, 64), "int32")
     assert (
         isinstance(buffer_1, tirx.Buffer)
         and list(buffer_1.shape) == [64, 64, 64]
-        and buffer_1.dtype == "int32"
+        and buffer_1.dtype == ir.PrimType("int32")
     )
 
 

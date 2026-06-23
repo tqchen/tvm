@@ -71,6 +71,7 @@
 #include <tvm/tirx/expr.h>
 
 #include <cmath>
+#include <optional>
 #include <tuple>
 
 #include "const_fold.h"
@@ -199,7 +200,10 @@ class PVar : public Pattern<PVar<T>> {
   // Store PVars by reference in the expression.
   using Nested = const PVar<T>&;
 
-  void InitMatch_() const { filled_ = false; }
+  void InitMatch_() const {
+    value_.reset();
+    filled_ = false;
+  }
 
   bool Match_(const T& value) const {
     if (!filled_) {
@@ -207,7 +211,7 @@ class PVar : public Pattern<PVar<T>> {
       filled_ = true;
       return true;
     } else {
-      return PEqualChecker<T>()(value_, value);
+      return PEqualChecker<T>()(value_.value(), value);
     }
   }
 
@@ -223,14 +227,14 @@ class PVar : public Pattern<PVar<T>> {
 
   T Eval() const {
     TVM_FFI_ICHECK(filled_);
-    return value_;
+    return value_.value();
   }
 
-  T EvalOr(const T& default_value) const { return filled_ ? value_ : default_value; }
+  T EvalOr(const T& default_value) const { return filled_ ? value_.value() : default_value; }
 
  protected:
   /*! \brief The matched value */
-  mutable T value_;
+  mutable std::optional<T> value_;
   /*! \brief whether the variable has been filled */
   mutable bool filled_{false};
 };
@@ -282,7 +286,7 @@ class PVarWithDataType : public PVarWithCheck<PVarWithDataType<T, DType>, T> {
  public:
   explicit PVarWithDataType(const DType& dtype) : dtype_(dtype) {}
 
-  bool Match_(const T& value) const { return dtype_.Match_(value->dtype); }
+  bool Match_(const T& value) const { return dtype_.Match_(value.ty()); }
 
  protected:
   typename DType::Nested dtype_;
@@ -291,15 +295,15 @@ class PVarWithDataType : public PVarWithCheck<PVarWithDataType<T, DType>, T> {
 /*!
  * \brief Pattern variable container for data type with lanes.
  */
-class PVecDataType : public PVarWithCheck<PVecDataType, DataType> {
+class PVecDataType : public PVarWithCheck<PVecDataType, PrimType> {
  public:
   /*! \brief construct vector dtype placeholder with element type check */
-  explicit PVecDataType(const DataType& elem_dtype) : elem_dtype_(elem_dtype) {}
+  explicit PVecDataType(PrimType elem_dtype) : elem_dtype_(elem_dtype) {}
 
-  bool Match_(const DataType& dtype) const { return dtype.code() == elem_dtype_.code(); }
+  bool Match_(PrimType dtype) const { return dtype.code() == elem_dtype_.code(); }
 
  protected:
-  DataType elem_dtype_;
+  PrimType elem_dtype_;
 };
 
 /*!
@@ -377,7 +381,7 @@ class PConstWithTypeLike : public Pattern<PConstWithTypeLike<TA>> {
     }
   }
 
-  PrimExpr Eval() const { return tirx::MakeConst(ref_.Eval().dtype(), value_); }
+  PrimExpr Eval() const { return tirx::MakeConst(ref_.Eval().ty(), value_); }
 
  private:
   typename TA::Nested ref_;
@@ -540,7 +544,7 @@ class PCastExpr : public Pattern<PCastExpr<DType, TA>> {
 
   bool Match_(const ffi::ObjectRef& node) const {
     if (const tirx::CastNode* ptr = node.as<tirx::CastNode>()) {
-      if (!dtype_.Match_(ptr->dtype)) return false;
+      if (!dtype_.Match_(ptr->ty())) return false;
       if (!value_.Match_(ptr->value)) return false;
       return true;
     } else {
@@ -558,7 +562,7 @@ class PCastExpr : public Pattern<PCastExpr<DType, TA>> {
 /*!
  * \brief Construct a cast pattern.
  *
- * \param dtype The target data type, can be PVar<DataType> or PConst<DataType>.
+ * \param dtype The target data type, can be PVar<PrimType> or PConst<PrimType>.
  * \param value The input type.
  *
  * \return The result pattern.
@@ -780,7 +784,7 @@ class PCallExpr : public Pattern<PCallExpr<Op, TArgs...>> {
 #define TVM_PATTERN_BINARY_INTRIN(FuncName, OpName, IntrinOpName)                         \
   struct OpName {                                                                         \
     static PrimExpr Eval(ffi::Array<PrimExpr> args) {                                     \
-      return tirx::Call(args[0].dtype(), GetOp(), args);                                  \
+      return tirx::Call(args[0].ty(), GetOp(), args);                                     \
     }                                                                                     \
     static const Op& GetOp() { return tirx::builtin::IntrinOpName(); }                    \
   };                                                                                      \
@@ -799,7 +803,7 @@ TVM_PATTERN_BINARY_INTRIN(operator^, PBitwiseXorOp, bitwise_xor);
 #define TVM_PATTERN_UNARY_INTRIN(FuncName, OpName, IntrinOpName)       \
   struct OpName {                                                      \
     static PrimExpr Eval(ffi::Array<PrimExpr> args) {                  \
-      return tirx::Call(args[0].dtype(), GetOp(), args);               \
+      return tirx::Call(args[0].ty(), GetOp(), args);                  \
     }                                                                  \
     static const Op& GetOp() { return tirx::builtin::IntrinOpName(); } \
   };                                                                   \
@@ -813,7 +817,7 @@ TVM_PATTERN_UNARY_INTRIN(operator~, PBitwiseNotOp, bitwise_not);
 // if_then_else
 struct PIfThenElseOp {
   static PrimExpr Eval(ffi::Array<PrimExpr> args) {
-    return tirx::Call(args[1].dtype(), GetOp(), args);
+    return tirx::Call(args[1].ty(), GetOp(), args);
   }
   static const Op& GetOp() { return tirx::builtin::if_then_else(); }
 };
@@ -841,7 +845,7 @@ inline PCallExpr<PIfThenElseOp, TCond, TA, TB> if_then_else(const Pattern<TCond>
 
 // vscale
 struct PVscaleOp {
-  static PrimExpr Eval() { return tirx::Call(DataType::Int(32), GetOp(), {}); }
+  static PrimExpr Eval() { return tirx::Call(PrimType::Int(32), GetOp(), {}); }
   static const Op& GetOp() { return tirx::builtin::vscale(); }
 };
 
