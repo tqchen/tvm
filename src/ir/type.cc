@@ -97,15 +97,7 @@ bool PrimTypeAnyEqual(const ffi::Any& lhs, const ffi::Any& rhs) {
 }
 
 ffi::ObjectPtr<PrimTypeNode> GetCachedPrimTypeNode(DLDataType dtype) {
-  thread_local std::unordered_map<uint32_t, ffi::ObjectPtr<PrimTypeNode>> cache;
-  uint32_t key = PackDataTypeKey(dtype);
-  auto it = cache.find(key);
-  if (it != cache.end()) {
-    return it->second;
-  }
-
-  ffi::ObjectPtr<PrimTypeNode> node = MakePrimTypeNode(dtype);
-  return cache.emplace(key, std::move(node)).first->second;
+  return MakePrimTypeNode(dtype);
 }
 
 }  // namespace
@@ -129,16 +121,6 @@ PrimType::PrimType(DLDataTypeCode code, int bits, int lanes)
     : PrimType(MakeDLDataType(code, bits, lanes)) {}
 
 PrimType PrimType::Int(int bits, int lanes) {
-  if (lanes == 1) {
-    if (bits == 32) {
-      thread_local PrimType i32_ty(MakeDLDataType(DLDataTypeCode::kDLInt, 32, 1));
-      return i32_ty;
-    }
-    if (bits == 64) {
-      thread_local PrimType i64_ty(MakeDLDataType(DLDataTypeCode::kDLInt, 64, 1));
-      return i64_ty;
-    }
-  }
   return PrimType(MakeDLDataType(DLDataTypeCode::kDLInt, bits, lanes));
 }
 
@@ -147,10 +129,6 @@ PrimType PrimType::UInt(int bits, int lanes) {
 }
 
 PrimType PrimType::Float(int bits, int lanes) {
-  if (bits == 32 && lanes == 1) {
-    thread_local PrimType f32_ty(MakeDLDataType(DLDataTypeCode::kDLFloat, 32, 1));
-    return f32_ty;
-  }
   return PrimType(MakeDLDataType(DLDataTypeCode::kDLFloat, bits, lanes));
 }
 
@@ -159,10 +137,6 @@ PrimType PrimType::BFloat(int bits, int lanes) {
 }
 
 PrimType PrimType::Bool(int lanes) {
-  if (lanes == 1) {
-    thread_local PrimType bool_ty(MakeDLDataType(DLDataTypeCode::kDLBool, 8, 1));
-    return bool_ty;
-  }
   return PrimType(MakeDLDataType(DLDataTypeCode::kDLBool, 8, lanes));
 }
 
