@@ -310,7 +310,7 @@ class CodeGenC : public ExprFunctor<void(const PrimExpr&, std::ostream&)>,
    */
   void RegisterHandleTypeFromPointer(const tirx::Var& var, const PrimExpr* value);
   // override
-  void PrintSSAAssign(const std::string& target, const std::string& src, DataType t) override;
+  void PrintSSAAssign(const std::string& target, const std::string& src, PrimType t) override;
   /*! \brief reserves common C keywords */
   void ReserveKeywordsAsUnique();
 

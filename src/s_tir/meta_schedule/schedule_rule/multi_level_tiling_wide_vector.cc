@@ -72,7 +72,7 @@ MultiLevelTilingWideVectorNode::SplitLoop(const Schedule& sch, SBlockRV block_rv
   TVM_FFI_ICHECK(block_node && block_node->writes.size() == 1);
 
   const auto out_dtype = block_node->writes[0]->buffer->dtype;
-  const int vec_len = vector_length_in_bits / out_dtype.bits();
+  const int vec_len = vector_length_in_bits / out_dtype.bits;
 
   // Determine if this loop is over the innermost axis of the output buffer.
   // In the example below, we look for a loop whose loop var is bound to the axis co.

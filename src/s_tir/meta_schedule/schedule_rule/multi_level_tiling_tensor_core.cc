@@ -626,10 +626,12 @@ std::vector<State> MultiLevelTilingTensorCoreNode::AddReadReuseTensorCore(
     tirx::Buffer cache_read_buffer =
         s_tir::GetNthAccessBuffer(sch->state(), ffi::GetRef<tirx::SBlock>(cache_read_block), 0,
                                   s_tir::BufferIndexType::kWrite);
-    const DataType dtype(cache_read_buffer->dtype->dtype);
-    if (dtype.is_float16()) {
+    const DLDataType dtype = cache_read_buffer->dtype;
+    // Storage alignment is chosen from element storage width; this schedule rule uses scalar
+    // cache-read buffers, so the old element-type-only test is preserved.
+    if (runtime::IsFloat16DType(dtype)) {
       sch->StorageAlign(cache_read, 0, -2, 32, 8);
-    } else if (dtype.is_int() && dtype.bits() == 8) {
+    } else if (runtime::IsIntDType(dtype) && dtype.bits == 8) {
       sch->StorageAlign(cache_read, 0, -2, 32, 16);
     } else {
       TVM_PY_LOG(WARNING, logger) << "StorageAlign is not applied for data type " << dtype

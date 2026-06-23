@@ -336,7 +336,7 @@ class ForMatcher : public TensorizeComparator {
         if (!VisitExpr(lhs->shape[i], rhs->shape[i])) return false;
       }
       // Remap both buffer itself and buffer data
-      equal = DefEqual(lhs->data, rhs->data) && lhs->dtype->dtype == rhs->dtype->dtype &&
+      equal = DefEqual(lhs->data, rhs->data) && lhs->dtype == rhs->dtype &&
               lhs.scope() == rhs.scope();
       if (equal) {
         rhs_buffer_map_[rhs] = lhs;
@@ -622,7 +622,7 @@ std::pair<PrimFunc, ffi::Optional<PrimFunc>> SplitFunctions(
     }
   }
   arg_partition->push_back(arg_partition1);
-  new_params1.push_back(Var("output", DataType::Handle()));
+  new_params1.push_back(Var("output", PrimType::Handle()));
   ffi::Map<Var, Buffer> new_buffer_map1;
   for (const auto& kv : func->buffer_map) {
     if (partitioner.input1.count(kv.second)) {
@@ -635,7 +635,7 @@ std::pair<PrimFunc, ffi::Optional<PrimFunc>> SplitFunctions(
   // Step 4. Craft the second function.
   ffi::Array<Var> new_params2;
   std::vector<int> arg_partition2;
-  new_params2.push_back(Var("input", DataType::Handle()));
+  new_params2.push_back(Var("input", PrimType::Handle()));
   for (int i = 0; i < static_cast<int>(func->params.size()); i++) {
     Var param = func->params[i];
     if (partitioner.input2.count(func->buffer_map[param])) {
@@ -752,7 +752,7 @@ class SplitMutator : public ExprMutator {
     TVM_FFI_ICHECK(lib_func->IsInstance<ExternFuncNode>());
     builder_->UpdateFunction(gv, lib_func);
     tirx::Buffer intermediate_buffer = func1->buffer_map.at(func1->params.back());
-    PrimType dtype = intermediate_buffer->dtype;
+    DLDataType dtype = intermediate_buffer->dtype;
     Call call1(call_dps_packed_, {lib_func, Tuple(args1)}, call->attrs,
                {TensorType(ShapeExpr(intermediate_buffer->shape), dtype)});
     Var call_var1 = builder_->Emit(call1);

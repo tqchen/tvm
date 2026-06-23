@@ -59,7 +59,7 @@ class Tensor : public tvm::ffi::Tensor {
   Tensor(const ffi::Tensor& other) : tvm::ffi::Tensor(other) {}        // NOLINT(*)
 
   ffi::ShapeView Shape() const { return this->shape(); }
-  runtime::DataType DataType() const { return runtime::DataType(this->dtype()); }
+  DLDataType DataType() const { return this->dtype(); }
 
   // DLPack handling
   static Tensor FromDLPack(DLManagedTensor* tensor) {

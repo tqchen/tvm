@@ -50,8 +50,8 @@ using tirx::MakeConst;
 
 TVM_FFI_STATIC_INIT_BLOCK() { IntervalSetNode::RegisterReflection(); }
 
-PrimExpr SymbolicLimits::pos_inf_ = Var("pos_inf", DataType::Handle());
-PrimExpr SymbolicLimits::neg_inf_ = Var("neg_inf", DataType::Handle());
+PrimExpr SymbolicLimits::pos_inf_ = Var("pos_inf", PrimType::Handle());
+PrimExpr SymbolicLimits::neg_inf_ = Var("neg_inf", PrimType::Handle());
 
 IntervalSet::IntervalSet(PrimExpr min_value, PrimExpr max_value) {
   auto node = ffi::make_object<IntervalSetNode>();
@@ -585,7 +585,7 @@ class IntervalSetEvaluator : public ExprFunctor<IntervalSet(const PrimExpr&)> {
     PrimType op_ty = op->ty();
     if (!(op_ty.code() == DLDataTypeCode::kDLInt || op_ty.code() == DLDataTypeCode::kDLUInt)) {
       DLOG(WARNING) << "cannot evaluate set BufferLoad which loads from a "
-                    << DataType(op_ty->dtype) << " buffer";
+                    << op_ty->dtype << " buffer";
       return IntervalSet::Everything();
     }
     // If the indices do not contain any variables to be relaxed, return the BufferLoad itself.

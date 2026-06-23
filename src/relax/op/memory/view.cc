@@ -87,7 +87,7 @@ Type InferTypeView(const Call& call, const BlockBuilder& ctx) {
     }
   }();
 
-  auto view_dtype = [&]() -> std::optional<PrimType> {
+  auto view_dtype = [&]() -> std::optional<DLDataType> {
     Type ty = GetType(arg_dtype);
 
     if (HasVoidType(arg_dtype)) {
@@ -112,11 +112,11 @@ Type InferTypeView(const Call& call, const BlockBuilder& ctx) {
     // in this case.
     if (auto dtype_imm = arg_value.as<DataTypeImmNode>()) {
       // We know the datatype for the view.
-      return PrimType(dtype_imm->value);
+      return dtype_imm->value;
     } else if (ty.as<ObjectTypeNode>()) {
       // The view changes the datatype, but we don't know what it is
       // being changed into.
-      return PrimType::Void();
+      return runtime::VoidDType();
     } else {
       TVM_FFI_THROW(TypeError) << "Operator " << call->op
                                << " expects the dtype argument to be a relax::DataTypeImm, "
@@ -131,7 +131,7 @@ Type InferTypeView(const Call& call, const BlockBuilder& ctx) {
       // No byte offset is specified, so no change is applied.
       return IntImm::Int64(0);
     } else if (auto prim_ty = ty.as<PrimTypeNode>()) {
-      TVM_FFI_CHECK_EQ(prim_ty->dtype, DataType::Int(64), TypeError)
+      TVM_FFI_CHECK_EQ(prim_ty->dtype, PrimType::Int(64)->dtype, TypeError)
           << "Operator " << call->op
           << " expects the relative_byte_offset to be a 64-bit integer, but received "
           << arg_relative_byte_offset << ", which has type " << ty;
@@ -167,17 +167,14 @@ Type InferTypeView(const Call& call, const BlockBuilder& ctx) {
     output_ndim = data_ty->ndim;
   }
 
-  PrimType output_dtype = view_dtype.value_or(data_ty->dtype);
+  DLDataType output_dtype = view_dtype.value_or(data_ty->dtype);
 
-  // Helper function, returns the number of bytes per vectorized
-  // element.  Cannot use `DataType::bytes`, as it returns the
-  // number of bytes per scalar element.
-  auto get_size_bytes = [](const PrimType& prim_ty) -> ffi::Optional<IntImm> {
-    DataType dtype(prim_ty->dtype);
-    if (dtype.is_void()) {
+  // Helper function returns the number of bytes per vectorized element.
+  auto get_size_bytes = [](DLDataType dtype) -> ffi::Optional<IntImm> {
+    if (runtime::IsVoidDType(dtype)) {
       return std::nullopt;
     } else {
-      auto size_bits = dtype.bits() * dtype.lanes();
+      auto size_bits = runtime::DTypeBits(dtype) * runtime::DTypeLanes(dtype);
       return IntImm::Int64((size_bits + 7) / 8);
     }
   };
@@ -330,14 +327,14 @@ Expr LowerBuiltinView(const BlockBuilder& bb, const Call& call) {
   }
 
   if (HasVoidType(dtype)) {
-    PrimType data_dtype = data->ty.as<TensorType>().value()->dtype;
-    TVM_FFI_ICHECK(!data_dtype.IsVoid())
+    DLDataType data_dtype = data->ty.as<TensorType>().value()->dtype;
+    TVM_FFI_ICHECK(!runtime::IsVoidDType(data_dtype))
         << "Legalization of " << call->op
         << " requires that either the output dtype be explicitly specified, "
         << "or the input dtype is known.  "
         << "However, in expression " << call << ", no output dtype is specified, "
         << "and the input " << data << " of type " << data->ty << " has unknown dtype.";
-    dtype = relax::DataTypeImm(data_dtype->dtype);
+    dtype = relax::DataTypeImm(data_dtype);
   }
 
   if (HasVoidType(relative_byte_offset)) {

@@ -56,7 +56,7 @@ class CodeGenWebGPU final : public CodeGenC {
   void BindThreadIndex(const IterVar& iv) final;       // NOLINT(*)
 
   // assignment printing
-  void PrintSSAAssign(const std::string& target, const std::string& src, DataType type) final;
+  void PrintSSAAssign(const std::string& target, const std::string& src, PrimType type) final;
 
   // overload printing vector element load/store
   void PrintVecElemLoad(const std::string& vec, DataType t, int i, std::ostream& os) final;

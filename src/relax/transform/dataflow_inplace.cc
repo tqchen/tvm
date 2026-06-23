@@ -383,7 +383,7 @@ std::unordered_set<Type, ffi::ObjectPtrHash, ffi::ObjectPtrEqual> GatherCandidat
     const Type& result_ty) {
   if (auto* tensor_info = result_ty.as<TensorTypeNode>()) {
     // don't consider void dtype (don't know the size at compile time)
-    if (tensor_info->dtype.IsVoid()) {
+    if (runtime::IsVoidDType(tensor_info->dtype)) {
       return {};
     }
     // don't consider cases where we don't know the shape at compile time
@@ -423,7 +423,7 @@ std::pair<bool, bool> SizeMatches(const Type& target_info, const Type& arg_info,
     auto arg_tensor = arg_info.as_or_throw<TensorType>();
     if (target_tensor->shape.defined() && target_tensor->shape.as<ShapeExprNode>() &&
         arg_tensor->shape.defined() && arg_tensor->shape.as<ShapeExprNode>()) {
-      if (target_tensor->dtype->dtype != arg_tensor->dtype->dtype) {
+      if (target_tensor->dtype != arg_tensor->dtype) {
         return {false, false};
       }
       auto target_shape = target_tensor->shape.as_or_throw<ShapeExpr>();

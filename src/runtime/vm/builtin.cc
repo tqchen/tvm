@@ -243,14 +243,14 @@ TVM_FFI_STATIC_INIT_BLOCK() {
 void CheckTensorInfo(ffi::PackedArgs args, ffi::Any* rv) {
   ffi::AnyView arg = args[0];
   int ndim = args[1].cast<int>();
-  DataType dtype;
+  DLDataType dtype;
   ffi::Optional<ffi::String> err_ctx;
 
   if (args.size() == 3) {
-    dtype = DataType::Void();
+    dtype = runtime::VoidDType();
     err_ctx = args[2].cast<ffi::Optional<ffi::String>>();
   } else {
-    dtype = args[2].cast<DataType>();
+    dtype = args[2].cast<DLDataType>();
     err_ctx = args[3].cast<ffi::Optional<ffi::String>>();
   }
 
@@ -264,10 +264,10 @@ void CheckTensorInfo(ffi::PackedArgs args, ffi::Any* rv) {
         << err_ctx.value_or("") << " expect Tensor with ndim " << ndim << " but get " << ptr->ndim;
   }
 
-  if (dtype != DataType::Void()) {
-    TVM_FFI_CHECK(DataType(ptr->dtype) == dtype, ValueError)
+  if (dtype != runtime::VoidDType()) {
+    TVM_FFI_CHECK(ptr->dtype == dtype, ValueError)
         << err_ctx.value_or("") << " expect Tensor with dtype " << dtype << " but get "
-        << DataType(ptr->dtype);
+        << ptr->dtype;
   }
 }
 
@@ -301,23 +301,23 @@ TVM_FFI_STATIC_INIT_BLOCK() {
 /*!
  * \brief Builtin function to check if arg is PrimValue(dtype)
  * \param arg The input argument.
- * \param dtype Expected dtype of the PrimValue.  Can be DataType::Void() for unknown dtype.
+ * \param dtype Expected dtype of the PrimValue.  Can be runtime::VoidDType() for unknown dtype.
  * \param err_ctx Additional context if error occurs.
  */
-void CheckPrimValueInfo(ffi::AnyView arg, DataType dtype, ffi::Optional<ffi::String> err_ctx) {
+void CheckPrimValueInfo(ffi::AnyView arg, DLDataType dtype, ffi::Optional<ffi::String> err_ctx) {
   if (auto opt_obj = arg.as<ffi::ObjectRef>()) {
     TVM_FFI_THROW(TypeError) << err_ctx.value_or("") << ", expected dtype " << dtype
                              << ", but received ObjectRef of type "
                              << opt_obj.value()->GetTypeKey();
-  } else if (dtype.is_bool()) {
+  } else if (runtime::IsBoolDType(dtype)) {
     arg.cast<bool>();
-  } else if (dtype.is_int()) {
+  } else if (runtime::IsIntDType(dtype)) {
     arg.cast<int64_t>();
-  } else if (dtype.is_uint()) {
+  } else if (runtime::IsUIntDType(dtype)) {
     arg.cast<uint64_t>();
-  } else if (dtype.is_float()) {
+  } else if (runtime::IsFloatDType(dtype)) {
     arg.cast<double>();
-  } else if (dtype.is_handle()) {
+  } else if (runtime::IsHandleDType(dtype)) {
     arg.cast<void*>();
   } else {
     TVM_FFI_THROW(TypeError) << err_ctx.value_or("") << ", unsupported dtype " << dtype;
@@ -398,7 +398,7 @@ TVM_FFI_STATIC_INIT_BLOCK() {
         Storage sobj = args[0].cast<Storage>();
         int64_t offset = args[1].cast<int64_t>();
         ffi::Shape shape = args[2].cast<ffi::Shape>();
-        DataType dtype = args[3].cast<DataType>();
+        DLDataType dtype = args[3].cast<DLDataType>();
         if (args.size() == 5) {
           ffi::String scope = args[4].cast<ffi::String>();
           *rv = sobj->AllocTensorScoped(offset, shape, dtype, scope);

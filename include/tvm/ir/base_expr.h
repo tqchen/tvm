@@ -167,6 +167,15 @@ class PrimType : public Type {
     return dtype.code == static_cast<uint8_t>(code) && dtype.bits == bits;
   }
 
+  TVM_FFI_INLINE bool IsBool() const {
+    return get()->dtype.code == static_cast<uint8_t>(DLDataTypeCode::kDLBool);
+  }
+
+  TVM_FFI_INLINE bool IsScalar() const {
+    int16_t encoded_lanes = static_cast<int16_t>(get()->dtype.lanes);
+    return encoded_lanes == 1;
+  }
+
   TVM_FFI_INLINE bool IsVoid() const {
     DLDataType dtype = get()->dtype;
     return dtype.code == static_cast<uint8_t>(DLDataTypeCode::kDLOpaqueHandle) && dtype.bits == 0 &&

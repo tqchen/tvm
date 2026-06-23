@@ -369,15 +369,15 @@ void MultiLevelTilingNode::AnnotateCooperativeFetching(Schedule* sch,
   // Filter out invalid vector lanes according to the data type.
   const tirx::SBlockNode* block_node = (*sch)->GetSRef(block)->StmtAs<tirx::SBlockNode>();
   TVM_FFI_ICHECK_EQ(block_node->writes.size(), 1);
-  const runtime::DataType dtype(block_node->writes[0]->buffer->dtype->dtype);
+  const DLDataType dtype = block_node->writes[0]->buffer->dtype;
   std::function<bool(int)> f_filter = nullptr;
-  if (dtype == runtime::DataType::Float(32)) {
+  if (dtype == runtime::FloatDType(32)) {
     f_filter = [&](int vector_len) { return vector_len <= 4; };
-  } else if (dtype == runtime::DataType::Float(16)) {
+  } else if (dtype == runtime::FloatDType(16)) {
     f_filter = [&](int vector_len) {
       return (vector_len == 1 || vector_len % 2 == 0) && vector_len <= 8;
     };
-  } else if (dtype == runtime::DataType::Int(8)) {
+  } else if (dtype == runtime::IntDType(8)) {
     f_filter = [&](int vector_len) { return vector_len <= 16; };
   }
   std::vector<int> valid_vector_lens;

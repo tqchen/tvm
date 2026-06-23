@@ -72,7 +72,7 @@ Type InferTypeTake(const Call& call, const BlockBuilder& ctx) {
     if (auto tensor_ty = ty.as<TensorType>()) {
       return tensor_ty.value();
     } else if (auto prim_ty = ty.as<PrimTypeNode>()) {
-      return TensorType(ShapeExpr(ffi::Array<PrimExpr>{}), DataType(prim_ty->dtype));
+      return TensorType(ShapeExpr(ffi::Array<PrimExpr>{}), prim_ty->dtype);
     } else {
       TVM_FFI_VISIT_THROW(TypeError, call)
           << "Operator " << call->op << " requires the indices argument to be "
@@ -85,8 +85,8 @@ Type InferTypeTake(const Call& call, const BlockBuilder& ctx) {
   if (indices_ty->IsUnknownDtype()) {
     LOG(WARNING) << "Data type of indices has not been specified. Assume it has an integer type.";
   } else {
-    DataType indices_dtype(indices_ty->dtype->dtype);
-    if (!(indices_dtype.is_int() || indices_dtype.is_uint())) {
+    DLDataType indices_dtype = indices_ty->dtype;
+    if (!(runtime::IsIntDType(indices_dtype) || runtime::IsUIntDType(indices_dtype))) {
     TVM_FFI_VISIT_THROW(TypeError, call)
         << "Take op requires the input indices to have integer dtype. However, the "
            "given indices dtype is "
@@ -312,7 +312,7 @@ Type InferTypeStridedSlice(const Call& call, const BlockBuilder& ctx) {
     }
   }();
 
-  TVM_FFI_ICHECK(IsBaseOf(relax::TensorType(DataType::Void(), kUnknownNDim), GetType(data)))
+  TVM_FFI_ICHECK(IsBaseOf(relax::TensorType(runtime::VoidDType(), kUnknownNDim), GetType(data)))
       << "Operator " << call->op << " requires the first argument to be a tensor.  "
       << "However, in expression " << call << ", the first argument " << data << " has type "
       << GetType(data);
@@ -329,7 +329,7 @@ Type InferTypeStridedSlice(const Call& call, const BlockBuilder& ctx) {
     if (!tuple) return false;
 
     return std::all_of(tuple->fields.begin(), tuple->fields.end(), [](const Type& field) {
-      return IsBaseOf(tvm::PrimType(DataType::Int(64)), field);
+      return IsBaseOf(tvm::PrimType::Int(64), field);
     });
   };
   auto check_tuple = [&](const char* name, Expr expr) {
@@ -350,7 +350,7 @@ Type InferTypeStridedSlice(const Call& call, const BlockBuilder& ctx) {
 
   const auto* data_ty = data->ty.as<TensorTypeNode>();
 
-  PrimType dtype = PrimType::Void();
+  DLDataType dtype = runtime::VoidDType();
   ffi::Optional<VDevice> vdevice = std::nullopt;
   int ndim = kUnknownNDim;
   if (data_ty) {
@@ -548,7 +548,7 @@ Type InferTypeDynStridedSlice(const Call& call, const BlockBuilder& ctx) {
       LOG(WARNING) << "Dynamic strided slice assumes " << name
                    << " to be int64 when it is not specified.";
     } else {
-      TVM_FFI_ICHECK(ty->dtype->dtype == PrimType::Int(64)->dtype)
+      TVM_FFI_ICHECK(ty->dtype == PrimType::Int(64)->dtype)
           << "Dynamic strided_slice expects the input " << name
           << "values to be all int64. However, " << name << " has dtype " << ty->dtype << ".";
     }

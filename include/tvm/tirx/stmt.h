@@ -1283,7 +1283,7 @@ inline bool IsPragmaKey(const std::string& attr_key) {
  * \return Expr a expression with dtype.
  */
 TVM_DLL PrimExpr TypeAnnotation(PrimType dtype, Span span = Span());
-inline PrimExpr TypeAnnotation(DataType dtype, Span span = Span()) {
+inline PrimExpr TypeAnnotation(DLDataType dtype, Span span = Span()) {
   return TypeAnnotation(PrimType(dtype), span);
 }
 

@@ -49,7 +49,7 @@ inline PrimType DefaultIndexPrimType() {
   return default_index_ty;
 }
 
-inline DataType DefaultIndexType() { return DataType(DefaultIndexPrimType()->dtype); }
+inline DLDataType DefaultIndexType() { return DefaultIndexPrimType()->dtype; }
 
 // forward declare Stmt
 class Stmt;
@@ -70,8 +70,8 @@ class BufferNode : public ffi::Object {
    * \sa data_alignment The alignment of data in bytes.
    */
   Var data;
-  /*! \brief primitive type in the content of the tensor */
-  PrimType dtype{PrimType::Void()};
+  /*! \brief dtype in the content of the tensor */
+  DLDataType dtype{DLDataTypeCode::kDLOpaqueHandle, 0, 0};
   /*! \brief The type of the buffer prior to flattening
    *
    * This contains the shape as it is accessed by
@@ -150,12 +150,12 @@ class BufferNode : public ffi::Object {
   }
 
   /*! \return preferred index type for this buffer node */
-  DataType DefaultIndexType() const {
-    return shape.size() != 0 ? DataType(shape[0].ty()->dtype) : tvm::tirx::DefaultIndexType();
+  DLDataType DefaultIndexType() const {
+    return shape.size() != 0 ? shape[0].ty()->dtype : tvm::tirx::DefaultIndexType();
   }
 
   /*! \return primitive element type for compiler-side uses. */
-  PrimType ElementType() const { return dtype; }
+  PrimType ElementType() const { return PrimType(dtype); }
 
   /*! \brief Determine the offset in the buffer of the given index.
    *
@@ -182,17 +182,17 @@ class Buffer : public ffi::ObjectRef {
  public:
   // User can specify data_alignment and offset_factor to be 0
   // A default value will be picked.
-  TVM_DLL Buffer(Var data, PrimType dtype, ffi::Array<PrimExpr> shape,
+  TVM_DLL Buffer(Var data, DLDataType dtype, ffi::Array<PrimExpr> shape,
                  ffi::Array<PrimExpr> strides, PrimExpr elem_offset, ffi::String name,
                  int data_alignment, int offset_factor, BufferType buffer_type,
                  ffi::Array<IntImm> axis_separators = {}, Span span = Span(),
                  ffi::Optional<Layout> layout = std::nullopt,
                  ffi::Array<PrimExpr> allocated_addr = {});
-  Buffer(Var data, DataType dtype, ffi::Array<PrimExpr> shape, ffi::Array<PrimExpr> strides,
+  Buffer(Var data, PrimType dtype, ffi::Array<PrimExpr> shape, ffi::Array<PrimExpr> strides,
          PrimExpr elem_offset, ffi::String name, int data_alignment, int offset_factor,
          BufferType buffer_type, ffi::Array<IntImm> axis_separators = {}, Span span = Span(),
          ffi::Optional<Layout> layout = std::nullopt, ffi::Array<PrimExpr> allocated_addr = {})
-      : Buffer(std::move(data), PrimType(dtype), std::move(shape), std::move(strides),
+      : Buffer(std::move(data), dtype->dtype, std::move(shape), std::move(strides),
                std::move(elem_offset), std::move(name), data_alignment, offset_factor, buffer_type,
                std::move(axis_separators), std::move(span), std::move(layout),
                std::move(allocated_addr)) {}
@@ -220,15 +220,9 @@ class Buffer : public ffi::ObjectRef {
    * \param offset The offset of ptr.
    * \param input_extent The extent of ptr.
    */
-  TVM_DLL PrimExpr access_ptr(int access_mask, DataType ptr_type = DataType::Handle(),
+  TVM_DLL PrimExpr access_ptr(int access_mask, PrimType ptr_type = PrimType::Handle(),
                               int content_lanes = 1, PrimExpr offset = IntImm::Int32(0),
                               ffi::Optional<PrimExpr> input_extent = std::nullopt) const;
-  PrimExpr access_ptr(int access_mask, PrimType ptr_type, int content_lanes = 1,
-                      PrimExpr offset = IntImm::Int32(0),
-                      ffi::Optional<PrimExpr> input_extent = std::nullopt) const {
-    return access_ptr(access_mask, DataType(ptr_type->dtype), content_lanes, std::move(offset),
-                      std::move(input_extent));
-  }
   /*!
    * \brief Create an Expr that does a vector load at begin index.
    * \param begin The beginning index
@@ -236,12 +230,8 @@ class Buffer : public ffi::ObjectRef {
    * \param predicate A vector mask of boolean values indicating which lanes of a vector are to be
    * loaded. The number lanes of the mask must be equal to the number of lanes in being loaded.
    */
-  TVM_DLL PrimExpr vload(ffi::Array<PrimExpr> begin, DataType dtype,
+  TVM_DLL PrimExpr vload(ffi::Array<PrimExpr> begin, PrimType dtype,
                          ffi::Optional<PrimExpr> predicate = std::nullopt) const;
-  PrimExpr vload(ffi::Array<PrimExpr> begin, PrimType dtype,
-                 ffi::Optional<PrimExpr> predicate = std::nullopt) const {
-    return vload(std::move(begin), DataType(dtype->dtype), std::move(predicate));
-  }
   /*!
    * \brief Create a Stmt that does a vector store at begin index.
    * \param begin The beginning index
@@ -292,8 +282,8 @@ class Buffer : public ffi::ObjectRef {
   /*!
    * \brief Return a new buffer with the dtype.
    */
-  TVM_DLL Buffer with_dtype(PrimType dtype) const;
-  Buffer with_dtype(DataType dtype) const { return with_dtype(PrimType(dtype)); }
+  TVM_DLL Buffer with_dtype(DLDataType dtype) const;
+  Buffer with_dtype(PrimType dtype) const { return with_dtype(dtype->dtype); }
 
   /*! \return primitive element type for compiler-side uses. */
   PrimType ElementType() const { return (*this)->ElementType(); }
@@ -318,7 +308,7 @@ class Buffer : public ffi::ObjectRef {
  * \return The created buffer.
  * \sa Buffer for complete constructor.
  */
-TVM_DLL Buffer decl_buffer(ffi::Array<PrimExpr> shape, DataType dtype = DataType::Float(32),
+TVM_DLL Buffer decl_buffer(ffi::Array<PrimExpr> shape, DLDataType dtype = runtime::FloatDType(32),
                            ffi::String name = "buffer", ffi::String storage_scope = "",
                            ffi::Optional<ffi::Array<IntImm>> axis_separators = std::nullopt,
                            Span span = Span());
@@ -327,8 +317,8 @@ inline Buffer decl_buffer(ffi::Array<PrimExpr> shape, PrimType dtype, ffi::Strin
                           ffi::String storage_scope = "",
                           ffi::Optional<ffi::Array<IntImm>> axis_separators = std::nullopt,
                           Span span = Span()) {
-  return decl_buffer(std::move(shape), DataType(dtype->dtype), std::move(name),
-                     std::move(storage_scope), std::move(axis_separators), std::move(span));
+  return decl_buffer(std::move(shape), dtype->dtype, std::move(name), std::move(storage_scope),
+                     std::move(axis_separators), std::move(span));
 }
 
 /*!
@@ -353,17 +343,15 @@ class DataProducerNode : public PrimExprConvertibleNode {
    */
   virtual ffi::Array<PrimExpr> GetShape() const = 0;
   /*!
+   * \brief Get the raw element dtype of the result.
+   * \return The raw dtype.
+   */
+  virtual DLDataType GetDataType() const = 0;
+  /*!
    * \brief Get the primitive element type of the result.
    * \return The primitive type.
    */
-  virtual PrimType GetPrimType() const = 0;
-  /*!
-   * \brief Get the data type of the result.
-   * \return The data type.
-   *
-   * \note Compatibility wrapper for public APIs that still expose DataType.
-   */
-  virtual DataType GetDataType() const { return DataType(GetPrimType()->dtype); }
+  virtual PrimType GetPrimType() const { return PrimType(GetDataType()); }
   /*!
    * \brief Get the name hint of the data producer.
    * \return The data type.
@@ -394,7 +382,7 @@ class DataProducer : public PrimExprConvertible {
  * \param compact If the statement has already bound to a compact buffer.
  * \param memory_scope memory scope of the buffer
  */
-TVM_DLL tirx::Buffer BufferWithOffsetAlignment(ffi::Array<PrimExpr> shape, DataType dtype,
+TVM_DLL tirx::Buffer BufferWithOffsetAlignment(ffi::Array<PrimExpr> shape, DLDataType dtype,
                                                std::string name, int data_alignment,
                                                int offset_factor, bool compact,
                                                std::string memory_scope = "");
@@ -403,8 +391,8 @@ inline tirx::Buffer BufferWithOffsetAlignment(ffi::Array<PrimExpr> shape, PrimTy
                                               std::string name, int data_alignment,
                                               int offset_factor, bool compact,
                                               std::string memory_scope = "") {
-  return BufferWithOffsetAlignment(std::move(shape), DataType(dtype->dtype), std::move(name),
-                                   data_alignment, offset_factor, compact, std::move(memory_scope));
+  return BufferWithOffsetAlignment(std::move(shape), dtype->dtype, std::move(name), data_alignment,
+                                   offset_factor, compact, std::move(memory_scope));
 }
 }  // namespace tirx
 }  // namespace tvm

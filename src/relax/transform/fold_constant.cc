@@ -197,7 +197,7 @@ class ConstantFolder : public ExprMutator {
   // Returns std::nullopt on failure.
   ffi::Optional<Expr> ConstEvaluateCallTIR(tirx::PrimFunc tir_func,
                                            ffi::Array<runtime::Tensor> arr_args, ffi::Shape shape,
-                                           DataType ret_type) {
+                                           DLDataType ret_type) {
     // obtain function from the cache.
     ffi::Optional<ffi::Function> func = GetCachedBuild(tir_func);
     if (!func) return std::nullopt;
@@ -244,7 +244,7 @@ class ConstantFolder : public ExprMutator {
       auto tensor_ty = tuple_ty->fields[i].as_or_throw<TensorType>();
       if (tensor_ty->IsUnknownDtype()) return std::nullopt;
       ret_tensors.push_back(
-          runtime::Tensor::Empty(shape.value(), tensor_ty->dtype->dtype, cpu_dev));
+          runtime::Tensor::Empty(shape.value(), tensor_ty->dtype, cpu_dev));
     }
 
     // Pack input args + all output tensors.
@@ -289,8 +289,7 @@ class ConstantFolder : public ExprMutator {
     ffi::Optional<ffi::Shape> shape = MatchConstShape(call->ty_args[0]);
     if (shape) {
       TensorType ret_ty = call->ty.as_or_throw<TensorType>();
-      return ConstEvaluateCallTIR(func.value(), arr_args.value(), shape.value(),
-                                  DataType(ret_ty->dtype->dtype))
+      return ConstEvaluateCallTIR(func.value(), arr_args.value(), shape.value(), ret_ty->dtype)
           .value_or({});
     }
     return {};

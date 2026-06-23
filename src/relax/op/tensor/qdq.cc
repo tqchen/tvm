@@ -69,9 +69,9 @@ Type InferTypeQuantize(const Call& call, const BlockBuilder& ctx) {
   TensorType input_ty = GetInputTensorType(call, ctx)[0];
   TensorType scale_ty = GetInputTensorType(call, ctx)[1];
   TensorType zp_ty = GetInputTensorType(call, ctx)[2];
-  DLDataType input_dtype = input_ty->dtype->dtype;
-  DLDataType scale_dtype = scale_ty->dtype->dtype;
-  DLDataType zp_dtype = zp_ty->dtype->dtype;
+  DLDataType input_dtype = input_ty->dtype;
+  DLDataType scale_dtype = scale_ty->dtype;
+  DLDataType zp_dtype = zp_ty->dtype;
 
   // Check input datatype:
   if (input_dtype != PrimType::Float(16)->dtype && input_dtype != PrimType::Float(32)->dtype) {
@@ -132,7 +132,7 @@ Type InferTypeQuantize(const Call& call, const BlockBuilder& ctx) {
   if (!is_scalar_or_singleton_vector(zp_ty)) check_param_size(zp_ty, input_ty, "zero_point");
 
   auto output_ty = ffi::make_object<TensorTypeNode>(*input_ty.get());
-  output_ty->dtype = PrimType(attrs->out_dtype);
+  output_ty->dtype = attrs->out_dtype;
   return TensorType(output_ty);
 }
 
@@ -171,9 +171,9 @@ Type InferTypeDequantize(const Call& call, const BlockBuilder& ctx) {
   TensorType input_ty = GetInputTensorType(call, ctx)[0];
   TensorType scale_ty = GetInputTensorType(call, ctx)[1];
   TensorType zp_ty = GetInputTensorType(call, ctx)[2];
-  DLDataType input_dtype = input_ty->dtype->dtype;
-  DLDataType scale_dtype = scale_ty->dtype->dtype;
-  DLDataType zp_dtype = zp_ty->dtype->dtype;
+  DLDataType input_dtype = input_ty->dtype;
+  DLDataType scale_dtype = scale_ty->dtype;
+  DLDataType zp_dtype = zp_ty->dtype;
 
   // Check input datatype:
   if (input_dtype != PrimType::Int(8)->dtype && input_dtype != PrimType::UInt(8)->dtype &&
@@ -241,7 +241,7 @@ Type InferTypeDequantize(const Call& call, const BlockBuilder& ctx) {
   if (!is_scalar_or_singleton_vector(zp_ty)) check_param_size(zp_ty, input_ty, "zero_point");
 
   auto output_ty = ffi::make_object<TensorTypeNode>(*input_ty.get());
-  output_ty->dtype = PrimType(attrs->out_dtype);
+  output_ty->dtype = attrs->out_dtype;
   return TensorType(output_ty);
 }
 

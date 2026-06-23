@@ -594,7 +594,7 @@ class FusedTIRConstructor : public ExprVisitor {
         // printed, it's more readable when done explicitly.  Since
         // Buffer is used more than param it gets the name with better
         // readability.
-        tirx::Var param = tirx::Var("p_" + buffer->name, tvm::PrimType(DataType::Handle()));
+        tirx::Var param = tirx::Var("p_" + buffer->name, tvm::PrimType::Handle());
         func_info_.params.push_back(param);
         func_info_.buffer_map.Set(param, buffer);
       }
@@ -639,7 +639,7 @@ class FusedTIRConstructor : public ExprVisitor {
       }
 
       tirx::Var param =
-          tirx::Var("p_output" + std::to_string(out_idx), tvm::PrimType(DataType::Handle()));
+          tirx::Var("p_output" + std::to_string(out_idx), tvm::PrimType::Handle());
       out_idx++;
       func_info_.buffer_map.Set(param, buffers[i]);
       func_info_.params.push_back(param);
@@ -868,7 +868,7 @@ class FusedTIRConstructor : public ExprVisitor {
       } else {
         TVM_FFI_THROW(InternalError)
             << "The params of PrimFunc are expected to be Buffer handle or scalar, but got: "
-            << DataType(param_ty->dtype);
+            << param_ty->dtype;
       }
     }
 
@@ -970,7 +970,7 @@ class FusedTIRConstructor : public ExprVisitor {
       // Case 1. The relax param is a Tensor, we directly create a tirx var and buffer
       const auto* shape_expr = tensor->shape.as<ShapeExprNode>();
       TVM_FFI_ICHECK(shape_expr) << "FuseTIR expects all Tensor parameters have a known shape.";
-      PrimType dtype = tensor->dtype;
+      DLDataType dtype = tensor->dtype;
       tirx::Buffer buffer;
       if (tir_buffer_param.defined()) {
         buffer = tirx::decl_buffer(shape_expr->values, dtype, name_hint,

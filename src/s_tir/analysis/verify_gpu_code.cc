@@ -76,17 +76,20 @@ class GPUCodeVerifier : public StmtExprVisitor {
         break;
       }
     }
-    DataType dtype(op->buffer->dtype->dtype);
+    DLDataType dtype = op->buffer->dtype;
     if (storage_scope.rank == runtime::StorageRank::kLocal) {
-      local_memory_per_block_ += static_cast<size_t>(const_size) * dtype.bytes() * dtype.lanes();
+      local_memory_per_block_ += static_cast<size_t>(const_size) * runtime::DTypeBytes(dtype) *
+                                 runtime::DTypeLanes(dtype);
     } else if (storage_scope.rank == runtime::StorageRank::kShared) {
-      shared_memory_per_block_ += static_cast<size_t>(const_size) * dtype.bytes() * dtype.lanes();
+      shared_memory_per_block_ += static_cast<size_t>(const_size) * runtime::DTypeBytes(dtype) *
+                                  runtime::DTypeLanes(dtype);
     }
-    if (dtype.is_vector()) {
-      if (static_cast<size_t>(dtype.lanes() * dtype.bytes()) > max_vector_bytes_) {
+    if (runtime::IsFixedLengthVectorDType(dtype)) {
+      if (static_cast<size_t>(runtime::DTypeLanes(dtype) * runtime::DTypeBytes(dtype)) >
+          max_vector_bytes_) {
         std::stringstream s;
-        s << "Number of lanes (" << dtype.lanes() << ") times number of bytes (" << dtype.bytes()
-          << ") for dtype " << op->buffer->dtype
+        s << "Number of lanes (" << runtime::DTypeLanes(dtype) << ") times number of bytes ("
+          << runtime::DTypeBytes(dtype) << ") for dtype " << op->buffer->dtype
           << " is greater than the maximum number of vector bytes (" << max_vector_bytes_ << ")";
         errors_.push_back(s.str());
       }
@@ -201,12 +204,14 @@ class GPUCodeVerifier : public StmtExprVisitor {
     for (const auto index : indices) {
       if (const auto* ramp = index.as<RampNode>()) {
         PrimType ramp_ty = ramp->ty();
-        DataType ramp_dtype(ramp_ty->dtype);
+        DLDataType ramp_dtype = ramp_ty->dtype;
         if (!is_one(ramp->stride) && ramp_ty.IsFixedLengthVector() &&
-            static_cast<size_t>(ramp_dtype.lanes() * ramp_dtype.bytes()) > max_vector_bytes_) {
+            static_cast<size_t>(runtime::DTypeLanes(ramp_dtype) * runtime::DTypeBytes(ramp_dtype)) >
+                max_vector_bytes_) {
           std::stringstream s;
-          s << "Number of lanes (" << ramp_dtype.lanes() << ") times number of bytes ("
-            << ramp_dtype.bytes() << ") for dtype " << ramp_dtype
+          s << "Number of lanes (" << runtime::DTypeLanes(ramp_dtype)
+            << ") times number of bytes (" << runtime::DTypeBytes(ramp_dtype) << ") for dtype "
+            << ramp_dtype
             << " is greater than the maximum number of vector bytes (" << max_vector_bytes_ << ")";
           errors_.push_back(s.str());
         }
@@ -216,12 +221,13 @@ class GPUCodeVerifier : public StmtExprVisitor {
 
   void VisitExpr_(const CastNode* op) {
     PrimType op_ty = op->ty();
-    DataType op_dtype(op_ty->dtype);
+    DLDataType op_dtype = op_ty->dtype;
     if (op_ty.IsFixedLengthVector()) {
-      if (static_cast<size_t>(op_dtype.lanes() * op_dtype.bytes()) > max_vector_bytes_) {
+      if (static_cast<size_t>(runtime::DTypeLanes(op_dtype) * runtime::DTypeBytes(op_dtype)) >
+          max_vector_bytes_) {
         std::stringstream s;
-        s << "Number of lanes (" << op_dtype.lanes() << ") times number of bytes ("
-          << op_dtype.bytes() << ") for dtype " << op_dtype
+        s << "Number of lanes (" << runtime::DTypeLanes(op_dtype) << ") times number of bytes ("
+          << runtime::DTypeBytes(op_dtype) << ") for dtype " << op_dtype
           << " is greater than the maximum number of vector bytes (" << max_vector_bytes_ << ")";
         errors_.push_back(s.str());
       }
@@ -231,12 +237,13 @@ class GPUCodeVerifier : public StmtExprVisitor {
 
   void VisitExpr_(const BufferLoadNode* op) {
     PrimType op_ty = op->ty();
-    DataType op_dtype(op_ty->dtype);
+    DLDataType op_dtype = op_ty->dtype;
     if (op_ty.IsFixedLengthVector()) {
-      if (static_cast<size_t>(op_dtype.lanes() * op_dtype.bytes()) > max_vector_bytes_) {
+      if (static_cast<size_t>(runtime::DTypeLanes(op_dtype) * runtime::DTypeBytes(op_dtype)) >
+          max_vector_bytes_) {
         std::stringstream s;
-        s << "Number of lanes (" << op_dtype.lanes() << ") times number of bytes ("
-          << op_dtype.bytes() << ") for dtype " << op_dtype
+        s << "Number of lanes (" << runtime::DTypeLanes(op_dtype) << ") times number of bytes ("
+          << runtime::DTypeBytes(op_dtype) << ") for dtype " << op_dtype
           << " is greater than the maximum number of vector bytes (" << max_vector_bytes_ << ")";
         errors_.push_back(s.str());
       }
@@ -247,12 +254,13 @@ class GPUCodeVerifier : public StmtExprVisitor {
 
   void VisitStmt_(const BufferStoreNode* op) {
     PrimType value_ty = op->value.ty();
-    DataType value_dtype(value_ty->dtype);
+    DLDataType value_dtype = value_ty->dtype;
     if (value_ty.IsFixedLengthVector()) {
-      if (static_cast<size_t>(value_dtype.lanes() * value_dtype.bytes()) > max_vector_bytes_) {
+      if (static_cast<size_t>(runtime::DTypeLanes(value_dtype) * runtime::DTypeBytes(value_dtype)) >
+          max_vector_bytes_) {
         std::stringstream s;
-        s << "Number of lanes (" << value_dtype.lanes() << ") times number of bytes ("
-          << value_dtype.bytes() << ") for dtype " << value_dtype
+        s << "Number of lanes (" << runtime::DTypeLanes(value_dtype) << ") times number of bytes ("
+          << runtime::DTypeBytes(value_dtype) << ") for dtype " << value_dtype
           << " is greater than the maximum number of vector bytes (" << max_vector_bytes_ << ")";
         errors_.push_back(s.str());
       }

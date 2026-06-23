@@ -298,7 +298,7 @@ class VMShapeLowerMutator
   //-------------------------------------------------------
   // PrimExpr slot handling
   //-------------------------------------------------------
-  static DataType ShapeDType() { return DataType::Int(64); }
+  static DLDataType ShapeDType() { return runtime::IntDType(64); }
 
   /*! \brief populate additional information in the slot. */
   void PopulateSlotInfo() {
@@ -566,7 +566,7 @@ class VMShapeLowerMutator
     if (to_compute.size() == 0) return 0;
     TVM_FFI_ICHECK_GT(heap_size_->value, 0);
     // construct a PrimFunc that compute the shape.
-    tirx::Var heap("heap", DataType::Handle());
+    tirx::Var heap("heap", PrimType::Handle());
     ffi::Array<PrimExpr> buffer_shape{heap_size_};
     tirx::Buffer buffer = tirx::decl_buffer(buffer_shape, ShapeDType(), "H", "global");
     ffi::Map<tirx::Var, tirx::Buffer> buffer_map;
@@ -575,7 +575,8 @@ class VMShapeLowerMutator
     auto var_map = [&](const tirx::Var& var) -> ffi::Optional<PrimExpr> {
       auto it = slot_map_.find(var);
       TVM_FFI_ICHECK(it != slot_map_.end());
-      return tirx::BufferLoad(buffer, {IntImm(tvm::PrimType(ShapeDType()), it->second->index)});
+      return tirx::BufferLoad(buffer, ffi::Array<PrimExpr>{
+                                          IntImm(tvm::PrimType(ShapeDType()), it->second->index)});
     };
 
     ffi::Array<tirx::Stmt> seq;
@@ -683,7 +684,7 @@ class VMShapeLowerMutator
     if (always_check || !IsBaseOf(TensorType(op->dtype, op->ndim), GetType(value))) {
       // check_tensor_info(value, ndim, dtype, err_ctx)
       Call call(builtin_check_tensor_info_,
-                {value, PrimValue::Int64(op->ndim), DataTypeImm(op->dtype->dtype),
+                {value, PrimValue::Int64(op->ndim), DataTypeImm(op->dtype),
                  GetErrContext(err_ctx)},
                 Attrs(), {void_ty_});
       builder_->Emit(call, "_");

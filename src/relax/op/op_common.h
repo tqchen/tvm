@@ -186,12 +186,16 @@ std::tuple<ArgTypes...> GetArgType(const Call& call, const BlockBuilder& ctx) {
 
 /************ Utilities ************/
 
+inline DLDataType GetRawDType(DLDataType dtype) { return dtype; }
+
+inline DLDataType GetRawDType(const PrimType& dtype) { return dtype->dtype; }
+
 /*!
  * \brief Infer the type for unary elementwise ops.
  * \param call The context Call to the operator.
  * \param ctx The error reporting context.
  * \param f_compute_out_dtype The function to compute the output dtype, with
- * signature DataType f_compute_out_dtype(const TensorType& input_ty).
+ * signature DLDataType or PrimType f_compute_out_dtype(const TensorType& input_ty).
  * \tparam require_float_dtype whether this op requires the input dtype to be float
  * \tparam Ftype the type of f_compute_out_dtype
  * \return The inferred type.
@@ -199,16 +203,16 @@ std::tuple<ArgTypes...> GetArgType(const Call& call, const BlockBuilder& ctx) {
 template <bool require_float_dtype, typename FType>
 inline Type InferTypeUnary(const Call& call, const BlockBuilder& ctx, FType f_compute_out_dtype) {
   TensorType input_ty = GetUnaryInputTensorType(call, ctx);
-  DataType input_dtype(input_ty->dtype->dtype);
+  DLDataType input_dtype = input_ty->dtype;
   if (require_float_dtype && !input_ty->IsUnknownDtype() &&
-      (!input_dtype.is_float() && !input_dtype.is_bfloat())) {
+      (!runtime::IsFloatDType(input_dtype) && !runtime::IsBFloatDType(input_dtype))) {
     TVM_FFI_VISIT_THROW(TypeError, call)
         << call->op
         << " requires the input tensor to have float dtype. However, the given input dtype is "
         << input_ty->dtype;
   }
   auto output_ty = ffi::make_object<TensorTypeNode>(*input_ty.get());
-  output_ty->dtype = f_compute_out_dtype(input_ty);
+  output_ty->dtype = GetRawDType(f_compute_out_dtype(input_ty));
   if (call->ty_args.size() > 0) {
     auto defined_ty = call->ty_args[0].as<TensorTypeNode>();
     TVM_FFI_ICHECK(defined_ty);
@@ -279,7 +283,7 @@ inline std::optional<PrimType> GetElementDType(const Type& ty) {
   if (const auto* prim = ty.as<PrimTypeNode>()) {
     return ffi::GetRef<PrimType>(prim);
   } else if (const auto* tensor = ty.as<TensorTypeNode>()) {
-    return tensor->dtype;
+    return PrimType(tensor->dtype);
   } else {
     return std::nullopt;
     TVM_FFI_THROW(TypeError) << "Only PrimType and TensorType "

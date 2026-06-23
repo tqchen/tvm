@@ -121,7 +121,7 @@ FloatImm::FloatImm(PrimType value_ty, double value, Span span) {
                     value_ty.MatchesElementType(DLDataTypeCode::kDLBfloat, 16) ||
                     IsFloat8Code(code) || IsFloat6Code(code) ||
                     value_ty.MatchesElementType(DLDataTypeCode::kDLFloat4_e2m1fn, 4) ||
-                    static_cast<int>(code) >= DataType::kCustomBegin,
+                    static_cast<int>(code) >= static_cast<int>(ffi::DLExtDataTypeCode::kDLExtCustomBegin),
                 ValueError)
       << "FloatImm supports only float, but " << runtime_dtype << " was supplied.";
 

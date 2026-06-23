@@ -101,9 +101,9 @@ inline tvm::te::Tensor binarize_pack(const tvm::te::Tensor& data, int axis,
 inline tvm::te::Tensor binary_dense(const tvm::te::Tensor& data, const tvm::te::Tensor& weight) {
   TVM_FFI_ICHECK_EQ(data->shape.size(), 2) << "binary_dense requires 2-D data";
   TVM_FFI_ICHECK_EQ(weight->shape.size(), 2) << "binary_dense requires 2-D weight";
-  TVM_FFI_ICHECK_EQ(data->dtype->dtype, PrimType::UInt(32)->dtype)
+  TVM_FFI_ICHECK_EQ(data->dtype, PrimType::UInt(32)->dtype)
       << "binary_dense requires uint32 data";
-  TVM_FFI_ICHECK_EQ(weight->dtype->dtype, PrimType::UInt(32)->dtype)
+  TVM_FFI_ICHECK_EQ(weight->dtype, PrimType::UInt(32)->dtype)
       << "binary_dense requires uint32 weight";
 
   auto batch = data->shape[0];

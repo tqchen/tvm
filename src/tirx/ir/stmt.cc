@@ -41,7 +41,7 @@ DataType DType(const PrimExpr& expr) { return DType(expr.ty()); }
 
 bool SameDType(const PrimExpr& lhs, const PrimExpr& rhs) { return DType(lhs) == DType(rhs); }
 
-bool IsScalar(const PrimType& ty) { return !ty.IsFixedLengthVector() && !ty.IsScalableVector(); }
+bool IsScalar(const PrimType& ty) { return ty.IsScalar(); }
 
 bool IsIntOrUInt(const PrimType& ty) {
   return ty.code() == DLDataTypeCode::kDLInt || ty.code() == DLDataTypeCode::kDLUInt;

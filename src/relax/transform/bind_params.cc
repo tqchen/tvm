@@ -51,7 +51,7 @@ void MatchSymbolicVar(const Expr& arg, const Expr& constant,
   TVM_FFI_ICHECK(const_ty->shape.defined());
 
   // dtype mismatch
-  if (!arg_ty->IsUnknownDtype() && arg_ty->dtype->dtype != const_ty->dtype->dtype) {
+  if (!arg_ty->IsUnknownDtype() && arg_ty->dtype != const_ty->dtype) {
     TVM_FFI_THROW(InternalError) << "The dtype of the bound parameter is expected to be "
                                  << arg_ty->dtype << ", but got: " << const_ty->dtype;
   }

@@ -64,10 +64,9 @@ Type InferTypeBucketize(const Call& call, const BlockBuilder& ctx) {
   }
 
   auto attrs = call->attrs.as<BucketizeAttrs>();
-  DataType out_dtype;
-  out_dtype = DataType::Int(64);
+  DLDataType out_dtype = runtime::IntDType(64);
   if (attrs->out_int32) {
-    out_dtype = DataType::Int(32);
+    out_dtype = runtime::IntDType(32);
   }
 
   const auto* data_shape = input_tensor_info->shape.as<ShapeExprNode>();
@@ -119,7 +118,7 @@ Type InferTypeWhere(const Call& call, const BlockBuilder& ctx) {
     }
   }
 
-  const DLDataType cond_dtype = cond_ty->dtype->dtype;
+  const DLDataType cond_dtype = cond_ty->dtype;
   // Where condition validation only checks the boolean element kind; lanes are irrelevant here.
   if (cond_dtype.code != DLDataTypeCode::kDLBool) {
     TVM_FFI_VISIT_THROW(TypeError, call)
@@ -211,7 +210,7 @@ Type InferTypeArgmaxArgmin(const Call& call, const BlockBuilder& ctx) {
     TVM_FFI_ICHECK_GE(out_ndim, 0);
   }
 
-  DataType out_dtype = DataType::Int(64);
+  DLDataType out_dtype = runtime::IntDType(64);
   // The inference rule for reduction operator output shapes:
   // - axes is None, keepdims is false -> return the zero-rank shape;
   // - axes is None, keepdims is true -> return the shape whose ndim is the same as input and every
@@ -233,7 +232,7 @@ Type InferTypeArgmaxArgmin(const Call& call, const BlockBuilder& ctx) {
   }
 
   if (data_ty->ndim > 0) {
-    out_dtype = DataType(data_shape->values[0].ty()->dtype);
+    out_dtype = data_shape->values[0].ty()->dtype;
   }
 
   ffi::Array<PrimExpr> out_shape;

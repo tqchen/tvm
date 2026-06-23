@@ -88,8 +88,8 @@ Type InferTypeFull(const Call& call, const BlockBuilder& ctx) {
   }
 
   const auto* attrs = call->attrs.as<InitAttrs>();
-  PrimType out_dtype =
-      attrs->dtype == PrimType::Void()->dtype ? fill_value_ty->dtype : PrimType(attrs->dtype);
+  DLDataType out_dtype =
+      attrs->dtype == PrimType::Void()->dtype ? fill_value_ty->dtype : attrs->dtype;
   return TensorType(/*shape=*/call->args[0], out_dtype, fill_value_ty->vdevice);
 }
 
@@ -132,7 +132,7 @@ Type InferTypeFullLike(const Call& call, const BlockBuilder& ctx) {
     return data_ty;
   } else {
     auto output_ty = ffi::make_object<TensorTypeNode>(*data_ty.get());
-    output_ty->dtype = PrimType(attrs->dtype);
+    output_ty->dtype = attrs->dtype;
     return TensorType(output_ty);
   }
 }
@@ -159,7 +159,7 @@ Type InferTypeOnesZeros(const Call& call, const BlockBuilder& ctx) {
         << call->args[0]->ty->GetTypeKey();
   }
   const auto* attrs = call->attrs.as<InitAttrs>();
-  return TensorType(/*shape=*/call->args[0], PrimType(attrs->dtype));
+  return TensorType(/*shape=*/call->args[0], attrs->dtype);
 }
 
 // Structure info inference for ones_like and zeros_like
@@ -170,7 +170,7 @@ Type InferTypeOnesLikeZerosLike(const Call& call, const BlockBuilder& ctx) {
     return data_ty;
   } else {
     auto output_ty = ffi::make_object<TensorTypeNode>(*data_ty.get());
-    output_ty->dtype = PrimType(attrs->dtype);
+    output_ty->dtype = attrs->dtype;
     return TensorType(output_ty);
   }
 }
@@ -312,8 +312,8 @@ Type InferTypeEyeLike(const Call& call, const BlockBuilder& ctx) {
   }
 
   const auto* attrs = call->attrs.as<InitAttrs>();
-  PrimType out_dtype =
-      attrs->dtype == PrimType::Void()->dtype ? x_ty->dtype : PrimType(attrs->dtype);
+  DLDataType out_dtype =
+      attrs->dtype == PrimType::Void()->dtype ? x_ty->dtype : attrs->dtype;
 
   return TensorType(x_ty->shape.value(), out_dtype, x_ty->vdevice);
 }

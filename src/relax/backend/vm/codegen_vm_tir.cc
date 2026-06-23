@@ -160,10 +160,10 @@ class CodeGenVMTIR : public ExprFunctor<ffi::Optional<PrimExpr>(const Expr&)> {
     stmt_stack_ = {};
     registers_num_ = 0;
     var_map_.clear();
-    ctx_ptr_ = tirx::Var("ctx_ptr", DataType::Handle());
-    reg_anylist_handle_ = tirx::Var("r", DataType::Handle());
-    func_anylist_handle_ = tirx::Var("f", DataType::Handle());
-    const_anylist_handle_ = tirx::Var("c", DataType::Handle());
+    ctx_ptr_ = tirx::Var("ctx_ptr", PrimType::Handle());
+    reg_anylist_handle_ = tirx::Var("r", PrimType::Handle());
+    func_anylist_handle_ = tirx::Var("f", PrimType::Handle());
+    const_anylist_handle_ = tirx::Var("c", PrimType::Handle());
 
     ffi::Array<ffi::String> param_names;
     for (Var param : func->params) {

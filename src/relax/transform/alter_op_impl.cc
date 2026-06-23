@@ -206,7 +206,7 @@ class AlterOpImplMutator : public ExprMutator {
    * \brief Adds the \p remove_pad op to the module if it has not already been added before.
    * \returns The global var associated with the remove_pad PrimFunc.
    */
-  GlobalVar GetOrCreateRemovePadOp(const ffi::Array<PrimExpr>& old_shape, const DataType& dtype) {
+  GlobalVar GetOrCreateRemovePadOp(const ffi::Array<PrimExpr>& old_shape, DLDataType dtype) {
     int t_shape = old_shape.size();
     if (remove_pad_map_.count(t_shape) != 0) {
       return remove_pad_map_[t_shape];
@@ -264,7 +264,7 @@ class AlterOpImplMutator : public ExprMutator {
           TransformLayout(expr, inverse_index_map, axis_separator, input_axis_separator));
       const auto& tensor_ty = padded_expr->ty.as_or_throw<TensorType>();
 
-      GlobalVar gv_remove_pad = GetOrCreateRemovePadOp(old_shape, DataType(tensor_ty->dtype->dtype));
+      GlobalVar gv_remove_pad = GetOrCreateRemovePadOp(old_shape, tensor_ty->dtype);
       return Call(call_tir_op_, {gv_remove_pad, Tuple({padded_expr})}, {}, {old_tensor_ty});
     }
   }
