@@ -97,12 +97,12 @@ class CodeGenHexagon final : public CodeGenCPU {
   void CreatePrintf(const std::string& format, llvm::ArrayRef<llvm::Value*> format_args) final;
 
  private:
-  TypedPointer CreateBufferPtr(llvm::Value* buffer_ptr, DataType buffer_element_dtype,
-                               llvm::ArrayRef<llvm::Value*> indices, DataType value_dtype) final;
+  TypedPointer CreateBufferPtr(llvm::Value* buffer_ptr, PrimType buffer_element_dtype,
+                               llvm::ArrayRef<llvm::Value*> indices, PrimType value_dtype) final;
 
   bool IsQHLFunction(const std::string& func);
 
-  llvm::Value* VectorLookupLoad(Buffer buffer, DataType buffer_type, ffi::Array<PrimExpr> indices);
+  llvm::Value* VectorLookupLoad(Buffer buffer, PrimType buffer_type, ffi::Array<PrimExpr> indices);
   llvm::Value* Intrinsic(llvm::Intrinsic::ID, llvm::ArrayRef<llvm::Value*> args);
   std::vector<std::string> fqhl_list_ = {
       "tvm_vect_qhmath_hvx_cos_ahf",     "tvm_vect_qhmath_hvx_tanh_ahf",
@@ -194,7 +194,7 @@ llvm::Value* CodeGenHexagon::VisitExpr_(const BufferLoadNode* op) {
   if (!op->buffer.same_as(op->buffer->data)) {
     // Check if we can generate a vector lookup.
     if (!op->indices[0].as<RampNode>()) {
-      if (auto* vlut = VectorLookupLoad(op->buffer, DataType(op->ty()->dtype), op->indices)) {
+      if (auto* vlut = VectorLookupLoad(op->buffer, PrimType(op->ty()->dtype), op->indices)) {
         return vlut;
       }
     }
@@ -263,9 +263,9 @@ void CodeGenHexagon::CreatePrintf(const std::string& format,
 }
 
 CodeGenLLVM::TypedPointer CodeGenHexagon::CreateBufferPtr(llvm::Value* buffer_ptr,
-                                                          DataType buffer_element_dtype,
+                                                          PrimType buffer_element_dtype,
                                                           llvm::ArrayRef<llvm::Value*> indices,
-                                                          DataType value_dtype) {
+                                                          PrimType value_dtype) {
   // Flat indices get delegated to the LLVM codegen.
   if (indices.size() == 1) {
     return CodeGenCPU::CreateBufferPtr(buffer_ptr, buffer_element_dtype, indices, value_dtype);
@@ -276,7 +276,7 @@ CodeGenLLVM::TypedPointer CodeGenHexagon::CreateBufferPtr(llvm::Value* buffer_pt
       << "-d buffer indices";
 
   // Use the first index to identify the pointer.
-  DataType dtype_void_ptr = DataType::Handle();
+  PrimType dtype_void_ptr = PrimType::Handle();
   CodeGenLLVM::TypedPointer buffer_chunk_ptr_ptr =
       CodeGenCPU::CreateBufferPtr(buffer_ptr, dtype_void_ptr, {indices[0]}, dtype_void_ptr);
   llvm::Value* buffer_chunk_ptr =
@@ -319,7 +319,7 @@ llvm::Value* CodeGenHexagon::Intrinsic(llvm::Intrinsic::ID IntID,
   return builder_->CreateCall(intf_callee, conv_args);
 }
 
-llvm::Value* CodeGenHexagon::VectorLookupLoad(Buffer buffer, DataType buffer_type,
+llvm::Value* CodeGenHexagon::VectorLookupLoad(Buffer buffer, PrimType buffer_type,
                                               ffi::Array<PrimExpr> indices) {
   PrimExpr index = indices[0];
   PrimType index_ty = index.ty();
@@ -332,7 +332,7 @@ llvm::Value* CodeGenHexagon::VectorLookupLoad(Buffer buffer, DataType buffer_typ
   int table_elem_count = arith::Analyzer()->Simplify(buffer->shape[0]).as<IntImmNode>()->value;
   if (table_elem_count <= 0 || table_elem_count > 256) return nullptr;
 
-  auto int32 = DataType::Int(32);
+  auto int32 = PrimType::Int(32);
   auto native_vector_bytes = native_vector_bits_ / 8;
 
   // Indexes
@@ -341,7 +341,7 @@ llvm::Value* CodeGenHexagon::VectorLookupLoad(Buffer buffer, DataType buffer_typ
 
   // Values
   std::vector<llvm::Value*> vloads;
-  DataType table_type = buffer_type.with_lanes(table_elem_count);
+  PrimType table_type = buffer_type.WithLanes(table_elem_count);
 
   auto table_all =
       MakeValue(BufferLoad(buffer, {
@@ -350,7 +350,7 @@ llvm::Value* CodeGenHexagon::VectorLookupLoad(Buffer buffer, DataType buffer_typ
 
   // The number of value vectors should be a power of 2.
   int table_vec_count = llvm::PowerOf2Ceil(GetVectorBytes(table_type) / native_vector_bytes);
-  int table_vec_length = native_vector_bytes / buffer_type.bytes();
+  int table_vec_length = native_vector_bytes / GetVectorBytes(buffer_type);
   for (int i = 0; i != table_vec_count; ++i) {
     // CreateVecSlice will generate undefs for elements outside the source vector.
     vloads.push_back(CreateVecSlice(table_all, i * table_vec_length, table_vec_length));
