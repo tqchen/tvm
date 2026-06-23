@@ -57,7 +57,7 @@ using tvm::tirx::Var;
  * \param axis_separators The separators between input axes when generating flattened output axes.
  * \return The declared buffer.
  */
-Buffer BufferDecl(ffi::Array<PrimExpr> shape, DLDataType dtype, ffi::String buffer_name,
+Buffer BufferDecl(ffi::Array<PrimExpr> shape, PrimType dtype, ffi::String buffer_name,
                   ffi::Optional<Var> data, ffi::Optional<ffi::Array<PrimExpr>> strides,
                   ffi::Optional<PrimExpr> elem_offset, ffi::String storage_scope, int align,
                   int offset_factor, ffi::String buffer_type,
@@ -122,7 +122,7 @@ Type FuncRet(Type ret_type);
  * \return The matched buffer.
  */
 Buffer MatchBuffer(ffi::ObjectRef param, ffi::Array<PrimExpr> shape,
-                   DLDataType dtype = DLDataType{kDLFloat, 32, 1},
+                   PrimType dtype = PrimType::Float(32),
                    ffi::Optional<Var> data = std::nullopt,
                    ffi::Array<PrimExpr> strides = {}, PrimExpr elem_offset = PrimExpr(),
                    ffi::String storage_scope = "global", int align = -1, int offset_factor = 0,
@@ -198,7 +198,7 @@ void BlockAttrs(ffi::Map<ffi::String, ffi::Any> attrs);
  * T.prim_func(tirx=True).
  */
 ffi::Variant<Buffer, AllocBufferFrame> SBlockAllocBuffer(
-    ffi::Array<PrimExpr> shape, DLDataType dtype = DLDataType{kDLFloat, 32, 1},
+    ffi::Array<PrimExpr> shape, PrimType dtype = PrimType::Float(32),
     ffi::Optional<Var> data = std::nullopt, ffi::Array<PrimExpr> strides = {},
     PrimExpr elem_offset = PrimExpr(), ffi::String storage_scope = "", int align = -1,
     int offset_factor = 0, ffi::String buffer_type = "default",
@@ -413,7 +413,7 @@ ElseFrame Else();
  * \param layout The layout of the buffer.
  * \return The declaration frame.
  */
-DeclBufferFrame DeclBuffer(ffi::Array<PrimExpr> shape, DLDataType dtype, ffi::String buffer_name,
+DeclBufferFrame DeclBuffer(ffi::Array<PrimExpr> shape, PrimType dtype, ffi::String buffer_name,
                            ffi::Optional<Var> data, ffi::Optional<ffi::Array<PrimExpr>> strides,
                            ffi::Optional<PrimExpr> elem_offset, ffi::String storage_scope,
                            int align, int offset_factor, ffi::String buffer_type,
@@ -429,7 +429,7 @@ DeclBufferFrame DeclBuffer(ffi::Array<PrimExpr> shape, DLDataType dtype, ffi::St
  * \param annotations Optional annotations for the allocation.
  * \return The allocated buffer.
  */
-Buffer AllocBuffer(ffi::Array<PrimExpr> shape, DLDataType dtype = DLDataType{kDLFloat, 32, 1},
+Buffer AllocBuffer(ffi::Array<PrimExpr> shape, PrimType dtype = PrimType::Float(32),
                    ffi::String storage_scope = "global",
                    ffi::Optional<ffi::Map<ffi::String, ffi::Any>> annotations = std::nullopt);
 

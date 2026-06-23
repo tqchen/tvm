@@ -41,7 +41,7 @@ namespace tirx {
 using tvm::tirx::IterVar;
 using tvm::tirx::Layout;
 
-Buffer BufferDecl(ffi::Array<PrimExpr> shape, DLDataType dtype, ffi::String buffer_name,
+Buffer BufferDecl(ffi::Array<PrimExpr> shape, PrimType dtype, ffi::String buffer_name,
                   ffi::Optional<Var> data, ffi::Optional<ffi::Array<PrimExpr>> strides,
                   ffi::Optional<PrimExpr> elem_offset, ffi::String storage_scope, int align,
                   int offset_factor, ffi::String buffer_type,
@@ -57,7 +57,7 @@ Buffer BufferDecl(ffi::Array<PrimExpr> shape, DLDataType dtype, ffi::String buff
   }
   Var buffer_data;
   if (!data.defined()) {
-    DLDataType storage_dtype = dtype;
+    DLDataType storage_dtype = dtype->dtype;
     if (storage_dtype == DLDataType{kDLBool, 8, 1}) {
       storage_dtype = DLDataType{kDLInt, 8, 1};
     }
@@ -69,7 +69,7 @@ Buffer BufferDecl(ffi::Array<PrimExpr> shape, DLDataType dtype, ffi::String buff
     PrimType shape_dtype = shape.empty() ? PrimType::Int(32) : shape[0].ty();
     elem_offset = tvm::tirx::Var("elem_offset", shape_dtype);
   }
-  return Buffer(buffer_data, PrimType(dtype), shape, strides.value_or(ffi::Array<PrimExpr>()),
+  return Buffer(buffer_data, dtype, shape, strides.value_or(ffi::Array<PrimExpr>()),
                 elem_offset.value_or(PrimExpr()), buffer_name, align, offset_factor,
                 (buffer_type == "auto" ? tvm::tirx::kAutoBroadcast : tvm::tirx::kDefault),
                 axis_separators.value_or(ffi::Array<IntImm>()), Span(), layout, allocated_addr);
@@ -148,7 +148,7 @@ tvm::Type FuncRet(tvm::Type ret_type) {
   return ret_type;
 }
 
-Buffer MatchBuffer(ffi::ObjectRef param, ffi::Array<PrimExpr> shape, DLDataType dtype,
+Buffer MatchBuffer(ffi::ObjectRef param, ffi::Array<PrimExpr> shape, PrimType dtype,
                    ffi::Optional<Var> data, ffi::Array<PrimExpr> strides, PrimExpr elem_offset,
                    ffi::String storage_scope, int align, int offset_factor,
                    ffi::String buffer_type_str, ffi::Optional<ffi::Array<IntImm>> axis_separators,
@@ -367,7 +367,7 @@ void BlockAttrs(ffi::Map<ffi::String, Any> attrs) {
 }
 
 ffi::Variant<Buffer, AllocBufferFrame> SBlockAllocBuffer(
-    ffi::Array<PrimExpr> shape, DLDataType dtype, ffi::Optional<Var> data,
+    ffi::Array<PrimExpr> shape, PrimType dtype, ffi::Optional<Var> data,
     ffi::Array<PrimExpr> strides, PrimExpr elem_offset, ffi::String storage_scope, int align,
     int offset_factor, ffi::String buffer_type_str,
     ffi::Optional<ffi::Array<IntImm>> axis_separators, ffi::Optional<Layout> layout,
@@ -807,7 +807,7 @@ void BufferStore(Buffer buffer, PrimExpr value, ffi::Array<PrimExpr> indices,
   AddToParent(tvm::tirx::BufferStore(buffer, value, indices, predicate));
 }
 
-DeclBufferFrame DeclBuffer(ffi::Array<PrimExpr> shape, DLDataType dtype, ffi::String buffer_name,
+DeclBufferFrame DeclBuffer(ffi::Array<PrimExpr> shape, PrimType dtype, ffi::String buffer_name,
                            ffi::Optional<Var> data, ffi::Optional<ffi::Array<PrimExpr>> strides,
                            ffi::Optional<PrimExpr> elem_offset, ffi::String storage_scope,
                            int align, int offset_factor, ffi::String buffer_type,
@@ -849,7 +849,7 @@ DeclBufferFrame DeclBuffer(ffi::Array<PrimExpr> shape, DLDataType dtype, ffi::St
   return DeclBufferFrame(n);
 }
 
-Buffer AllocBuffer(ffi::Array<PrimExpr> shape, DLDataType dtype, ffi::String storage_scope,
+Buffer AllocBuffer(ffi::Array<PrimExpr> shape, PrimType dtype, ffi::String storage_scope,
                    ffi::Optional<ffi::Map<ffi::String, ffi::Any>> annotations) {
   Buffer buffer = BufferDecl(shape, dtype, "", std::nullopt, std::nullopt, std::nullopt,
                              storage_scope, 0, 0, "", std::nullopt);
@@ -929,7 +929,7 @@ TVM_FFI_STATIC_INIT_BLOCK() {
   namespace refl = tvm::ffi::reflection;
   refl::GlobalDef()
       .def("script.ir_builder.tirx.Buffer",
-           static_cast<Buffer (*)(ffi::Array<PrimExpr>, DLDataType, ffi::String, ffi::Optional<Var>,
+           static_cast<Buffer (*)(ffi::Array<PrimExpr>, PrimType, ffi::String, ffi::Optional<Var>,
                                   ffi::Optional<ffi::Array<PrimExpr>>, ffi::Optional<PrimExpr>,
                                   ffi::String, int, int, ffi::String,
                                   ffi::Optional<ffi::Array<IntImm>>, ffi::Optional<Layout>,

@@ -63,9 +63,8 @@ bool IsVScaleCall(const PrimExpr& expr) {
 
 bool TargetHasRVV(Target target) {
   if (!target.defined()) return false;
-  static auto target_has_feature_fn =
-      tvm::ffi::Function::GetGlobalRequired("target.target_has_feature");
-  return target_has_feature_fn("v", target).cast<bool>();
+  static auto target_has_feature_fn = tvm::ffi::Function::GetGlobal("target.target_has_feature");
+  return target_has_feature_fn.has_value() && (*target_has_feature_fn)("v", target).cast<bool>();
 }
 
 // File-local helper: true if the target supports Variable-Length Array extensions
@@ -73,6 +72,16 @@ bool TargetHasRVV(Target target) {
 bool TargetHasVLA(Target target) {
   if (!target.defined()) return false;
   bool has_vla = target->GetAttr<bool>("feature.has_sve").value_or(false);
+  if (!has_vla) {
+    if (auto mattr = target->GetAttr<ffi::Array<ffi::String>>("mattr")) {
+      for (const ffi::String& attr : mattr.value()) {
+        if (attr == "+sve") {
+          has_vla = true;
+          break;
+        }
+      }
+    }
+  }
   has_vla |= TargetHasRVV(target);
   return has_vla;
 }
