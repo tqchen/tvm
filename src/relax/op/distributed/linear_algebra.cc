@@ -33,7 +33,7 @@ Type InferDistTypeMatmul(const Call& call, const BlockBuilder& ctx) {
 
   const auto* attrs = call->attrs.as<MatmulAttrs>();
   DLDataType out_dtype = attrs->out_dtype == (DLDataType{kDLOpaqueHandle, 0, 0})
-                           ? InferBinaryArithOpOutDtype(call, ctx, x1_ty, x2_ty)->dtype
+                           ? InferBinaryArithOpOutDtype(call, ctx, x1_ty, x2_ty)
                            : attrs->out_dtype;
 
   if (x1_ty->IsUnknownNdim() || x2_ty->IsUnknownNdim()) {

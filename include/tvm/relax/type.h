@@ -124,7 +124,7 @@ class ShapeTypeNode : public TypeNode {
    * \brief The number of dimension of the shape, can be unknown.
    * \sa kUnknownNDim
    */
-  int ndim;
+  int ndim{kUnknownNDim};
 
   /*! \return Whether the type contains unknown ndim. */
   bool IsUnknownNdim() const { return ndim == kUnknownNDim; }
@@ -180,7 +180,7 @@ class TensorTypeNode : public TypeNode {
    * \brief The number of dimension of the tensor, can be unknown.
    * \sa kUnknownNDim
    */
-  int ndim;
+  int ndim{kUnknownNDim};
 
   /*! \return Whether the type contains unknown ndim. */
   bool IsUnknownNdim() const { return ndim == kUnknownNDim; }

@@ -41,6 +41,10 @@ LegalizeFunc = Callable[[BlockBuilder, Call], Expr]
 ##################### Utilities #####################
 
 
+def _dtype_str(dtype) -> str:
+    return str(dtype.dtype) if hasattr(dtype, "dtype") else str(dtype)
+
+
 def _try_convert_to_scalar_const(
     expr: Expr, python_native: bool = False
 ) -> Expr | FloatImm | IntImm | bool | float | int:
@@ -68,7 +72,7 @@ def _try_convert_to_scalar_const(
     if isinstance(expr, Constant) and expr.ty.ndim == 0:
         # get the value of the scalar constant
         value = expr.data.numpy()[()].item()
-        dtype = expr.ty.dtype
+        dtype = _dtype_str(expr.ty.dtype)
         if python_native:
             return value
         # preserve the data type of the constant

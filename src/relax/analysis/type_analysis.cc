@@ -1017,7 +1017,9 @@ class TypeLCAFinder : public TypeFunctor<Type(const Type&, const Type&)> {
     if (rhs == nullptr) return ObjectType(lhs->span);
 
     // find the target dtype, ndim, and vdevice.
-    PrimType dtype = lhs->dtype == rhs->dtype ? lhs->dtype : PrimType(DLDataType{kDLOpaqueHandle, 0, 0});
+    PrimType dtype = lhs->dtype->dtype == rhs->dtype->dtype
+                         ? PrimType(lhs->dtype->dtype)
+                         : PrimType(DLDataType{kDLOpaqueHandle, 0, 0});
     int ndim = lhs->ndim == rhs->ndim ? lhs->ndim : kUnknownNDim;
     VDevice vdev = VDevice();
     if (lhs->vdevice.defined() && rhs->vdevice.defined() &&
@@ -1030,7 +1032,7 @@ class TypeLCAFinder : public TypeFunctor<Type(const Type&, const Type&)> {
         !CanProveShapeEqual(lhs->shape.value(), rhs->shape.value(),
                             ffi::GetRef<arith::Analyzer>(analyzer_))) {
       // reuse lhs when possible
-      if (!lhs->shape.defined() && lhs->dtype == dtype && lhs->ndim == ndim &&
+      if (!lhs->shape.defined() && lhs->dtype->dtype == dtype->dtype && lhs->ndim == ndim &&
           (!lhs->vdevice.defined() || vdev.defined())) {
         return ffi::GetRef<Type>(lhs);
       } else {
@@ -1038,7 +1040,7 @@ class TypeLCAFinder : public TypeFunctor<Type(const Type&, const Type&)> {
       }
     }
     // symbolic shape and vdevice match but dtype mismatch
-    if (lhs->dtype != dtype || (lhs->vdevice.defined() && !vdev.defined())) {
+    if (lhs->dtype->dtype != dtype->dtype || (lhs->vdevice.defined() && !vdev.defined())) {
       return TensorType(lhs->shape.value(), dtype, vdev, lhs->span);
     } else {
       return ffi::GetRef<Type>(lhs);
