@@ -149,7 +149,7 @@ For::For(Var loop_var, PrimExpr min, PrimExpr extent, ForKind kind, Stmt body,
 
   auto require_scalar_int_dtype = [&](PrimExpr expr, const char* field_name) {
     PrimType dtype = expr.ty();
-    TVM_FFI_ICHECK(dtype.IsScalar() && (dtype.IsUInt() || dtype.IsInt()))
+    TVM_FFI_ICHECK(dtype.IsScalar() && (dtype.MatchesCode(DLDataTypeCode::kDLUInt, DLDataTypeCode::kDLInt)))
         << "TIR For nodes require a scalar integer as the " << field_name << ", but received "
         << expr << " with dtype " << dtype;
   };
@@ -667,7 +667,9 @@ SBlockRealize::SBlockRealize(ffi::Array<PrimExpr> values, PrimExpr predicate, SB
   TVM_FFI_CHECK_EQ(block->iter_vars.size(), values.size(), ValueError)
       << "BlockRealize needs to have the same number of iter_vars and binding values";
   PrimType predicate_ty = predicate.ty();
-  TVM_FFI_CHECK(predicate_ty.IsPredicate() || (predicate_ty.IsUInt() && predicate_ty.bits() == 1),
+  TVM_FFI_CHECK(predicate_ty.IsPredicate() ||
+                    (predicate_ty.MatchesCode(DLDataTypeCode::kDLUInt) &&
+                     predicate_ty.bits() == 1),
                 TypeError)
       << "Expect Block.predicate to be a bool expression";
   ffi::ObjectPtr<SBlockRealizeNode> node = ffi::make_object<SBlockRealizeNode>();

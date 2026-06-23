@@ -504,9 +504,9 @@ void TVMFFIABIBuilder::DecodeParam(int param_index) {
   PrimExpr arg_value;
   if (dtype.IsHandle()) {
     arg_value = DecodeParamOpaqueHandle(param_index, type_index);
-  } else if (dtype.IsBool()) {
+  } else if (dtype.MatchesCode(DLDataTypeCode::kDLBool)) {
     arg_value = DecodeParamBool(param_index, type_index);
-  } else if (dtype.IsInt() || dtype.IsUInt()) {
+  } else if (dtype.MatchesCode(DLDataTypeCode::kDLInt, DLDataTypeCode::kDLUInt)) {
     arg_value = DecodeParamInt(param_index, type_index, dtype);
   } else {
     TVM_FFI_ICHECK_EQ(dtype.code(), DLDataTypeCode::kDLFloat);

@@ -171,7 +171,7 @@ class LayoutApplier : public arith::IRMutatorWithAnalyzer {
     }
     // TODO(Lunderberg): Move the handling of boolean into a
     // dedicated pass.
-    if (flattened->dtype.IsBool()) {
+    if (flattened->dtype.MatchesCode(DLDataTypeCode::kDLBool)) {
       writer->dtype = PrimType::Int(8);
     }
     // canonicalize shape

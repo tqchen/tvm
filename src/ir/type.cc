@@ -142,6 +142,10 @@ PrimType PrimType::Int(int bits, int lanes) {
   return PrimType(MakeDLDataType(DLDataTypeCode::kDLInt, bits, lanes));
 }
 
+PrimType PrimType::UInt(int bits, int lanes) {
+  return PrimType(MakeDLDataType(DLDataTypeCode::kDLUInt, bits, lanes));
+}
+
 PrimType PrimType::Float(int bits, int lanes) {
   if (bits == 32 && lanes == 1) {
     thread_local PrimType f32_ty(MakeDLDataType(DLDataTypeCode::kDLFloat, 32, 1));
@@ -150,9 +154,24 @@ PrimType PrimType::Float(int bits, int lanes) {
   return PrimType(MakeDLDataType(DLDataTypeCode::kDLFloat, bits, lanes));
 }
 
-PrimType PrimType::Bool() {
-  thread_local PrimType bool_ty(MakeDLDataType(DLDataTypeCode::kDLBool, 8, 1));
-  return bool_ty;
+PrimType PrimType::BFloat(int bits, int lanes) {
+  return PrimType(MakeDLDataType(DLDataTypeCode::kDLBfloat, bits, lanes));
+}
+
+PrimType PrimType::Bool(int lanes) {
+  if (lanes == 1) {
+    thread_local PrimType bool_ty(MakeDLDataType(DLDataTypeCode::kDLBool, 8, 1));
+    return bool_ty;
+  }
+  return PrimType(MakeDLDataType(DLDataTypeCode::kDLBool, 8, lanes));
+}
+
+PrimType PrimType::Handle(int bits, int lanes) {
+  return PrimType(MakeDLDataType(DLDataTypeCode::kDLOpaqueHandle, bits, lanes));
+}
+
+PrimType PrimType::Void() {
+  return PrimType(MakeDLDataType(DLDataTypeCode::kDLOpaqueHandle, 0, 0));
 }
 
 PrimType PrimType::ScalableVector(DLDataTypeCode code, int bits, int lanes) {

@@ -81,11 +81,11 @@ class ReturnRewriter : public StmtMutator {
 
     // convert val's data type to FFI data type, return type code
     PrimType dtype = val.ty();
-    if (dtype.IsBool()) {
+    if (dtype.MatchesCode(DLDataTypeCode::kDLBool)) {
       info.type_index = ffi::TypeIndex::kTVMFFIBool;
       info.expr = Cast(PrimType::Int(64), val);
 
-    } else if (dtype.IsInt() || dtype.IsUInt()) {
+    } else if (dtype.MatchesCode(DLDataTypeCode::kDLInt, DLDataTypeCode::kDLUInt)) {
       info.type_index = ffi::TypeIndex::kTVMFFIInt;
       info.expr = Cast(PrimType::Int(64), val);
     } else if (dtype.code() == DLDataTypeCode::kDLFloat) {

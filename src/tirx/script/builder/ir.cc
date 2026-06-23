@@ -794,7 +794,7 @@ void BufferStore(Buffer buffer, PrimExpr value, ffi::Array<PrimExpr> indices,
           // Case 2. rhs is handle, and it needs to be casted to non-handle.
           (rhs_dtype.code() == DLDataTypeCode::kDLOpaqueHandle) ||
           // Case 3. rhs is float or bfloat, and casting to non-float can lose precision.
-          ((lhs_dtype.IsInt() || lhs_dtype.IsUInt()) &&
+          ((lhs_dtype.MatchesCode(DLDataTypeCode::kDLInt, DLDataTypeCode::kDLUInt)) &&
            (rhs_dtype.code() == DLDataTypeCode::kDLFloat ||
             rhs_dtype.code() == DLDataTypeCode::kDLBfloat))) {
         LOG(WARNING) << "Casting in BufferStore may lose precision"

@@ -150,11 +150,11 @@ class Z3Prover::Impl : ExprFunctor<z3::expr(const PrimExpr&)> {
     PrimType dtype = op->ty();
     std::string name = ns.GetNewName(ref);
     /// TVM max_val can't handle uint64 max correctly, so we special case it here
-    if (dtype.IsBool()) {
+    if (dtype.MatchesCode(DLDataTypeCode::kDLBool)) {
       return ctx->bool_const(name.c_str());
     } else {
       z3::expr e = ctx->int_const(name.c_str());
-      if (dtype.IsUInt() && dtype.bits() == 64) {
+      if (dtype.MatchesCode(DLDataTypeCode::kDLUInt) && dtype.bits() == 64) {
         solver.add(ctx->int_val(0) <= e && e <= ctx->int_val((uint64_t)UINT64_MAX));
       } else {
         auto min_val = min_value(dtype).as_or_throw<IntImm>()->value;
@@ -555,7 +555,9 @@ class Z3Prover::Impl : ExprFunctor<z3::expr(const PrimExpr&)> {
 
   /// @brief Check if the dtype is valid for z3 integer operations
   static bool IsValidType(const PrimType& dtype) {
-    return (dtype.IsInt() || dtype.IsUInt() || dtype.IsBool()) && dtype.lanes() == 1;
+    return dtype.MatchesCode(DLDataTypeCode::kDLInt, DLDataTypeCode::kDLUInt,
+                             DLDataTypeCode::kDLBool) &&
+           dtype.lanes() == 1;
   }
 
   /// @brief Visit the expression and convert it into z3 integer expression

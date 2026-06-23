@@ -80,7 +80,7 @@ class DataTypeVisitor final : public StmtExprVisitor {
 
   void VisitExpr(const PrimExpr& e) {
     PrimType e_ty = e.ty();
-    if (e_ty.IsInt()) {
+    if (e_ty.MatchesCode(DLDataTypeCode::kDLInt)) {
       int bits = max_bits_;
       if (bound_.find(e) == bound_.end()) {
         analyzer_->const_int_bound(e, &bound_);
@@ -161,7 +161,7 @@ class DataTypeVisitor final : public StmtExprVisitor {
 
   void VisitExpr_(const IntImmNode* op) {
     PrimType op_ty = op->ty();
-    if (op_ty.IsInt()) {
+    if (op_ty.MatchesCode(DLDataTypeCode::kDLInt)) {
       // We only narrow and never promote, so the result dtype
       // is upperbounded by its original dtype before rewrite.
       int bits = std::min(op_ty.bits(), bits_);
@@ -176,7 +176,7 @@ class DataTypeVisitor final : public StmtExprVisitor {
 
   void VisitExpr_(const CastNode* op) {
     PrimType op_ty = op->ty();
-    if (op_ty.IsInt()) {
+    if (op_ty.MatchesCode(DLDataTypeCode::kDLInt)) {
       // We only narrow and never promote, so the result dtype
       // is upperbounded by its original dtype before rewrite.
       int bits = std::min(op_ty.bits(), bits_);

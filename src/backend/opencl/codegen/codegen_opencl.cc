@@ -232,14 +232,14 @@ void CodeGenOpenCL::PrintType(DLDataType raw_t, std::ostream& os) {  // NOLINT(*
       os << lanes;
       return;
     }
-  } else if (t.IsBool()) {
+  } else if (t.MatchesCode(DLDataTypeCode::kDLBool)) {
     os << "uint";
     if (!fail && ((lanes >= 2 && lanes <= 4) || lanes == 8 || lanes == 16)) {
       os << lanes;
       return;
     }
-  } else if (t.IsUInt() || t.IsInt()) {
-    if (t.IsUInt()) {
+  } else if (t.MatchesCode(DLDataTypeCode::kDLUInt, DLDataTypeCode::kDLInt)) {
+    if (t.MatchesCode(DLDataTypeCode::kDLUInt)) {
       os << 'u';
     }
     switch (t.bits()) {
@@ -326,7 +326,7 @@ void CodeGenOpenCL::PrintVecElemLoadExpr(DLDataType t, int i, const std::string&
   PrimType t_ty(t);
   int lanes = t_ty.lanes();
   TVM_FFI_ICHECK_GT(lanes, 1);
-  if (t.bits == 8 && (t_ty.IsInt() || t_ty.IsUInt())) {
+  if (t.bits == 8 && (t_ty.MatchesCode(DLDataTypeCode::kDLInt, DLDataTypeCode::kDLUInt))) {
     if (i != 0) {
       os << "|";
     }
@@ -611,7 +611,7 @@ void CodeGenOpenCL::VisitExpr_(const MaxNode* op, std::ostream& os) {
 void CodeGenOpenCL::VisitExpr_(const ModNode* op, std::ostream& os) {  // NOLINT(*)
   std::string opstr;
   PrimType op_ty = op->ty();
-  if (op_ty.IsInt() || op_ty.IsUInt()) {
+  if (op_ty.MatchesCode(DLDataTypeCode::kDLInt, DLDataTypeCode::kDLUInt)) {
     opstr = "%";
   } else {
     TVM_FFI_ICHECK(op_ty.code() == DLDataTypeCode::kDLFloat)

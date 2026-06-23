@@ -119,30 +119,12 @@ class PrimType final : public Type {
 
   // Fast constructors.
   TVM_DLL static PrimType Int(int bits, int lanes = 1);
-
-  static PrimType UInt(int bits, int lanes = 1) {
-    return PrimType(DLDataTypeCode::kDLUInt, bits, lanes);
-  }
-
+  TVM_DLL static PrimType UInt(int bits, int lanes = 1);
   TVM_DLL static PrimType Float(int bits, int lanes = 1);
-
-  static PrimType BFloat(int bits, int lanes = 1) {
-    return PrimType(DLDataTypeCode::kDLBfloat, bits, lanes);
-  }
-
-  TVM_DLL static PrimType Bool();
-
-  static PrimType Bool(int lanes) {
-    if (lanes == 1) return Bool();
-    return PrimType(DLDataTypeCode::kDLBool, 8, lanes);
-  }
-
-  static PrimType Handle(int bits = 64, int lanes = 1) {
-    return PrimType(DLDataTypeCode::kDLOpaqueHandle, bits, lanes);
-  }
-
-  static PrimType Void() { return PrimType(DLDataTypeCode::kDLOpaqueHandle, 0, 0); }
-
+  TVM_DLL static PrimType BFloat(int bits, int lanes = 1);
+  TVM_DLL static PrimType Bool(int lanes = 1);
+  TVM_DLL static PrimType Handle(int bits = 64, int lanes = 1);
+  TVM_DLL static PrimType Void();
   TVM_DLL static PrimType ScalableVector(DLDataTypeCode code, int bits, int lanes);
 
   // Accessors.
@@ -167,16 +149,10 @@ class PrimType final : public Type {
     return dtype.code == static_cast<uint8_t>(code) && dtype.bits == bits;
   }
 
-  TVM_FFI_INLINE bool IsBool() const {
-    return get()->dtype.code == static_cast<uint8_t>(DLDataTypeCode::kDLBool);
-  }
-
-  TVM_FFI_INLINE bool IsInt() const {
-    return get()->dtype.code == static_cast<uint8_t>(DLDataTypeCode::kDLInt);
-  }
-
-  TVM_FFI_INLINE bool IsUInt() const {
-    return get()->dtype.code == static_cast<uint8_t>(DLDataTypeCode::kDLUInt);
+  template <typename... Codes>
+  TVM_FFI_INLINE bool MatchesCode(Codes... codes) const {
+    uint8_t dtype_code = get()->dtype.code;
+    return ((dtype_code == static_cast<uint8_t>(codes)) || ...);
   }
 
   TVM_FFI_INLINE bool IsScalar() const {

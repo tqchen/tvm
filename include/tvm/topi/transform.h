@@ -1535,7 +1535,7 @@ inline Tensor gather(const Tensor& data, int axis, const Tensor& indices,
   }
   // Index tensors are validated by integer element kind; vector lane encoding is irrelevant here.
   PrimType indices_ty = indices->dtype;
-  TVM_FFI_ICHECK(indices_ty.IsInt() || indices_ty.IsUInt());
+  TVM_FFI_ICHECK(indices_ty.MatchesCode(DLDataTypeCode::kDLInt, DLDataTypeCode::kDLUInt));
 
   ffi::Array<PrimExpr> out_shape;
   for (size_t i = 0; i < ndim_i; ++i) {
@@ -1605,7 +1605,7 @@ inline Tensor gather_nd(const Tensor& data, const Tensor& indices, int batch_dim
           // Index tensors are validated by integer element kind; vector lane encoding is
           // irrelevant for choosing whether an index cast is needed.
           PrimType indices_ty = indices->dtype;
-          if (indices_ty.IsInt() || indices_ty.IsUInt()) {
+          if (indices_ty.MatchesCode(DLDataTypeCode::kDLInt, DLDataTypeCode::kDLUInt)) {
             real_indices.push_back(indices(indices_position));
           } else {
             real_indices.push_back(tvm::cast(tvm::PrimType::Int(32), indices(indices_position)));

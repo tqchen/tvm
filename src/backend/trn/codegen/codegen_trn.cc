@@ -143,7 +143,7 @@ void CodeGenTrainium::PrintType(DLDataType raw_t, std::ostream& os) {  // NOLINT
   TVM_FFI_ICHECK(lanes == 1) << "Trainium codegen does not support vector types";
   TVM_FFI_ICHECK(!t.IsHandle()) << "Trainium codegen does not support handle type";
   TVM_FFI_ICHECK(!t.IsVoid()) << "Trainium codegen does not support void type";
-  if (t.IsBool()) {
+  if (t.MatchesCode(DLDataTypeCode::kDLBool)) {
     os << "np.bool";
     return;
   }
@@ -161,13 +161,13 @@ void CodeGenTrainium::PrintType(DLDataType raw_t, std::ostream& os) {  // NOLINT
     }
     return;
   }
-  if (t.IsUInt() || t.IsInt()) {
+  if (t.MatchesCode(DLDataTypeCode::kDLUInt, DLDataTypeCode::kDLInt)) {
     if (t.bits() == 1) {
       os << "np.bool";
       return;
     }
     os << "np.";
-    if (t.IsUInt()) {
+    if (t.MatchesCode(DLDataTypeCode::kDLUInt)) {
       os << 'u';
     }
     switch (t.bits()) {

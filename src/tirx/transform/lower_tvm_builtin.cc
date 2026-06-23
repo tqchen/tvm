@@ -551,8 +551,8 @@ class BuiltinLower : public StmtExprMutator {
       }
 
       int arg_type_index = [&]() {
-        if (api_ty.IsBool()) return ffi::TypeIndex::kTVMFFIBool;
-        if (api_ty.IsInt() || api_ty.IsUInt()) return ffi::TypeIndex::kTVMFFIInt;
+        if (api_ty.MatchesCode(DLDataTypeCode::kDLBool)) return ffi::TypeIndex::kTVMFFIBool;
+        if (api_ty.MatchesCode(DLDataTypeCode::kDLInt, DLDataTypeCode::kDLUInt)) return ffi::TypeIndex::kTVMFFIInt;
         if (api_ty.code() == DLDataTypeCode::kDLFloat) return ffi::TypeIndex::kTVMFFIFloat;
         if (api_ty.IsHandle() && arg.as<StringImmNode>()) {
           return ffi::TypeIndex::kTVMFFIRawStr;

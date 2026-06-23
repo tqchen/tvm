@@ -261,7 +261,7 @@ std::string CodeGenC::GetBufferRef(DLDataType t, const BufferNode* buffer, PrimE
 
   std::string index_str = PrintExpr(index);
   if ((t.bits == 4 && t_ty.code() != DLDataTypeCode::kDLFloat4_e2m1fn) ||
-      (t.bits == 1 && t_ty.IsInt())) {
+      (t.bits == 1 && t_ty.MatchesCode(DLDataTypeCode::kDLInt))) {
     // This is a special case, because CodegenCUDA::PrintType()
     // returns "int" for bool and for 4-bit integers. In most cases,
     // we divide by the number of lanes to determine the index.
@@ -364,7 +364,7 @@ std::string CodeGenC::GetStructRef(DLDataType t, const PrimExpr& buffer, const P
       os << "v_ptr";
     } else if (t_ty.code() == DLDataTypeCode::kDLFloat) {
       os << "v_float64";
-    } else if (t_ty.IsInt()) {
+    } else if (t_ty.MatchesCode(DLDataTypeCode::kDLInt)) {
       os << "v_int64";
     } else {
       TVM_FFI_THROW(InternalError) << "Do not know how to handle type" << t;
@@ -576,7 +576,7 @@ void CodeGenC::VisitExpr_(const DivNode* op, std::ostream& os) {  // NOLINT(*)
 }
 void CodeGenC::VisitExpr_(const ModNode* op, std::ostream& os) {  // NOLINT(*)
   PrimType op_ty = op->ty();
-  if (op_ty.IsInt() || op_ty.IsUInt()) {
+  if (op_ty.MatchesCode(DLDataTypeCode::kDLInt, DLDataTypeCode::kDLUInt)) {
     PrintBinaryExpr(op, "%", os, this);
   } else {
     TVM_FFI_ICHECK(op_ty.code() == DLDataTypeCode::kDLFloat)
@@ -1378,7 +1378,7 @@ void CodeGenC::PrintVecElemLoadExpr(DLDataType t, int i, const std::string& valu
   PrimType t_ty(t);
   int lanes = t_ty.lanes();
   TVM_FFI_ICHECK_GT(lanes, 1);
-  if (t.bits == 8 && (t_ty.IsInt() || t_ty.IsUInt())) {
+  if (t.bits == 8 && (t_ty.MatchesCode(DLDataTypeCode::kDLInt, DLDataTypeCode::kDLUInt))) {
     if (i != 0) {
       os << "|";
     }

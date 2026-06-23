@@ -1029,7 +1029,7 @@ Type InferTypeNLLLoss(const Call& call, const BlockBuilder& ctx) {
   if (!tgt_ty->IsUnknownDtype()) {
     PrimType target_dtype = tgt_ty->dtype;
     // NLLLoss only needs the target element kind; vector lanes do not affect target indexing.
-    if (!target_dtype.IsInt() && !target_dtype.IsUInt()) {
+    if (!target_dtype.MatchesCode(DLDataTypeCode::kDLInt) && !target_dtype.MatchesCode(DLDataTypeCode::kDLUInt)) {
       TVM_FFI_VISIT_THROW(TypeError, call)
           << "NLLLoss expects the dtype of targets to be int/uint. However, the dtype of targets is "
           << tgt_ty->dtype;

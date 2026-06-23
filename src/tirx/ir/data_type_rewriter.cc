@@ -113,7 +113,7 @@ Stmt DataTypeLegalizer::VisitStmt_(const AttrStmtNode* op) {
         PrimExpr extend = dom->extent;
         PrimType extend_ty = extend.ty();
         PrimType var_ty = var.ty();
-        TVM_FFI_ICHECK(extend_ty.IsInt() && var_ty.IsInt());
+        TVM_FFI_ICHECK(extend_ty.MatchesCode(DLDataTypeCode::kDLInt) && var_ty.MatchesCode(DLDataTypeCode::kDLInt));
         if (var_ty.bits() != extend_ty.bits()) {
           dom = Range(cast(var_ty, dom->min), cast(var_ty, extend), dom->span);
         }
@@ -192,7 +192,7 @@ PrimExpr DataTypeLegalizer::VisitExpr_(const RampNode* op) {
   } else {
     PrimType base_dtype = base.ty();
     PrimType stride_dtype = stride.ty();
-    TVM_FFI_ICHECK(base_dtype.IsInt() && stride_dtype.IsInt());
+    TVM_FFI_ICHECK(base_dtype.MatchesCode(DLDataTypeCode::kDLInt) && stride_dtype.MatchesCode(DLDataTypeCode::kDLInt));
     int bits = std::max(base_dtype.bits(), stride_dtype.bits());
     PrimType dtype = base_dtype.WithBits(bits);
     if (base_dtype->dtype != dtype->dtype) base = cast(dtype, base);
@@ -556,7 +556,9 @@ Stmt IndexDataTypeRewriter::VisitStmt_(const BindNode* op) {
 #define TVM_DEFINE_CMPOP_EXPR_MUTATE_WITH_TYPE_MATCH(OP, FUNC)             \
   PrimExpr IndexDataTypeRewriter::VisitExpr_(const OP* op) {               \
     bool is_enabled = is_enabled_;                                         \
-    is_enabled_ = is_condition_ && op->a.ty().IsInt() && op->b.ty().IsInt(); \
+    is_enabled_ = is_condition_ &&                                         \
+                  op->a.ty().MatchesCode(DLDataTypeCode::kDLInt) &&        \
+                  op->b.ty().MatchesCode(DLDataTypeCode::kDLInt);          \
     auto result = Parent::VisitExpr_(op);                                  \
     is_enabled_ = is_enabled;                                              \
     return result;                                                         \
@@ -623,7 +625,7 @@ PrimFunc IndexDataTypeNormalizer::Rewrite(PrimFunc func) {
   bool is_enabled = true;
   std::swap(is_enabled_, is_enabled);
   ffi::Array<Var> params = func->params.Map([this](Var param) {
-    if (param.ty().IsInt()) {
+    if (param.ty().MatchesCode(DLDataTypeCode::kDLInt)) {
       return this->VisitExpr(param).as_or_throw<Var>();
     } else {
       return param;
