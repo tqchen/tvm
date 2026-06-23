@@ -626,7 +626,7 @@ std::vector<State> MultiLevelTilingTensorCoreNode::AddReadReuseTensorCore(
     tirx::Buffer cache_read_buffer =
         s_tir::GetNthAccessBuffer(sch->state(), ffi::GetRef<tirx::SBlock>(cache_read_block), 0,
                                   s_tir::BufferIndexType::kWrite);
-    const DLDataType dtype = cache_read_buffer->dtype;
+    const DLDataType dtype = cache_read_buffer->dtype->dtype;
     // Storage alignment is chosen from element storage width; this schedule rule uses scalar
     // cache-read buffers, so the old element-type-only test is preserved.
     if ((((dtype).code == kDLFloat) && ((dtype).bits == 16))) {
