@@ -32,8 +32,6 @@
 namespace tvm {
 namespace contrib {
 
-using namespace runtime;
-
 void ConvolutionBackwardData(int mode, int format, int algo, int dims, int groups, const int pad[],
                              const int stride[], const int dilation[], DLTensor* dy, DLTensor* w,
                              DLTensor* dx, const std::string& conv_dtype) {

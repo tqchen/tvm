@@ -478,13 +478,14 @@ TVM_FFI_STATIC_INIT_BLOCK() {
     auto l2_promotion_kind = static_cast<CUtensorMapL2promotion>(args[arg_cnt++].cast<int>());
     auto oob_fill_kind = static_cast<CUtensorMapFloatOOBfill>(args[arg_cnt++].cast<int>());
 
-    TVM_FFI_ICHECK_EQ(tensor_dtype.lanes(), 1)
+    TVM_FFI_ICHECK_EQ(tensor_dtype.lanes, 1)
         << "Expect tensor_dtype to have lanes=1, but get " << tensor_dtype;
+    uint64_t tensor_dtype_bytes = (static_cast<uint64_t>(tensor_dtype.bits) + 7) / 8;
     CUtensorMapDataType cu_dtype;
-    switch (tensor_dtype.code()) {
+    switch (tensor_dtype.code) {
       case kDLInt:
         // int
-        switch (tensor_dtype.bits()) {
+        switch (tensor_dtype.bits) {
           case 8:
             cu_dtype = CU_TENSOR_MAP_DATA_TYPE_UINT8;
             break;
@@ -501,7 +502,7 @@ TVM_FFI_STATIC_INIT_BLOCK() {
         break;
       case kDLUInt:
         // unsigned int
-        switch (tensor_dtype.bits()) {
+        switch (tensor_dtype.bits) {
           case 8:
             cu_dtype = CU_TENSOR_MAP_DATA_TYPE_UINT8;
             break;
@@ -521,7 +522,7 @@ TVM_FFI_STATIC_INIT_BLOCK() {
         break;
       case kDLFloat:
         // float
-        switch (tensor_dtype.bits()) {
+        switch (tensor_dtype.bits) {
           case 16:
             cu_dtype = CU_TENSOR_MAP_DATA_TYPE_FLOAT16;
             break;
@@ -538,7 +539,7 @@ TVM_FFI_STATIC_INIT_BLOCK() {
         break;
       case kDLBfloat:
         // bfloat
-        switch (tensor_dtype.bits()) {
+        switch (tensor_dtype.bits) {
           case 16:
             cu_dtype = CU_TENSOR_MAP_DATA_TYPE_BFLOAT16;
             break;
@@ -674,7 +675,7 @@ TVM_FFI_STATIC_INIT_BLOCK() {
           << "globalDim[0] must be a multiple of 2 for packed 16U4 align8 format";
     }
     if (interleaved_kind == CU_TENSOR_MAP_INTERLEAVE_NONE && !is_packed_dtype) {
-      uint64_t inner_box_bytes = static_cast<uint64_t>(box_dim[0]) * tensor_dtype.bytes();
+      uint64_t inner_box_bytes = static_cast<uint64_t>(box_dim[0]) * tensor_dtype_bytes;
       TVM_FFI_ICHECK_EQ(inner_box_bytes % 16, 0)
           << "boxDim[0] * elementSizeInBytes(tensorDataType) must be a multiple of 16 bytes";
     }
@@ -694,15 +695,15 @@ TVM_FFI_STATIC_INIT_BLOCK() {
 
     if (interleaved_kind == CU_TENSOR_MAP_INTERLEAVE_NONE && !is_packed_dtype &&
         swizzle_kind == CU_TENSOR_MAP_SWIZZLE_32B) {
-      TVM_FFI_ICHECK_LE(box_dim[0] * tensor_dtype.bytes(), 32)
+      TVM_FFI_ICHECK_LE(box_dim[0] * tensor_dtype_bytes, 32)
           << "CU_TENSOR_MAP_SWIZZLE_32B implies the bounding box inner dimension will be <= 32.";
     } else if (interleaved_kind == CU_TENSOR_MAP_INTERLEAVE_NONE && !is_packed_dtype &&
                swizzle_kind == CU_TENSOR_MAP_SWIZZLE_64B) {
-      TVM_FFI_ICHECK_LE(box_dim[0] * tensor_dtype.bytes(), 64)
+      TVM_FFI_ICHECK_LE(box_dim[0] * tensor_dtype_bytes, 64)
           << "CU_TENSOR_MAP_SWIZZLE_64B implies the bounding box inner dimension will be <= 64.";
     } else if (interleaved_kind == CU_TENSOR_MAP_INTERLEAVE_NONE && !is_packed_dtype &&
                is_128b_swizzle) {
-      TVM_FFI_ICHECK_LE(box_dim[0] * tensor_dtype.bytes(), 128)
+      TVM_FFI_ICHECK_LE(box_dim[0] * tensor_dtype_bytes, 128)
           << "CU_TENSOR_MAP_SWIZZLE_128B implies the bounding box inner dimension will be <= "
              "128.";
     }

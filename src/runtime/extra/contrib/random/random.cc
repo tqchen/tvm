@@ -69,8 +69,6 @@
 namespace tvm {
 namespace contrib {
 
-using namespace runtime;
-
 struct RandomThreadLocalEntry {
   RandomEngine random_engine;
   static RandomThreadLocalEntry* ThreadLocal();

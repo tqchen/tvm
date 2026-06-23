@@ -32,8 +32,6 @@
 namespace tvm {
 namespace contrib {
 
-using namespace runtime;
-
 void ConvolutionForward(int mode, int format, int algo, int dims, int groups, const int pad[],
                         const int stride[], const int dilation[], const DLTensor* x,
                         const DLTensor* w, const DLTensor* y, const std::string& conv_dtype) {
