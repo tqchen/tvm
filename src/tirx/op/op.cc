@@ -97,7 +97,7 @@ DLDataType GetRuntimeDLDataType(const Type& type) {
     return DLDataType{kDLOpaqueHandle, 0, 0};
   } else {
     TVM_FFI_THROW(InternalError) << "Type " << type
-                                 << " does not have a corresponding runtime::DataType";
+                                 << " does not have a corresponding runtime DLPack dtype";
   }
 }
 
