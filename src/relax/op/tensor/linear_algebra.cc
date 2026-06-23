@@ -74,7 +74,7 @@ Type InferTypeMatmul(const Call& call, const BlockBuilder& ctx) {
   }
 
   const auto* attrs = call->attrs.as<MatmulAttrs>();
-  DLDataType out_dtype = attrs->out_dtype == (DLDataType{kDLOpaqueHandle, 0, 0})
+  DLDataType out_dtype = attrs->out_dtype == DLDataType{kDLOpaqueHandle, 0, 0}
                            ? InferBinaryArithOpOutDtype(call, ctx, x1_ty, x2_ty)->dtype
                            : attrs->out_dtype;
 
@@ -218,17 +218,17 @@ Type InferTypeEinsum(const Call& call, const BlockBuilder& ctx) {
 
   ffi::String subscripts = attrs->subscripts;
 
-  DLDataType operand_dtype = operands_tensor_ty[0]->dtype;
+  PrimType operand_ty = operands_tensor_ty[0]->dtype;
   std::vector<ffi::Array<PrimExpr>> input_shapes;
   input_shapes.reserve(operands_tensor_ty.size());
 
   for (TensorType tensor_ty : operands_tensor_ty) {
     // Check the input tuple consists of tensors with same dtype
-    if (tensor_ty->dtype != operand_dtype) {
+    if (tensor_ty->dtype != operand_ty) {
       TVM_FFI_VISIT_THROW(TypeError, call)
           << "Einsum expects all input tensors to have the same dtype. However, the "
              "input contains tensors with dtype "
-          << operand_dtype << " and " << tensor_ty->dtype;
+          << operand_ty << " and " << tensor_ty->dtype;
     }
 
     // Get input shapes
@@ -237,18 +237,18 @@ Type InferTypeEinsum(const Call& call, const BlockBuilder& ctx) {
       input_shapes.push_back(shape_expr->values);
     } else {
       if (!vdevice_unknown) {
-        return TensorType(operand_dtype, tensor_ty->ndim, vdev);
+        return TensorType(operand_ty, tensor_ty->ndim, vdev);
       }
-      return TensorType(operand_dtype, tensor_ty->ndim);
+      return TensorType(operand_ty, tensor_ty->ndim);
     }
   }
   // Calculate output shape using InferEinsumShape in topi
   ffi::Array<PrimExpr> oshape = topi::InferEinsumShape(subscripts, input_shapes);
 
   if (!vdevice_unknown) {
-    return TensorType(ShapeExpr(oshape), operand_dtype, vdev);
+    return TensorType(ShapeExpr(oshape), operand_ty, vdev);
   }
-  return TensorType(ShapeExpr(oshape), operand_dtype);
+  return TensorType(ShapeExpr(oshape), operand_ty);
 }
 
 TVM_REGISTER_OP("relax.einsum")
