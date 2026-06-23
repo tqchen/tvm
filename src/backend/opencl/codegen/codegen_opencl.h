@@ -48,17 +48,17 @@ class CodeGenOpenCL final : public CodeGenC {
   void PrintStorageSync(const CallNode* op) final;                           // NOLINT(*)
   void PrintType(DLDataType t, std::ostream& os) final;                      // NOLINT(*)
   void PrintType(const Type& type, std::ostream& os) final;                  // NOLINT(*)
-  std::string GetVecLoad(DataType t, const BufferNode* buffer, PrimExpr base) final;
-  void PrintVecStore(const BufferNode* buffer, DataType t, PrimExpr base,
+  std::string GetVecLoad(DLDataType t, const BufferNode* buffer, PrimExpr base) final;
+  void PrintVecStore(const BufferNode* buffer, DLDataType t, PrimExpr base,
                      const std::string& value) final;  // NOLINT(*)
-  void PrintVecElemLoadExpr(DataType t, int i, const std::string& value,
+  void PrintVecElemLoadExpr(DLDataType t, int i, const std::string& value,
                             std::ostream& os) final;  // NOLINT(*)
   // the address of load/store
-  void PrintVecAddr(const BufferNode* buffer, DataType t, PrimExpr base,
+  void PrintVecAddr(const BufferNode* buffer, DLDataType t, PrimExpr base,
                     std::ostream& os);                                           // NOLINT(*)
   void PrintRestrict(const Var& v, std::ostream& os) final;                      // NOLINT(*)
-  std::string CastFromTo(std::string value, DataType from, DataType target);     // NOLINT(*)
-  std::string CastTo(std::string value, DataType target);                        // NOLINT(*)
+  std::string CastFromTo(std::string value, DLDataType from, DLDataType target);  // NOLINT(*)
+  std::string CastTo(std::string value, DLDataType target);                       // NOLINT(*)
   void SetTextureScope(const std::unordered_map<const VarNode*, std::string>&);  // NOLINT(*)
 
   // overload visitor

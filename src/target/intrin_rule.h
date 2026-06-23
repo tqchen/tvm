@@ -39,9 +39,9 @@ using namespace tirx;
 // Add float suffix to the intrinsics
 struct FloatSuffix {
   std::string operator()(PrimType t, std::string name) const {
-    if (t->dtype == (DLDataType{kDLFloat, 32, 1})) {
+    if (t->dtype == DLDataType{kDLFloat, 32, 1}) {
       return name + 'f';
-    } else if (t->dtype == (DLDataType{kDLFloat, 64, 1})) {
+    } else if (t->dtype == DLDataType{kDLFloat, 64, 1}) {
       return name;
     } else {
       return "";
@@ -70,13 +70,10 @@ inline PrimExpr DispatchPureExtern(const PrimExpr& e) {
   TVM_FFI_ICHECK(op != nullptr);
   std::string name = op->name;
   TVM_FFI_ICHECK_EQ(name.substr(0, 5), "tirx.");
-  PrimType dtype;
   if (dtype_from_arg) {
     TVM_FFI_ICHECK_EQ(call->args.size(), 1U);
-    dtype = call->args[0].ty();
-  } else {
-    dtype = ffi::GetRef<PrimExpr>(call).ty();
   }
+  PrimType dtype = dtype_from_arg ? call->args[0].ty() : ffi::GetRef<PrimExpr>(call).ty();
   name = T()(dtype, name.substr(5));
 
   if (name.length() != 0) {
