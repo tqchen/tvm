@@ -238,6 +238,40 @@ class PVar : public Pattern<PVar<T>> {
   mutable bool filled_{false};
 };
 
+template <>
+class PVar<PrimType> : public Pattern<PVar<PrimType>> {
+ public:
+  using Nested = const PVar<PrimType>&;
+
+  void InitMatch_() const {
+    value_.reset();
+    filled_ = false;
+  }
+
+  bool Match_(const PrimType& value) const {
+    if (!filled_) {
+      value_ = value->dtype;
+      filled_ = true;
+      return true;
+    } else {
+      return value_.value() == value->dtype;
+    }
+  }
+
+  PrimType Eval() const {
+    TVM_FFI_ICHECK(filled_);
+    return PrimType(value_.value());
+  }
+
+  PrimType EvalOr(const PrimType& default_value) const {
+    return filled_ ? PrimType(value_.value()) : default_value;
+  }
+
+ protected:
+  mutable std::optional<DLDataType> value_;
+  mutable bool filled_{false};
+};
+
 /*!
  * \brief Wrapper for pattern variable container with extra match logic.
  *
@@ -297,12 +331,12 @@ class PVarWithDataType : public PVarWithCheck<PVarWithDataType<T, DType>, T> {
 class PVecDataType : public PVarWithCheck<PVecDataType, PrimType> {
  public:
   /*! \brief construct vector dtype placeholder with element type check */
-  explicit PVecDataType(PrimType elem_dtype) : elem_dtype_(elem_dtype) {}
+  explicit PVecDataType(PrimType elem_dtype) : elem_dtype_(elem_dtype->dtype) {}
 
-  bool Match_(PrimType dtype) const { return dtype.code() == elem_dtype_.code(); }
+  bool Match_(PrimType dtype) const { return dtype.code() == elem_dtype_.code; }
 
  protected:
-  PrimType elem_dtype_;
+  DLDataType elem_dtype_;
 };
 
 /*!
@@ -324,6 +358,22 @@ class PConst : public Pattern<PConst<T>> {
 
  private:
   const T value_;
+};
+
+template <>
+class PConst<PrimType> : public Pattern<PConst<PrimType>> {
+ public:
+  PConst(PrimType value)  // NOLINT(*)
+      : value_(value->dtype) {}
+
+  void InitMatch_() const {}
+
+  bool Match_(const PrimType& value) const { return value->dtype == value_; }
+
+  PrimType Eval() const { return PrimType(value_); }
+
+ private:
+  const DLDataType value_;
 };
 
 /*!
