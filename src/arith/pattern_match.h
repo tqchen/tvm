@@ -71,7 +71,6 @@
 #include <tvm/tirx/expr.h>
 
 #include <cmath>
-#include <optional>
 #include <tuple>
 
 #include "const_fold.h"
@@ -201,7 +200,7 @@ class PVar : public Pattern<PVar<T>> {
   using Nested = const PVar<T>&;
 
   void InitMatch_() const {
-    value_.reset();
+    value_ = nullptr;
     filled_ = false;
   }
 
@@ -234,7 +233,7 @@ class PVar : public Pattern<PVar<T>> {
 
  protected:
   /*! \brief The matched value */
-  mutable std::optional<T> value_;
+  mutable ffi::Optional<T> value_;
   /*! \brief whether the variable has been filled */
   mutable bool filled_{false};
 };

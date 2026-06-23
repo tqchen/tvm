@@ -72,8 +72,10 @@ class Mutator : public ExprMutator {
       }();
 
       PrimExpr nbytes = [&]() -> PrimExpr {
-        PrimExpr nbytes = IntImm::Int64(
-            ((((dtype->value).bits * static_cast<int16_t>((dtype->value).lanes)) + 7) / 8));
+        PrimType dtype_ty(dtype->value);
+        TVM_FFI_ICHECK(!dtype_ty.IsScalableVector())
+            << "Cannot statically compute allocation size for scalable vector dtype " << dtype_ty;
+        PrimExpr nbytes = IntImm::Int64(((dtype_ty.bits() * dtype_ty.lanes()) + 7) / 8);
         for (const auto& dim : shape) {
           nbytes *= dim;
         }

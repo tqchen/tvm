@@ -172,10 +172,11 @@ Type InferTypeView(const Call& call, const BlockBuilder& ctx) {
 
   // Helper function returns the number of bytes per vectorized element.
   auto get_size_bytes = [](DLDataType dtype) -> ffi::Optional<IntImm> {
-    if ((((dtype).code == kDLOpaqueHandle) && ((dtype).bits == 0) && ((dtype).lanes == 0))) {
+    PrimType ty(dtype);
+    if (ty.IsVoid() || ty.IsScalableVector()) {
       return std::nullopt;
     } else {
-      auto size_bits = ((dtype).bits) * static_cast<int16_t>((dtype).lanes);
+      auto size_bits = ty.bits() * ty.lanes();
       return IntImm::Int64((size_bits + 7) / 8);
     }
   };

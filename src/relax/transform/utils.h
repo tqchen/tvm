@@ -329,7 +329,7 @@ inline Constant MakeConstantScalar(T value, DLDataType dtype) {
     *static_cast<int32_t*>(arr->data) = static_cast<int32_t>(value);
   } else if (dtype == DLDataType{kDLInt, 64, 1}) {
     *static_cast<int64_t*>(arr->data) = static_cast<int64_t>(value);
-  } else if (dtype == DLDataType{kDLBool, 1, 1}) {
+  } else if (dtype == DLDataType{kDLBool, 8, 1}) {
     *static_cast<bool*>(arr->data) = static_cast<bool>(value);
   } else if (dtype == DLDataType{kDLUInt, 8, 1}) {
     *static_cast<uint8_t*>(arr->data) = static_cast<uint8_t>(value);
