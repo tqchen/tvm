@@ -238,6 +238,45 @@ class PVar : public Pattern<PVar<T>> {
   mutable bool filled_{false};
 };
 
+template <>
+class PVar<PrimExpr> : public Pattern<PVar<PrimExpr>> {
+ public:
+  using Nested = const PVar<PrimExpr>&;
+
+  void InitMatch_() const { filled_ = false; }
+
+  bool Match_(const PrimExpr& value) const {
+    if (!filled_) {
+      value_ = value;
+      filled_ = true;
+      return true;
+    } else {
+      return PEqualChecker<PrimExpr>()(value_, value);
+    }
+  }
+
+  template <typename NodeRefType,
+            typename = typename std::enable_if<std::is_base_of<NodeRefType, PrimExpr>::value>::type>
+  bool Match_(const NodeRefType& value) const {
+    if (const auto* ptr = value.template as<PrimExpr::ContainerType>()) {
+      return Match_(ffi::GetRef<PrimExpr>(ptr));
+    } else {
+      return false;
+    }
+  }
+
+  PrimExpr Eval() const {
+    TVM_FFI_ICHECK(filled_);
+    return value_;
+  }
+
+  PrimExpr EvalOr(const PrimExpr& default_value) const { return filled_ ? value_ : default_value; }
+
+ protected:
+  mutable PrimExpr value_;
+  mutable bool filled_{false};
+};
+
 /*!
  * \brief Wrapper for pattern variable container with extra match logic.
  *
