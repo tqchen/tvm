@@ -58,10 +58,9 @@ inline Tensor instance_norm(const Tensor& data, const Tensor& gamma, const Tenso
   const auto& beta_type = beta.defined() ? beta->dtype : data_type;
   TVM_FFI_ICHECK(data_type == gamma_type && data_type == beta_type)
       << "instance_norm: data, gamma and beta must have the same type";
-  TVM_FFI_ICHECK(data_type == (DLDataType{kDLFloat, 32, 1}) ||
-                 data_type == (DLDataType{kDLFloat, 16, 1}))
+  TVM_FFI_ICHECK(data_type == PrimType::Float(32) || data_type == PrimType::Float(16))
       << "instance_norm: only support float32 and float16 for now";
-  bool is_float16 = data_type == (DLDataType{kDLFloat, 16, 1});
+  bool is_float16 = data_type == PrimType::Float(16);
   // sum x and x^2
   auto ndim = data->shape.size();
   TVM_FFI_ICHECK_NE(ndim, 0) << "Cannot reduce a 0 dim Tensor";

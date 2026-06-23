@@ -117,8 +117,8 @@ class IntrinInjecter : public tvm::arith::IRMutatorWithAnalyzer {
     op = ret.as<FloorDivNode>();
     if (op == nullptr) return ret;
     int shift;
-    DataType dtype = DataType(op->ty()->dtype);
-    TVM_FFI_ICHECK(dtype.is_int() || dtype.is_uint());
+    PrimType dtype = op->ty();
+    TVM_FFI_ICHECK(dtype.IsInt() || dtype.IsUInt());
 
     if (support_bitwise_op_ && is_const_power_of_two_integer(op->b, &shift)) {
       // lower to right shift if possible.
@@ -145,7 +145,7 @@ class IntrinInjecter : public tvm::arith::IRMutatorWithAnalyzer {
       // condition on b >= 0.
       // truncmod(a, b) < 0 will implies ceildiv,
       // So we need to correct these cases.
-      if ((dtype == DataType::Int(32) || dtype == DataType::Int(64)) && support_bitwise_op_) {
+      if ((dtype == PrimType::Int(32) || dtype == PrimType::Int(64)) && support_bitwise_op_) {
         // equivalent to rdiv + (rmod >= 0 ? 0: -1);
         return rdiv + (rmod >> MakeConst(dtype, dtype.bits() - 1));
       } else {
@@ -153,7 +153,7 @@ class IntrinInjecter : public tvm::arith::IRMutatorWithAnalyzer {
       }
 
     } else {
-      if (dtype.is_float()) {
+      if (dtype.code() == DLDataTypeCode::kDLFloat) {
         // floor(a / b)
         return VisitExpr_(tvm::floor(op->a / op->b).as<CallNode>());
       } else {
@@ -178,8 +178,8 @@ class IntrinInjecter : public tvm::arith::IRMutatorWithAnalyzer {
     if (op == nullptr) return ret;
     // Lower floordiv to native truncdiv.
     int shift;
-    DataType dtype = DataType(op->ty()->dtype);
-    TVM_FFI_ICHECK(dtype.is_int() || dtype.is_uint());
+    PrimType dtype = op->ty();
+    TVM_FFI_ICHECK(dtype.IsInt() || dtype.IsUInt());
 
     if (support_bitwise_op_ && is_const_power_of_two_integer(op->b, &shift)) {
       // lower to masking if possible.
@@ -205,7 +205,7 @@ class IntrinInjecter : public tvm::arith::IRMutatorWithAnalyzer {
       // mod(a, b) < 0 will imply we are doing ceildiv,
       // So we need to correct these cases.
       PrimExpr rmod = truncmod(op->a, op->b);
-      if ((dtype == DataType::Int(32) || dtype == DataType::Int(64)) && support_bitwise_op_) {
+      if ((dtype == PrimType::Int(32) || dtype == PrimType::Int(64)) && support_bitwise_op_) {
         // (rmod >> shift) & b
         // -> (rmod >= 0 ? 0: -1) & b
         // -> rmod >= 0 ? 0 : b
@@ -215,7 +215,7 @@ class IntrinInjecter : public tvm::arith::IRMutatorWithAnalyzer {
       }
 
     } else {
-      if (dtype.is_float()) {
+      if (dtype.code() == DLDataTypeCode::kDLFloat) {
         // a - floor(a / b) * b
         return op->a - (VisitExpr_(tvm::floor(op->a / op->b).as<CallNode>()) * op->b);
       } else {

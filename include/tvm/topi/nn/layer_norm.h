@@ -57,10 +57,9 @@ inline Tensor layer_norm(const Tensor& data, const Tensor& gamma, const Tensor& 
   const auto& beta_type = beta.defined() ? beta->dtype : data_type;
   TVM_FFI_ICHECK(data_type == gamma_type && data_type == beta_type)
       << "layer_norm: data, gamma and beta must have the same type";
-  TVM_FFI_ICHECK(data_type == (DLDataType{kDLFloat, 32, 1}) ||
-                 data_type == (DLDataType{kDLFloat, 16, 1}))
+  TVM_FFI_ICHECK(data_type == PrimType::Float(32) || data_type == PrimType::Float(16))
       << "layer_norm: only support float32 and float16 for now";
-  bool is_float16 = data_type == (DLDataType{kDLFloat, 16, 1});
+  bool is_float16 = data_type == PrimType::Float(16);
   // Two-pass algorithm for improved numerical stability:
   //   pass1: mean = E[x]
   //   pass2: var = E[(x - mean)^2]

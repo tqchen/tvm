@@ -664,11 +664,10 @@ void TVMFFIABIBuilder::DecodeParamDLTensor(const Buffer& buffer, const PrimExpr&
                          IntImm(PrimType::UInt(8), buffer->dtype.bits()) &&
                      TVMStructGet(PrimType::UInt(16), handle, 0, builtin::kDLTensorTypeLanes) ==
                          IntImm(PrimType::UInt(16), buffer->dtype.lanes()));
-    if (!(buffer->dtype == (DLDataType{kDLInt, 1, 1}) ||
-          buffer->dtype == (DLDataType{kDLInt, 4, 1}) ||
-          buffer->dtype == (DLDataType{kDLUInt, 4, 1}))) {
+    if (!(buffer->dtype == PrimType::Int(1) || buffer->dtype == PrimType::Int(4) ||
+          buffer->dtype == PrimType::UInt(4))) {
       std::ostringstream dtype_os;
-      dtype_os << buffer->dtype;
+      dtype_os << buffer->dtype->dtype;
       EmitAssert(cond, "TypeError",  //
                  "Mismatched ", buf_name, ".dtype on argument #", std::to_string(param_index),
                  when_calling_imm_, sig_imm_, "`,\n  expected ", dtype_os.str());
@@ -678,9 +677,8 @@ void TVMFFIABIBuilder::DecodeParamDLTensor(const Buffer& buffer, const PrimExpr&
   // ── Section: shape ───────────────────────────────────────────
   Var shape_ptr = DLTensorGetFieldPtr(handle, builtin::kDLTensorShape, arg_name + "_shape");
   for (size_t k = 0; k < buffer->shape.size(); ++k) {
-    if (buffer->dtype == (DLDataType{kDLInt, 4, 1}) ||
-        buffer->dtype == (DLDataType{kDLUInt, 4, 1}) ||
-        buffer->dtype == (DLDataType{kDLInt, 1, 1})) {
+    if (buffer->dtype == PrimType::Int(4) || buffer->dtype == PrimType::UInt(4) ||
+        buffer->dtype == PrimType::Int(1)) {
       break;
     }
     ffi::reflection::AccessPath shape_k_path = param_path->Attr(ffi::String("shape"))->ArrayItem(k);
@@ -700,8 +698,7 @@ void TVMFFIABIBuilder::DecodeParamDLTensor(const Buffer& buffer, const PrimExpr&
   }
 
   // ── Section: byte_offset ─────────────────────────────────────
-  int data_bytes =
-      ((buffer->dtype.bits * static_cast<int16_t>(buffer->dtype.lanes)) + 7) / 8;
+  int data_bytes = ((buffer->dtype.bits() * buffer->dtype.lanes()) + 7) / 8;
   ffi::reflection::AccessPath byte_offset_path = param_path->Attr(ffi::String("byte_offset"));
   if (const auto* const_offset = buffer->elem_offset.as<IntImmNode>()) {
     BindScalar(IntImm(PrimType::UInt(64), const_offset->value * data_bytes),
