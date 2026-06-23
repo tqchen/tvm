@@ -94,9 +94,9 @@ ffi::Map<ffi::String, ExprDoc> BufferAttrs(tirx::Buffer buffer, const AccessPath
   // Step 2. Handle `buffer.dtype`
   {
     DLDataType default_buf_dtype = d->cfg->buffer_dtype;
-    if (buffer->dtype != default_buf_dtype) {
+    if (buffer->dtype->dtype != default_buf_dtype) {
       kwargs.Set("dtype",
-                 LiteralDoc::DataType(buffer->dtype, buffer_p->Attr("dtype")));
+                 LiteralDoc::DataType(buffer->dtype->dtype, buffer_p->Attr("dtype")));
     }
   }
   // Step 3. Handle `buffer.data`
@@ -331,7 +331,7 @@ ExprDoc BufferAttn(const tirx::Buffer& buffer, const AccessPath& p, const Frame&
   ExprDoc shape = attrs.Get("shape").value();
   ExprDoc dtype =
       attrs.Get("dtype").value_or(
-          LiteralDoc::DataType(buffer->dtype, p->Attr("dtype")));
+          LiteralDoc::DataType(buffer->dtype->dtype, p->Attr("dtype")));
   return TIR(d, "Buffer")->Call({shape, dtype}, {}, {});
 }
 

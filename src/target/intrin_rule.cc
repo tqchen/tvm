@@ -128,7 +128,7 @@ TVM_REGISTER_OP("tirx.tvm_access_ptr")
       const CallNode* call = e.as<CallNode>();
       TVM_FFI_ICHECK(call != nullptr);
       TVM_FFI_ICHECK_EQ(call->args.size(), 5U);
-      DataType dtype(call->args[0].ty()->dtype);
+      PrimType dtype = call->args[0].ty();
       Var buffer_var = call->args[1].as_or_throw<Var>();
       PrimExpr offset = call->args[2];
       TVM_FFI_ICHECK(call->ty().IsHandle());
@@ -137,8 +137,8 @@ TVM_REGISTER_OP("tirx.tvm_access_ptr")
         offset = offset * MakeConst(offset_ty, dtype.lanes());
         offset = Ramp(offset, MakeConst(offset_ty, 1), dtype.lanes());
       }
-      Buffer dummy_buf(buffer_var, dtype.element_of(), {offset + 1}, {}, 0, buffer_var->name_hint,
-                       0, 0, kDefault);
+      Buffer dummy_buf(buffer_var, dtype.WithLanes(1), {offset + 1}, {}, 0,
+                       buffer_var->name_hint, 0, 0, kDefault);
       BufferLoad buf_load(dummy_buf, {offset});
       return Call(PrimType::Handle(), builtin::address_of(), {buf_load});
     });

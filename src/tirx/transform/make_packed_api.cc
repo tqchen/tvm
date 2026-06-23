@@ -80,22 +80,22 @@ class ReturnRewriter : public StmtMutator {
     ConvertedInfo info;
 
     // convert val's data type to FFI data type, return type code
-    DataType dtype = DataType(val.ty()->dtype);
-    if (dtype.is_bool()) {
+    PrimType dtype = val.ty();
+    if (dtype.IsBool()) {
       info.type_index = ffi::TypeIndex::kTVMFFIBool;
       info.expr = Cast(PrimType::Int(64), val);
 
-    } else if (dtype.is_int() || dtype.is_uint()) {
+    } else if (dtype.IsInt() || dtype.IsUInt()) {
       info.type_index = ffi::TypeIndex::kTVMFFIInt;
       info.expr = Cast(PrimType::Int(64), val);
-    } else if (dtype.is_float()) {
+    } else if (dtype.code() == DLDataTypeCode::kDLFloat) {
       info.type_index = ffi::TypeIndex::kTVMFFIFloat;
       info.expr = Cast(PrimType::Float(64), val);
-    } else if (dtype.is_void()) {
+    } else if (dtype.IsVoid()) {
       info.type_index = ffi::TypeIndex::kTVMFFINone;
       info.expr = val;
     } else {
-      TVM_FFI_THROW(InternalError) << "data type " << dtype << " not supported yet";
+      TVM_FFI_THROW(InternalError) << "data type " << dtype->dtype << " not supported yet";
     }
     return info;
   }
@@ -219,10 +219,10 @@ PrimFunc MakePackedAPI(PrimFunc func) {
   const Stmt nop = Evaluate(0);
 
   // Data field definitions
-  Var v_self_handle("self_handle", DataType::Handle());
-  Var v_packed_args("args", DataType::Handle());
-  Var v_num_packed_args("num_args", DataType::Int(32));
-  Var v_result("result", PointerType(PrimType(DataType::Void())));
+  Var v_self_handle("self_handle", PrimType::Handle());
+  Var v_packed_args("args", PrimType::Handle());
+  Var v_num_packed_args("num_args", PrimType::Int(32));
+  Var v_result("result", PointerType(PrimType::Void()));
 
   // The device context
   Var device_id("dev_id");

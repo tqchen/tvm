@@ -41,7 +41,7 @@ struct NKIInstructionCtx {
   bool is_matmul_input = false;
   int buffer_index = -1;
   int used_var_cnt = 0;
-  DataType dst_dtype;
+  PrimType dst_dtype = PrimType::Void();
   PrimExpr mask;
   bool tensorizing = false;
 };
