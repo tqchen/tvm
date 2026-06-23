@@ -729,8 +729,8 @@ Type InferTypeLayoutTransform(const Call& call, const BlockBuilder& ctx) {
     PrimType padded_dtype = padded_value.ty();
     if (padded_dtype != data_ty->dtype) {
       TVM_FFI_VISIT_THROW(TypeError, call)
-          << "layout_transform pad_value dtype (" << padded_dtype
-          << ") and input dtype (" << data_ty->dtype << ") must be the same";
+          << "layout_transform pad_value dtype (" << padded_dtype << ") and input dtype ("
+          << data_ty->dtype << ") must be the same";
     }
   }
 
@@ -2347,7 +2347,8 @@ Type InferTypeIndexPut(const Call& call, const BlockBuilder& ctx) {
                    << " has not been specified. Assume it has an integer type.";
     } else {
       PrimType index_dtype = tensor_ty->dtype;
-      if (!index_dtype.MatchesCode(DLDataTypeCode::kDLInt) && !index_dtype.MatchesCode(DLDataTypeCode::kDLUInt)) {
+      if (!index_dtype.MatchesCode(DLDataTypeCode::kDLInt) &&
+          !index_dtype.MatchesCode(DLDataTypeCode::kDLUInt)) {
         TVM_FFI_VISIT_THROW(TypeError, call)
             << "IndexPut requires each index tensor to have integer dtype. "
             << "However, index tensor " << i << " has dtype=" << tensor_ty->dtype;
@@ -2603,7 +2604,8 @@ Type InferTypeScatterElements(const Call& call, const BlockBuilder& ctx) {
     LOG(WARNING) << "Data type of indices has not been specified. Assume it has an integer type.";
   } else {
     PrimType indices_dtype = indices_ty->dtype;
-    if (!indices_dtype.MatchesCode(DLDataTypeCode::kDLInt) && !indices_dtype.MatchesCode(DLDataTypeCode::kDLUInt)) {
+    if (!indices_dtype.MatchesCode(DLDataTypeCode::kDLInt) &&
+        !indices_dtype.MatchesCode(DLDataTypeCode::kDLUInt)) {
       TVM_FFI_VISIT_THROW(TypeError, call)
           << "ScatterElements op requires the input indices to have integer dtype. However, the "
              "given indices dtype is "
@@ -2726,7 +2728,8 @@ Type InferTypeScatterND(const Call& call, const BlockBuilder& ctx) {
     LOG(WARNING) << "Data type of indices has not been specified. Assume it has an integer type.";
   } else {
     PrimType indices_dtype = indices_ty->dtype;
-    if (!indices_dtype.MatchesCode(DLDataTypeCode::kDLInt) && !indices_dtype.MatchesCode(DLDataTypeCode::kDLUInt)) {
+    if (!indices_dtype.MatchesCode(DLDataTypeCode::kDLInt) &&
+        !indices_dtype.MatchesCode(DLDataTypeCode::kDLUInt)) {
       TVM_FFI_VISIT_THROW(TypeError, call)
           << "ScatterND op requires the input indices to have integer dtype. However, "
              "the given indices dtype is "
@@ -3045,7 +3048,8 @@ Type InferTypeOneHot(const Call& call, const BlockBuilder& ctx) {
     LOG(WARNING) << "Data type of indices has not been specified. Assume it has an integer type.";
   } else {
     PrimType indices_dtype = indices_ty->dtype;
-    if (!indices_dtype.MatchesCode(DLDataTypeCode::kDLInt) && !indices_dtype.MatchesCode(DLDataTypeCode::kDLUInt)) {
+    if (!indices_dtype.MatchesCode(DLDataTypeCode::kDLInt) &&
+        !indices_dtype.MatchesCode(DLDataTypeCode::kDLUInt)) {
       TVM_FFI_VISIT_THROW(TypeError, call)
           << "one_hot op requires the input indices to have integer dtype. However, the "
              "given indices dtype is "

@@ -24,9 +24,9 @@
 #include <tvm/arith/analyzer.h>
 #include <tvm/arith/int_solver.h>
 #include <tvm/arith/pattern.h>
+#include <tvm/ffi/dtype.h>
 #include <tvm/ffi/function.h>
 #include <tvm/ffi/reflection/registry.h>
-#include <tvm/ffi/dtype.h>
 #include <tvm/tirx/analysis.h>
 #include <tvm/tirx/expr.h>
 #include <tvm/tirx/op.h>

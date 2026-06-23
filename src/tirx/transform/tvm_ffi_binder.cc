@@ -377,7 +377,9 @@ void TVMFFIABIBuilder::BindBuffer(const Buffer& arg, const Buffer& value,
         }
         if (!is_one(acond)) {
           int param_index = GetParamIndex(base_path);
-          int data_bytes = ((((arg->dtype->dtype).bits * static_cast<int16_t>((arg->dtype->dtype).lanes)) + 7) / 8);
+          int data_bytes =
+              ((((arg->dtype->dtype).bits * static_cast<int16_t>((arg->dtype->dtype).lanes)) + 7) /
+               8);
           EmitAssert(acond, "ValueError",  //
                      "Misaligned buffer data on argument #", std::to_string(param_index),
                      when_calling_imm_, sig_imm_, "`,\n  expected data alignment=",
@@ -446,8 +448,8 @@ PrimExpr TVMFFIABIBuilder::DecodeParamOpaqueHandle(int param_index, const Var& t
   // ── Load value and apply tensor offset ─────────────────────
   const int64_t object_cell_offset = sizeof(TVMFFIObject);
   static_assert(sizeof(TVMFFIObject) == 24);
-  PrimExpr arg_value = LoadTVMFFIAnyUnionValue(v_packed_args_, param_index,
-                                               params_[param_index].ty());
+  PrimExpr arg_value =
+      LoadTVMFFIAnyUnionValue(v_packed_args_, param_index, params_[param_index].ty());
   PrimExpr handle_from_tensor = Call(PrimType::Handle(), tirx::builtin::handle_add_byte_offset(),
                                      {arg_value, IntImm::Int32(object_cell_offset)});
   return Select(type_index == ffi::TypeIndex::kTVMFFITensor, handle_from_tensor, arg_value);
@@ -658,10 +660,12 @@ void TVMFFIABIBuilder::DecodeParamDLTensor(const Buffer& buffer, const PrimExpr&
 
   // ── Section: dtype ───────────────────────────────────────────
   {
-    PrimExpr code_matches = TVMStructGet(PrimType::UInt(8), handle, 0, builtin::kDLTensorTypeCode) ==
-                            IntImm(PrimType::UInt(8), buffer->dtype.code());
-    PrimExpr bits_matches = TVMStructGet(PrimType::UInt(8), handle, 0, builtin::kDLTensorTypeBits) ==
-                            IntImm(PrimType::UInt(8), buffer->dtype.bits());
+    PrimExpr code_matches =
+        TVMStructGet(PrimType::UInt(8), handle, 0, builtin::kDLTensorTypeCode) ==
+        IntImm(PrimType::UInt(8), buffer->dtype.code());
+    PrimExpr bits_matches =
+        TVMStructGet(PrimType::UInt(8), handle, 0, builtin::kDLTensorTypeBits) ==
+        IntImm(PrimType::UInt(8), buffer->dtype.bits());
     PrimExpr lanes_matches =
         TVMStructGet(PrimType::UInt(16), handle, 0, builtin::kDLTensorTypeLanes) ==
         IntImm(PrimType::UInt(16), buffer->dtype.lanes());
@@ -775,8 +779,7 @@ void TVMFFIABIBuilder::DecodeParamDLTensor(const Buffer& buffer, const PrimExpr&
       PrimExpr empty_alloc = cast(PrimType::Bool(), alloc_size == 0);
       PrimExpr data_non_null = !Call(PrimType::Bool(), builtin::isnullptr(), {vptr});
       asserts_.emplace_back(AssertStmt(
-          empty_alloc || data_non_null,
-          StringImm("ValueError"),
+          empty_alloc || data_non_null, StringImm("ValueError"),
           ffi::Array<StringImm>({StringImm(buf_name),
                                  StringImm(" data pointer is NULL on argument #"),
                                  StringImm(std::to_string(param_index)), when_calling_imm_,

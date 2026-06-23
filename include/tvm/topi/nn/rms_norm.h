@@ -52,8 +52,7 @@ inline Tensor rms_norm(const Tensor& data, const Tensor& weight, const ffi::Arra
                        std::string tag = kInjective) {
   const auto& data_type = data->dtype;
   const auto& weight_type = weight.defined() ? weight->dtype : data_type;
-  TVM_FFI_ICHECK(data_type == weight_type)
-      << "rms_norm: data and weight must have the same type";
+  TVM_FFI_ICHECK(data_type == weight_type) << "rms_norm: data and weight must have the same type";
 
   const auto& data_fp32 = cast(data, PrimType::Float(32));
   const auto& weight_fp32 = cast(weight, PrimType::Float(32));
@@ -75,9 +74,8 @@ inline Tensor rms_norm(const Tensor& data, const Tensor& weight, const ffi::Arra
         non_reduce_indices.push_back(indices[i]);
       }
     }
-    auto output =
-        tvm::rsqrt(square_sum(non_reduce_indices) / reduce_extent +
-                   MakeConst(PrimType(data_type), epsilon));
+    auto output = tvm::rsqrt(square_sum(non_reduce_indices) / reduce_extent +
+                             MakeConst(PrimType(data_type), epsilon));
     return output;
   };
   auto rsqrt_shape = ffi::Array<PrimExpr>();

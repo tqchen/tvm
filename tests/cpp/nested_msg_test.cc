@@ -18,11 +18,11 @@
  */
 
 #include <gtest/gtest.h>
+#include <tvm/ffi/dtype.h>
 #include <tvm/ffi/extra/structural_equal.h>
 #include <tvm/relax/block_builder.h>
 #include <tvm/relax/nested_msg.h>
 #include <tvm/relax/type.h>
-#include <tvm/ffi/dtype.h>
 #include <tvm/runtime/logging.h>
 #include <tvm/tirx/expr.h>
 

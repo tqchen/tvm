@@ -50,10 +50,10 @@
 #include <vector>
 
 #include "tvm/ffi/cast.h"
+#include "tvm/ffi/dtype.h"
 #include "tvm/ffi/object.h"
 #include "tvm/ffi/string.h"
 #include "tvm/ir/expr.h"
-#include "tvm/ffi/dtype.h"
 #include "z3++.h"
 
 namespace tvm::arith {

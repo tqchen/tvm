@@ -129,9 +129,9 @@ inline double GetFoldResultDoubleRepr(float x) {
   const FloatImmNode* fb = b.as<FloatImmNode>(); \
   BODY;
 
-#define TVM_INDEX_CONST_PROPAGATION(BODY)                               \
-  const IntImmNode* pa = a.as<IntImmNode>();                            \
-  const IntImmNode* pb = b.as<IntImmNode>();                            \
+#define TVM_INDEX_CONST_PROPAGATION(BODY)                         \
+  const IntImmNode* pa = a.as<IntImmNode>();                      \
+  const IntImmNode* pb = b.as<IntImmNode>();                      \
   if (arith::IsIndexTypedExpr(a) && arith::IsIndexTypedExpr(b)) { \
     BODY;                                                         \
   }

@@ -88,9 +88,8 @@ Type InferTypeFull(const Call& call, const BlockBuilder& ctx) {
   }
 
   const auto* attrs = call->attrs.as<InitAttrs>();
-  PrimType out_dtype = attrs->dtype == (DLDataType{kDLOpaqueHandle, 0, 0})
-                           ? fill_value_ty->dtype
-                           : PrimType(attrs->dtype);
+  PrimType out_dtype = attrs->dtype == (DLDataType{kDLOpaqueHandle, 0, 0}) ? fill_value_ty->dtype
+                                                                           : PrimType(attrs->dtype);
   return TensorType(/*shape=*/call->args[0], out_dtype, fill_value_ty->vdevice);
 }
 

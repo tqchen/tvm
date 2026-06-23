@@ -288,10 +288,9 @@ class EinsumBuilder {
         }
       } else {
         // Normal label
-        reduction_axes->push_back(
-            IterVar(Range(0, label_to_extent_[label]),
-                    Var(std::string(1, label), label_to_extent_[label].ty()),
-                    IterVarType::kCommReduce));
+        reduction_axes->push_back(IterVar(Range(0, label_to_extent_[label]),
+                                          Var(std::string(1, label), label_to_extent_[label].ty()),
+                                          IterVarType::kCommReduce));
         label_to_index->emplace(label, reduction_axes->back()->var);
       }
     }

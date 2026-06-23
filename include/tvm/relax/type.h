@@ -230,8 +230,8 @@ class TensorType : public Type {
    *
    * \note shape must already be normalized.
    */
-  TVM_DLL TensorType(Expr shape, tvm::PrimType dtype,
-                     ffi::Optional<VDevice> vdevice = std::nullopt, Span span = Span());
+  TVM_DLL TensorType(Expr shape, tvm::PrimType dtype, ffi::Optional<VDevice> vdevice = std::nullopt,
+                     Span span = Span());
 
   TensorType(Expr shape, DLDataType dtype, ffi::Optional<VDevice> vdevice = std::nullopt,
              Span span = Span())
@@ -244,8 +244,8 @@ class TensorType : public Type {
    * \param vdevice The virtual device.
    * \param span The span of the AST.
    */
-  TVM_DLL TensorType(tvm::PrimType dtype, int ndim,
-                     ffi::Optional<VDevice> vdevice = std::nullopt, Span span = Span());
+  TVM_DLL TensorType(tvm::PrimType dtype, int ndim, ffi::Optional<VDevice> vdevice = std::nullopt,
+                     Span span = Span());
 
   TensorType(DLDataType dtype, int ndim, ffi::Optional<VDevice> vdevice = std::nullopt,
              Span span = Span())

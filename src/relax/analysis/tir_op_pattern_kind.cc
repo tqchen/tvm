@@ -494,8 +494,8 @@ bool HasReshapePattern(const PrimFunc& func) {
 
         ffi::Array<PrimExpr> simplify_res = arith::IterMapSimplify(
             /*indices=*/{flattened_idx},
-            /*input_iters=*/ffi::Map<tirx::Var, Range>{
-                {fused_var, Range(IntImm(dtype, /*value=*/0), stride)}},
+            /*input_iters=*/
+            ffi::Map<tirx::Var, Range>{{fused_var, Range(IntImm(dtype, /*value=*/0), stride)}},
             /*input_pred=*/IntImm::Bool(true),
             /*check_level=*/arith::IterMapLevel::Surjective,
             /*analyzer=*/this->ana_,

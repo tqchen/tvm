@@ -744,13 +744,16 @@ Value IRBuilder::Cast(const SType& dst_type, spirv::Value value) {
     return MakeValue(spv::OpBitcast, dst_type, value);
   } else if (from.MatchesCode(DLDataTypeCode::kDLFloat) && to.MatchesCode(DLDataTypeCode::kDLInt)) {
     return MakeValue(spv::OpConvertFToS, dst_type, value);
-  } else if (from.MatchesCode(DLDataTypeCode::kDLFloat) && to.MatchesCode(DLDataTypeCode::kDLUInt)) {
+  } else if (from.MatchesCode(DLDataTypeCode::kDLFloat) &&
+             to.MatchesCode(DLDataTypeCode::kDLUInt)) {
     return MakeValue(spv::OpConvertFToU, dst_type, value);
   } else if (from.MatchesCode(DLDataTypeCode::kDLInt) && to.MatchesCode(DLDataTypeCode::kDLFloat)) {
     return MakeValue(spv::OpConvertSToF, dst_type, value);
-  } else if (from.MatchesCode(DLDataTypeCode::kDLUInt) && to.MatchesCode(DLDataTypeCode::kDLFloat)) {
+  } else if (from.MatchesCode(DLDataTypeCode::kDLUInt) &&
+             to.MatchesCode(DLDataTypeCode::kDLFloat)) {
     return MakeValue(spv::OpConvertUToF, dst_type, value);
-  } else if (from.MatchesCode(DLDataTypeCode::kDLFloat) && to.MatchesCode(DLDataTypeCode::kDLFloat)) {
+  } else if (from.MatchesCode(DLDataTypeCode::kDLFloat) &&
+             to.MatchesCode(DLDataTypeCode::kDLFloat)) {
     return MakeValue(spv::OpFConvert, dst_type, value);
   } else {
     TVM_FFI_THROW(InternalError) << "do not support type cast from " << from << " to " << to;
@@ -782,28 +785,28 @@ Value IRBuilder::GetSpecConst(const SType& dtype, uint64_t value) {
   return ret;
 }
 
-#define DEFINE_BUILDER_BINARY_USIGN_OP(_OpName, _Op)       \
-  Value IRBuilder::_OpName(Value a, Value b) {             \
-    TVM_FFI_ICHECK_EQ(a.stype.id, b.stype.id);             \
+#define DEFINE_BUILDER_BINARY_USIGN_OP(_OpName, _Op)                                 \
+  Value IRBuilder::_OpName(Value a, Value b) {                                       \
+    TVM_FFI_ICHECK_EQ(a.stype.id, b.stype.id);                                       \
     if (a.stype.type.MatchesCode(DLDataTypeCode::kDLInt, DLDataTypeCode::kDLUInt)) { \
-      return MakeValue(spv::OpI##_Op, a.stype, a, b);      \
-    } else {                                               \
-      TVM_FFI_ICHECK(a.stype.type.MatchesCode(DLDataTypeCode::kDLFloat));             \
-      return MakeValue(spv::OpF##_Op, a.stype, a, b);      \
-    }                                                      \
+      return MakeValue(spv::OpI##_Op, a.stype, a, b);                                \
+    } else {                                                                         \
+      TVM_FFI_ICHECK(a.stype.type.MatchesCode(DLDataTypeCode::kDLFloat));            \
+      return MakeValue(spv::OpF##_Op, a.stype, a, b);                                \
+    }                                                                                \
   }
 
-#define DEFINE_BUILDER_BINARY_SIGN_OP(_OpName, _Op)   \
-  Value IRBuilder::_OpName(Value a, Value b) {        \
-    TVM_FFI_ICHECK_EQ(a.stype.id, b.stype.id);        \
-    if (a.stype.type.MatchesCode(DLDataTypeCode::kDLInt)) {                      \
-      return MakeValue(spv::OpS##_Op, a.stype, a, b); \
-    } else if (a.stype.type.MatchesCode(DLDataTypeCode::kDLUInt)) {              \
-      return MakeValue(spv::OpU##_Op, a.stype, a, b); \
-    } else {                                          \
-      TVM_FFI_ICHECK(a.stype.type.MatchesCode(DLDataTypeCode::kDLFloat));        \
-      return MakeValue(spv::OpF##_Op, a.stype, a, b); \
-    }                                                 \
+#define DEFINE_BUILDER_BINARY_SIGN_OP(_OpName, _Op)                       \
+  Value IRBuilder::_OpName(Value a, Value b) {                            \
+    TVM_FFI_ICHECK_EQ(a.stype.id, b.stype.id);                            \
+    if (a.stype.type.MatchesCode(DLDataTypeCode::kDLInt)) {               \
+      return MakeValue(spv::OpS##_Op, a.stype, a, b);                     \
+    } else if (a.stype.type.MatchesCode(DLDataTypeCode::kDLUInt)) {       \
+      return MakeValue(spv::OpU##_Op, a.stype, a, b);                     \
+    } else {                                                              \
+      TVM_FFI_ICHECK(a.stype.type.MatchesCode(DLDataTypeCode::kDLFloat)); \
+      return MakeValue(spv::OpF##_Op, a.stype, a, b);                     \
+    }                                                                     \
   }
 
 DEFINE_BUILDER_BINARY_USIGN_OP(Add, Add);
@@ -823,19 +826,19 @@ Value IRBuilder::Mod(Value a, Value b) {
   }
 }
 
-#define DEFINE_BUILDER_CMP_OP(_OpName, _Op)                                                    \
-  Value IRBuilder::_OpName(Value a, Value b) {                                                 \
-    TVM_FFI_ICHECK_EQ(a.stype.id, b.stype.id);                                                 \
-    TVM_FFI_ICHECK_EQ(a.stype.type.lanes(), b.stype.type.lanes());                             \
+#define DEFINE_BUILDER_CMP_OP(_OpName, _Op)                                                   \
+  Value IRBuilder::_OpName(Value a, Value b) {                                                \
+    TVM_FFI_ICHECK_EQ(a.stype.id, b.stype.id);                                                \
+    TVM_FFI_ICHECK_EQ(a.stype.type.lanes(), b.stype.type.lanes());                            \
     const auto& bool_type = this->GetSType(PrimType::Bool().WithLanes(a.stype.type.lanes())); \
-    if (a.stype.type.MatchesCode(DLDataTypeCode::kDLInt)) {                                                               \
-      return MakeValue(spv::OpS##_Op, bool_type, a, b);                                        \
-    } else if (a.stype.type.MatchesCode(DLDataTypeCode::kDLUInt)) {                                                       \
-      return MakeValue(spv::OpU##_Op, bool_type, a, b);                                        \
-    } else {                                                                                   \
-      TVM_FFI_ICHECK(a.stype.type.MatchesCode(DLDataTypeCode::kDLFloat));                                                 \
-      return MakeValue(spv::OpFOrd##_Op, bool_type, a, b);                                     \
-    }                                                                                          \
+    if (a.stype.type.MatchesCode(DLDataTypeCode::kDLInt)) {                                   \
+      return MakeValue(spv::OpS##_Op, bool_type, a, b);                                       \
+    } else if (a.stype.type.MatchesCode(DLDataTypeCode::kDLUInt)) {                           \
+      return MakeValue(spv::OpU##_Op, bool_type, a, b);                                       \
+    } else {                                                                                  \
+      TVM_FFI_ICHECK(a.stype.type.MatchesCode(DLDataTypeCode::kDLFloat));                     \
+      return MakeValue(spv::OpFOrd##_Op, bool_type, a, b);                                    \
+    }                                                                                         \
   }
 
 DEFINE_BUILDER_CMP_OP(LT, LessThan);
@@ -843,17 +846,17 @@ DEFINE_BUILDER_CMP_OP(LE, LessThanEqual);
 DEFINE_BUILDER_CMP_OP(GT, GreaterThan);
 DEFINE_BUILDER_CMP_OP(GE, GreaterThanEqual);
 
-#define DEFINE_BUILDER_CMP_UOP(_OpName, _Op)                                                   \
-  Value IRBuilder::_OpName(Value a, Value b) {                                                 \
-    TVM_FFI_ICHECK_EQ(a.stype.id, b.stype.id);                                                 \
-    TVM_FFI_ICHECK_EQ(a.stype.type.lanes(), b.stype.type.lanes());                             \
+#define DEFINE_BUILDER_CMP_UOP(_OpName, _Op)                                                  \
+  Value IRBuilder::_OpName(Value a, Value b) {                                                \
+    TVM_FFI_ICHECK_EQ(a.stype.id, b.stype.id);                                                \
+    TVM_FFI_ICHECK_EQ(a.stype.type.lanes(), b.stype.type.lanes());                            \
     const auto& bool_type = this->GetSType(PrimType::Bool().WithLanes(a.stype.type.lanes())); \
-    if (a.stype.type.MatchesCode(DLDataTypeCode::kDLInt, DLDataTypeCode::kDLUInt)) {                                     \
-      return MakeValue(spv::OpI##_Op, bool_type, a, b);                                        \
-    } else {                                                                                   \
-      TVM_FFI_ICHECK(a.stype.type.MatchesCode(DLDataTypeCode::kDLFloat));                                                 \
-      return MakeValue(spv::OpFOrd##_Op, bool_type, a, b);                                     \
-    }                                                                                          \
+    if (a.stype.type.MatchesCode(DLDataTypeCode::kDLInt, DLDataTypeCode::kDLUInt)) {          \
+      return MakeValue(spv::OpI##_Op, bool_type, a, b);                                       \
+    } else {                                                                                  \
+      TVM_FFI_ICHECK(a.stype.type.MatchesCode(DLDataTypeCode::kDLFloat));                     \
+      return MakeValue(spv::OpFOrd##_Op, bool_type, a, b);                                    \
+    }                                                                                         \
   }
 
 DEFINE_BUILDER_CMP_UOP(EQ, Equal);

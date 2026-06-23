@@ -26,8 +26,8 @@
 #define TVM_RUNTIME_CONTRIB_CBLAS_GEMM_COMMON_H_
 
 #include <tvm/ffi/container/tensor.h>
-#include <tvm/ffi/function.h>
 #include <tvm/ffi/dtype.h>
+#include <tvm/ffi/function.h>
 
 #include <algorithm>
 #include <string>

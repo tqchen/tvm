@@ -189,8 +189,7 @@ void CodeGenOpenCL::BindThreadIndex(const IterVar& iv) {
   } else {
     os << "get_group_id(" << ts.dim_index << ")";
   }
-  var_idmap_[iv->var.get()] =
-      CastFromTo(os.str(), DLDataType{kDLUInt, 64, 1}, iv->var.ty()->dtype);
+  var_idmap_[iv->var.get()] = CastFromTo(os.str(), DLDataType{kDLUInt, 64, 1}, iv->var.ty()->dtype);
 }
 
 void CodeGenOpenCL::PrintType(DLDataType raw_t, std::ostream& os) {  // NOLINT(*)
@@ -446,7 +445,8 @@ void CodeGenOpenCL::VisitExpr_(const CallNode* op, std::ostream& os) {
     std::stringstream ss;
     this->PrintExpr(op->args[5], ss);
     std::string value;
-    value = this->SSAGetID(ss.str(), PrimType(buffer_type).WithLanes(channel_size / buffer_type.bits)->dtype);
+    value = this->SSAGetID(ss.str(),
+                           PrimType(buffer_type).WithLanes(channel_size / buffer_type.bits)->dtype);
     if (channel_size == 64) {
       os << "write_imageh(";
     } else if (channel_size == 128) {

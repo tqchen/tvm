@@ -16,8 +16,8 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-#include <tvm/ffi/reflection/registry.h>
 #include <tvm/ffi/dtype.h>
+#include <tvm/ffi/reflection/registry.h>
 
 #include "../utils.h"
 

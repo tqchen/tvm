@@ -501,8 +501,7 @@ inline void PrintConst(const FloatImmNode* op, std::ostream& os, CodeGenC* p) { 
       break;
     }
     default:
-      TVM_FFI_THROW(InternalError)
-          << "Bad bit-width for float: " << op->ty()->dtype << "\n";
+      TVM_FFI_THROW(InternalError) << "Bad bit-width for float: " << op->ty()->dtype << "\n";
   }
 }
 
@@ -726,15 +725,13 @@ void CodeGenC::VisitExpr_(const CallNode* op, std::ostream& os) {  // NOLINT(*)
         TVM_FFI_ICHECK_EQ(load->indices.size(), 1)
             << "CodeGenC only supports flat memory allocations.";
         const VarNode* data = load->buffer->data.get();
-        if (pointer_offset_vars_.count(data) &&
-            HandleTypeMatch(data, load->buffer->dtype->dtype) &&
+        if (pointer_offset_vars_.count(data) && HandleTypeMatch(data, load->buffer->dtype->dtype) &&
             !IsVolatile(data)) {
           os << "(" << GetVarID(data) << " + ";
           this->PrintExpr(load->indices[0], os);
           os << ")";
         } else {
-          os << "(&("
-             << GetBufferRef(load->ty()->dtype, load->buffer.get(), load->indices[0])
+          os << "(&(" << GetBufferRef(load->ty()->dtype, load->buffer.get(), load->indices[0])
              << "))";
         }
       } else {
@@ -1345,8 +1342,7 @@ void CodeGenC::VisitStmt_(const EvaluateNode* op) {
       std::string value = PrintExpr(call->args[3]);
       std::string cast;
 
-      if (kind == builtin::kTVMFFIAnyUnionValue &&
-          (store_dtype.bits < 64 || store_ty.IsHandle())) {
+      if (kind == builtin::kTVMFFIAnyUnionValue && (store_dtype.bits < 64 || store_ty.IsHandle())) {
         this->PrintIndent();
         // when we set any union value, we need to be careful to
         // clear off the union value to zero if the set size is less than 64 bits

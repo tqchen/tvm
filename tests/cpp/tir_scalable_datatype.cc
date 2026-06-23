@@ -190,12 +190,12 @@ TEST(ScalablePrimType, TestScalableUInt) {
 #ifdef TVM_LLVM_VERSION
 TEST(ScalablePrimType, TestScalableIntrinCall) {
   tvm::PrimType scalable_type = tvm::PrimType::ScalableVector(kDLInt, 32, 4);
-  tvm::tirx::Call call =
-      tvm::tirx::Call(scalable_type, tvm::tirx::builtin::call_llvm_intrin(),
+  tvm::tirx::Call call = tvm::tirx::Call(scalable_type, tvm::tirx::builtin::call_llvm_intrin(),
 #if TVM_LLVM_VERSION >= 200
-                      {tvm::IntImm::Int32(::llvm::Intrinsic::stepvector)});
+                                         {tvm::IntImm::Int32(::llvm::Intrinsic::stepvector)});
 #else
-                      {tvm::IntImm::Int32(::llvm::Intrinsic::experimental_stepvector)});
+                                         {tvm::IntImm::Int32(
+                                             ::llvm::Intrinsic::experimental_stepvector)});
 #endif
   ASSERT_EQ(tvm::PrimType(call.ty()->dtype), scalable_type);
   ASSERT_EQ(tvm::Script(call),

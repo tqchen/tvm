@@ -54,7 +54,8 @@ ffi::Array<PrimExpr> SimplifyArray(arith::AnalyzerObj* ana, ffi::Array<PrimExpr>
 Buffer decl_buffer(ffi::Array<PrimExpr> shape, DLDataType dtype, ffi::String name,
                    ffi::String storage_scope, ffi::Optional<ffi::Array<IntImm>> axis_separators,
                    Span span) {
-  DLDataType storage_dtype = (dtype == DLDataType{kDLBool, 8, 1} ? DLDataType{kDLInt, 8, 1} : dtype);
+  DLDataType storage_dtype =
+      (dtype == DLDataType{kDLBool, 8, 1} ? DLDataType{kDLInt, 8, 1} : dtype);
   return Buffer(Var(name, PointerType(PrimType(storage_dtype), storage_scope), span), dtype, shape,
                 ffi::Array<PrimExpr>(), PrimExpr(), name, 0, 0, kDefault,
                 axis_separators.value_or(ffi::Array<IntImm>()), span, std::nullopt,
@@ -432,7 +433,8 @@ PrimExpr Buffer::vload(ffi::Array<PrimExpr> begin, PrimType value_dtype,
   const BufferNode* n = operator->();
   TVM_FFI_ICHECK(n != nullptr);
   PrimType buffer_dtype(n->dtype);
-  int value_lanes = value_dtype.IsScalableVector() ? value_dtype.VScaleFactor() : value_dtype.lanes();
+  int value_lanes =
+      value_dtype.IsScalableVector() ? value_dtype.VScaleFactor() : value_dtype.lanes();
   int buffer_lanes =
       buffer_dtype.IsScalableVector() ? buffer_dtype.VScaleFactor() : buffer_dtype.lanes();
   TVM_FFI_ICHECK(value_dtype.WithLanes(1)->dtype == buffer_dtype.WithLanes(1)->dtype &&
@@ -458,7 +460,8 @@ Stmt Buffer::vstore(ffi::Array<PrimExpr> begin, PrimExpr value,
   TVM_FFI_ICHECK(n != nullptr);
   PrimType value_dtype = value.ty();
   PrimType buffer_dtype(n->dtype);
-  int value_lanes = value_dtype.IsScalableVector() ? value_dtype.VScaleFactor() : value_dtype.lanes();
+  int value_lanes =
+      value_dtype.IsScalableVector() ? value_dtype.VScaleFactor() : value_dtype.lanes();
   int buffer_lanes =
       buffer_dtype.IsScalableVector() ? buffer_dtype.VScaleFactor() : buffer_dtype.lanes();
   TVM_FFI_ICHECK(value_dtype.WithLanes(1)->dtype == buffer_dtype.WithLanes(1)->dtype &&
@@ -642,10 +645,11 @@ Buffer::Buffer(Var data, PrimType dtype, ffi::Array<PrimExpr> shape, ffi::Array<
   data_ = std::move(n);
 }
 
-tirx::Buffer BufferWithOffsetAlignment(ffi::Array<PrimExpr> shape, DLDataType dtype, std::string name,
-                                       int data_alignment, int offset_factor, bool compact,
-                                       std::string memory_scope) {
-  DLDataType storage_dtype = (dtype == DLDataType{kDLBool, 8, 1} ? DLDataType{kDLInt, 8, 1} : dtype);
+tirx::Buffer BufferWithOffsetAlignment(ffi::Array<PrimExpr> shape, DLDataType dtype,
+                                       std::string name, int data_alignment, int offset_factor,
+                                       bool compact, std::string memory_scope) {
+  DLDataType storage_dtype =
+      (dtype == DLDataType{kDLBool, 8, 1} ? DLDataType{kDLInt, 8, 1} : dtype);
   auto data = tirx::Var(name, PointerType(PrimType(storage_dtype), memory_scope));
   bool has_any = false;
   if (!compact) {

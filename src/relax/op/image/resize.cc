@@ -93,9 +93,9 @@ Type InferTypeResize2D(const Call& call, const BlockBuilder& ctx) {
                                                     /*tgt_layout=*/"NCHW",     //
                                                     /*tensor_name=*/"data");
 
-  DLDataType out_dtype =
-      attrs->out_dtype == DLDataType{kDLOpaqueHandle, 0, 0} ? data_ty->dtype->dtype
-                                                            : attrs->out_dtype;
+  DLDataType out_dtype = attrs->out_dtype == DLDataType{kDLOpaqueHandle, 0, 0}
+                             ? data_ty->dtype->dtype
+                             : attrs->out_dtype;
 
   ffi::Optional<ShapeExpr> data_shape =
       CheckNdimPerLayoutAndGetShape(call, ctx, ffi::GetRef<TensorType>(data_ty), data_layout);
@@ -209,9 +209,9 @@ Type InferTypeResize3D(const Call& call, const BlockBuilder& ctx) {
                                                      /*tgt_layout=*/"NCDHW",    //
                                                      /*tensor_name=*/"data");
 
-  DLDataType out_dtype =
-      attrs->out_dtype == DLDataType{kDLOpaqueHandle, 0, 0} ? data_ty->dtype->dtype
-                                                            : attrs->out_dtype;
+  DLDataType out_dtype = attrs->out_dtype == DLDataType{kDLOpaqueHandle, 0, 0}
+                             ? data_ty->dtype->dtype
+                             : attrs->out_dtype;
 
   ffi::Optional<ShapeExpr> data_shape =
       CheckNdimPerLayoutAndGetShape(call, ctx, ffi::GetRef<TensorType>(data_ty), data_layout);

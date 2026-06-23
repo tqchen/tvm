@@ -90,13 +90,12 @@ class CallTIRMutator : public ExprMutator {
         }
 
         if (!is_inplace) {
-          outs.push_back(builder_->Emit(
-              Call(alloc_tensor_op,
-                   {output_ty->shape.value().as_or_throw<ShapeExpr>(),
-                    DataTypeImm(output_ty->dtype->dtype), PrimValue::Int64(dev_index),
-                    StringImm(scope)},
-                   Attrs(), {output_ty}),
-              "alloc"));
+          outs.push_back(builder_->Emit(Call(alloc_tensor_op,
+                                             {output_ty->shape.value().as_or_throw<ShapeExpr>(),
+                                              DataTypeImm(output_ty->dtype->dtype),
+                                              PrimValue::Int64(dev_index), StringImm(scope)},
+                                             Attrs(), {output_ty}),
+                                        "alloc"));
         } else {
           // if there is only one output, it must be an in-place argument, but check anyway
           TVM_FFI_ICHECK(inplace_attrs->inplace_indices[0] != -1)
@@ -131,8 +130,7 @@ class CallTIRMutator : public ExprMutator {
                 builder_->Emit(Call(alloc_tensor_op,
                                     {field_tensor->shape.value().as_or_throw<ShapeExpr>(),
                                      DataTypeImm(field_tensor->dtype->dtype),
-                                     PrimValue::Int64(dev_index),
-                                     StringImm(scope)},
+                                     PrimValue::Int64(dev_index), StringImm(scope)},
                                     Attrs(), {field_tensor}),
                                "alloc"));
           } else {

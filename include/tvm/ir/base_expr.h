@@ -25,9 +25,9 @@
 #define TVM_IR_BASE_EXPR_H_
 
 #include <tvm/ffi/cast.h>
+#include <tvm/ffi/dtype.h>
 #include <tvm/ffi/reflection/registry.h>
 #include <tvm/ir/source_map.h>
-#include <tvm/ffi/dtype.h>
 
 #include <cstdint>
 

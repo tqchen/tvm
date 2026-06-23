@@ -22,10 +22,10 @@
  * \brief Data SLayout expression.
  */
 #include <tvm/arith/analyzer.h>
+#include <tvm/ffi/dtype.h>
 #include <tvm/ffi/function.h>
 #include <tvm/ffi/reflection/registry.h>
 #include <tvm/ir/expr.h>
-#include <tvm/ffi/dtype.h>
 #include <tvm/runtime/logging.h>
 #include <tvm/s_tir/data_layout.h>
 #include <tvm/tirx/analysis.h>
@@ -502,9 +502,9 @@ inline ffi::Array<PrimExpr> TransformShape(const ffi::Array<PrimExpr>& src_shape
       }
       bind_map[orig_axis->var.get()] = IntImm(orig_axis->var.ty(), 0);
     } else {
-      bind_map[orig_axis->var.get()] =
-          orig_axis->var.ty()->dtype == orig_shape.ty()->dtype ? orig_shape
-                                                               : cast(orig_axis->var.ty(), orig_shape);
+      bind_map[orig_axis->var.get()] = orig_axis->var.ty()->dtype == orig_shape.ty()->dtype
+                                           ? orig_shape
+                                           : cast(orig_axis->var.ty(), orig_shape);
     }
   }
   // infer the target shape,

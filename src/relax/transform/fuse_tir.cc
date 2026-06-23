@@ -638,8 +638,7 @@ class FusedTIRConstructor : public ExprVisitor {
         continue;
       }
 
-      tirx::Var param =
-          tirx::Var("p_output" + std::to_string(out_idx), tvm::PrimType::Handle());
+      tirx::Var param = tirx::Var("p_output" + std::to_string(out_idx), tvm::PrimType::Handle());
       out_idx++;
       func_info_.buffer_map.Set(param, buffers[i]);
       func_info_.params.push_back(param);

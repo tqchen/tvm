@@ -86,8 +86,7 @@ TVM_FFI_STATIC_INIT_BLOCK() {
 }
 
 // Tensor
-TensorType::TensorType(Expr shape, PrimType dtype, ffi::Optional<VDevice> vdevice,
-                       Span span) {
+TensorType::TensorType(Expr shape, PrimType dtype, ffi::Optional<VDevice> vdevice, Span span) {
   ffi::ObjectPtr<TensorTypeNode> n = ffi::make_object<TensorTypeNode>();
   // assign ndim before move
   TVM_FFI_ICHECK(shape.defined()) << "Must provide a shape in this constructor";

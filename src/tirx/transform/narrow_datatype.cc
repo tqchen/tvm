@@ -268,24 +268,24 @@ class NarrowDataTypeRewriter : public IndexDataTypeRewriter {
     return Parent::VisitExpr_(op);
   }
 
-#define TVM_DEFINE_BIOP_EXPR_MUTATE_WITH_TYPE_MATCH(OP, FUNC)      \
-  PrimExpr VisitExpr_(const OP* op) {                              \
-    PrimExpr a = this->VisitExpr(op->a);                           \
-    PrimExpr b = this->VisitExpr(op->b);                           \
+#define TVM_DEFINE_BIOP_EXPR_MUTATE_WITH_TYPE_MATCH(OP, FUNC)       \
+  PrimExpr VisitExpr_(const OP* op) {                               \
+    PrimExpr a = this->VisitExpr(op->a);                            \
+    PrimExpr b = this->VisitExpr(op->b);                            \
     if (op->a.same_as(a) && op->b.same_as(b) && a.ty() == b.ty()) { \
-      return ffi::GetRef<PrimExpr>(op);                            \
-    } else {                                                       \
-      if (a.ty() != b.ty()) {                                      \
-        bool is_enabled = is_enabled_;                             \
-        is_enabled_ = true;                                        \
-        PrimExpr lhs = this->VisitExpr(op->a);                     \
-        PrimExpr rhs = this->VisitExpr(op->b);                     \
-        is_enabled_ = is_enabled;                                  \
-        return FUNC(lhs, rhs);                                     \
-      } else {                                                     \
-        return FUNC(a, b);                                         \
-      }                                                            \
-    }                                                              \
+      return ffi::GetRef<PrimExpr>(op);                             \
+    } else {                                                        \
+      if (a.ty() != b.ty()) {                                       \
+        bool is_enabled = is_enabled_;                              \
+        is_enabled_ = true;                                         \
+        PrimExpr lhs = this->VisitExpr(op->a);                      \
+        PrimExpr rhs = this->VisitExpr(op->b);                      \
+        is_enabled_ = is_enabled;                                   \
+        return FUNC(lhs, rhs);                                      \
+      } else {                                                      \
+        return FUNC(a, b);                                          \
+      }                                                             \
+    }                                                               \
   }
 
   TVM_DEFINE_BIOP_EXPR_MUTATE_WITH_TYPE_MATCH(AddNode, operator+);

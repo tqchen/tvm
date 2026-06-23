@@ -418,17 +418,17 @@ IterVar PushBlockVar(IterVar iter_var, PrimExpr binding) {
   return iter_var;
 }
 
-#define TVM_TIRX_IR_BUILDER_AXIS(Method, Kind, Name)                                 \
-  Var Method(Range dom, PrimExpr binding, DLDataType dtype) {                        \
-    TVM_FFI_ICHECK(dom.defined()) << Name << " axis must have a domain";             \
-    PrimType min_ty = dom->min.ty();                                                 \
-    PrimType extent_ty = dom->extent.ty();                                           \
+#define TVM_TIRX_IR_BUILDER_AXIS(Method, Kind, Name)                                      \
+  Var Method(Range dom, PrimExpr binding, DLDataType dtype) {                             \
+    TVM_FFI_ICHECK(dom.defined()) << Name << " axis must have a domain";                  \
+    PrimType min_ty = dom->min.ty();                                                      \
+    PrimType extent_ty = dom->extent.ty();                                                \
     int bits = std::max({min_ty.bits(), extent_ty.bits(), static_cast<int>(dtype.bits)}); \
-    PrimType var_ty(DLDataType{dtype.code, static_cast<uint8_t>(bits), dtype.lanes}); \
-    return PushBlockVar(IterVar(/*dom=*/dom, /*var=*/Var("", var_ty),                \
-                                /*iter_type=*/Kind, /*thread_tag=*/""),              \
-                        binding)                                                     \
-        ->var;                                                                       \
+    PrimType var_ty(DLDataType{dtype.code, static_cast<uint8_t>(bits), dtype.lanes});     \
+    return PushBlockVar(IterVar(/*dom=*/dom, /*var=*/Var("", var_ty), /*iter_type=*/Kind, \
+                                /*thread_tag=*/""),                                       \
+                        binding)                                                          \
+        ->var;                                                                            \
   }
 TVM_TIRX_IR_BUILDER_AXIS(Spatial, tvm::tirx::IterVarType::kDataPar, "Spatial");
 TVM_TIRX_IR_BUILDER_AXIS(Reduce, tvm::tirx::IterVarType::kCommReduce, "Reduction");
@@ -763,8 +763,8 @@ void BufferStore(Buffer buffer, PrimExpr value, ffi::Array<PrimExpr> indices,
 
   PrimType lhs_dtype = buffer_dtype;
   if (is_buffer_dtype_scalable || is_index_scalable) {
-    lhs_dtype =
-        PrimType::ScalableVector(buffer_dtype.code(), buffer_dtype.bits(), buffer_lanes * index_lanes);
+    lhs_dtype = PrimType::ScalableVector(buffer_dtype.code(), buffer_dtype.bits(),
+                                         buffer_lanes * index_lanes);
   } else {
     lhs_dtype = buffer_dtype.WithLanes(buffer_dtype.lanes() * index_lanes);
   }

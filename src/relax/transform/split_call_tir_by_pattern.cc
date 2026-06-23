@@ -336,8 +336,8 @@ class ForMatcher : public TensorizeComparator {
         if (!VisitExpr(lhs->shape[i], rhs->shape[i])) return false;
       }
       // Remap both buffer itself and buffer data
-      equal = DefEqual(lhs->data, rhs->data) && lhs->dtype == rhs->dtype &&
-              lhs.scope() == rhs.scope();
+      equal =
+          DefEqual(lhs->data, rhs->data) && lhs->dtype == rhs->dtype && lhs.scope() == rhs.scope();
       if (equal) {
         rhs_buffer_map_[rhs] = lhs;
       }

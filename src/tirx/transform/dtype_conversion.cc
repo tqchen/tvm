@@ -49,14 +49,10 @@ PrimExpr DTypeConversion(PrimExpr src_value, PrimType tgt_dtype, RoundingMode ro
            (code == DLDataTypeCode::kDLBfloat && dtype.bits() == 16) ||
            code == DLDataTypeCode::kDLFloat8_e3m4 || code == DLDataTypeCode::kDLFloat8_e4m3 ||
            code == DLDataTypeCode::kDLFloat8_e4m3b11fnuz ||
-           code == DLDataTypeCode::kDLFloat8_e4m3fn ||
-           code == DLDataTypeCode::kDLFloat8_e4m3fnuz ||
-           code == DLDataTypeCode::kDLFloat8_e5m2 ||
-           code == DLDataTypeCode::kDLFloat8_e5m2fnuz ||
-           code == DLDataTypeCode::kDLFloat8_e8m0fnu ||
-           code == DLDataTypeCode::kDLFloat6_e2m3fn ||
-           code == DLDataTypeCode::kDLFloat6_e3m2fn ||
-           code == DLDataTypeCode::kDLFloat4_e2m1fn;
+           code == DLDataTypeCode::kDLFloat8_e4m3fn || code == DLDataTypeCode::kDLFloat8_e4m3fnuz ||
+           code == DLDataTypeCode::kDLFloat8_e5m2 || code == DLDataTypeCode::kDLFloat8_e5m2fnuz ||
+           code == DLDataTypeCode::kDLFloat8_e8m0fnu || code == DLDataTypeCode::kDLFloat6_e2m3fn ||
+           code == DLDataTypeCode::kDLFloat6_e3m2fn || code == DLDataTypeCode::kDLFloat4_e2m1fn;
   };
   // Both source dtype and target dtype should be floating point.
   TVM_FFI_ICHECK(is_floating_point(src_dtype) && is_floating_point(tgt_dtype));

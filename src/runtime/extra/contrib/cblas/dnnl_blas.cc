@@ -21,10 +21,10 @@
  * \file Use external cblas library call.
  */
 #include <tvm/ffi/container/tensor.h>
+#include <tvm/ffi/dtype.h>
 #include <tvm/ffi/error.h>
 #include <tvm/ffi/function.h>
 #include <tvm/ffi/reflection/registry.h>
-#include <tvm/ffi/dtype.h>
 
 extern "C" {
 #include <dnnl.h>

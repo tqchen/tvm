@@ -48,10 +48,10 @@
 #define TVM_IR_TYPE_H_
 
 #include <tvm/ffi/container/array.h>
+#include <tvm/ffi/dtype.h>
 #include <tvm/ffi/reflection/registry.h>
 #include <tvm/ir/base_expr.h>
 #include <tvm/ir/source_map.h>
-#include <tvm/ffi/dtype.h>
 
 #include <string>
 

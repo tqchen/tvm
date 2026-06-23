@@ -93,8 +93,7 @@ Type InferTypeMultiboxTransformLoc(const Call& call, const BlockBuilder& ctx) {
         << anchor_ty->ndim;
   }
 
-  if (!cls_ty->IsUnknownDtype() && !loc_ty->IsUnknownDtype() &&
-      cls_ty->dtype != loc_ty->dtype) {
+  if (!cls_ty->IsUnknownDtype() && !loc_ty->IsUnknownDtype() && cls_ty->dtype != loc_ty->dtype) {
     TVM_FFI_VISIT_THROW(TypeError, call)
         << "multibox_transform_loc: cls_pred and loc_pred dtype must match, got " << cls_ty->dtype
         << " vs " << loc_ty->dtype;

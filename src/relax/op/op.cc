@@ -737,8 +737,7 @@ Expr NormalizeCallTIRInPlace(const BlockBuilder& ctx, Call call) {
     auto tinfo_input = ty_input.as<TensorTypeNode>();
 
     if (!tinfo_input ||
-        (tinfo_output->IsUnknownDtype() ||
-         tinfo_output->dtype != tinfo_input->dtype) ||
+        (tinfo_output->IsUnknownDtype() || tinfo_output->dtype != tinfo_input->dtype) ||
         (!tinfo_input->shape.defined() ||
          !CanProveShapeEqual(tinfo_input->shape.value(), tinfo_output->shape.value(),
                              ctx->GetAnalyzer()))) {
