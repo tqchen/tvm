@@ -72,7 +72,8 @@ class Mutator : public ExprMutator {
       }();
 
       PrimExpr nbytes = [&]() -> PrimExpr {
-        PrimExpr nbytes = IntImm::Int64(((((dtype->value).bits * static_cast<int16_t>((dtype->value).lanes)) + 7) / 8));
+        PrimExpr nbytes = IntImm::Int64(
+            ((((dtype->value).bits * static_cast<int16_t>((dtype->value).lanes)) + 7) / 8));
         for (const auto& dim : shape) {
           nbytes *= dim;
         }

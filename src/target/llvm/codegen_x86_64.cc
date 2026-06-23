@@ -55,7 +55,8 @@ llvm::Value* CodeGenX86_64::VisitExpr_(const CastNode* op) {
   // vcvtph2ps), so we explicitly generate them ourselves.
   const auto from = PrimType(op->value.ty()->dtype);
   const auto to = PrimType(op->ty()->dtype);
-  if (from.MatchesCode(DLDataTypeCode::kDLFloat) && to.MatchesCode(DLDataTypeCode::kDLFloat) && from.bits() == 16 && to.bits() == 32) {
+  if (from.MatchesCode(DLDataTypeCode::kDLFloat) && to.MatchesCode(DLDataTypeCode::kDLFloat) &&
+      from.bits() == 16 && to.bits() == 32) {
     TVM_FFI_ICHECK_EQ(from.lanes(), to.lanes());
 
     const auto has_avx512 = llvm_target_->TargetHasCPUFeature("avx512f");

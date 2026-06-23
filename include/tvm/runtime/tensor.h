@@ -26,10 +26,10 @@
 
 #include <tvm/ffi/container/shape.h>
 #include <tvm/ffi/container/tensor.h>
+#include <tvm/ffi/dtype.h>
 #include <tvm/ffi/optional.h>
 #include <tvm/ffi/string.h>
 #include <tvm/runtime/base.h>
-#include <tvm/ffi/dtype.h>
 #include <tvm/runtime/device_api.h>
 #include <tvm/support/io.h>
 #include <tvm/support/serializer.h>

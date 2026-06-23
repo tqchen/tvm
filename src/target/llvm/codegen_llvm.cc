@@ -598,14 +598,17 @@ llvm::Type* CodeGenLLVM::DTypeToLLVMType(const PrimType& dtype) const {
       default:
         TVM_FFI_THROW(InternalError) << "do not support " << dtype;
     }
-  } else if (dtype.code() == DLDataTypeCode::kDLFloat8_e3m4 || dtype.code() == DLDataTypeCode::kDLFloat8_e4m3 ||
+  } else if (dtype.code() == DLDataTypeCode::kDLFloat8_e3m4 ||
+             dtype.code() == DLDataTypeCode::kDLFloat8_e4m3 ||
              dtype.code() == DLDataTypeCode::kDLFloat8_e4m3b11fnuz ||
              dtype.code() == DLDataTypeCode::kDLFloat8_e4m3fn ||
-             dtype.code() == DLDataTypeCode::kDLFloat8_e4m3fnuz || dtype.code() == DLDataTypeCode::kDLFloat8_e5m2 ||
+             dtype.code() == DLDataTypeCode::kDLFloat8_e4m3fnuz ||
+             dtype.code() == DLDataTypeCode::kDLFloat8_e5m2 ||
              dtype.code() == DLDataTypeCode::kDLFloat8_e5m2fnuz ||
              dtype.code() == DLDataTypeCode::kDLFloat8_e8m0fnu) {
     etype = llvm::Type::getInt8Ty(*ctx);
-  } else if (dtype.code() == DLDataTypeCode::kDLFloat6_e2m3fn || dtype.code() == DLDataTypeCode::kDLFloat6_e3m2fn) {
+  } else if (dtype.code() == DLDataTypeCode::kDLFloat6_e2m3fn ||
+             dtype.code() == DLDataTypeCode::kDLFloat6_e3m2fn) {
     etype = llvm::Type::getIntNTy(*ctx, 6);
   } else if (dtype.code() == DLDataTypeCode::kDLFloat4_e2m1fn) {
     etype = llvm::Type::getIntNTy(*ctx, 4);
@@ -921,11 +924,13 @@ llvm::Value* CodeGenLLVM::CreateCast(PrimType from, PrimType to, llvm::Value* va
       llvm::Constant* zero = llvm::ConstantInt::get(DTypeToLLVMType(from), 0);
       return builder_->CreateICmpNE(value, zero);
     }
-  } else if (!from.MatchesCode(DLDataTypeCode::kDLFloat) && !to.MatchesCode(DLDataTypeCode::kDLFloat)) {
+  } else if (!from.MatchesCode(DLDataTypeCode::kDLFloat) &&
+             !to.MatchesCode(DLDataTypeCode::kDLFloat)) {
     return builder_->CreateIntCast(value, target, from.MatchesCode(DLDataTypeCode::kDLInt));
   } else if (from.MatchesCode(DLDataTypeCode::kDLFloat) && to.MatchesCode(DLDataTypeCode::kDLInt)) {
     return builder_->CreateFPToSI(value, target);
-  } else if (from.MatchesCode(DLDataTypeCode::kDLFloat) && to.MatchesCode(DLDataTypeCode::kDLUInt)) {
+  } else if (from.MatchesCode(DLDataTypeCode::kDLFloat) &&
+             to.MatchesCode(DLDataTypeCode::kDLUInt)) {
     if (to.bits() < 8) {
       value = builder_->CreateFPToUI(value, DTypeToLLVMType(to.WithBits(8)));
       return builder_->CreateIntCast(value, target, false);
@@ -934,10 +939,13 @@ llvm::Value* CodeGenLLVM::CreateCast(PrimType from, PrimType to, llvm::Value* va
     }
   } else if (from.MatchesCode(DLDataTypeCode::kDLInt) && to.MatchesCode(DLDataTypeCode::kDLFloat)) {
     return builder_->CreateSIToFP(value, target);
-  } else if ((from.MatchesCode(DLDataTypeCode::kDLUInt) || from.MatchesCode(DLDataTypeCode::kDLBool)) && to.MatchesCode(DLDataTypeCode::kDLFloat)) {
+  } else if ((from.MatchesCode(DLDataTypeCode::kDLUInt) ||
+              from.MatchesCode(DLDataTypeCode::kDLBool)) &&
+             to.MatchesCode(DLDataTypeCode::kDLFloat)) {
     return builder_->CreateUIToFP(value, target);
   } else {
-    TVM_FFI_ICHECK(from.MatchesCode(DLDataTypeCode::kDLFloat) && to.MatchesCode(DLDataTypeCode::kDLFloat));
+    TVM_FFI_ICHECK(from.MatchesCode(DLDataTypeCode::kDLFloat) &&
+                   to.MatchesCode(DLDataTypeCode::kDLFloat));
     return builder_->CreateFPCast(value, target);
   }
 }
@@ -1557,20 +1565,20 @@ llvm::Value* CodeGenLLVM::VisitExpr_(const StringImmNode* op) { return GetConstS
 
 #define DEFINE_CODEGEN_BINARY_OP(Op)                                                  \
   llvm::Value* CodeGenLLVM::Create##Op(PrimType t, llvm::Value* a, llvm::Value* b) {  \
-    if (t.MatchesCode(DLDataTypeCode::kDLInt)) {                                                                 \
+    if (t.MatchesCode(DLDataTypeCode::kDLInt)) {                                      \
       if (t.bits() >= 32) {                                                           \
         return builder_->CreateNSW##Op(a, b);                                         \
       } else {                                                                        \
         return builder_->Create##Op(a, b);                                            \
       }                                                                               \
-    } else if (t.MatchesCode(DLDataTypeCode::kDLUInt)) {                                                         \
+    } else if (t.MatchesCode(DLDataTypeCode::kDLUInt)) {                              \
       if (t.bits() >= 32) {                                                           \
         return builder_->CreateNUW##Op(a, b);                                         \
       } else {                                                                        \
         return builder_->Create##Op(a, b);                                            \
       }                                                                               \
     } else {                                                                          \
-      TVM_FFI_ICHECK(t.MatchesCode(DLDataTypeCode::kDLFloat));                                                   \
+      TVM_FFI_ICHECK(t.MatchesCode(DLDataTypeCode::kDLFloat));                        \
       return builder_->CreateF##Op(a, b);                                             \
     }                                                                                 \
   }                                                                                   \
@@ -1584,12 +1592,12 @@ DEFINE_CODEGEN_BINARY_OP(Mul);
 
 #define DEFINE_CODEGEN_CMP_OP(Op)                                                       \
   llvm::Value* CodeGenLLVM::Create##Op(PrimType t, llvm::Value* a, llvm::Value* b) {    \
-    if (t.MatchesCode(DLDataTypeCode::kDLInt)) {                                                                   \
+    if (t.MatchesCode(DLDataTypeCode::kDLInt)) {                                        \
       return builder_->CreateICmpS##Op(a, b);                                           \
-    } else if (t.MatchesCode(DLDataTypeCode::kDLUInt)) {                                                           \
+    } else if (t.MatchesCode(DLDataTypeCode::kDLUInt)) {                                \
       return builder_->CreateICmpU##Op(a, b);                                           \
     } else {                                                                            \
-      TVM_FFI_ICHECK(t.MatchesCode(DLDataTypeCode::kDLFloat));                                                     \
+      TVM_FFI_ICHECK(t.MatchesCode(DLDataTypeCode::kDLFloat));                          \
       return builder_->CreateFCmpO##Op(a, b);                                           \
     }                                                                                   \
   }                                                                                     \
@@ -1733,8 +1741,7 @@ void CodeGenLLVM::BufferAccessHelper(
   PrimExpr last_index = indices[indices.size() - 1];
   int last_index_lanes = GetLanesOrVScaleFactor(PrimType(last_index.ty()->dtype));
   int buffer_element_lanes = GetLanesOrVScaleFactor(buffer_element_dtype);
-  TVM_FFI_ICHECK_EQ(GetLanesOrVScaleFactor(value_dtype),
-                    last_index_lanes * buffer_element_lanes);
+  TVM_FFI_ICHECK_EQ(GetLanesOrVScaleFactor(value_dtype), last_index_lanes * buffer_element_lanes);
 
   // Record index and elemtype in original form used for alias info
   PrimExpr last_index_origin = last_index;
@@ -1897,8 +1904,7 @@ llvm::Value* CodeGenLLVM::VisitExpr_(const RampNode* op) {
   int lanes = dtype.lanes();
   for (int i = 0; i < lanes; ++i) {
     vec = builder_->CreateInsertElement(
-        vec, MakeValue(op->base + op->stride * MakeConst(op->stride.ty(), i)),
-        ConstInt32(i));
+        vec, MakeValue(op->base + op->stride * MakeConst(op->stride.ty(), i)), ConstInt32(i));
   }
   return vec;
 }
@@ -2301,8 +2307,7 @@ llvm::DIType* CodeGenLLVM::GetDebugType(const Type& ty_tir, llvm::Type* ty_llvm)
     DLDataType runtime_dtype = GetRuntimeDataType(ty_tir);
     TVM_FFI_ICHECK(ptr_type != nullptr ||
                    (runtime_dtype.code == static_cast<uint8_t>(DLDataTypeCode::kDLOpaqueHandle) &&
-                    !(runtime_dtype.bits == 0 &&
-                      static_cast<int16_t>(runtime_dtype.lanes) == 0)))
+                    !(runtime_dtype.bits == 0 && static_cast<int16_t>(runtime_dtype.lanes) == 0)))
         << "Got LLVM pointer type from non-pointer IR type: " << ty_tir;
     auto* pointee_type = ptr_type != nullptr ? GetDebugType(ptr_type->element_type,
                                                             GetLLVMType(ptr_type->element_type))

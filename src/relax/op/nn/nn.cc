@@ -192,9 +192,9 @@ Type InferTypeSoftmax(const Call& call, const BlockBuilder& ctx) {
     PrimType data_dtype = data_ty->dtype;
     // Softmax only requires a floating element kind; lane encoding is irrelevant to the check.
     if (data_dtype.code() != kDLFloat && data_dtype.code() != kDLBfloat) {
-    TVM_FFI_VISIT_THROW(TypeError, call) << "Softmax requires the input tensor to have float "
-                                            "dtype. However, the given input dtype is "
-                                         << data_ty->dtype;
+      TVM_FFI_VISIT_THROW(TypeError, call) << "Softmax requires the input tensor to have float "
+                                              "dtype. However, the given input dtype is "
+                                           << data_ty->dtype;
     }
   }
   const auto* attrs = call->attrs.as<SoftmaxAttrs>();
@@ -390,9 +390,9 @@ bool NormCheckDtypeAndShape(const Call& call, const BlockBuilder& ctx,
     PrimType data_dtype = data_ty->dtype;
     // Norm ops only require a floating element kind; lane encoding is irrelevant to the check.
     if (data_dtype.code() != kDLFloat && data_dtype.code() != kDLBfloat) {
-    TVM_FFI_VISIT_THROW(TypeError, call)
-        << op << " requires the input data to have float dtype. However, the given data dtype is "
-        << data_ty->dtype;
+      TVM_FFI_VISIT_THROW(TypeError, call)
+          << op << " requires the input data to have float dtype. However, the given data dtype is "
+          << data_ty->dtype;
     }
   }
   for (int i = 1; i < n_input; ++i) {
@@ -1020,19 +1020,19 @@ Type InferTypeNLLLoss(const Call& call, const BlockBuilder& ctx) {
                                                 ffi::GetRef<TensorType>(wgt_ty)))
           : pred_ty->dtype;
   ffi::Optional<VDevice> vdevice =
-      wgt_ty != nullptr
-          ? InferBinaryArithOpOutVDevice(call, ctx, ffi::GetRef<TensorType>(pred_ty),
-                                         ffi::GetRef<TensorType>(wgt_ty))
-          : pred_ty->vdevice;
+      wgt_ty != nullptr ? InferBinaryArithOpOutVDevice(call, ctx, ffi::GetRef<TensorType>(pred_ty),
+                                                       ffi::GetRef<TensorType>(wgt_ty))
+                        : pred_ty->vdevice;
 
   // the type of targets must be int/uint.
   if (!tgt_ty->IsUnknownDtype()) {
     PrimType target_dtype = tgt_ty->dtype;
     // NLLLoss only needs the target element kind; vector lanes do not affect target indexing.
-    if (!target_dtype.MatchesCode(DLDataTypeCode::kDLInt) && !target_dtype.MatchesCode(DLDataTypeCode::kDLUInt)) {
-      TVM_FFI_VISIT_THROW(TypeError, call)
-          << "NLLLoss expects the dtype of targets to be int/uint. However, the dtype of targets is "
-          << tgt_ty->dtype;
+    if (!target_dtype.MatchesCode(DLDataTypeCode::kDLInt) &&
+        !target_dtype.MatchesCode(DLDataTypeCode::kDLUInt)) {
+      TVM_FFI_VISIT_THROW(TypeError, call) << "NLLLoss expects the dtype of targets to be "
+                                              "int/uint. However, the dtype of targets is "
+                                           << tgt_ty->dtype;
     }
   }
 

@@ -290,8 +290,7 @@ class ToMixedPrecisionRewriter : public ExprMutator {
           if (tensor_ty->vdevice.defined()) {
             vdev = tensor_ty->vdevice.value();
           }
-          TensorType fp16_ty(tensor_ty->shape.value(), PrimType::Float(16), vdev,
-                             tensor_ty->span);
+          TensorType fp16_ty(tensor_ty->shape.value(), PrimType::Float(16), vdev, tensor_ty->span);
           Var fp16_var(var->vid, fp16_ty, var->span);
           var_remap_[var->vid] = fp16_var;
           return fp16_var;
@@ -347,7 +346,8 @@ class ToMixedPrecisionRewriter : public ExprMutator {
 
   bool AllFP16Castable(const ffi::Array<Expr>& args) {
     auto is_fp16 = [](Type ty) {
-      if (auto tensor_ty = ty.as<TensorTypeNode>(); tensor_ty && tensor_ty->dtype == PrimType::Float(16)) {
+      if (auto tensor_ty = ty.as<TensorTypeNode>();
+          tensor_ty && tensor_ty->dtype == PrimType::Float(16)) {
         return true;
       }
       return false;

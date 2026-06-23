@@ -97,7 +97,9 @@ class CodeGenSourceBase {
    * \param t The type of the expression.
    */
   std::string SSAGetID(std::string src, PrimType t);
-  std::string SSAGetID(std::string src, DLDataType t) { return SSAGetID(std::move(src), PrimType(t)); }
+  std::string SSAGetID(std::string src, DLDataType t) {
+    return SSAGetID(std::move(src), PrimType(t));
+  }
   /*!
    * \brief mark the beginning of a new scope
    * \return The scope id.

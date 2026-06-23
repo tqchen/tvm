@@ -32,8 +32,8 @@
 #include <tvm/s_tir/data_layout.h>
 
 #include <optional>
-#include <type_traits>
 #include <tuple>
+#include <type_traits>
 #include <utility>
 #include <vector>
 

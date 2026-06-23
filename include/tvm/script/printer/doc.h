@@ -19,11 +19,11 @@
 #ifndef TVM_SCRIPT_PRINTER_DOC_H_
 #define TVM_SCRIPT_PRINTER_DOC_H_
 
+#include <tvm/ffi/dtype.h>
 #include <tvm/ffi/reflection/access_path.h>
 #include <tvm/ffi/reflection/registry.h>
 #include <tvm/ir/expr.h>
 #include <tvm/ir/type.h>
-#include <tvm/ffi/dtype.h>
 #include <tvm/runtime/device_api.h>
 #include <tvm/script/printer/config.h>
 
@@ -310,7 +310,8 @@ class LiteralDoc : public ExprDoc {
    * \param p The object path
    */
   static LiteralDoc DataType(DLDataType v, const ffi::Optional<AccessPath>& p) {
-    std::string dtype = v == (DLDataType{kDLOpaqueHandle, 0, 0}) ? "void" : ffi::DLDataTypeToString(v);
+    std::string dtype =
+        v == (DLDataType{kDLOpaqueHandle, 0, 0}) ? "void" : ffi::DLDataTypeToString(v);
     return LiteralDoc::Str(dtype, p);
   }
   /*!

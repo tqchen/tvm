@@ -414,7 +414,8 @@ spirv::Value CodeGenSPIRV::VisitExpr_(const CallNode* op) {
     const VarNode* buffer_node = op->args[0].as<VarNode>();
     TVM_FFI_ICHECK(buffer_node && fragment_info_.count(buffer_node));
     PrimType ele_dtype = GetElementDataType(buffer_node);
-    TVM_FFI_ICHECK(ele_dtype.MatchesCode(DLDataTypeCode::kDLFloat)) << "Only floating point fragment accumulator is supported";
+    TVM_FFI_ICHECK(ele_dtype.MatchesCode(DLDataTypeCode::kDLFloat))
+        << "Only floating point fragment accumulator is supported";
     spirv::SType ele_stype = builder_->GetSType(ele_dtype);
     spirv::SType& fragment_type = fragment_info_[buffer_node].stype;
     double init = static_cast<uint64_t>(op->args[5].as_or_throw<FloatImm>()->value);
@@ -699,8 +700,9 @@ void CodeGenSPIRV::VisitStmt_(const ForNode* op) {
   // loop step
   spirv::Value step;
   if (op->HasTrivialStep()) {
-    step = PrimType(op->loop_var.ty()->dtype).MatchesCode(DLDataTypeCode::kDLInt) ? builder_->IntImm(init_value.stype, 1)
-                                                       : builder_->UIntImm(init_value.stype, 1);
+    step = PrimType(op->loop_var.ty()->dtype).MatchesCode(DLDataTypeCode::kDLInt)
+               ? builder_->IntImm(init_value.stype, 1)
+               : builder_->UIntImm(init_value.stype, 1);
   } else {
     step = MakeValue(tvm::cast(end.ty(), *op->step));
   }

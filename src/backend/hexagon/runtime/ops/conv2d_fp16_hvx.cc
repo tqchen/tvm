@@ -21,8 +21,8 @@
 #include <hexagon_types.h>
 #include <hvx_hexagon_protos.h>
 #include <tvm/ffi/container/tensor.h>
-#include <tvm/runtime/base.h>
 #include <tvm/ffi/dtype.h>
+#include <tvm/runtime/base.h>
 #include <tvm/runtime/device_api.h>
 
 #include <algorithm>

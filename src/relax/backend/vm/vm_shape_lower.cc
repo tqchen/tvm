@@ -575,8 +575,8 @@ class VMShapeLowerMutator
     auto var_map = [&](const tirx::Var& var) -> ffi::Optional<PrimExpr> {
       auto it = slot_map_.find(var);
       TVM_FFI_ICHECK(it != slot_map_.end());
-      return tirx::BufferLoad(buffer, ffi::Array<PrimExpr>{
-                                          IntImm(tvm::PrimType(ShapeDType()), it->second->index)});
+      return tirx::BufferLoad(
+          buffer, ffi::Array<PrimExpr>{IntImm(tvm::PrimType(ShapeDType()), it->second->index)});
     };
 
     ffi::Array<tirx::Stmt> seq;
@@ -647,8 +647,7 @@ class VMShapeLowerMutator
     if (always_check || !IsBaseOf(PrimType(op->dtype), GetType(value))) {
       // check_shape_info(value, ndim, err_ctx)
       Call call(builtin_check_prim_value_info_,
-                {value, DataTypeImm(op->dtype), GetErrContext(err_ctx)}, Attrs(),
-                {void_ty_});
+                {value, DataTypeImm(op->dtype), GetErrContext(err_ctx)}, Attrs(), {void_ty_});
       builder_->Emit(call, "_");
     }
   }

@@ -123,8 +123,7 @@ void AllReduce(Tensor send, ReduceKind reduce_kind, bool in_group, Tensor recv) 
   int64_t numel = shape->Product();
   deviceStream_t stream = ctx->GetDefaultStream();
   DLDataType dtype = send->dtype;
-  if (dtype == DLDataType{kDLFloat8_e4m3fn, 8, 1} ||
-      dtype == DLDataType{kDLFloat8_e5m2, 8, 1}) {
+  if (dtype == DLDataType{kDLFloat8_e4m3fn, 8, 1} || dtype == DLDataType{kDLFloat8_e5m2, 8, 1}) {
     TVM_FFI_THROW(InternalError)
         << "Float8 data type cannot be allreduced, as nccl does not support this data type.";
   }

@@ -194,9 +194,8 @@ void CodeGenMetal::BindThreadIndex(const IterVar& iv) {
   if (thread_work_dim_ <= 1) {
     vname = vname.substr(0, iv->thread_tag.length() - 2);
   }
-  var_idmap_[iv->var.get()] =
-      CastFromTo(vname, DLDataType{kDLUInt, static_cast<uint8_t>(thread_index_bits_), 1},
-                 iv->var.ty()->dtype);
+  var_idmap_[iv->var.get()] = CastFromTo(
+      vname, DLDataType{kDLUInt, static_cast<uint8_t>(thread_index_bits_), 1}, iv->var.ty()->dtype);
 }
 
 void CodeGenMetal::PrintType(DLDataType raw_t, std::ostream& os) {  // NOLINT(*)

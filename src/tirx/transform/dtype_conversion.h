@@ -100,19 +100,15 @@ class FloatConfig {
    */
   static FloatConfig FromDataType(PrimType dtype) {
     DLDataTypeCode code = dtype.code();
-    TVM_FFI_ICHECK(code == DLDataTypeCode::kDLFloat ||
-                   (code == DLDataTypeCode::kDLBfloat && dtype.bits() == 16) ||
-                   code == DLDataTypeCode::kDLFloat8_e3m4 ||
-                   code == DLDataTypeCode::kDLFloat8_e4m3 ||
-                   code == DLDataTypeCode::kDLFloat8_e4m3b11fnuz ||
-                   code == DLDataTypeCode::kDLFloat8_e4m3fn ||
-                   code == DLDataTypeCode::kDLFloat8_e4m3fnuz ||
-                   code == DLDataTypeCode::kDLFloat8_e5m2 ||
-                   code == DLDataTypeCode::kDLFloat8_e5m2fnuz ||
-                   code == DLDataTypeCode::kDLFloat8_e8m0fnu ||
-                   code == DLDataTypeCode::kDLFloat6_e2m3fn ||
-                   code == DLDataTypeCode::kDLFloat6_e3m2fn ||
-                   code == DLDataTypeCode::kDLFloat4_e2m1fn)
+    TVM_FFI_ICHECK(
+        code == DLDataTypeCode::kDLFloat ||
+        (code == DLDataTypeCode::kDLBfloat && dtype.bits() == 16) ||
+        code == DLDataTypeCode::kDLFloat8_e3m4 || code == DLDataTypeCode::kDLFloat8_e4m3 ||
+        code == DLDataTypeCode::kDLFloat8_e4m3b11fnuz || code == DLDataTypeCode::kDLFloat8_e4m3fn ||
+        code == DLDataTypeCode::kDLFloat8_e4m3fnuz || code == DLDataTypeCode::kDLFloat8_e5m2 ||
+        code == DLDataTypeCode::kDLFloat8_e5m2fnuz || code == DLDataTypeCode::kDLFloat8_e8m0fnu ||
+        code == DLDataTypeCode::kDLFloat6_e2m3fn || code == DLDataTypeCode::kDLFloat6_e3m2fn ||
+        code == DLDataTypeCode::kDLFloat4_e2m1fn)
         << "FloatConfig is only applicable to floating point data types, got " << dtype
         << " instead.";
     if (code == DLDataTypeCode::kDLFloat) {
@@ -130,8 +126,7 @@ class FloatConfig {
     } else if (code == DLDataTypeCode::kDLBfloat && dtype.bits() == 16) {
       // bfloat16,
       return FloatConfig(8, 7, 127, InftyStyle::kIEEE, NaNStyle::kIEEE);
-    } else if (code == DLDataTypeCode::kDLFloat8_e3m4 ||
-               code == DLDataTypeCode::kDLFloat8_e4m3 ||
+    } else if (code == DLDataTypeCode::kDLFloat8_e3m4 || code == DLDataTypeCode::kDLFloat8_e4m3 ||
                code == DLDataTypeCode::kDLFloat8_e4m3b11fnuz ||
                code == DLDataTypeCode::kDLFloat8_e4m3fn ||
                code == DLDataTypeCode::kDLFloat8_e4m3fnuz ||

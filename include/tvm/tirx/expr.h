@@ -27,13 +27,13 @@
 
 #include <tvm/ffi/container/array.h>
 #include <tvm/ffi/container/map.h>
+#include <tvm/ffi/dtype.h>
 #include <tvm/ffi/string.h>
 #include <tvm/ir/attrs.h>
 #include <tvm/ir/cow.h>
 #include <tvm/ir/expr.h>
 #include <tvm/ir/node_functor.h>
 #include <tvm/runtime/base.h>
-#include <tvm/ffi/dtype.h>
 #include <tvm/tirx/buffer.h>
 #include <tvm/tirx/var.h>
 

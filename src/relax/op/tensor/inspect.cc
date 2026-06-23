@@ -117,9 +117,7 @@ Expr tensor_dtype_code(Expr expr) {
   return Call(op, {expr});
 }
 
-Type InferTypeTensorDtypeCode(const Call& call, const BlockBuilder&) {
-  return PrimType::UInt(8);
-}
+Type InferTypeTensorDtypeCode(const Call& call, const BlockBuilder&) { return PrimType::UInt(8); }
 
 Expr LegalizeTensorDtypeCode(const BlockBuilder& bb, const Call& call) {
   PrimType field_ty = call->ty.as_or_throw<tvm::PrimType>();
@@ -148,9 +146,7 @@ Expr tensor_dtype_bits(Expr expr) {
   return Call(op, {expr});
 }
 
-Type InferTypeTensorDtypeBits(const Call& call, const BlockBuilder&) {
-  return PrimType::UInt(8);
-}
+Type InferTypeTensorDtypeBits(const Call& call, const BlockBuilder&) { return PrimType::UInt(8); }
 
 Expr LegalizeTensorDtypeBits(const BlockBuilder& bb, const Call& call) {
   PrimType field_ty = call->ty.as_or_throw<tvm::PrimType>();
@@ -179,9 +175,7 @@ Expr tensor_dtype_lanes(Expr expr) {
   return Call(op, {expr});
 }
 
-Type InferTypeTensorDtypeLanes(const Call& call, const BlockBuilder&) {
-  return PrimType::UInt(16);
-}
+Type InferTypeTensorDtypeLanes(const Call& call, const BlockBuilder&) { return PrimType::UInt(16); }
 
 Expr LegalizeTensorDtypeLanes(const BlockBuilder& bb, const Call& call) {
   PrimType field_ty = call->ty.as_or_throw<tvm::PrimType>();
@@ -210,9 +204,7 @@ Expr tensor_ndim(Expr expr) {
   return Call(op, {expr});
 }
 
-Type InferTypeTensorNDim(const Call& call, const BlockBuilder&) {
-  return PrimType::Int(32);
-}
+Type InferTypeTensorNDim(const Call& call, const BlockBuilder&) { return PrimType::Int(32); }
 
 Expr LegalizeTensorNDim(const BlockBuilder& bb, const Call& call) {
   PrimType field_ty = call->ty.as_or_throw<tvm::PrimType>();

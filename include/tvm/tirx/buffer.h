@@ -188,11 +188,10 @@ class Buffer : public ffi::ObjectRef {
  public:
   // User can specify data_alignment and offset_factor to be 0
   // A default value will be picked.
-  TVM_DLL Buffer(Var data, PrimType dtype, ffi::Array<PrimExpr> shape,
-                 ffi::Array<PrimExpr> strides, PrimExpr elem_offset, ffi::String name,
-                 int data_alignment, int offset_factor, BufferType buffer_type,
-                 ffi::Array<IntImm> axis_separators = {}, Span span = Span(),
-                 ffi::Optional<Layout> layout = std::nullopt,
+  TVM_DLL Buffer(Var data, PrimType dtype, ffi::Array<PrimExpr> shape, ffi::Array<PrimExpr> strides,
+                 PrimExpr elem_offset, ffi::String name, int data_alignment, int offset_factor,
+                 BufferType buffer_type, ffi::Array<IntImm> axis_separators = {},
+                 Span span = Span(), ffi::Optional<Layout> layout = std::nullopt,
                  ffi::Array<PrimExpr> allocated_addr = {});
   Buffer(Var data, DLDataType dtype, ffi::Array<PrimExpr> shape, ffi::Array<PrimExpr> strides,
          PrimExpr elem_offset, ffi::String name, int data_alignment, int offset_factor,
@@ -314,7 +313,8 @@ class Buffer : public ffi::ObjectRef {
  * \return The created buffer.
  * \sa Buffer for complete constructor.
  */
-TVM_DLL Buffer decl_buffer(ffi::Array<PrimExpr> shape, DLDataType dtype = DLDataType{kDLFloat, 32, 1},
+TVM_DLL Buffer decl_buffer(ffi::Array<PrimExpr> shape,
+                           DLDataType dtype = DLDataType{kDLFloat, 32, 1},
                            ffi::String name = "buffer", ffi::String storage_scope = "",
                            ffi::Optional<ffi::Array<IntImm>> axis_separators = std::nullopt,
                            Span span = Span());

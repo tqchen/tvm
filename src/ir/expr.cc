@@ -117,12 +117,12 @@ FloatImm::FloatImm(PrimType value_ty, double value, Span span) {
   TVM_FFI_CHECK(!value_ty.IsScalableVector() && !value_ty.IsFixedLengthVector(), ValueError)
       << "FloatImm can only take scalar.";
 
-  TVM_FFI_CHECK(code == DLDataTypeCode::kDLFloat ||
-                    value_ty.MatchesElementType(DLDataTypeCode::kDLBfloat, 16) ||
-                    IsFloat8Code(code) || IsFloat6Code(code) ||
-                    value_ty.MatchesElementType(DLDataTypeCode::kDLFloat4_e2m1fn, 4) ||
-                    static_cast<int>(code) >= static_cast<int>(ffi::DLExtDataTypeCode::kDLExtCustomBegin),
-                ValueError)
+  TVM_FFI_CHECK(
+      code == DLDataTypeCode::kDLFloat ||
+          value_ty.MatchesElementType(DLDataTypeCode::kDLBfloat, 16) || IsFloat8Code(code) ||
+          IsFloat6Code(code) || value_ty.MatchesElementType(DLDataTypeCode::kDLFloat4_e2m1fn, 4) ||
+          static_cast<int>(code) >= static_cast<int>(ffi::DLExtDataTypeCode::kDLExtCustomBegin),
+      ValueError)
       << "FloatImm supports only float, but " << runtime_dtype << " was supplied.";
 
   // check range for float32 and float16 since they have specified range.

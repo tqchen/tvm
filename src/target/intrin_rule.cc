@@ -137,8 +137,8 @@ TVM_REGISTER_OP("tirx.tvm_access_ptr")
         offset = offset * MakeConst(offset_ty, dtype.lanes());
         offset = Ramp(offset, MakeConst(offset_ty, 1), dtype.lanes());
       }
-      Buffer dummy_buf(buffer_var, dtype.WithLanes(1), {offset + 1}, {}, 0,
-                       buffer_var->name_hint, 0, 0, kDefault);
+      Buffer dummy_buf(buffer_var, dtype.WithLanes(1), {offset + 1}, {}, 0, buffer_var->name_hint,
+                       0, 0, kDefault);
       BufferLoad buf_load(dummy_buf, {offset});
       return Call(PrimType::Handle(), builtin::address_of(), {buf_load});
     });

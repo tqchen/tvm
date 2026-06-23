@@ -96,14 +96,16 @@ def _register_expr_op(ty: type):  # pylint: disable=invalid-name
 
         if _data_type(a.dtype).lanes == _data_type(b.dtype).lanes:
             return op(a, b)
-        elif _data_type(a.dtype).lanes == 1 and _data_type(a.dtype).lanes != _data_type(
-            b.dtype
-        ).lanes:
+        elif (
+            _data_type(a.dtype).lanes == 1
+            and _data_type(a.dtype).lanes != _data_type(b.dtype).lanes
+        ):
             broadcast_a = tirx.Broadcast(a, _data_type(b.dtype).lanes)
             return op(broadcast_a, b)
-        elif _data_type(b.dtype).lanes == 1 and _data_type(a.dtype).lanes != _data_type(
-            b.dtype
-        ).lanes:
+        elif (
+            _data_type(b.dtype).lanes == 1
+            and _data_type(a.dtype).lanes != _data_type(b.dtype).lanes
+        ):
             broadcast_b = tirx.Broadcast(b, _data_type(a.dtype).lanes)
             return op(a, broadcast_b)
         else:

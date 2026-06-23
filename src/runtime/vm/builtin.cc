@@ -22,11 +22,11 @@
 #include <tvm/ffi/any.h>
 #include <tvm/ffi/container/array.h>
 #include <tvm/ffi/container/shape.h>
+#include <tvm/ffi/dtype.h>
 #include <tvm/ffi/error.h>
 #include <tvm/ffi/function.h>
 #include <tvm/ffi/memory.h>
 #include <tvm/ffi/reflection/registry.h>
-#include <tvm/ffi/dtype.h>
 #include <tvm/runtime/device_api.h>
 #include <tvm/runtime/memory/memory_manager.h>
 #include <tvm/runtime/tensor.h>
@@ -301,7 +301,8 @@ TVM_FFI_STATIC_INIT_BLOCK() {
 /*!
  * \brief Builtin function to check if arg is PrimValue(dtype)
  * \param arg The input argument.
- * \param dtype Expected dtype of the PrimValue.  Can be DLDataType{kDLOpaqueHandle, 0, 0} for unknown dtype.
+ * \param dtype Expected dtype of the PrimValue.  Can be DLDataType{kDLOpaqueHandle, 0, 0} for
+ * unknown dtype.
  * \param err_ctx Additional context if error occurs.
  */
 void CheckPrimValueInfo(ffi::AnyView arg, DLDataType dtype, ffi::Optional<ffi::String> err_ctx) {

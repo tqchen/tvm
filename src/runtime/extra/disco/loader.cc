@@ -17,10 +17,10 @@
  * under the License.
  */
 #include <tvm/ffi/container/tensor.h>
+#include <tvm/ffi/dtype.h>
 #include <tvm/ffi/extra/json.h>
 #include <tvm/ffi/function.h>
 #include <tvm/ffi/reflection/registry.h>
-#include <tvm/ffi/dtype.h>
 #include <tvm/runtime/disco/builtin.h>
 #include <tvm/runtime/vm/tensor_cache_support.h>
 

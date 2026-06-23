@@ -439,8 +439,8 @@ bool TensorizeComparator::CompareBuffer(const Buffer& lhs, const Buffer& rhs) {
     equal = (*it).second.same_as(lhs);
   } else {
     // Remap both buffer itself and buffer data, skip buffer shape
-    equal = DefEqual(lhs->data, rhs->data) && lhs->dtype == rhs->dtype &&
-            lhs.scope() == rhs.scope();
+    equal =
+        DefEqual(lhs->data, rhs->data) && lhs->dtype == rhs->dtype && lhs.scope() == rhs.scope();
     if (equal) {
       rhs_buffer_map_[rhs] = lhs;
     } else {

@@ -93,8 +93,7 @@ size_t GetMaxUsedDtypeBytes(SBlock block) {
 
   tirx::PostOrderVisit(block->body, [&](const ffi::ObjectRef& obj) {
     if (const auto* store = obj.as<tirx::BufferStoreNode>()) {
-      max_bytes =
-          std::max(max_bytes, static_cast<size_t>((store->value.ty().bits() + 7) / 8));
+      max_bytes = std::max(max_bytes, static_cast<size_t>((store->value.ty().bits() + 7) / 8));
     } else if (const auto* load = obj.as<tirx::BufferLoadNode>()) {
       max_bytes = std::max(max_bytes, static_cast<size_t>((load->ty().bits() + 7) / 8));
     } else if (const auto* call = obj.as<tirx::CallNode>()) {

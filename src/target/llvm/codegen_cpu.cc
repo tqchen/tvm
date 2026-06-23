@@ -577,8 +577,8 @@ void CodeGenCPU::CreateComputeScope(const AttrStmtNode* op) {
   }
 
   function_ = fcompute;
-  di_subprogram_ = CreateDebugFunction(MakeStringRef(value->value), vargs.Map(GetType),
-                                       PrimType::Int(32));
+  di_subprogram_ =
+      CreateDebugFunction(MakeStringRef(value->value), vargs.Map(GetType), PrimType::Int(32));
   auto* compute_entry = llvm::BasicBlock::Create(*ctx, "entry", function_);
   builder_->SetInsertPoint(compute_entry);
   this->VisitStmt(op->body);

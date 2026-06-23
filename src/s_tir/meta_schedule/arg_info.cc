@@ -182,8 +182,9 @@ TVM_FFI_STATIC_INIT_BLOCK() {
       .def("s_tir.meta_schedule.ArgInfoFromPrimFunc", ArgInfo::FromPrimFunc)
       .def("s_tir.meta_schedule.ArgInfoFromEntryFunc", ArgInfo::FromEntryFunc)
       .def("s_tir.meta_schedule.ArgInfoFromJSON", ArgInfo::FromJSON)
-      .def("s_tir.meta_schedule.TensorInfo",
-           [](DLDataType dtype, ffi::Shape shape) -> TensorInfo { return TensorInfo(dtype, shape); });
+      .def("s_tir.meta_schedule.TensorInfo", [](DLDataType dtype, ffi::Shape shape) -> TensorInfo {
+        return TensorInfo(dtype, shape);
+      });
 }
 
 }  // namespace meta_schedule

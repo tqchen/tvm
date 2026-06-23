@@ -23,8 +23,8 @@
 #ifndef TVM_TIR_IR_BUFFER_COMMON_H_
 #define TVM_TIR_IR_BUFFER_COMMON_H_
 
-#include <tvm/ir/type.h>
 #include <tvm/ffi/dtype.h>
+#include <tvm/ir/type.h>
 
 #include <optional>
 

@@ -113,38 +113,38 @@ TVM_FFI_STATIC_INIT_BLOCK() {
   // src/script/printer/tirx/expr.cc (-> ReprPrintTIR which delegates to TVMScriptPrinter).
 }
 
-#define TVM_DEFINE_BINOP_CONSTRUCTOR(Name)                                                  \
-  Name::Name(PrimExpr a, PrimExpr b, Span span) {                                           \
-    using T = Name::ContainerType;                                                          \
-    TVM_FFI_CHECK(a.defined(), ValueError) << "a is undefined\n";                           \
-    TVM_FFI_CHECK(b.defined(), ValueError) << "b is undefined\n";                           \
-    PrimType a_ty = a.ty();                                                                 \
-    PrimType b_ty = b.ty();                                                                 \
-    TVM_FFI_CHECK(a_ty == b_ty, TypeError)                                                  \
-        << "mismatched types. " << a_ty->dtype << " vs. " << b_ty->dtype << "\n";           \
-    ffi::ObjectPtr<T> node = ffi::make_object<T>();                                         \
-    node->BaseExprNode::ty = a_ty;                                                          \
-    node->a = std::move(a);                                                                 \
-    node->b = std::move(b);                                                                 \
-    node->span = std::move(span);                                                           \
-    data_ = std::move(node);                                                                \
+#define TVM_DEFINE_BINOP_CONSTRUCTOR(Name)                                        \
+  Name::Name(PrimExpr a, PrimExpr b, Span span) {                                 \
+    using T = Name::ContainerType;                                                \
+    TVM_FFI_CHECK(a.defined(), ValueError) << "a is undefined\n";                 \
+    TVM_FFI_CHECK(b.defined(), ValueError) << "b is undefined\n";                 \
+    PrimType a_ty = a.ty();                                                       \
+    PrimType b_ty = b.ty();                                                       \
+    TVM_FFI_CHECK(a_ty == b_ty, TypeError)                                        \
+        << "mismatched types. " << a_ty->dtype << " vs. " << b_ty->dtype << "\n"; \
+    ffi::ObjectPtr<T> node = ffi::make_object<T>();                               \
+    node->BaseExprNode::ty = a_ty;                                                \
+    node->a = std::move(a);                                                       \
+    node->b = std::move(b);                                                       \
+    node->span = std::move(span);                                                 \
+    data_ = std::move(node);                                                      \
   }
 
-#define TVM_DEFINE_CMPOP_CONSTRUCTOR(Name)                                                  \
-  Name::Name(PrimExpr a, PrimExpr b, Span span) {                                           \
-    using T = Name::ContainerType;                                                          \
-    TVM_FFI_CHECK(a.defined(), ValueError) << "a is undefined\n";                           \
-    TVM_FFI_CHECK(b.defined(), ValueError) << "b is undefined\n";                           \
-    PrimType a_ty = a.ty();                                                                 \
-    PrimType b_ty = b.ty();                                                                 \
-    TVM_FFI_CHECK(a_ty == b_ty, TypeError)                                                  \
-        << "mismatched types. " << a_ty->dtype << " vs. " << b_ty->dtype << "\n";           \
-    ffi::ObjectPtr<T> node = ffi::make_object<T>();                                         \
-    node->BaseExprNode::ty = PrimType(DLDataType{kDLBool, 8, a_ty->dtype.lanes});            \
-    node->a = std::move(a);                                                                 \
-    node->b = std::move(b);                                                                 \
-    node->span = std::move(span);                                                           \
-    data_ = std::move(node);                                                                \
+#define TVM_DEFINE_CMPOP_CONSTRUCTOR(Name)                                        \
+  Name::Name(PrimExpr a, PrimExpr b, Span span) {                                 \
+    using T = Name::ContainerType;                                                \
+    TVM_FFI_CHECK(a.defined(), ValueError) << "a is undefined\n";                 \
+    TVM_FFI_CHECK(b.defined(), ValueError) << "b is undefined\n";                 \
+    PrimType a_ty = a.ty();                                                       \
+    PrimType b_ty = b.ty();                                                       \
+    TVM_FFI_CHECK(a_ty == b_ty, TypeError)                                        \
+        << "mismatched types. " << a_ty->dtype << " vs. " << b_ty->dtype << "\n"; \
+    ffi::ObjectPtr<T> node = ffi::make_object<T>();                               \
+    node->BaseExprNode::ty = PrimType(DLDataType{kDLBool, 8, a_ty->dtype.lanes}); \
+    node->a = std::move(a);                                                       \
+    node->b = std::move(b);                                                       \
+    node->span = std::move(span);                                                 \
+    data_ = std::move(node);                                                      \
   }
 
 // Var
@@ -876,12 +876,12 @@ void BufferLoadNode::LegalizeDType() {
         << "Index dtype and buffer dtype can't both be scalable.";
 
     if (is_index_scalable) {
-      this->BaseExprNode::ty = PrimType::ScalableVector(
-          buffer->dtype.code(), buffer->dtype.bits(), index_ty.VScaleFactor() * buffer->dtype.lanes());
+      this->BaseExprNode::ty =
+          PrimType::ScalableVector(buffer->dtype.code(), buffer->dtype.bits(),
+                                   index_ty.VScaleFactor() * buffer->dtype.lanes());
     } else if (is_buffer_dtype_scalable) {
-      this->BaseExprNode::ty = PrimType::ScalableVector(
-          buffer->dtype.code(), buffer->dtype.bits(),
-          -buffer_encoded_lanes * index_ty.lanes());
+      this->BaseExprNode::ty = PrimType::ScalableVector(buffer->dtype.code(), buffer->dtype.bits(),
+                                                        -buffer_encoded_lanes * index_ty.lanes());
     } else {
       this->BaseExprNode::ty = buffer->dtype.WithLanes(index_ty.lanes() * buffer->dtype.lanes());
     }

@@ -238,8 +238,7 @@ runtime::FunctionInfo CodeGenWebGPU::AddFunction(const PrimFunc& f, bool skip_re
     } else if (v.ty() == PrimType::Float(32)) {
       this->decl_stream << "  " << vid << ": f32";
     } else {
-      TVM_FFI_THROW(InternalError)
-          << "Do not support pod argument type " << v.ty()->dtype;
+      TVM_FFI_THROW(InternalError) << "Do not support pod argument type " << v.ty()->dtype;
     }
     this->decl_stream << ",\n";
     // value ref
@@ -346,9 +345,8 @@ void CodeGenWebGPU::PrintType(DLDataType raw_t, std::ostream& os) {  // NOLINT(*
     TVM_FFI_ICHECK(t.bits() != 64) << "CodeGenWebGPU: do not support i64";
     os << "i" << t.bits();
   } else {
-    TVM_FFI_THROW(InternalError)
-        << "CodeGenWebGPU: Cannot convert type " << ffi::DLDataTypeToString(raw_t)
-        << " to WebGPU type";
+    TVM_FFI_THROW(InternalError) << "CodeGenWebGPU: Cannot convert type "
+                                 << ffi::DLDataTypeToString(raw_t) << " to WebGPU type";
   }
   if (lanes != 1) {
     os << ">";
@@ -520,8 +518,7 @@ void CodeGenWebGPU::VisitExpr_(const FloatImmNode* op, std::ostream& os) {  // N
     enable_fp16_ = true;
     temp << 'h';
   } else {
-    TVM_FFI_THROW(InternalError) << "Unsupported floating point bits "
-                                 << op->ty().bits();
+    TVM_FFI_THROW(InternalError) << "Unsupported floating point bits " << op->ty().bits();
   }
   MarkConst(temp.str());
   os << temp.str();

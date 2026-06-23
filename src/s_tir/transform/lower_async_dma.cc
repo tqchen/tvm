@@ -79,14 +79,14 @@ class AsyncDMALowerer : public arith::IRMutatorWithAnalyzer {
     DLDataType src_dtype = src.ty()->dtype;
     int src_bytes = (src_dtype.bits * static_cast<int16_t>(src_dtype.lanes) + 7) / 8;
     PrimExpr dst_nbytes = dst_extent * src_bytes;
-    return Evaluate(Call(
-        PrimType::Int(32), builtin::dma_copy(),
-        ffi::Array<PrimExpr>{
-            async_queue_id_.value(),
-            Call(PrimType::Handle(), builtin::address_of(), ffi::Array<PrimExpr>{dst}, Span()),
-            Call(PrimType::Handle(), builtin::address_of(), ffi::Array<PrimExpr>{src}, Span()),
-            dst_nbytes, dma_bypass_cache_},
-        Span()));
+    return Evaluate(
+        Call(PrimType::Int(32), builtin::dma_copy(),
+             ffi::Array<PrimExpr>{
+                 async_queue_id_.value(),
+                 Call(PrimType::Handle(), builtin::address_of(), ffi::Array<PrimExpr>{dst}, Span()),
+                 Call(PrimType::Handle(), builtin::address_of(), ffi::Array<PrimExpr>{src}, Span()),
+                 dst_nbytes, dma_bypass_cache_},
+             Span()));
   }
 
   Stmt VisitStmt_(const AttrStmtNode* op) final {

@@ -328,7 +328,8 @@ Expr LowerBuiltinView(const BlockBuilder& bb, const Call& call) {
 
   if (HasVoidType(dtype)) {
     DLDataType data_dtype = data->ty.as<TensorType>().value()->dtype->dtype;
-    TVM_FFI_ICHECK(!(((data_dtype).code == kDLOpaqueHandle) && ((data_dtype).bits == 0) && ((data_dtype).lanes == 0)))
+    TVM_FFI_ICHECK(!(((data_dtype).code == kDLOpaqueHandle) && ((data_dtype).bits == 0) &&
+                     ((data_dtype).lanes == 0)))
         << "Legalization of " << call->op
         << " requires that either the output dtype be explicitly specified, "
         << "or the input dtype is known.  "

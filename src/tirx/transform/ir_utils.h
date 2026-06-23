@@ -110,8 +110,8 @@ inline PrimExpr TVMStructGet(PrimType dtype, Var handle, int index,
 inline PrimExpr AddressOffset(Var handle, PrimType dtype, int offset) {
   PrimExpr offset_expr = IntImm::Int32(offset * dtype.lanes());
   ffi::Array<PrimExpr> shape = {offset_expr + 1};
-  Buffer dummy_buf(handle, dtype->dtype, shape, {}, 0, handle->name_hint, 0, 0, kDefault, {}, Span(),
-                   std::nullopt);
+  Buffer dummy_buf(handle, dtype->dtype, shape, {}, 0, handle->name_hint, 0, 0, kDefault, {},
+                   Span(), std::nullopt);
   BufferLoad buf_load(dummy_buf, {offset_expr});
 
   return Call(PrimType::Handle(), builtin::address_of(), {buf_load});

@@ -65,8 +65,7 @@ class LazyInputMutator : public ExprMutator {
       param_lookup.insert({func->params[i], i - num_input_params});
     }
 
-    Var fget_param("fget_param",
-                   FuncType({PrimType::Int(64), ObjectType()}, ObjectType()));
+    Var fget_param("fget_param", FuncType({PrimType::Int(64), ObjectType()}, ObjectType()));
 
     ffi::Array<Var> new_params(func->params.begin(), func->params.begin() + num_input_params);
     new_params.push_back(fget_param);

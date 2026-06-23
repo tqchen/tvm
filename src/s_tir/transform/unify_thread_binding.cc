@@ -77,11 +77,11 @@ class ThreadBindingUnifier : public StmtExprMutator {
     } else {
       // Create a new unit loop with the annotation.
       PrimType loop_ty = op->loop_var.ty();
-      return For(/*loop_var=*/Var("var", loop_ty),      //
-                 /*min=*/IntImm(loop_ty, 0),            //
-                 /*extent=*/IntImm(loop_ty, 1),         //
-                 /*kind=*/ForKind::kSerial, stmt,       //
-                 /*thread_binding=*/std::nullopt,       //
+      return For(/*loop_var=*/Var("var", loop_ty),  //
+                 /*min=*/IntImm(loop_ty, 0),        //
+                 /*extent=*/IntImm(loop_ty, 1),     //
+                 /*kind=*/ForKind::kSerial, stmt,   //
+                 /*thread_binding=*/std::nullopt,   //
                  /*annotation=*/std::move(annotations),
                  /*step=*/std::nullopt);
     }

@@ -47,10 +47,8 @@ bool IsFloat8Type(const PrimType& type) {
   DLDataTypeCode code = type.code();
   return code == DLDataTypeCode::kDLFloat8_e3m4 || code == DLDataTypeCode::kDLFloat8_e4m3 ||
          code == DLDataTypeCode::kDLFloat8_e4m3b11fnuz ||
-         code == DLDataTypeCode::kDLFloat8_e4m3fn ||
-         code == DLDataTypeCode::kDLFloat8_e4m3fnuz ||
-         code == DLDataTypeCode::kDLFloat8_e5m2 ||
-         code == DLDataTypeCode::kDLFloat8_e5m2fnuz ||
+         code == DLDataTypeCode::kDLFloat8_e4m3fn || code == DLDataTypeCode::kDLFloat8_e4m3fnuz ||
+         code == DLDataTypeCode::kDLFloat8_e5m2 || code == DLDataTypeCode::kDLFloat8_e5m2fnuz ||
          code == DLDataTypeCode::kDLFloat8_e8m0fnu;
 }
 
@@ -724,9 +722,8 @@ class StorageLegalizer : public StmtExprMutator {
         if (auto* elem_type = ptr_type->element_type.as<PrimTypeNode>()) {
           PrimType elem_prim_type = ffi::GetRef<PrimType>(elem_type);
           if (MatchType(elem_prim_type)) {
-            Var new_var = Var(var->name_hint,
-                              PointerType(GetStorageUIntDType(elem_prim_type),
-                                          ptr_type->storage_scope));
+            Var new_var = Var(var->name_hint, PointerType(GetStorageUIntDType(elem_prim_type),
+                                                          ptr_type->storage_scope));
             var_remap_[var] = new_var;
             return new_var;
           }

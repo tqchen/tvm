@@ -115,7 +115,9 @@ inline ExprDoc Relax(const IRDocsifier& d, const ffi::String& attr) {
 }
 
 inline std::string DType2Str(DLDataType dtype) {
-  return (((dtype).code == kDLOpaqueHandle) && ((dtype).bits == 0) && ((dtype).lanes == 0)) ? "void" : ffi::DLDataTypeToString(dtype);
+  return (((dtype).code == kDLOpaqueHandle) && ((dtype).bits == 0) && ((dtype).lanes == 0))
+             ? "void"
+             : ffi::DLDataTypeToString(dtype);
 }
 
 /*! \brief Add headers as comments to doc if needed */

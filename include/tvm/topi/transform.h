@@ -44,8 +44,8 @@
 #include <utility>
 #include <vector>
 
-#include "tvm/ir/expr.h"
 #include "tvm/ffi/dtype.h"
+#include "tvm/ir/expr.h"
 #include "tvm/tirx/expr.h"
 #include "tvm/tirx/op.h"
 #include "tvm/tirx/var.h"
@@ -1118,11 +1118,9 @@ inline Tensor sequence_mask(const Tensor& data, const Tensor& valid_length, doub
         auto tid = out_index[axis];
         auto bid = out_index[1 - axis];
         len_index.push_back(bid);
-        PrimExpr ret =
-            tvm::if_then_else(tvm::cast(PrimType(valid_length->dtype), tid) >=
-                                  valid_length(len_index),
-                              tvm::tirx::MakeConst(PrimType(data->dtype), mask_value),
-                              data(out_index));
+        PrimExpr ret = tvm::if_then_else(
+            tvm::cast(PrimType(valid_length->dtype), tid) >= valid_length(len_index),
+            tvm::tirx::MakeConst(PrimType(data->dtype), mask_value), data(out_index));
         return ret;
       },
       name, tag);
@@ -1297,8 +1295,7 @@ inline Tensor take(const Tensor& a, ffi::Variant<Tensor, PrimExpr> indices, int 
           PrimExpr in_bounds = idx >= 0 && idx < axis_dim;
           return tvm::if_then_else(
               in_bounds, a(real_indices),
-              tvm::tirx::MakeConst(PrimType(a->dtype),
-                                   std::numeric_limits<float>::quiet_NaN()));
+              tvm::tirx::MakeConst(PrimType(a->dtype), std::numeric_limits<float>::quiet_NaN()));
         },
         name, tag);
   } else {  // mode == "wrap"
@@ -1448,9 +1445,8 @@ inline Tensor tile(const Tensor& x, ffi::Array<int64_t> reps, std::string name =
 
   if (is_empty_shape(new_shape)) {
     return compute(
-        new_shape,
-        [&](const ffi::Array<Var>& indices) { return tvm::cast(PrimType(x->dtype), 0); }, name,
-        tag);
+        new_shape, [&](const ffi::Array<Var>& indices) { return tvm::cast(PrimType(x->dtype), 0); },
+        name, tag);
   } else {
     return compute(
         new_shape,
@@ -1484,9 +1480,8 @@ inline Tensor dyn_tile(const Tensor& x, ffi::Array<PrimExpr> new_shape, size_t r
   size_t ndim = x->shape.size();
   if (is_empty_shape(new_shape)) {
     return compute(
-        new_shape,
-        [&](const ffi::Array<Var>& indices) { return tvm::cast(PrimType(x->dtype), 0); }, name,
-        tag);
+        new_shape, [&](const ffi::Array<Var>& indices) { return tvm::cast(PrimType(x->dtype), 0); },
+        name, tag);
   } else {
     return compute(
         new_shape,
@@ -2122,7 +2117,7 @@ inline Tensor one_hot(const Tensor& indices, const PrimExpr on_value, const Prim
  */
 inline Tensor sparse_to_dense(const Tensor& sparse_indices,
                               const ffi::Array<PrimExpr>& output_shape, const Tensor& sparse_values,
-  const PrimExpr& default_value,
+                              const PrimExpr& default_value,
                               const std::string name = "T_sparse_to_dense",
                               const std::string tag = kInjective) {
   // Sparse indices are validated by signed integer element kind; lane encoding is irrelevant here.
