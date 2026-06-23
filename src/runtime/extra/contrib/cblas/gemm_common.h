@@ -95,8 +95,8 @@ inline void CallGemm(ffi::PackedArgs args, ffi::Any* ret, TGemmOp op) {
   transa = IsInPlaceTransposed(A) ? !transa : transa;
   transb = IsInPlaceTransposed(B) ? !transb : transb;
 
-  TVM_FFI_ICHECK(B->dtype == (DLDataType{kDLFloat, static_cast<uint8_t>(bit_depth), 1}));
-  TVM_FFI_ICHECK(C->dtype == (DLDataType{kDLFloat, static_cast<uint8_t>(bit_depth), 1}));
+  TVM_FFI_ICHECK((B->dtype == DLDataType{kDLFloat, static_cast<uint8_t>(bit_depth), 1}));
+  TVM_FFI_ICHECK((C->dtype == DLDataType{kDLFloat, static_cast<uint8_t>(bit_depth), 1}));
   double alpha = args.size() > 5 ? args[5].cast<double>() : 1.0;
   double beta = args.size() > 6 ? args[6].cast<double>() : 0.0;
   op(transb, transa, ColumnCount(B, transb), RowCount(A, transa), ColumnCount(A, transa),
@@ -142,9 +142,9 @@ inline void CallU8S8S32Gemm(ffi::PackedArgs args, ffi::Any* ret, TGemmOp op) {
   transa = IsInPlaceTransposed(A) ? !transa : transa;
   transb = IsInPlaceTransposed(B) ? !transb : transb;
 
-  TVM_FFI_ICHECK(A->dtype == (DLDataType{kDLUInt, 8, 1}));
-  TVM_FFI_ICHECK(B->dtype == (DLDataType{kDLInt, 8, 1}));
-  TVM_FFI_ICHECK(C->dtype == (DLDataType{kDLInt, 32, 1}));
+  TVM_FFI_ICHECK((A->dtype == DLDataType{kDLUInt, 8, 1}));
+  TVM_FFI_ICHECK((B->dtype == DLDataType{kDLInt, 8, 1}));
+  TVM_FFI_ICHECK((C->dtype == DLDataType{kDLInt, 32, 1}));
   double alpha = args.size() > 5 ? args[5].cast<double>() : 1.0;
   double beta = args.size() > 6 ? args[6].cast<double>() : 0.0;
   op(transb, transa, ColumnCount(B, transb), RowCount(A, transa), ColumnCount(A, transa),
@@ -206,8 +206,8 @@ inline void CallBatchGemm(ffi::PackedArgs args, ffi::Any* ret, TBatchGemmOp op) 
   transa = IsInPlaceTransposed3D(A) ? !transa : transa;
   transb = IsInPlaceTransposed3D(B) ? !transb : transb;
 
-  TVM_FFI_ICHECK(B->dtype == (DLDataType{kDLFloat, static_cast<uint8_t>(bit_depth), 1}));
-  TVM_FFI_ICHECK(C->dtype == (DLDataType{kDLFloat, static_cast<uint8_t>(bit_depth), 1}));
+  TVM_FFI_ICHECK((B->dtype == DLDataType{kDLFloat, static_cast<uint8_t>(bit_depth), 1}));
+  TVM_FFI_ICHECK((C->dtype == DLDataType{kDLFloat, static_cast<uint8_t>(bit_depth), 1}));
 
   double alpha = args.size() > 5 ? args[5].cast<double>() : 1.0;
   double beta = args.size() > 6 ? args[6].cast<double>() : 0.0;

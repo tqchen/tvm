@@ -92,7 +92,7 @@ Type InferTypeConv1d(const Call& call, const BlockBuilder& ctx) {
   ffi::Optional<ShapeExpr> weight_shape =
       CheckNdimPerLayoutAndGetShape(call, ctx, weight_ty, weight_layout);
 
-  DLDataType out_dtype = attrs->out_dtype == (DLDataType{kDLOpaqueHandle, 0, 0})
+  DLDataType out_dtype = attrs->out_dtype == DLDataType{kDLOpaqueHandle, 0, 0}
                              ? InferBinaryArithOpOutDtype(call, ctx, data_ty, weight_ty)
                              : attrs->out_dtype;
   ffi::Optional<VDevice> vdevice = InferBinaryArithOpOutVDevice(call, ctx, data_ty, weight_ty);
@@ -262,7 +262,7 @@ Type InferTypeConv2d(const Call& call, const BlockBuilder& ctx) {
   ffi::Optional<ShapeExpr> weight_shape =
       CheckNdimPerLayoutAndGetShape(call, ctx, weight_ty, weight_layout);
 
-  DLDataType out_dtype = attrs->out_dtype == (DLDataType{kDLOpaqueHandle, 0, 0})
+  DLDataType out_dtype = attrs->out_dtype == DLDataType{kDLOpaqueHandle, 0, 0}
                              ? InferBinaryArithOpOutDtype(call, ctx, data_ty, weight_ty)
                              : attrs->out_dtype;
   ffi::Optional<VDevice> vdevice = InferBinaryArithOpOutVDevice(call, ctx, data_ty, weight_ty);
@@ -476,7 +476,7 @@ Type InferTypeConv3d(const Call& call, const BlockBuilder& ctx) {
   ffi::Optional<ShapeExpr> weight_shape =
       CheckNdimPerLayoutAndGetShape(call, ctx, weight_ty, weight_layout);
 
-  DLDataType out_dtype = attrs->out_dtype == (DLDataType{kDLOpaqueHandle, 0, 0})
+  DLDataType out_dtype = attrs->out_dtype == DLDataType{kDLOpaqueHandle, 0, 0}
                              ? InferBinaryArithOpOutDtype(call, ctx, data_ty, weight_ty)
                              : attrs->out_dtype;
   ffi::Optional<VDevice> vdevice = InferBinaryArithOpOutVDevice(call, ctx, data_ty, weight_ty);
@@ -664,7 +664,7 @@ Type InferTypeConv1dTranspose(const Call& call, const BlockBuilder& ctx) {
   ffi::Optional<ShapeExpr> weight_shape =
       CheckNdimPerLayoutAndGetShape(call, ctx, weight_ty, weight_layout);
 
-  DLDataType out_dtype = attrs->out_dtype == (DLDataType{kDLOpaqueHandle, 0, 0})
+  DLDataType out_dtype = attrs->out_dtype == DLDataType{kDLOpaqueHandle, 0, 0}
                              ? InferBinaryArithOpOutDtype(call, ctx, data_ty, weight_ty)
                              : attrs->out_dtype;
   ffi::Optional<VDevice> vdevice = InferBinaryArithOpOutVDevice(call, ctx, data_ty, weight_ty);
@@ -856,7 +856,7 @@ Type InferTypeConv2dTranspose(const Call& call, const BlockBuilder& ctx) {
   ffi::Optional<ShapeExpr> weight_shape =
       CheckNdimPerLayoutAndGetShape(call, ctx, weight_ty, weight_layout);
 
-  DLDataType out_dtype = attrs->out_dtype == (DLDataType{kDLOpaqueHandle, 0, 0})
+  DLDataType out_dtype = attrs->out_dtype == DLDataType{kDLOpaqueHandle, 0, 0}
                              ? InferBinaryArithOpOutDtype(call, ctx, data_ty, weight_ty)
                              : attrs->out_dtype;
   ffi::Optional<VDevice> vdevice = InferBinaryArithOpOutVDevice(call, ctx, data_ty, weight_ty);
@@ -1088,7 +1088,7 @@ Type InferTypeConv3dTranspose(const Call& call, const BlockBuilder& ctx) {
   ffi::Optional<ShapeExpr> weight_shape =
       CheckNdimPerLayoutAndGetShape(call, ctx, weight_ty, weight_layout);
 
-  DLDataType out_dtype = attrs->out_dtype == (DLDataType{kDLOpaqueHandle, 0, 0})
+  DLDataType out_dtype = attrs->out_dtype == DLDataType{kDLOpaqueHandle, 0, 0}
                              ? InferBinaryArithOpOutDtype(call, ctx, data_ty, weight_ty)
                              : attrs->out_dtype;
   ffi::Optional<VDevice> vdevice = InferBinaryArithOpOutVDevice(call, ctx, data_ty, weight_ty);

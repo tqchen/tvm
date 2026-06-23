@@ -359,7 +359,7 @@ class HostMemoryVector {
 
   explicit HostMemoryVector(int64_t reserved_size, DLDataType dtype, Device device)
       : reserved_size_(reserved_size) {
-    TVM_FFI_ICHECK(dtype == (DLDataType{kDLInt, 32, 1}));
+    TVM_FFI_ICHECK((dtype == DLDataType{kDLInt, 32, 1}));
     data_ = Tensor::Empty({reserved_size}, dtype, device);
   }
 
@@ -466,7 +466,7 @@ class PagedKVCacheAuxDataManager {
         device_(device),
         preferred_host_device_(preferred_host_device),
         copy_stream_(copy_stream) {
-    TVM_FFI_ICHECK(dtype_aux == (DLDataType{kDLInt, 32, 1}));
+    TVM_FFI_ICHECK((dtype_aux == DLDataType{kDLInt, 32, 1}));
   }
 
   virtual ~PagedKVCacheAuxDataManager() = default;

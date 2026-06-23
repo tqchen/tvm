@@ -176,7 +176,7 @@ class TrainiumLayoutApplier : public arith::IRMutatorWithAnalyzer {
       flattened = buf.GetFlattenedBuffer();
       writer = flattened.CopyOnWrite();
     }
-    if (flattened->dtype->dtype == (DLDataType{kDLBool, 8, 1})) {
+    if (flattened->dtype->dtype == DLDataType{kDLBool, 8, 1}) {
       writer->dtype = PrimType::Int(8);
     }
     for (size_t i = 0; i < flattened->shape.size(); ++i) {

@@ -88,8 +88,8 @@ Type InferTypeFull(const Call& call, const BlockBuilder& ctx) {
   }
 
   const auto* attrs = call->attrs.as<InitAttrs>();
-  PrimType out_dtype = attrs->dtype == (DLDataType{kDLOpaqueHandle, 0, 0}) ? fill_value_ty->dtype
-                                                                           : PrimType(attrs->dtype);
+  PrimType out_dtype = attrs->dtype == DLDataType{kDLOpaqueHandle, 0, 0} ? fill_value_ty->dtype
+                                                                         : PrimType(attrs->dtype);
   return TensorType(/*shape=*/call->args[0], out_dtype, fill_value_ty->vdevice);
 }
 
@@ -128,7 +128,7 @@ Type InferTypeFullLike(const Call& call, const BlockBuilder& ctx) {
   }
 
   const auto* attrs = call->attrs.as<InitAttrs>();
-  if (attrs->dtype == (DLDataType{kDLOpaqueHandle, 0, 0})) {
+  if (attrs->dtype == DLDataType{kDLOpaqueHandle, 0, 0}) {
     return data_ty;
   } else {
     auto output_ty = ffi::make_object<TensorTypeNode>(*data_ty.get());
@@ -166,7 +166,7 @@ Type InferTypeOnesZeros(const Call& call, const BlockBuilder& ctx) {
 Type InferTypeOnesLikeZerosLike(const Call& call, const BlockBuilder& ctx) {
   TensorType data_ty = GetUnaryInputTensorType(call, ctx);
   const auto* attrs = call->attrs.as<InitAttrs>();
-  if (attrs->dtype == (DLDataType{kDLOpaqueHandle, 0, 0})) {
+  if (attrs->dtype == DLDataType{kDLOpaqueHandle, 0, 0}) {
     return data_ty;
   } else {
     auto output_ty = ffi::make_object<TensorTypeNode>(*data_ty.get());
@@ -177,7 +177,7 @@ Type InferTypeOnesLikeZerosLike(const Call& call, const BlockBuilder& ctx) {
 
 /* relax.ones & relax.ones_like */
 Expr ones(Expr shape, DLDataType dtype) {
-  TVM_FFI_ICHECK(dtype != (DLDataType{kDLOpaqueHandle, 0, 0}))
+  TVM_FFI_ICHECK((dtype != DLDataType{kDLOpaqueHandle, 0, 0}))
       << "Ones op expects the input dtype not to be void";
   ffi::ObjectPtr<InitAttrs> attrs = ffi::make_object<InitAttrs>();
   attrs->dtype = dtype;
@@ -215,7 +215,7 @@ TVM_REGISTER_OP("relax.ones_like")
 
 /* relax.zeros & relax.zeros_like */
 Expr zeros(Expr shape, DLDataType dtype) {
-  TVM_FFI_ICHECK(dtype != (DLDataType{kDLOpaqueHandle, 0, 0}))
+  TVM_FFI_ICHECK((dtype != DLDataType{kDLOpaqueHandle, 0, 0}))
       << "Zeros op expects the input dtype not to be void";
   ffi::ObjectPtr<InitAttrs> attrs = ffi::make_object<InitAttrs>();
   attrs->dtype = dtype;
@@ -313,7 +313,7 @@ Type InferTypeEyeLike(const Call& call, const BlockBuilder& ctx) {
 
   const auto* attrs = call->attrs.as<InitAttrs>();
   PrimType out_dtype =
-      attrs->dtype == (DLDataType{kDLOpaqueHandle, 0, 0}) ? x_ty->dtype : PrimType(attrs->dtype);
+      attrs->dtype == DLDataType{kDLOpaqueHandle, 0, 0} ? x_ty->dtype : PrimType(attrs->dtype);
 
   return TensorType(x_ty->shape.value(), out_dtype, x_ty->vdevice);
 }

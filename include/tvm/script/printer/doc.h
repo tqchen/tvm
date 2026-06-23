@@ -311,7 +311,7 @@ class LiteralDoc : public ExprDoc {
    */
   static LiteralDoc DataType(DLDataType v, const ffi::Optional<AccessPath>& p) {
     std::string dtype =
-        v == (DLDataType{kDLOpaqueHandle, 0, 0}) ? "void" : ffi::DLDataTypeToString(v);
+        v == DLDataType{kDLOpaqueHandle, 0, 0} ? "void" : ffi::DLDataTypeToString(v);
     return LiteralDoc::Str(dtype, p);
   }
   /*!
