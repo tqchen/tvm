@@ -72,7 +72,7 @@ TVMFFIABIBuilder::TVMFFIABIBuilder(const ffi::String& func_name, const ffi::Arra
       os << "], " << buf->dtype << ")";
       param_names_[static_cast<int>(i)] = buf_name;
     } else {
-      os << param->name_hint << ": " << DataType(param.ty()->dtype);
+      os << param->name_hint << ": " << param.ty();
       param_names_[static_cast<int>(i)] = param->name_hint;
     }
   }
@@ -163,7 +163,7 @@ int TVMFFIABIBuilder::GetParamIndex(const ffi::reflection::AccessPath& path) con
 
 bool TVMFFIABIBuilder::BindScalar(const PrimExpr& arg, const PrimExpr& value,
                                   const ffi::reflection::AccessPath& path, bool with_lets) {
-  TVM_FFI_ICHECK_EQ(DataType(arg.ty()->dtype), DataType(value.ty()->dtype));
+  TVM_FFI_ICHECK(arg.ty()->dtype == value.ty()->dtype);
   if (arg.as<VarNode>()) {
     Var v_arg = arg.as_or_throw<Var>();
     auto it = var_defs_.find(v_arg.get());
@@ -422,13 +422,13 @@ void TVMFFIABIBuilder::BindBuffer(const Buffer& arg, const Buffer& value,
 
 /*! \brief Load the i-th packed argument as the given type. */
 PrimExpr TVMFFIABIBuilder::LoadTVMFFIAnyUnionValue(const Var& v_packed_args, int param_index,
-                                                   DataType arg_type) {
+                                                   PrimType arg_type) {
   ffi::Array<PrimExpr> call_args{v_packed_args, IntImm::Int32(param_index),
                                  IntImm::Int32(builtin::kTVMFFIAnyUnionValue)};
-  DataType api_type = APIType(arg_type);
-  PrimExpr res = Call(PrimType(api_type), builtin::tvm_struct_get(), call_args);
-  if (api_type != arg_type) {
-    res = Cast(PrimType(arg_type), res);
+  PrimType api_type = APIType(arg_type);
+  PrimExpr res = Call(api_type, builtin::tvm_struct_get(), call_args);
+  if (api_type->dtype != arg_type->dtype) {
+    res = Cast(arg_type, res);
   }
   return res;
 }
@@ -447,7 +447,7 @@ PrimExpr TVMFFIABIBuilder::DecodeParamOpaqueHandle(int param_index, const Var& t
   const int64_t object_cell_offset = sizeof(TVMFFIObject);
   static_assert(sizeof(TVMFFIObject) == 24);
   PrimExpr arg_value = LoadTVMFFIAnyUnionValue(v_packed_args_, param_index,
-                                               DataType(params_[param_index].ty()->dtype));
+                                               params_[param_index].ty());
   PrimExpr handle_from_tensor = Call(PrimType::Handle(), tirx::builtin::handle_add_byte_offset(),
                                      {arg_value, IntImm::Int32(object_cell_offset)});
   return Select(type_index == ffi::TypeIndex::kTVMFFITensor, handle_from_tensor, arg_value);
@@ -460,10 +460,10 @@ PrimExpr TVMFFIABIBuilder::DecodeParamBool(int param_index, const Var& type_inde
       type_index == ffi::TypeIndex::kTVMFFIBool || type_index == ffi::TypeIndex::kTVMFFIInt,
       "boolean");
   return Cast(PrimType::Bool(),
-              LoadTVMFFIAnyUnionValue(v_packed_args_, param_index, DataType::Int(64)));
+              LoadTVMFFIAnyUnionValue(v_packed_args_, param_index, PrimType::Int(64)));
 }
 
-PrimExpr TVMFFIABIBuilder::DecodeParamInt(int param_index, const Var& type_index, DataType dtype) {
+PrimExpr TVMFFIABIBuilder::DecodeParamInt(int param_index, const Var& type_index, PrimType dtype) {
   // ── Type check: accept int or bool ─────────────────────────
   EmitTypeIndexCheck(
       param_index,
@@ -472,7 +472,7 @@ PrimExpr TVMFFIABIBuilder::DecodeParamInt(int param_index, const Var& type_index
 }
 
 PrimExpr TVMFFIABIBuilder::DecodeParamFloat(int param_index, const Var& type_index,
-                                            DataType dtype) {
+                                            PrimType dtype) {
   // ── Type check: accept float, int, or bool ─────────────────
   EmitTypeIndexCheck(param_index,
                      type_index == ffi::TypeIndex::kTVMFFIFloat ||
@@ -483,8 +483,7 @@ PrimExpr TVMFFIABIBuilder::DecodeParamFloat(int param_index, const Var& type_ind
       type_index == ffi::TypeIndex::kTVMFFIFloat,
       /* true_value = */ LoadTVMFFIAnyUnionValue(v_packed_args_, param_index, dtype),
       /* false_value = */
-      Cast(PrimType(dtype),
-           LoadTVMFFIAnyUnionValue(v_packed_args_, param_index, DataType::Int(64))));
+      Cast(dtype, LoadTVMFFIAnyUnionValue(v_packed_args_, param_index, PrimType::Int(64))));
 }
 
 // ============================================================
@@ -493,24 +492,24 @@ PrimExpr TVMFFIABIBuilder::DecodeParamFloat(int param_index, const Var& type_ind
 
 void TVMFFIABIBuilder::DecodeParam(int param_index) {
   Var param = params_[param_index];
-  DataType dtype = DataType(param.ty()->dtype);
+  PrimType dtype = param.ty();
 
   // Extract type_index from packed_args
-  Var type_index(param->name_hint + ".type_index", DataType::Int(32));
+  Var type_index(param->name_hint + ".type_index", PrimType::Int(32));
   init_nest_.push_back(Bind(type_index, tirx::Call(PrimType::Int(32), builtin::tvm_struct_get(),
                                                    {v_packed_args_, IntImm::Int32(param_index),
                                                     IntImm::Int32(builtin::kTVMFFIAnyTypeIndex)})));
 
   // Type-check and load value via per-dtype dispatch
   PrimExpr arg_value;
-  if (dtype.is_handle()) {
+  if (dtype.IsHandle()) {
     arg_value = DecodeParamOpaqueHandle(param_index, type_index);
-  } else if (dtype.is_bool()) {
+  } else if (dtype.IsBool()) {
     arg_value = DecodeParamBool(param_index, type_index);
-  } else if (dtype.is_int() || dtype.is_uint()) {
+  } else if (dtype.IsInt() || dtype.IsUInt()) {
     arg_value = DecodeParamInt(param_index, type_index, dtype);
   } else {
-    TVM_FFI_ICHECK(dtype.is_float());
+    TVM_FFI_ICHECK_EQ(dtype.code(), DLDataTypeCode::kDLFloat);
     arg_value = DecodeParamFloat(param_index, type_index, dtype);
   }
 
@@ -554,9 +553,9 @@ void TVMFFIABIBuilder::DecodeAllParams() {
 
 Var TVMFFIABIBuilder::DLTensorGetFieldPtr(const Var& handle, int field_kind,
                                           const std::string& var_name) {
-  Var ptr(var_name, DataType::Handle());
+  Var ptr(var_name, PrimType::Handle());
   init_nest_.emplace_back(
-      Bind(ptr, TVMStructGet(DataType::Handle(), handle, 0,
+      Bind(ptr, TVMStructGet(PrimType::Handle(), handle, 0,
                              static_cast<builtin::TVMStructFieldKind>(field_kind))));
   return ptr;
 }
@@ -566,7 +565,7 @@ Var TVMFFIABIBuilder::DLTensorGetFieldPtr(const Var& handle, int field_kind,
 // ============================================================
 
 PrimExpr TVMFFIABIBuilder::LoadInt64ArrayElem(const Var& ptr, int index) {
-  return TVMStructGet(DataType::ShapeIndex(), ptr, index, builtin::kInt64ArrayElem);
+  return TVMStructGet(DefaultIndexPrimType(), ptr, index, builtin::kInt64ArrayElem);
 }
 
 // ============================================================
@@ -576,7 +575,7 @@ PrimExpr TVMFFIABIBuilder::LoadInt64ArrayElem(const Var& ptr, int index) {
 void TVMFFIABIBuilder::BindCompactStrides(const Buffer& buffer, const Var& strides_ptr,
                                           const PrimExpr& v_strides_is_null,
                                           const ffi::reflection::AccessPath& param_path) {
-  DataType stype = buffer->DefaultIndexType();
+  PrimType stype(buffer->DefaultIndexType());
   PrimExpr expect_stride = MakeConst(stype, 1);
   ffi::Array<PrimExpr> conds;
   for (size_t i = buffer->shape.size(); i != 0; --i) {
@@ -603,7 +602,7 @@ void TVMFFIABIBuilder::BindCompactStrides(const Buffer& buffer, const Var& strid
 void TVMFFIABIBuilder::BindAutoBroadcastStrides(const Buffer& buffer, const Var& strides_ptr,
                                                 const PrimExpr& v_strides_is_null,
                                                 const ffi::reflection::AccessPath& param_path) {
-  DataType stype = buffer->DefaultIndexType();
+  PrimType stype(buffer->DefaultIndexType());
   PrimExpr stride = MakeConst(stype, 1);
   for (size_t i = buffer->shape.size(); i != 0; --i) {
     size_t k = i - 1;
@@ -640,7 +639,7 @@ void TVMFFIABIBuilder::DecodeParamDLTensor(const Buffer& buffer, const PrimExpr&
                                            const PrimExpr& device_id, const Var& handle,
                                            const std::string& arg_name,
                                            ffi::reflection::AccessPath base_path) {
-  const DataType tvm_ndim_type = DataType::Int(32);
+  const PrimType tvm_ndim_type = PrimType::Int(32);
 
   std::string buf_name = buffer->name;
   ffi::reflection::AccessPath param_path = base_path;
@@ -659,15 +658,15 @@ void TVMFFIABIBuilder::DecodeParamDLTensor(const Buffer& buffer, const PrimExpr&
 
   // ── Section: dtype ───────────────────────────────────────────
   {
-    PrimExpr cond = (TVMStructGet(DataType::UInt(8), handle, 0, builtin::kDLTensorTypeCode) ==
+    PrimExpr cond = (TVMStructGet(PrimType::UInt(8), handle, 0, builtin::kDLTensorTypeCode) ==
                          IntImm(PrimType::UInt(8), buffer->dtype.code()) &&
-                     TVMStructGet(DataType::UInt(8), handle, 0, builtin::kDLTensorTypeBits) ==
+                     TVMStructGet(PrimType::UInt(8), handle, 0, builtin::kDLTensorTypeBits) ==
                          IntImm(PrimType::UInt(8), buffer->dtype.bits()) &&
-                     TVMStructGet(DataType::UInt(16), handle, 0, builtin::kDLTensorTypeLanes) ==
+                     TVMStructGet(PrimType::UInt(16), handle, 0, builtin::kDLTensorTypeLanes) ==
                          IntImm(PrimType::UInt(16), buffer->dtype.lanes()));
-    if (!(buffer->dtype->dtype == (DLDataType{kDLInt, 1, 1}) ||
-          buffer->dtype->dtype == (DLDataType{kDLInt, 4, 1}) ||
-          buffer->dtype->dtype == (DLDataType{kDLUInt, 4, 1}))) {
+    if (!(buffer->dtype == (DLDataType{kDLInt, 1, 1}) ||
+          buffer->dtype == (DLDataType{kDLInt, 4, 1}) ||
+          buffer->dtype == (DLDataType{kDLUInt, 4, 1}))) {
       std::ostringstream dtype_os;
       dtype_os << buffer->dtype;
       EmitAssert(cond, "TypeError",  //
@@ -679,9 +678,9 @@ void TVMFFIABIBuilder::DecodeParamDLTensor(const Buffer& buffer, const PrimExpr&
   // ── Section: shape ───────────────────────────────────────────
   Var shape_ptr = DLTensorGetFieldPtr(handle, builtin::kDLTensorShape, arg_name + "_shape");
   for (size_t k = 0; k < buffer->shape.size(); ++k) {
-    if (buffer->dtype->dtype == (DLDataType{kDLInt, 4, 1}) ||
-        buffer->dtype->dtype == (DLDataType{kDLUInt, 4, 1}) ||
-        buffer->dtype->dtype == (DLDataType{kDLInt, 1, 1})) {
+    if (buffer->dtype == (DLDataType{kDLInt, 4, 1}) ||
+        buffer->dtype == (DLDataType{kDLUInt, 4, 1}) ||
+        buffer->dtype == (DLDataType{kDLInt, 1, 1})) {
       break;
     }
     ffi::reflection::AccessPath shape_k_path = param_path->Attr(ffi::String("shape"))->ArrayItem(k);
@@ -701,16 +700,17 @@ void TVMFFIABIBuilder::DecodeParamDLTensor(const Buffer& buffer, const PrimExpr&
   }
 
   // ── Section: byte_offset ─────────────────────────────────────
-  int data_bytes = ((((buffer->dtype->dtype).bits * static_cast<int16_t>((buffer->dtype->dtype).lanes)) + 7) / 8);
+  int data_bytes =
+      ((buffer->dtype.bits * static_cast<int16_t>(buffer->dtype.lanes)) + 7) / 8;
   ffi::reflection::AccessPath byte_offset_path = param_path->Attr(ffi::String("byte_offset"));
   if (const auto* const_offset = buffer->elem_offset.as<IntImmNode>()) {
     BindScalar(IntImm(PrimType::UInt(64), const_offset->value * data_bytes),
-               TVMStructGet(DataType::UInt(64), handle, 0, builtin::kDLTensorByteOffset),
+               TVMStructGet(PrimType::UInt(64), handle, 0, builtin::kDLTensorByteOffset),
                byte_offset_path, true);
   } else {
     if (BindScalar(buffer->elem_offset,
                    cast(buffer->elem_offset.ty(),
-                        (TVMStructGet(DataType::UInt(64), handle, 0, builtin::kDLTensorByteOffset) /
+                        (TVMStructGet(PrimType::UInt(64), handle, 0, builtin::kDLTensorByteOffset) /
                          MakeConst(PrimType::UInt(64), data_bytes))),
                    byte_offset_path, true)) {
       if (buffer->offset_factor > 1) {
@@ -735,7 +735,7 @@ void TVMFFIABIBuilder::DecodeParamDLTensor(const Buffer& buffer, const PrimExpr&
   // ── Section: device ──────────────────────────────────────────
   {
     PrimExpr actual_device_type =
-        TVMStructGet(DataType::Int(32), handle, 0, builtin::kDLTensorDeviceType);
+        TVMStructGet(PrimType::Int(32), handle, 0, builtin::kDLTensorDeviceType);
     // Use custom assertion for device_type to show human-readable device name
     if (const auto* const_dt = device_type_.as<IntImmNode>()) {
       PrimExpr cond = analyzer_->Simplify(IntImm::Int32(const_dt->value) == actual_device_type);
@@ -751,7 +751,7 @@ void TVMFFIABIBuilder::DecodeParamDLTensor(const Buffer& buffer, const PrimExpr&
       BindScalar(device_type_, actual_device_type, device_type_path, true);
     }
     ffi::reflection::AccessPath device_id_path = param_path->Attr(ffi::String("device_id"));
-    BindScalar(device_id_, TVMStructGet(DataType::Int(32), handle, 0, builtin::kDLTensorDeviceId),
+    BindScalar(device_id_, TVMStructGet(PrimType::Int(32), handle, 0, builtin::kDLTensorDeviceId),
                device_id_path, true);
   }
 
@@ -759,7 +759,7 @@ void TVMFFIABIBuilder::DecodeParamDLTensor(const Buffer& buffer, const PrimExpr&
   {
     ffi::reflection::AccessPath data_path = param_path->Attr(ffi::String("data"));
     if (BindScalar(buffer->data,
-                   TVMStructGet(DataType::Handle(), handle, 0, builtin::kDLTensorData), data_path,
+                   TVMStructGet(PrimType::Handle(), handle, 0, builtin::kDLTensorData), data_path,
                    true)) {
       Var vptr(buffer->data);
 

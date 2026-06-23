@@ -28,10 +28,10 @@ TVM_FFI_STATIC_INIT_BLOCK() { TIRFrameNode::RegisterReflection(); }
 
 TVM_STATIC_IR_FUNCTOR(IRDocsifier, vtable)
     .set_dispatch<IntImm>("", [](IntImm imm, AccessPath imm_p, IRDocsifier d) -> Doc {
-      DataType dtype = DataType(imm->ty()->dtype);
+      DLDataType dtype = imm->ty()->dtype;
       if (dtype == d->cfg->int_dtype) {
         return LiteralDoc::Int(imm->value, imm_p->Attr("value"));
-      } else if (dtype == DataType::Bool()) {
+      } else if (dtype == (DLDataType{kDLBool, 8, 1})) {
         return TIR(d, DType2Str(dtype))
             ->Call({LiteralDoc::Boolean(imm->value, imm_p->Attr("value"))});
       } else {
@@ -41,7 +41,7 @@ TVM_STATIC_IR_FUNCTOR(IRDocsifier, vtable)
 
 TVM_STATIC_IR_FUNCTOR(IRDocsifier, vtable)
     .set_dispatch<FloatImm>("", [](FloatImm imm, AccessPath imm_p, IRDocsifier d) -> Doc {
-      DataType dtype = DataType(imm->ty()->dtype);
+      DLDataType dtype = imm->ty()->dtype;
       if (dtype == d->cfg->float_dtype) {
         return LiteralDoc::Float(imm->value, imm_p->Attr("value"));
       } else {
@@ -61,7 +61,7 @@ TVM_STATIC_IR_FUNCTOR(IRDocsifier, vtable)
 
 TVM_STATIC_IR_FUNCTOR(IRDocsifier, vtable)
     .set_dispatch<PrimType>("", [](PrimType ty, AccessPath p, IRDocsifier d) -> Doc {
-      return TIR(d, DType2Str(DataType(ty->dtype)));
+      return TIR(d, DType2Str(ty->dtype));
     });
 
 TVM_STATIC_IR_FUNCTOR(IRDocsifier, vtable)
@@ -70,7 +70,7 @@ TVM_STATIC_IR_FUNCTOR(IRDocsifier, vtable)
       TVM_FFI_ICHECK(ty->element_type.defined())
           << "InternalError: PointerType.element_type is null";
       if (const auto* prim_type = ty->element_type.as<PrimTypeNode>()) {
-        element_type = LiteralDoc::DataType(DataType(prim_type->dtype),  //
+        element_type = LiteralDoc::DataType(prim_type->dtype,  //
                                             ty_p->Attr("element_type")->Attr("dtype"));
       } else if (ty->element_type.as<TensorMapTypeNode>()) {
         return TIR(d, "TensorMap")->Call({});

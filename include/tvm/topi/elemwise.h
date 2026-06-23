@@ -279,7 +279,7 @@ inline Tensor clip(const Tensor& x, const PrimExpr& a_min, const PrimExpr& a_max
  */
 inline Tensor cast(const Tensor& x, PrimType type, std::string name, std::string tag);
 
-inline Tensor cast(const Tensor& x, DataType type, std::string name = "T_cast",
+inline Tensor cast(const Tensor& x, DLDataType type, std::string name = "T_cast",
                    std::string tag = kElementWise) {
   return cast(x, PrimType(type), std::move(name), std::move(tag));
 }
@@ -316,7 +316,7 @@ inline Tensor cast(const Tensor& x, PrimType type, std::string name = "T_cast",
  */
 inline Tensor reinterpret(const Tensor& x, PrimType type, std::string name, std::string tag);
 
-inline Tensor reinterpret(const Tensor& x, DataType type, std::string name = "tensor",
+inline Tensor reinterpret(const Tensor& x, DLDataType type, std::string name = "tensor",
                           std::string tag = kElementWise) {
   return reinterpret(x, PrimType(type), std::move(name), std::move(tag));
 }
@@ -365,7 +365,7 @@ inline Tensor elemwise_sum(const ffi::Array<Tensor>& xs, std::string name = "T_e
 inline Tensor full(const ffi::Array<PrimExpr>& shape, PrimType dtype, const PrimExpr fill_value,
                    std::string name, std::string tag);
 
-inline Tensor full(const ffi::Array<PrimExpr>& shape, DataType dtype, const PrimExpr fill_value,
+inline Tensor full(const ffi::Array<PrimExpr>& shape, DLDataType dtype, const PrimExpr fill_value,
                    std::string name = "T_full", std::string tag = kElementWise) {
   return full(shape, PrimType(dtype), fill_value, std::move(name), std::move(tag));
 }

@@ -38,10 +38,10 @@ using namespace tirx;
 
 // Add float suffix to the intrinsics
 struct FloatSuffix {
-  std::string operator()(DataType t, std::string name) const {
-    if (t == DataType::Float(32)) {
+  std::string operator()(PrimType t, std::string name) const {
+    if (t->dtype == (DLDataType{kDLFloat, 32, 1})) {
       return name + 'f';
-    } else if (t == DataType::Float(64)) {
+    } else if (t->dtype == (DLDataType{kDLFloat, 64, 1})) {
       return name;
     } else {
       return "";
@@ -51,7 +51,7 @@ struct FloatSuffix {
 
 // Return the intrinsic name
 struct Direct {
-  std::string operator()(DataType t, std::string name) const { return name; }
+  std::string operator()(PrimType t, std::string name) const { return name; }
 };
 
 /*!
@@ -70,12 +70,12 @@ inline PrimExpr DispatchPureExtern(const PrimExpr& e) {
   TVM_FFI_ICHECK(op != nullptr);
   std::string name = op->name;
   TVM_FFI_ICHECK_EQ(name.substr(0, 5), "tirx.");
-  DataType dtype;
+  PrimType dtype;
   if (dtype_from_arg) {
     TVM_FFI_ICHECK_EQ(call->args.size(), 1U);
-    dtype = DataType(call->args[0].ty()->dtype);
+    dtype = call->args[0].ty();
   } else {
-    dtype = DataType(ffi::GetRef<PrimExpr>(call).ty()->dtype);
+    dtype = ffi::GetRef<PrimExpr>(call).ty();
   }
   name = T()(dtype, name.substr(5));
 

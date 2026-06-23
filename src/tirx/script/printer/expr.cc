@@ -24,12 +24,6 @@ namespace tvm {
 namespace script {
 namespace printer {
 
-namespace {
-
-DataType DType(const PrimType& ty) { return DataType(ty->dtype); }
-
-}  // namespace
-
 ExprDoc PrintVarCreation(const tirx::Var& var, const AccessPath& var_p, const IRDocsifier& d) {
   Type type = var->type_annotation;
   AccessPath type_p = var_p->Attr("type_annotation");
@@ -44,7 +38,7 @@ ExprDoc PrintVarCreation(const tirx::Var& var, const AccessPath& var_p, const IR
 
   if (const auto* ptr_type = type.as<PointerTypeNode>()) {
     if (const auto* prim_type = ptr_type->element_type.as<PrimTypeNode>()) {
-      ExprDoc element_type = LiteralDoc::DataType(DataType(prim_type->dtype),
+      ExprDoc element_type = LiteralDoc::DataType(prim_type->dtype,
                                                   type_p->Attr("element_type")->Attr("dtype"));
       rhs = TIR(d, "handle");
       rhs->source_paths.push_back(var_p->Attr("dtype"));
@@ -60,7 +54,7 @@ ExprDoc PrintVarCreation(const tirx::Var& var, const AccessPath& var_p, const IR
       rhs = TIR(d, "TensorMap")->Call({}, {}, {});
     }
   } else {
-    rhs = TIR(d, DType2Str(DType(var.ty())));
+    rhs = TIR(d, DType2Str(var.ty()->dtype));
     rhs->source_paths.push_back(var_p->Attr("dtype"));
     rhs = rhs->Call({}, kwargs_keys, kwargs_values);
   }
@@ -127,7 +121,7 @@ TVM_STATIC_IR_FUNCTOR(IRDocsifier, vtable)
 
 TVM_STATIC_IR_FUNCTOR(IRDocsifier, vtable)
     .set_dispatch<tirx::Cast>("", [](tirx::Cast cast, AccessPath p, IRDocsifier d) -> Doc {
-      ExprDoc dtype = LiteralDoc::DataType(DType(cast.ty()), p->Attr("dtype"));
+      ExprDoc dtype = LiteralDoc::DataType(cast.ty()->dtype, p->Attr("dtype"));
       ExprDoc value = d->AsDoc<ExprDoc>(cast->value, p->Attr("value"));
       return TIR(d, "Cast")->Call({dtype, value});
     });
@@ -264,7 +258,7 @@ TVM_STATIC_IR_FUNCTOR(IRDocsifier, vtable)
 
 TVM_STATIC_IR_FUNCTOR(IRDocsifier, vtable)
     .set_dispatch<tirx::Call>("", [](tirx::Call call, AccessPath call_p, IRDocsifier d) -> Doc {
-      DataType call_dtype = DType(call.ty());
+      DLDataType call_dtype = call.ty()->dtype;
       if (call->attrs.defined()) {
         ffi::Array<ExprDoc> call_args;
         int n_args = call->args.size();

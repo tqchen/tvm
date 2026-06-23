@@ -83,7 +83,7 @@ class Type : public ffi::ObjectRef {
  *
  * \sa PrimType
  */
-class PrimTypeNode : public TypeNode {
+class PrimTypeNode final : public TypeNode {
  public:
   /*!
    * \brief The raw DLPack dtype represented by this primitive type.
@@ -101,7 +101,7 @@ class PrimTypeNode : public TypeNode {
  * \brief Managed reference to PrimTypeNode.
  * \sa PrimTypeNode
  */
-class PrimType : public Type {
+class PrimType final : public Type {
  public:
   /*!
    * \brief Construct from a raw DLPack dtype.
@@ -241,6 +241,12 @@ class PrimType : public Type {
 
   TVM_FFI_DEFINE_OBJECT_REF_METHODS_NOTNULLABLE(PrimType, Type, PrimTypeNode);
 };
+
+inline bool operator==(const PrimType& lhs, const PrimType& rhs) {
+  return lhs->dtype == rhs->dtype;
+}
+
+inline bool operator!=(const PrimType& lhs, const PrimType& rhs) { return !(lhs == rhs); }
 
 /*!
  * \brief Base type of all the expressions.

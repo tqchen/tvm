@@ -117,7 +117,8 @@ inline Tensor pool_grad_impl(const Tensor& out_grad, const Tensor& x,
         tvm::te::reduce_axis(Range(0, (kernel_width + stride_width - 1) / stride_width), "ww");
 
     auto argmax = MakeArgmaxReducer();
-    auto pad_x = do_pad ? pad(x, pad_before, pad_after, tvm::min_value(x->dtype), "pad_temp") : x;
+    auto pad_x =
+        do_pad ? pad(x, pad_before, pad_after, tvm::min_value(PrimType(x->dtype)), "pad_temp") : x;
 
     auto mp_argmax = tvm::te::compute(
         out_shape,
@@ -155,7 +156,7 @@ inline Tensor pool_grad_impl(const Tensor& out_grad, const Tensor& x,
               tvm::if_then_else(tirx::And(tirx::And(out_idx[height_axis] >= out_idx_lower_h,
                                                     out_idx[width_axis] >= out_idx_lower_w),
                                           mp_inds(out_idx) == idx),
-                                out_grad(out_idx), MakeConst(x->dtype, 0)),
+                                out_grad(out_idx), MakeConst(PrimType(x->dtype), 0)),
               {windowh, windoww});
         },
         "T_pool_grad", "pool_grad_max");
@@ -200,7 +201,8 @@ inline Tensor pool_grad_impl(const Tensor& out_grad, const Tensor& x,
                                                     out_idx[height_axis] < out_height),
                                           tirx::And(out_idx[width_axis] >= out_idx_lower_w,
                                                     out_idx[width_axis] < out_width)),
-                                out_grad(out_idx) / divide_factor, MakeConst(out_grad->dtype, 0)),
+                                out_grad(out_idx) / divide_factor,
+                                MakeConst(PrimType(out_grad->dtype), 0)),
               {windowh, windoww});
         },
         "T_pool_grad", "pool_grad_avg");
@@ -384,7 +386,7 @@ inline Tensor adaptive_pool_impl(const Tensor& x, const ffi::Array<PrimExpr>& ou
           ffi::Array<tirx::IterVar> reduce_axes;
           std::tie(indices, reduce_axes) = get_iter_vars(output, false);
 
-          PrimExpr divide_factor = tvm::cast(x->dtype, 1);
+          PrimExpr divide_factor = tvm::cast(PrimType(x->dtype), 1);
           for (size_t i = 0; i < n_dim; ++i) {
             divide_factor *= tvm::cast(PrimType::Int(32), reduce_axes[i]->dom->extent);
           }
@@ -582,7 +584,8 @@ inline Tensor pool_impl_nd(const Tensor& x, const ffi::Array<PrimExpr>& kernel_s
 
   ffi::Map<ffi::String, ffi::Any> attrs;
   if (pool_type == kMaxPool) {
-    auto temp = do_pad ? pad(x, pad_before, pad_after, tvm::min_value(x->dtype), "pad_temp") : x;
+    auto temp =
+        do_pad ? pad(x, pad_before, pad_after, tvm::min_value(PrimType(x->dtype)), "pad_temp") : x;
     attrs.Set("schedule_rule", tvm::ffi::String("meta_schedule.pool_max"));
     return tvm::te::compute(
         out_shape,

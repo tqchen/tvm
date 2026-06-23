@@ -47,7 +47,7 @@ class ScriptCompleter : public StmtMutator {
     for (const PrimExpr& value : op->iter_values) {
       PrimType value_ty = value.ty();
       TVM_FFI_ICHECK(value_ty.code() == DLDataTypeCode::kDLInt)
-          << "BlockRealize iter_value expected a IntImm, but got " << DataType(value_ty->dtype);
+          << "BlockRealize iter_value expected a IntImm, but got " << value_ty->dtype;
     }
     return StmtMutator::VisitStmt_(op);
   }

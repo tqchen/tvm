@@ -219,7 +219,7 @@ class EinsumBuilder {
     PrepareOutputIndicesMapping(indices, &label_to_index, &ellipsis_indices);
     PrepareReductionIndicesMapping(indices, &label_to_index, &ellipsis_indices, &reduce_axes);
 
-    auto zero = MakeConst(inputs[0]->dtype, 0);
+    auto zero = MakeConst(PrimType(inputs[0]->dtype), 0);
 
     PrimExpr result = zero;
     for (int i = 0, n = static_cast<int>(inputs.size()); i < n; ++i) {
@@ -290,7 +290,7 @@ class EinsumBuilder {
         // Normal label
         reduction_axes->push_back(
             IterVar(Range(0, label_to_extent_[label]),
-                    Var(std::string(1, label), DataType(label_to_extent_[label].ty()->dtype)),
+                    Var(std::string(1, label), label_to_extent_[label].ty()),
                     IterVarType::kCommReduce));
         label_to_index->emplace(label, reduction_axes->back()->var);
       }
