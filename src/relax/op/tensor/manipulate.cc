@@ -218,7 +218,7 @@ Type InferTypeConcat(const Call& call, const BlockBuilder& ctx) {
 
   const auto* attrs = call->attrs.as<ConcatAttrs>();
   int output_ndim = attrs->axis.has_value() ? kUnknownNDim : 1;
-  DLDataType output_dtype = DLDataType{kDLOpaqueHandle, 0, 0};
+  PrimType output_dtype = PrimType::Void();
   ffi::Optional<VDevice> vdev = std::nullopt;
   bool shape_unknown = false;
   bool is_void_dtype = false;
@@ -228,9 +228,9 @@ Type InferTypeConcat(const Call& call, const BlockBuilder& ctx) {
 
   for (TensorType ty : tensor_ty) {
     // Update the output dtype.
-    if ((((ty->dtype).code == kDLOpaqueHandle) && ((ty->dtype).bits == 0) && ((ty->dtype).lanes == 0))) {
+    if (ty->IsUnknownDtype()) {
       is_void_dtype = true;
-    } else if ((((output_dtype).code == kDLOpaqueHandle) && ((output_dtype).bits == 0) && ((output_dtype).lanes == 0))) {
+    } else if (output_dtype.IsVoid()) {
       output_dtype = ty->dtype;
     } else if (ty->dtype != output_dtype) {
       TVM_FFI_VISIT_THROW(TypeError, call)
@@ -284,7 +284,7 @@ Type InferTypeConcat(const Call& call, const BlockBuilder& ctx) {
   }
 
   if (is_void_dtype) {
-    output_dtype = DLDataType{kDLOpaqueHandle, 0, 0};
+    output_dtype = PrimType::Void();
   }
   if (vdevice_unknown) {
     vdev = std::nullopt;
@@ -572,16 +572,16 @@ Type InferTypeIndexTensor(const Call& call, const BlockBuilder& ctx) {
         << "index_tensor expects a non‑empty tuple of index tensors";
   }
 
-  DLDataType output_dtype = data_ty->dtype;
+  PrimType output_dtype = data_ty->dtype;
   int n_indices = static_cast<int>(indices_ty.size());
   ffi::Optional<VDevice> vdev = data_ty->vdevice;
 
   // Indices must be integers
   for (int i = 0; i < n_indices; ++i) {
     const auto& s = indices_ty[i];
-    const DLDataType index_dtype = s->dtype;
+    PrimType index_dtype = s->dtype;
     // Indexing only requires integer element kind; vector lanes do not affect shape inference.
-    if (!s->IsUnknownDtype() && index_dtype.code != DLDataTypeCode::kDLInt) {
+    if (!s->IsUnknownDtype() && index_dtype.code() != DLDataTypeCode::kDLInt) {
       TVM_FFI_VISIT_THROW(TypeError, call)
           << "index_tensor requires every index tensor to have an integer dtype; "
           << "index " << i << " has dtype " << s->dtype;
@@ -726,10 +726,10 @@ Type InferTypeLayoutTransform(const Call& call, const BlockBuilder& ctx) {
   // Check pad_value has same dtype as input.
   if (optional_pad_value.defined()) {
     PrimExpr padded_value = optional_pad_value.value()->value;
-    const DLDataType padded_dtype = padded_value.ty()->dtype;
+    PrimType padded_dtype = padded_value.ty();
     if (padded_dtype != data_ty->dtype) {
       TVM_FFI_VISIT_THROW(TypeError, call)
-          << "layout_transform pad_value dtype (" << PrimType(padded_dtype)
+          << "layout_transform pad_value dtype (" << padded_dtype
           << ") and input dtype (" << data_ty->dtype << ") must be the same";
     }
   }
@@ -1492,7 +1492,7 @@ Type InferTypeStack(const Call& call, const BlockBuilder& ctx) {
 
   // Default axis is 0 if not specified
   int output_ndim = tensor_ty[0]->ndim + 1;  // Stack adds one dimension
-  DLDataType output_dtype = DLDataType{kDLOpaqueHandle, 0, 0};
+  PrimType output_dtype = PrimType::Void();
   ffi::Optional<VDevice> vdev = std::nullopt;
   bool shape_unknown = false;
   bool is_void_dtype = false;
@@ -1502,9 +1502,9 @@ Type InferTypeStack(const Call& call, const BlockBuilder& ctx) {
 
   for (TensorType ty : tensor_ty) {
     // Check dtype consistency
-    if ((((ty->dtype).code == kDLOpaqueHandle) && ((ty->dtype).bits == 0) && ((ty->dtype).lanes == 0))) {
+    if (ty->IsUnknownDtype()) {
       is_void_dtype = true;
-    } else if ((((output_dtype).code == kDLOpaqueHandle) && ((output_dtype).bits == 0) && ((output_dtype).lanes == 0))) {
+    } else if (output_dtype.IsVoid()) {
       output_dtype = ty->dtype;
     } else if (ty->dtype != output_dtype) {
       TVM_FFI_VISIT_THROW(TypeError, call)
@@ -1545,7 +1545,7 @@ Type InferTypeStack(const Call& call, const BlockBuilder& ctx) {
     }
   }
 
-  if (is_void_dtype) output_dtype = DLDataType{kDLOpaqueHandle, 0, 0};
+  if (is_void_dtype) output_dtype = PrimType::Void();
   if (vdevice_unknown) vdev = std::nullopt;
 
   // Normalize axis (default to 0 if not specified)
@@ -1653,7 +1653,7 @@ Type InferTypeCollapseSumLike(const Call& call, const BlockBuilder& ctx) {
   TensorType data_ty = input_ty[0];
   TensorType collapse_target_ty = input_ty[1];
 
-  DLDataType output_dtype = data_ty->dtype;
+  PrimType output_dtype = data_ty->dtype;
 
   ffi::Optional<ffi::Array<PrimExpr>> data_shape_value;
   if (data_ty->shape.defined()) {
@@ -1714,7 +1714,7 @@ Type InferTypeCollapseSumTo(const Call& call, const BlockBuilder& ctx) {
         << call->args[1]->ty->GetTypeKey();
   }
 
-  DLDataType output_dtype = data_ty->dtype;
+  PrimType output_dtype = data_ty->dtype;
 
   ffi::Optional<ffi::Array<PrimExpr>> data_shape_value;
   if (data_ty->shape.defined()) {
@@ -2105,9 +2105,9 @@ Type InferTypeGatherElements(const Call& call, const BlockBuilder& ctx) {
         << call->args[1]->ty->GetTypeKey();
   }
 
-  const DLDataType indices_dtype = indices_ty->dtype;
+  PrimType indices_dtype = indices_ty->dtype;
   // Gather indices only require integer element kind; vector lanes do not affect shape inference.
-  if (!indices_ty->IsUnknownDtype() && indices_dtype.code != DLDataTypeCode::kDLInt) {
+  if (!indices_ty->IsUnknownDtype() && indices_dtype.code() != DLDataTypeCode::kDLInt) {
     TVM_FFI_VISIT_THROW(TypeError, call)
         << "GatherElements requires the input indices to have int64 dtype. However, the "
         << "given indices dtype is " << indices_ty->dtype;
@@ -2210,7 +2210,7 @@ Type InferTypeGatherND(const Call& call, const BlockBuilder& ctx) {
   TVM_FFI_ICHECK_GE(attrs->batch_dims, 0);
   int batch_dims = static_cast<int>(attrs->batch_dims);
   int input_dims = data_ty->ndim;
-  if (!indices_ty->IsUnknownDtype() && indices_ty->dtype != (DLDataType{kDLInt, 64, 1})) {
+  if (!indices_ty->IsUnknownDtype() && indices_ty->dtype != PrimType::Int(64)) {
     TVM_FFI_VISIT_THROW(TypeError, call)
         << "GatherND requires the input indices to have int64 dtype. However, the "
         << "given indices dtype is " << indices_ty->dtype;
@@ -2346,11 +2346,11 @@ Type InferTypeIndexPut(const Call& call, const BlockBuilder& ctx) {
       LOG(WARNING) << "Data type of index tensor " << i
                    << " has not been specified. Assume it has an integer type.";
     } else {
-      DLDataType index_dtype = tensor_ty->dtype;
-      if (!(((index_dtype).code == kDLInt) || ((index_dtype).code == kDLUInt))) {
-      TVM_FFI_VISIT_THROW(TypeError, call)
-          << "IndexPut requires each index tensor to have integer dtype. "
-          << "However, index tensor " << i << " has dtype=" << tensor_ty->dtype;
+      PrimType index_dtype = tensor_ty->dtype;
+      if (!index_dtype.IsInt() && !index_dtype.IsUInt()) {
+        TVM_FFI_VISIT_THROW(TypeError, call)
+            << "IndexPut requires each index tensor to have integer dtype. "
+            << "However, index tensor " << i << " has dtype=" << tensor_ty->dtype;
       }
     }
   }
@@ -2449,7 +2449,7 @@ Type InferTypeMeshgrid(const Call& call, const BlockBuilder& ctx) {
   }
 
   std::vector<PrimExpr> lengths;
-  DLDataType common_dtype = DLDataType{kDLOpaqueHandle, 0, 0};
+  PrimType common_dtype = PrimType::Void();
   bool shape_unknown = false;
   ffi::Optional<VDevice> vdev = std::nullopt;
   bool vdevice_unknown = false;
@@ -2463,9 +2463,9 @@ Type InferTypeMeshgrid(const Call& call, const BlockBuilder& ctx) {
           << i;
     }
 
-    if ((((ty->dtype).code == kDLOpaqueHandle) && ((ty->dtype).bits == 0) && ((ty->dtype).lanes == 0))) {
+    if (ty->IsUnknownDtype()) {
       continue;
-    } else if ((((common_dtype).code == kDLOpaqueHandle) && ((common_dtype).bits == 0) && ((common_dtype).lanes == 0))) {
+    } else if (common_dtype.IsVoid()) {
       common_dtype = ty->dtype;
     } else if (ty->dtype != common_dtype) {
       TVM_FFI_VISIT_THROW(TypeError, call)
@@ -2602,9 +2602,8 @@ Type InferTypeScatterElements(const Call& call, const BlockBuilder& ctx) {
   if (indices_ty->IsUnknownDtype()) {
     LOG(WARNING) << "Data type of indices has not been specified. Assume it has an integer type.";
   } else {
-    const DLDataType indices_dtype = indices_ty->dtype;
-    if (indices_dtype.code != DLDataTypeCode::kDLInt &&
-        indices_dtype.code != DLDataTypeCode::kDLUInt) {
+    PrimType indices_dtype = indices_ty->dtype;
+    if (!indices_dtype.IsInt() && !indices_dtype.IsUInt()) {
       TVM_FFI_VISIT_THROW(TypeError, call)
           << "ScatterElements op requires the input indices to have integer dtype. However, the "
              "given indices dtype is "
@@ -2726,9 +2725,8 @@ Type InferTypeScatterND(const Call& call, const BlockBuilder& ctx) {
   if (indices_ty->IsUnknownDtype()) {
     LOG(WARNING) << "Data type of indices has not been specified. Assume it has an integer type.";
   } else {
-    const DLDataType indices_dtype = indices_ty->dtype;
-    if (indices_dtype.code != DLDataTypeCode::kDLInt &&
-        indices_dtype.code != DLDataTypeCode::kDLUInt) {
+    PrimType indices_dtype = indices_ty->dtype;
+    if (!indices_dtype.IsInt() && !indices_dtype.IsUInt()) {
       TVM_FFI_VISIT_THROW(TypeError, call)
           << "ScatterND op requires the input indices to have integer dtype. However, "
              "the given indices dtype is "
@@ -3046,9 +3044,8 @@ Type InferTypeOneHot(const Call& call, const BlockBuilder& ctx) {
   if (indices_ty->IsUnknownDtype()) {
     LOG(WARNING) << "Data type of indices has not been specified. Assume it has an integer type.";
   } else {
-    const DLDataType indices_dtype = indices_ty->dtype;
-    if (indices_dtype.code != DLDataTypeCode::kDLInt &&
-        indices_dtype.code != DLDataTypeCode::kDLUInt) {
+    PrimType indices_dtype = indices_ty->dtype;
+    if (!indices_dtype.IsInt() && !indices_dtype.IsUInt()) {
       TVM_FFI_VISIT_THROW(TypeError, call)
           << "one_hot op requires the input indices to have integer dtype. However, the "
              "given indices dtype is "
