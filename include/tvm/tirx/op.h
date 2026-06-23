@@ -978,18 +978,6 @@ inline bool is_no_op(const tirx::Stmt& stmt) {
   return false;
 }
 
-inline bool IsPrimTypeFloatLike(const PrimType& dtype) {
-  DLDataTypeCode code = dtype.code();
-  return code == DLDataTypeCode::kDLFloat ||
-         dtype.MatchesElementType(DLDataTypeCode::kDLBfloat, 16) ||
-         code == DLDataTypeCode::kDLFloat8_e3m4 || code == DLDataTypeCode::kDLFloat8_e4m3 ||
-         code == DLDataTypeCode::kDLFloat8_e4m3b11fnuz ||
-         code == DLDataTypeCode::kDLFloat8_e4m3fn || code == DLDataTypeCode::kDLFloat8_e4m3fnuz ||
-         code == DLDataTypeCode::kDLFloat8_e5m2 || code == DLDataTypeCode::kDLFloat8_e5m2fnuz ||
-         code == DLDataTypeCode::kDLFloat8_e8m0fnu || code == DLDataTypeCode::kDLFloat6_e2m3fn ||
-         code == DLDataTypeCode::kDLFloat6_e3m2fn || code == DLDataTypeCode::kDLFloat4_e2m1fn;
-}
-
 template <typename ValueType>
 inline PrimExpr MakeConstScalar(PrimType dtype, ValueType value, Span span = Span()) {
   DLDataTypeCode code = dtype.code();
@@ -1010,7 +998,13 @@ inline PrimExpr MakeConstScalar(PrimType dtype, ValueType value, Span span = Spa
       return LargeUIntImm(dtype, static_cast<int64_t>(low), static_cast<int64_t>(high), span);
     }
   }
-  if (IsPrimTypeFloatLike(dtype)) {
+  if (dtype.MatchesCode(DLDataTypeCode::kDLFloat, DLDataTypeCode::kDLFloat8_e3m4,
+                        DLDataTypeCode::kDLFloat8_e4m3, DLDataTypeCode::kDLFloat8_e4m3b11fnuz,
+                        DLDataTypeCode::kDLFloat8_e4m3fn, DLDataTypeCode::kDLFloat8_e4m3fnuz,
+                        DLDataTypeCode::kDLFloat8_e5m2, DLDataTypeCode::kDLFloat8_e5m2fnuz,
+                        DLDataTypeCode::kDLFloat8_e8m0fnu, DLDataTypeCode::kDLFloat6_e2m3fn,
+                        DLDataTypeCode::kDLFloat6_e3m2fn, DLDataTypeCode::kDLFloat4_e2m1fn) ||
+      dtype.MatchesElementType(DLDataTypeCode::kDLBfloat, 16)) {
     return FloatImm(dtype, static_cast<double>(value), span);
   }
   TVM_FFI_THROW(InternalError) << "cannot make const for type " << dtype;
