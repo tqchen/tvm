@@ -188,7 +188,7 @@ class CodeGenAMDGPU : public CodeGenLLVM {
     llvm::Function* f = llvm::Intrinsic::getDeclaration(module_.get(), intrin_id);
 #endif
     llvm::Value* result = builder_->CreateCall(f, {});
-    return this->CreateCast(PrimType::Int(32), iv->var->dtype, result);
+    return this->CreateCast(PrimType::Int(32), iv->var.ty(), result);
   }
 
   llvm::Value* CreateStorageSync(const CallNode* op) final {
@@ -220,10 +220,11 @@ class CodeGenAMDGPU : public CodeGenLLVM {
 
   llvm::Value* CreateIntrinsic(const CallNode* op) final {
     if (op->op.same_as(builtin::atomic_add())) {
-      TVM_FFI_ICHECK(op->args[1]->dtype.bits() == 32) << "Only supports 32 bit atomic for now";
+      PrimType value_ty = op->args[1].ty();
+      TVM_FFI_ICHECK(value_ty.bits() == 32) << "Only supports 32 bit atomic for now";
       llvm::Value* v0 = MakeValue(op->args[0]);
       llvm::Value* v1 = MakeValue(op->args[1]);
-      if (PrimType(op->args[1].ty()->dtype).MatchesCode(DLDataTypeCode::kDLFloat)) {
+      if (value_ty.MatchesCode(DLDataTypeCode::kDLFloat)) {
         return builder_->CreateAtomicRMW(llvm::AtomicRMWInst::FAdd, v0, v1, llvm::MaybeAlign(),
                                          llvm::AtomicOrdering::Monotonic);
       }

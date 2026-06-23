@@ -66,6 +66,11 @@
 namespace tvm {
 namespace codegen {
 
+TVM_FFI_INLINE int GetVectorBytes(const PrimType& dtype) {
+  TVM_FFI_ICHECK(dtype.IsFixedLengthVector() || dtype.IsScalar());
+  return dtype.bits() * dtype.lanes() / 8;
+}
+
 // Hexagon code generation
 class CodeGenHexagon final : public CodeGenCPU {
  public:

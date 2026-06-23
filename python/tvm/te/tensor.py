@@ -87,6 +87,11 @@ class Tensor(DataProducer, _expr.ExprOp):
         return len(self.shape)
 
     @property
+    def dtype(self):
+        """Data content of the tensor."""
+        return _ffi_api.TensorDType(self)
+
+    @property
     def name(self):
         op = self.op
         if op.num_outputs == 1:

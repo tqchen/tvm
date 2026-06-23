@@ -129,6 +129,7 @@ TVM_FFI_STATIC_INIT_BLOCK() {
   namespace refl = tvm::ffi::reflection;
   refl::GlobalDef()
       .def_method("te.TensorEqual", &Tensor::operator==)
+      .def("te.TensorDType", [](Tensor tensor) -> DLDataType { return tensor->dtype->dtype; })
       .def("te.TensorHash",
            [](Tensor tensor) -> int64_t {
              return static_cast<int64_t>(std::hash<Tensor>()(tensor));
