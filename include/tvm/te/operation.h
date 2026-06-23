@@ -79,7 +79,7 @@ class TVM_DLL OperationNode : public ffi::Object {
    * \return type of i-th output.
    *
    */
-  DLDataType output_dtype(size_t i) const { return output_prim_type(i)->dtype; }
+  PrimType output_dtype(size_t i) const { return output_prim_type(i); }
   /*!
    * \brief Get shape of i-th output tensor.
    * \param i The output index.
@@ -110,7 +110,7 @@ class PlaceholderOpNode : public OperationNode {
   /*! \brief The shape of the input */
   ffi::Array<PrimExpr> shape;
   /*! \brief The dtype of the input. */
-  DLDataType dtype{DLDataTypeCode::kDLOpaqueHandle, 0, 0};
+  PrimType dtype{DLDataType{kDLOpaqueHandle, 0, 0}};
   // override behavior.
   int num_outputs() const final;
   PrimType output_prim_type(size_t i) const final;
@@ -132,9 +132,9 @@ class PlaceholderOpNode : public OperationNode {
  */
 class PlaceholderOp : public Operation {
  public:
-  TVM_DLL PlaceholderOp(std::string name, ffi::Array<PrimExpr> shape, DLDataType dtype);
-  PlaceholderOp(std::string name, ffi::Array<PrimExpr> shape, PrimType dtype)
-      : PlaceholderOp(std::move(name), std::move(shape), dtype->dtype) {}
+  TVM_DLL PlaceholderOp(std::string name, ffi::Array<PrimExpr> shape, PrimType dtype);
+  PlaceholderOp(std::string name, ffi::Array<PrimExpr> shape, DLDataType dtype)
+      : PlaceholderOp(std::move(name), std::move(shape), PrimType(dtype)) {}
 
   TVM_FFI_DEFINE_OBJECT_REF_METHODS_NULLABLE(PlaceholderOp, Operation, PlaceholderOpNode);
 };
@@ -339,12 +339,12 @@ using FBatchCompute = std::function<ffi::Array<PrimExpr>(const ffi::Array<Var>& 
  * \param dtype the data type of the tensor.
  * \param name The name of the Tensor.
  */
-TVM_DLL Tensor placeholder(ffi::Array<PrimExpr> shape, DLDataType dtype = DLDataType{kDLFloat, 32, 1},
+TVM_DLL Tensor placeholder(ffi::Array<PrimExpr> shape, PrimType dtype = PrimType::Float(32),
                            std::string name = "placeholder");
 
-inline Tensor placeholder(ffi::Array<PrimExpr> shape, PrimType dtype,
+inline Tensor placeholder(ffi::Array<PrimExpr> shape, DLDataType dtype,
                           std::string name = "placeholder") {
-  return placeholder(std::move(shape), dtype->dtype, std::move(name));
+  return placeholder(std::move(shape), PrimType(dtype), std::move(name));
 }
 
 /*!

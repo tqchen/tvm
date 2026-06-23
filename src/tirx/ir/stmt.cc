@@ -35,18 +35,6 @@ namespace tirx {
 
 namespace {
 
-DLDataType DType(const PrimType& ty) { return ty->dtype; }
-
-DLDataType DType(const PrimExpr& expr) { return DType(expr.ty()); }
-
-bool SameDType(const PrimExpr& lhs, const PrimExpr& rhs) { return DType(lhs) == DType(rhs); }
-
-bool IsScalar(const PrimType& ty) { return ty.IsScalar(); }
-
-bool IsIntOrUInt(const PrimType& ty) {
-  return ty.code() == DLDataTypeCode::kDLInt || ty.code() == DLDataTypeCode::kDLUInt;
-}
-
 int GetLanesOrVScaleFactor(const PrimType& ty) {
   return ty.IsScalableVector() ? ty.VScaleFactor() : ty.lanes();
 }
@@ -84,7 +72,7 @@ Bind::Bind(Var var, PrimExpr value, Span span) {
   if (var->type_annotation.as<PointerTypeNode>()) {
     TVM_FFI_ICHECK(value_ty.IsHandle());
   } else {
-    TVM_FFI_ICHECK(SameDType(value, var));
+    TVM_FFI_ICHECK(value.ty() == var.ty());
   }
 
   ffi::ObjectPtr<BindNode> node = ffi::make_object<BindNode>();
@@ -131,7 +119,7 @@ AssertStmt::AssertStmt(PrimExpr condition, StringImm error_kind,
   PrimType condition_ty = condition.ty();
   TVM_FFI_ICHECK(condition_ty.IsPredicate())
       << "AssertStmt should have boolean condition, "
-      << "but received " << condition << " with dtype " << DType(condition_ty);
+      << "but received " << condition << " with dtype " << condition_ty;
   TVM_FFI_ICHECK(error_kind.defined());
 
   ffi::ObjectPtr<AssertStmtNode> node = ffi::make_object<AssertStmtNode>();
@@ -161,9 +149,9 @@ For::For(Var loop_var, PrimExpr min, PrimExpr extent, ForKind kind, Stmt body,
 
   auto require_scalar_int_dtype = [&](PrimExpr expr, const char* field_name) {
     PrimType dtype = expr.ty();
-    TVM_FFI_ICHECK(IsScalar(dtype) && IsIntOrUInt(dtype))
+    TVM_FFI_ICHECK(dtype.IsScalar() && (dtype.IsUInt() || dtype.IsInt()))
         << "TIR For nodes require a scalar integer as the " << field_name << ", but received "
-        << expr << " with dtype " << DType(dtype);
+        << expr << " with dtype " << dtype;
   };
   require_scalar_int_dtype(loop_var, "loop_var");
   require_scalar_int_dtype(min, "min");
@@ -175,8 +163,8 @@ For::For(Var loop_var, PrimExpr min, PrimExpr extent, ForKind kind, Stmt body,
     PrimType e_ty = e.ty();
     PrimType loop_var_ty = loop_var.ty();
     TVM_FFI_ICHECK(e_ty.bits() <= loop_var_ty.bits())
-        << " Loop variable's dtype (" << DType(loop_var_ty)
-        << ") is narrower than that of `min` or `extent` (" << DType(e_ty) << ")";
+        << " Loop variable's dtype (" << loop_var_ty
+        << ") is narrower than that of `min` or `extent` (" << e_ty << ")";
     const IntImmNode* a = e.as<IntImmNode>();
     if (a && e_ty.bits() < loop_var_ty.bits()) {
       return MakeConst(loop_var_ty, a->value);
@@ -188,13 +176,14 @@ For::For(Var loop_var, PrimExpr min, PrimExpr extent, ForKind kind, Stmt body,
   min = try_promote_imm_dtype(min);
   extent = try_promote_imm_dtype(extent);
 
-  TVM_FFI_ICHECK(SameDType(loop_var, min)) << DType(loop_var) << " vs " << DType(min);
-  TVM_FFI_ICHECK(SameDType(loop_var, extent)) << DType(loop_var) << " vs " << DType(extent);
+  TVM_FFI_ICHECK(loop_var.ty() == min.ty()) << loop_var.ty() << " vs " << min.ty();
+  TVM_FFI_ICHECK(loop_var.ty() == extent.ty()) << loop_var.ty() << " vs " << extent.ty();
 
   if (step.has_value()) {
     require_scalar_int_dtype(*step, "step");
     step = try_promote_imm_dtype(*step);
-    TVM_FFI_ICHECK(SameDType(loop_var, *step)) << DType(loop_var) << " vs " << DType(*step);
+    TVM_FFI_ICHECK(loop_var.ty() == step.value().ty())
+        << loop_var.ty() << " vs " << step.value().ty();
   }
 
   ffi::ObjectPtr<ForNode> node = ffi::make_object<ForNode>();
@@ -247,7 +236,7 @@ std::ostream& operator<<(std::ostream& out, ForKind type) {  // NOLINT(*)
 // While
 While::While(PrimExpr condition, Stmt body, Span span) {
   TVM_FFI_ICHECK(condition.defined());
-  TVM_FFI_ICHECK(IsScalar(condition.ty()));
+  TVM_FFI_ICHECK(condition.ty().IsScalar());
   TVM_FFI_ICHECK(body.defined());
 
   ffi::ObjectPtr<WhileNode> node = ffi::make_object<WhileNode>();
@@ -414,12 +403,12 @@ BufferStore::BufferStore(Buffer buffer, PrimExpr value, ffi::Array<PrimExpr> ind
       << "-dimensional indices provided.";
 
   for (int i = 0; i < static_cast<int>(indices.size()) - 1; i++) {
-    TVM_FFI_ICHECK(IsScalar(indices[i].ty()))
+    TVM_FFI_ICHECK(indices[i].ty().IsScalar())
         << "Only the last index of a buffer access may be a vector type.";
   }
 
   bool is_index_scalable = indices.empty() ? false : indices.back().ty().IsScalableVector();
-  int16_t buffer_encoded_lanes = static_cast<int16_t>(buffer->dtype.lanes);
+  int16_t buffer_encoded_lanes = static_cast<int16_t>(buffer->dtype->dtype.lanes);
   bool is_buffer_dtype_scalable = buffer_encoded_lanes < -1;
   PrimType value_ty = value.ty();
   bool is_value_dtype_scalable = value_ty.IsScalableVector();
@@ -462,18 +451,18 @@ BufferStore::BufferStore(Buffer buffer, PrimExpr value, ffi::Array<PrimExpr> ind
 
   PrimType buffer_dtype = PrimType::Void();
   if (is_index_scalable || is_buffer_dtype_scalable) {
-    buffer_dtype = PrimType::ScalableVector(static_cast<DLDataTypeCode>(buffer->dtype.code),
-                                            buffer->dtype.bits, buffer_lanes * index_lanes);
+    buffer_dtype =
+        PrimType::ScalableVector(buffer->dtype.code(), buffer->dtype.bits(),
+                                 buffer_lanes * index_lanes);
   } else {
-    buffer_dtype = PrimType(buffer->dtype).WithLanes(buffer_lanes * index_lanes);
+    buffer_dtype = buffer->dtype.WithLanes(buffer_lanes * index_lanes);
   }
-  DLDataType value_dtype = value_ty->dtype;
-  if (buffer_dtype->dtype != value_dtype) {
+  if (buffer_dtype != value_ty) {
     TVM_FFI_THROW(TypeError) << "dtype mismatch on BufferStore: "                 //
                              << "buffer's dtype is `" << buffer->dtype            //
                              << "`, the lanes of indexing are: `" << index_lanes  //
                              << "`, the scalability is: `" << buffer_dtype.IsScalableVector()
-                             << "`, but RHS's dtype is `" << value_dtype << "`";
+                             << "`, but RHS's dtype is `" << value_ty << "`";
   }
 
   ffi::ObjectPtr<BufferStoreNode> node = ffi::make_object<BufferStoreNode>();
@@ -678,8 +667,7 @@ SBlockRealize::SBlockRealize(ffi::Array<PrimExpr> values, PrimExpr predicate, SB
   TVM_FFI_CHECK_EQ(block->iter_vars.size(), values.size(), ValueError)
       << "BlockRealize needs to have the same number of iter_vars and binding values";
   PrimType predicate_ty = predicate.ty();
-  TVM_FFI_CHECK(predicate_ty.IsPredicate() ||
-                    (predicate_ty.code() == DLDataTypeCode::kDLUInt && predicate_ty.bits() == 1),
+  TVM_FFI_CHECK(predicate_ty.IsPredicate() || (predicate_ty.IsUInt() && predicate_ty.bits() == 1),
                 TypeError)
       << "Expect Block.predicate to be a bool expression";
   ffi::ObjectPtr<SBlockRealizeNode> node = ffi::make_object<SBlockRealizeNode>();

@@ -39,6 +39,14 @@
 namespace tvm {
 namespace tirx {
 
+namespace {
+
+TVM_FFI_INLINE int GetVectorBytes(const PrimType& dtype) {
+  return (dtype.bits() * dtype.lanes() + 7) / 8;
+}
+
+}  // namespace
+
 // Calculate the statistics of packed function.
 // These information are needed during codegen.
 class BuiltinLower : public StmtExprMutator {
@@ -99,8 +107,8 @@ class BuiltinLower : public StmtExprMutator {
   // Record stack frame for existing scope.
   struct AllocaScope {
     Buffer stack_shape;
-    Var stack_array = Var("stack_array", DataType::Handle());
-    Var stack_ffi_any = Var("stack_ffi_any", DataType::Handle());
+    Var stack_array = Var("stack_array", PrimType::Handle());
+    Var stack_ffi_any = Var("stack_ffi_any", PrimType::Handle());
 
     StackSizes max_sizes;
     StackSizes run_sizes;
@@ -130,7 +138,7 @@ class BuiltinLower : public StmtExprMutator {
     {
       // NOTE: this scope reference is invalid after any mutation is applied to alloca_scope_.
       auto& scope = precheck.alloca_scope_.back();
-      scope.stack_shape = decl_buffer({IntImm::Int64(0)}, DataType::Int(64), "stack_shape");
+      scope.stack_shape = decl_buffer({IntImm::Int64(0)}, PrimType::Int(64), "stack_shape");
     }
 
     precheck.VisitStmt(stmt);
@@ -171,7 +179,7 @@ class BuiltinLower : public StmtExprMutator {
 
       if (scope.max_sizes.shape_stack != -1) {
         scope.stack_shape = decl_buffer({IntImm::Int64(scope.max_sizes.shape_stack)},
-                                        DataType::Int(64), "stack_shape");
+                                        PrimType::Int(64), "stack_shape");
         alloca_stmts.push_back(
             Bind(scope.stack_shape->data, StackAlloca("shape", scope.max_sizes.shape_stack)));
         stmt = SeqStmt::Flatten(DeclBuffer(scope.stack_shape), stmt);
@@ -248,7 +256,7 @@ class BuiltinLower : public StmtExprMutator {
     if (op->buffer->dtype.IsScalableVector()) {
       return stmt;
     }
-    int64_t nbytes = ((((op->buffer->dtype->dtype).bits * static_cast<int16_t>((op->buffer->dtype->dtype).lanes)) + 7) / 8);
+    int64_t nbytes = GetVectorBytes(op->buffer->dtype);
     if (const auto* dev_type = device_type_.as<IntImmNode>();
         dev_type && dev_type->value == kDLCPU) {
       auto storage_scope =
@@ -475,7 +483,7 @@ class BuiltinLower : public StmtExprMutator {
       prep_seq.emplace_back(BufferStore(scope.stack_shape, cast(PrimType::Int(64), op->args[i]),
                                         {ConstInt32(stack_begin + i)}));
     }
-    return AddressOffset(scope.stack_shape->data, DataType::Int(64), stack_begin);
+    return AddressOffset(scope.stack_shape->data, PrimType::Int(64), stack_begin);
   }
   // make array
   PrimExpr MakeArray(const CallNode* op) {
@@ -499,7 +507,7 @@ class BuiltinLower : public StmtExprMutator {
     prep_seq.emplace_back(TVMStructSet(scope.stack_array, idx, builtin::kDLTensorStrides, strides));
     prep_seq.emplace_back(
         TVMStructSet(scope.stack_array, idx, builtin::kDLTensorNDim, op->args[3]));
-    DataType dtype = DataType(op->args[4].ty()->dtype);
+    PrimType dtype = op->args[4].ty();
     prep_seq.emplace_back(TVMStructSet(scope.stack_array, idx, builtin::kDLTensorTypeCode,
                                        IntImm(PrimType::UInt(8), static_cast<int>(dtype.code()))));
     prep_seq.emplace_back(TVMStructSet(scope.stack_array, idx, builtin::kDLTensorTypeBits,
@@ -523,7 +531,7 @@ class BuiltinLower : public StmtExprMutator {
                                        cast(PrimType::Int(32), device_id_.value())));
     prep_seq.emplace_back(TVMStructSet(scope.stack_array, idx, builtin::kDLTensorDeviceType,
                                        cast(PrimType::Int(32), device_type_.value())));
-    return TVMStructGet(DataType::Handle(), scope.stack_array, idx, builtin::kDLTensorAddr);
+    return TVMStructGet(PrimType::Handle(), scope.stack_array, idx, builtin::kDLTensorAddr);
   }
 
   void SetPackedArg(PrimExpr arg, const Var& args_stack, size_t stack_offset,
@@ -536,24 +544,24 @@ class BuiltinLower : public StmtExprMutator {
           PrimType::Int(32), anylist_set_packed_arg_op,
           {call_pattern->args[0], call_pattern->args[1], args_stack, ConstInt32(stack_offset)})));
     } else {
-      DataType arg_dtype = DataType(arg.ty()->dtype);
-      DataType api_dtype = APIType(arg_dtype);
-      if (arg_dtype != api_dtype) {
-        arg = Cast(PrimType(api_dtype), arg);
+      PrimType arg_ty = arg.ty();
+      PrimType api_ty = APIType(arg_ty);
+      if (arg_ty != api_ty) {
+        arg = Cast(api_ty, arg);
       }
 
       int arg_type_index = [&]() {
-        if (api_dtype.is_bool()) return ffi::TypeIndex::kTVMFFIBool;
-        if (api_dtype.is_int() || api_dtype.is_uint()) return ffi::TypeIndex::kTVMFFIInt;
-        if (api_dtype.is_float()) return ffi::TypeIndex::kTVMFFIFloat;
-        if (api_dtype.is_handle() && arg.as<StringImmNode>()) {
+        if (api_ty.IsBool()) return ffi::TypeIndex::kTVMFFIBool;
+        if (api_ty.IsInt() || api_ty.IsUInt()) return ffi::TypeIndex::kTVMFFIInt;
+        if (api_ty.code() == DLDataTypeCode::kDLFloat) return ffi::TypeIndex::kTVMFFIFloat;
+        if (api_ty.IsHandle() && arg.as<StringImmNode>()) {
           return ffi::TypeIndex::kTVMFFIRawStr;
         } else if (IsArrayHandle(arg)) {
           return ffi::TypeIndex::kTVMFFIDLTensorPtr;
-        } else if (api_dtype.is_handle()) {
+        } else if (api_ty.IsHandle()) {
           return ffi::TypeIndex::kTVMFFIOpaquePtr;
         } else {
-          TVM_FFI_THROW(InternalError) << "Unsupported type: " << api_dtype;
+          TVM_FFI_THROW(InternalError) << "Unsupported type: " << api_ty;
           TVM_FFI_UNREACHABLE();
         }
       }();
@@ -661,8 +669,10 @@ class BuiltinLower : public StmtExprMutator {
     TVM_FFI_ICHECK(device_id_) << "Unknown device id in current IR";
     Stmt throw_last_error = Evaluate(Call(PrimType::Int(32), builtin::tvm_throw_last_error(), {}));
 
-    DataType dtype(
-        let->var->type_annotation.as<PointerTypeNode>()->element_type.as<PrimTypeNode>()->dtype);
+    const auto* dtype_node =
+        let->var->type_annotation.as<PointerTypeNode>()->element_type.as<PrimTypeNode>();
+    TVM_FFI_ICHECK(dtype_node);
+    PrimType dtype = ffi::GetRef<PrimType>(dtype_node);
 
     ffi::Array<PrimExpr> args = {
         GetDeviceMethodName("alloc_nd"), device_type_.value(),        device_id_.value(),

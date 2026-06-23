@@ -33,8 +33,8 @@ namespace tirx {
 namespace {
 
 template <typename LHS, typename RHS>
-bool SameType(const LHS* lhs, const RHS* rhs) {
-  return lhs->ty()->dtype == rhs->ty()->dtype;
+TVM_FFI_INLINE bool SameType(const LHS* lhs, const RHS* rhs) {
+  return lhs->ty() == rhs->ty();
 }
 
 }  // namespace
