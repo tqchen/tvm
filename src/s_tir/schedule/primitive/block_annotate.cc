@@ -310,13 +310,13 @@ class DTypeMutator : private ReplaceBufferMutator {
   DTypeMutator(const Buffer& old_buffer, Buffer new_buffer, DLDataType dtype,
                ffi::Map<SBlock, SBlock>* block_sref_reuse)
       : ReplaceBufferMutator(old_buffer, std::move(new_buffer), block_sref_reuse),
-        src_dtype_(old_buffer->dtype),
+        src_dtype_(old_buffer->dtype->dtype),
         tgt_dtype_(dtype) {}
 
   MatchBufferRegion VisitMatchBufferRegion(const MatchBufferRegion& match_buffer) final {
     auto it = buffer_var_map_.find(match_buffer->source->buffer->data.get());
     if (it != buffer_var_map_.end()) {
-      Buffer new_target_buffer = WithDType(match_buffer->buffer, it->second->dtype);
+      Buffer new_target_buffer = WithDType(match_buffer->buffer, it->second->dtype->dtype);
       buffer_var_map_[match_buffer->buffer->data.get()] = new_target_buffer;
       return MatchBufferRegion(new_target_buffer,
                                BufferRegion(it->second, match_buffer->source->region));
@@ -355,7 +355,7 @@ void UnsafeSetDType(ScheduleState self, const StmtSRef& block_sref, int buffer_i
   DLDataType target_dtype = ffi::StringToDLDataType(dtype);
 
   // Step 1. If `dtype` equals the original data type, just return.
-  if (buffer->dtype == target_dtype) {
+  if (buffer->dtype->dtype == target_dtype) {
     return;
   }
 

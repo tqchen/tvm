@@ -347,19 +347,20 @@ class CodegenCBase {
    */
   std::string GetDtypeString(const TensorTypeNode* tensor_ty) {
     std::string dtype;
-    if (tensor_ty->dtype == DLDataType{kDLFloat, 32, 1}) {
+    DLDataType raw_dtype = tensor_ty->dtype->dtype;
+    if (raw_dtype == DLDataType{kDLFloat, 32, 1}) {
       dtype = "float";
-    } else if (tensor_ty->dtype == DLDataType{kDLFloat, 16, 1}) {
+    } else if (raw_dtype == DLDataType{kDLFloat, 16, 1}) {
       dtype = "half";
-    } else if (tensor_ty->dtype == DLDataType{kDLBfloat, 16, 1}) {
+    } else if (raw_dtype == DLDataType{kDLBfloat, 16, 1}) {
       dtype = "bfloat";
-    } else if (tensor_ty->dtype == DLDataType{kDLInt, 32, 1}) {
+    } else if (raw_dtype == DLDataType{kDLInt, 32, 1}) {
       dtype = "int";
-    } else if (tensor_ty->dtype == DLDataType{kDLInt, 64, 1}) {
+    } else if (raw_dtype == DLDataType{kDLInt, 64, 1}) {
       dtype = "int64_t";
-    } else if (tensor_ty->dtype == DLDataType{kDLInt, 8, 1}) {
+    } else if (raw_dtype == DLDataType{kDLInt, 8, 1}) {
       dtype = "int8_t";
-    } else if (tensor_ty->dtype == DLDataType{kDLUInt, 8, 1}) {
+    } else if (raw_dtype == DLDataType{kDLUInt, 8, 1}) {
       dtype = "uint8_t";
     } else {
       TVM_FFI_THROW(InternalError) << "Unsupported dtype " << tensor_ty->dtype;

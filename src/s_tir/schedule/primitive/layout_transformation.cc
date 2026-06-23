@@ -1178,7 +1178,7 @@ void TransformLayout(ScheduleState self, const StmtSRef& block_sref, int buffer_
     if (pad_value.value()->final_indices.size() != 1) {
       throw TransformationPaddingIndexMapError(self->mod, pad_value.value());
     }
-    if (pad_value.value()->final_indices[0].ty()->dtype != old_buffer->dtype) {
+    if (pad_value.value()->final_indices[0].ty() != old_buffer->dtype) {
       throw TransformationPaddingTypeError(self->mod, old_buffer, pad_value.value());
     }
 

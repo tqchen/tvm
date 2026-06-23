@@ -637,7 +637,7 @@ class StorageAllocatorInit : public StorageAllocatorBaseVisitor {
     const auto* shape = ty->shape.as<ShapeExprNode>();
     TVM_FFI_ICHECK_NOTNULL(shape);
     TVM_FFI_ICHECK(!ty->IsUnknownDtype());
-    TVM_FFI_ICHECK(ty->dtype == call->args[1].as_or_throw<DataTypeImm>()->value);
+    TVM_FFI_ICHECK(ty->dtype->dtype == call->args[1].as_or_throw<DataTypeImm>()->value);
     TVM_FFI_ICHECK(!token_map_.count(call));
 
     // Use the upper bounds of TIR vars as their values. The upper bound shape can still be dynamic
@@ -654,7 +654,7 @@ class StorageAllocatorInit : public StorageAllocatorBaseVisitor {
     }
     ffi::Optional<VDevice> vdevice = GetGlobalVDevice(ctx_mod_, vdevice_index);
 
-    StorageToken token(upper_bounded_shape, ty->dtype, storage_scope->value, vdevice);
+    StorageToken token(upper_bounded_shape, ty->dtype->dtype, storage_scope->value, vdevice);
 
     Tokens tokens(token);
     SetTokens(call, tokens);
@@ -952,7 +952,7 @@ class StorageAllocationRewriter : public ExprMutator {
 
       // And always create a `memory.alloc_tensor` for the old `builtin.alloc_tensor`.
       PrimValue offset = PrimValue::Int64(0);
-      DLDataType dtype = ty->dtype;
+      DLDataType dtype = ty->dtype->dtype;
       return Call(mem_alloc_tensor,
                   {storage_var, offset, ty->shape.value(), DataTypeImm(dtype), call->args[2]},
                   Attrs());
@@ -971,12 +971,12 @@ class StorageAllocationRewriter : public ExprMutator {
           GetUpperBoundShape(shape->values, ana_.get(), dom_map_);
       if (!IsStaticShape(shape->values)) {
         TVM_FFI_ICHECK(!ty->IsUnknownDtype());
-        TVM_FFI_ICHECK_EQ(ty->dtype, call->args[1].as_or_throw<DataTypeImm>()->value);
+        TVM_FFI_ICHECK_EQ(ty->dtype->dtype, call->args[1].as_or_throw<DataTypeImm>()->value);
         PrimExpr bytes = upper_bounded_shape[0];
         for (int i = 1; i < static_cast<int>(upper_bounded_shape.size()); ++i) {
           bytes *= upper_bounded_shape[i];
         }
-        DLDataType dtype = ty->dtype;
+        DLDataType dtype = ty->dtype->dtype;
         bytes *= ((((dtype).bits * static_cast<int16_t>((dtype).lanes)) + 7) / 8);
         Call alloc_storage(mem_alloc_storage,
                            {/*size=*/ShapeExpr({bytes}),

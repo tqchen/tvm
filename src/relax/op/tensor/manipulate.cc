@@ -3010,8 +3010,8 @@ Expr one_hot(Expr indices, PrimValue on_value, PrimValue off_value, int depth, i
   attrs->axis = axis;
 
   // Check if on_value and off_value have the same dtype
-  DLDataType on_dtype = on_value->value.ty()->dtype;
-  DLDataType off_dtype = off_value->value.ty()->dtype;
+  PrimType on_dtype = on_value->value.ty();
+  PrimType off_dtype = off_value->value.ty();
   TVM_FFI_ICHECK(on_dtype == off_dtype)
       << "one_hot: on_value and off_value must have the same dtype, "
       << "but got " << on_dtype << " and " << off_dtype;
@@ -3033,12 +3033,12 @@ Type InferTypeOneHot(const Call& call, const BlockBuilder& ctx) {
   PrimValue on_value = call->args[1].as_or_throw<PrimValue>();
   PrimValue off_value = call->args[2].as_or_throw<PrimValue>();
   // Check if on_value and off_value have the same dtype
-  DLDataType on_dtype = on_value->value.ty()->dtype;
-  DLDataType off_dtype = off_value->value.ty()->dtype;
+  PrimType on_dtype = on_value->value.ty();
+  PrimType off_dtype = off_value->value.ty();
   TVM_FFI_ICHECK(on_dtype == off_dtype)
       << "one_hot: on_value and off_value must have the same dtype, "
       << "but got " << on_dtype << " and " << off_dtype;
-  DLDataType dtype = on_dtype;
+  PrimType dtype = on_dtype;
 
   // Check if indices has an integer dtype
   if (indices_ty->IsUnknownDtype()) {
