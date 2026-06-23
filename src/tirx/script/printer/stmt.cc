@@ -456,8 +456,8 @@ ffi::Optional<ExprDoc> TryDeclBufferSugarWithParent(const tirx::Buffer& child, c
   // --- (c) View(dtype): different dtype, same elem_offset ---
   if (same_elem_offset && !same_dtype && child->shape.size() == parent->shape.size()) {
     // Verify shape compatibility with dtype reinterpret cast
-    int child_bits = child->dtype.bits;
-    int parent_bits = parent->dtype.bits;
+    int child_bits = child->dtype.bits();
+    int parent_bits = parent->dtype.bits();
     bool shapes_compatible = true;
     // All dims except last must match
     for (size_t i = 0; i + 1 < child->shape.size(); ++i) {
@@ -502,7 +502,7 @@ ffi::Optional<ExprDoc> TryDeclBufferSugarWithParent(const tirx::Buffer& child, c
     }
     if (shapes_compatible) {
       ExprDoc dtype_doc =
-          LiteralDoc::Str(DType2Str(child->dtype), p->Attr("buffer")->Attr("dtype"));
+          LiteralDoc::Str(DType2Str(child->dtype->dtype), p->Attr("buffer")->Attr("dtype"));
       return pdoc->Attr("view")->Call({dtype_doc});
     }
   }
@@ -723,7 +723,7 @@ Doc AllocBufferDoc(tirx::AllocBuffer stmt, AccessPath p, IRDocsifier d) {
       d->Define(stmt->buffer->data, d->frames.back(),
                 [d, buf, p]() { return d->AsDoc<ExprDoc>(buf, p->Attr("buffer"))->Attr("data"); });
     }
-    ExprDoc type_ann = TIR(d, DType2Str(stmt->buffer->dtype));
+    ExprDoc type_ann = TIR(d, DType2Str(stmt->buffer->dtype->dtype));
     return AssignDoc(lhs, std::nullopt, type_ann);
   }
   ExprDoc rhs = BufferDecl(stmt->buffer, "alloc_buffer", {}, p->Attr("buffer"), d->frames.back(), d,
