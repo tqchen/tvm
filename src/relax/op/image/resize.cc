@@ -51,7 +51,7 @@ Expr resize2d(Expr data, Expr size, ffi::Array<FloatImm> roi, ffi::String layout
   attrs->cubic_alpha = cubic_alpha;
   attrs->cubic_exclude = cubic_exclude;
   attrs->extrapolation_value = extrapolation_value;
-  attrs->out_dtype = out_dtype.value_or(PrimType::Void()->dtype);
+  attrs->out_dtype = out_dtype.value_or((DLDataType{kDLOpaqueHandle, 0, 0}));
 
   static const Op& op = Op::Get("relax.image.resize2d");
   return Call(op, {std::move(data), std::move(size)}, Attrs(attrs), {});
@@ -94,7 +94,7 @@ Type InferTypeResize2D(const Call& call, const BlockBuilder& ctx) {
                                                     /*tensor_name=*/"data");
 
   DLDataType out_dtype =
-      attrs->out_dtype == PrimType::Void()->dtype ? data_ty->dtype : attrs->out_dtype;
+      attrs->out_dtype == (DLDataType{kDLOpaqueHandle, 0, 0}) ? data_ty->dtype : attrs->out_dtype;
 
   ffi::Optional<ShapeExpr> data_shape =
       CheckNdimPerLayoutAndGetShape(call, ctx, ffi::GetRef<TensorType>(data_ty), data_layout);
@@ -166,7 +166,7 @@ Expr resize3d(Expr data, Expr size, ffi::Array<FloatImm> roi, ffi::String layout
   attrs->cubic_alpha = cubic_alpha;
   attrs->cubic_exclude = cubic_exclude;
   attrs->extrapolation_value = extrapolation_value;
-  attrs->out_dtype = out_dtype.value_or(PrimType::Void()->dtype);
+  attrs->out_dtype = out_dtype.value_or((DLDataType{kDLOpaqueHandle, 0, 0}));
 
   static const Op& op = Op::Get("relax.image.resize3d");
   return Call(op, {std::move(data), std::move(size)}, Attrs(attrs), {});
@@ -209,7 +209,7 @@ Type InferTypeResize3D(const Call& call, const BlockBuilder& ctx) {
                                                      /*tensor_name=*/"data");
 
   DLDataType out_dtype =
-      attrs->out_dtype == PrimType::Void()->dtype ? data_ty->dtype : attrs->out_dtype;
+      attrs->out_dtype == (DLDataType{kDLOpaqueHandle, 0, 0}) ? data_ty->dtype : attrs->out_dtype;
 
   ffi::Optional<ShapeExpr> data_shape =
       CheckNdimPerLayoutAndGetShape(call, ctx, ffi::GetRef<TensorType>(data_ty), data_layout);

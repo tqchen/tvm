@@ -54,10 +54,10 @@ TVM_FFI_STATIC_INIT_BLOCK() {
 
 Type InferTypeQuantize(const Call& call, const BlockBuilder& ctx) {
   const auto* attrs = call->attrs.as<QuantizeAttrs>();
-  if (attrs->out_dtype != PrimType::Int(8)->dtype &&
-      attrs->out_dtype != PrimType::UInt(8)->dtype &&
-      attrs->out_dtype != PrimType::Int(16)->dtype &&
-      attrs->out_dtype != PrimType::UInt(16)->dtype &&
+  if (attrs->out_dtype != (DLDataType{kDLInt, 8, 1}) &&
+      attrs->out_dtype != (DLDataType{kDLUInt, 8, 1}) &&
+      attrs->out_dtype != (DLDataType{kDLInt, 16, 1}) &&
+      attrs->out_dtype != (DLDataType{kDLUInt, 16, 1}) &&
       attrs->out_dtype != DLDataType{static_cast<uint8_t>(kDLFloat8_e4m3fn),
                                      static_cast<uint8_t>(8), static_cast<uint16_t>(1)} &&
       attrs->out_dtype != DLDataType{static_cast<uint8_t>(kDLFloat8_e5m2),
@@ -74,22 +74,22 @@ Type InferTypeQuantize(const Call& call, const BlockBuilder& ctx) {
   DLDataType zp_dtype = zp_ty->dtype;
 
   // Check input datatype:
-  if (input_dtype != PrimType::Float(16)->dtype && input_dtype != PrimType::Float(32)->dtype) {
+  if (input_dtype != (DLDataType{kDLFloat, 16, 1}) && input_dtype != (DLDataType{kDLFloat, 32, 1})) {
     TVM_FFI_VISIT_THROW(TypeError, call)
         << "Unsupported input datatype for operation: " << input_ty->dtype;
   }
 
   // Check datatype of scale param:
-  if (scale_dtype != PrimType::Float(32)->dtype && scale_dtype != PrimType::Float(16)->dtype) {
+  if (scale_dtype != (DLDataType{kDLFloat, 32, 1}) && scale_dtype != (DLDataType{kDLFloat, 16, 1})) {
     TVM_FFI_VISIT_THROW(TypeError, call)
         << "scale param datatype should be one of [float16, float32], but got " << scale_ty->dtype;
   }
 
   // Check datatype of zero_point param:
-  if (zp_dtype != PrimType::Int(8)->dtype && zp_dtype != PrimType::UInt(8)->dtype &&
-      zp_dtype != PrimType::Int(16)->dtype && zp_dtype != PrimType::UInt(16)->dtype &&
-      zp_dtype != PrimType::Int(32)->dtype && zp_dtype != PrimType::UInt(32)->dtype &&
-      zp_dtype != PrimType::Float(16)->dtype) {
+  if (zp_dtype != (DLDataType{kDLInt, 8, 1}) && zp_dtype != (DLDataType{kDLUInt, 8, 1}) &&
+      zp_dtype != (DLDataType{kDLInt, 16, 1}) && zp_dtype != (DLDataType{kDLUInt, 16, 1}) &&
+      zp_dtype != (DLDataType{kDLInt, 32, 1}) && zp_dtype != (DLDataType{kDLUInt, 32, 1}) &&
+      zp_dtype != (DLDataType{kDLFloat, 16, 1})) {
     TVM_FFI_VISIT_THROW(TypeError, call)
         << "zero_point param datatype should be one of "
         << "['int8', 'uint8', 'int16', 'uint16', 'int32', 'uint32', 'float16'], "
@@ -162,8 +162,8 @@ TVM_FFI_STATIC_INIT_BLOCK() {
 
 Type InferTypeDequantize(const Call& call, const BlockBuilder& ctx) {
   const auto* attrs = call->attrs.as<QuantizeAttrs>();
-  if (attrs->out_dtype != PrimType::Float(16)->dtype &&
-      attrs->out_dtype != PrimType::Float(32)->dtype) {
+  if (attrs->out_dtype != (DLDataType{kDLFloat, 16, 1}) &&
+      attrs->out_dtype != (DLDataType{kDLFloat, 32, 1})) {
     TVM_FFI_VISIT_THROW(TypeError, call)
         << "Unsupported output datatype attribute for operation: " << attrs->out_dtype;
   }
@@ -176,29 +176,29 @@ Type InferTypeDequantize(const Call& call, const BlockBuilder& ctx) {
   DLDataType zp_dtype = zp_ty->dtype;
 
   // Check input datatype:
-  if (input_dtype != PrimType::Int(8)->dtype && input_dtype != PrimType::UInt(8)->dtype &&
-      input_dtype != PrimType::Int(16)->dtype && input_dtype != PrimType::UInt(16)->dtype &&
-      input_dtype != PrimType::Int(32)->dtype &&
+  if (input_dtype != (DLDataType{kDLInt, 8, 1}) && input_dtype != (DLDataType{kDLUInt, 8, 1}) &&
+      input_dtype != (DLDataType{kDLInt, 16, 1}) && input_dtype != (DLDataType{kDLUInt, 16, 1}) &&
+      input_dtype != (DLDataType{kDLInt, 32, 1}) &&
       input_dtype != DLDataType{static_cast<uint8_t>(kDLFloat8_e4m3fn), static_cast<uint8_t>(8),
                                 static_cast<uint16_t>(1)} &&
       input_dtype != DLDataType{static_cast<uint8_t>(kDLFloat8_e5m2), static_cast<uint8_t>(8),
                                 static_cast<uint16_t>(1)} &&
-      input_dtype != PrimType::Float(16)->dtype && input_dtype != PrimType::Float(32)->dtype) {
+      input_dtype != (DLDataType{kDLFloat, 16, 1}) && input_dtype != (DLDataType{kDLFloat, 32, 1})) {
     TVM_FFI_VISIT_THROW(TypeError, call)
         << "Unsupported input datatype for operation: " << attrs->out_dtype;
   }
 
   // Check datatype of scale param:
-  if (scale_dtype != PrimType::Float(32)->dtype && scale_dtype != PrimType::Float(16)->dtype) {
+  if (scale_dtype != (DLDataType{kDLFloat, 32, 1}) && scale_dtype != (DLDataType{kDLFloat, 16, 1})) {
     TVM_FFI_VISIT_THROW(TypeError, call)
         << "scale param datatype should be one of [float16, float32], but got " << scale_ty->dtype;
   }
 
   // Check datatype of zero_point param:
-  if (zp_dtype != PrimType::Int(8)->dtype && zp_dtype != PrimType::UInt(8)->dtype &&
-      zp_dtype != PrimType::Int(16)->dtype && zp_dtype != PrimType::UInt(16)->dtype &&
-      zp_dtype != PrimType::Int(32)->dtype && zp_dtype != PrimType::UInt(32)->dtype &&
-      zp_dtype != PrimType::Float(16)->dtype) {
+  if (zp_dtype != (DLDataType{kDLInt, 8, 1}) && zp_dtype != (DLDataType{kDLUInt, 8, 1}) &&
+      zp_dtype != (DLDataType{kDLInt, 16, 1}) && zp_dtype != (DLDataType{kDLUInt, 16, 1}) &&
+      zp_dtype != (DLDataType{kDLInt, 32, 1}) && zp_dtype != (DLDataType{kDLUInt, 32, 1}) &&
+      zp_dtype != (DLDataType{kDLFloat, 16, 1})) {
     TVM_FFI_VISIT_THROW(TypeError, call)
         << "zero_point param datatype should be one of "
         << "['int8', 'uint8', 'int16', 'uint16', 'int32', 'uint32', 'float16'], "

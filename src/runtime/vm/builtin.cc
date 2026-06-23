@@ -26,7 +26,7 @@
 #include <tvm/ffi/function.h>
 #include <tvm/ffi/memory.h>
 #include <tvm/ffi/reflection/registry.h>
-#include <tvm/runtime/data_type.h>
+#include <tvm/ffi/dtype.h>
 #include <tvm/runtime/device_api.h>
 #include <tvm/runtime/memory/memory_manager.h>
 #include <tvm/runtime/tensor.h>
@@ -247,7 +247,7 @@ void CheckTensorInfo(ffi::PackedArgs args, ffi::Any* rv) {
   ffi::Optional<ffi::String> err_ctx;
 
   if (args.size() == 3) {
-    dtype = runtime::VoidDType();
+    dtype = DLDataType{kDLOpaqueHandle, 0, 0};
     err_ctx = args[2].cast<ffi::Optional<ffi::String>>();
   } else {
     dtype = args[2].cast<DLDataType>();
@@ -264,7 +264,7 @@ void CheckTensorInfo(ffi::PackedArgs args, ffi::Any* rv) {
         << err_ctx.value_or("") << " expect Tensor with ndim " << ndim << " but get " << ptr->ndim;
   }
 
-  if (dtype != runtime::VoidDType()) {
+  if (dtype != DLDataType{kDLOpaqueHandle, 0, 0}) {
     TVM_FFI_CHECK(ptr->dtype == dtype, ValueError)
         << err_ctx.value_or("") << " expect Tensor with dtype " << dtype << " but get "
         << ptr->dtype;
@@ -301,7 +301,7 @@ TVM_FFI_STATIC_INIT_BLOCK() {
 /*!
  * \brief Builtin function to check if arg is PrimValue(dtype)
  * \param arg The input argument.
- * \param dtype Expected dtype of the PrimValue.  Can be runtime::VoidDType() for unknown dtype.
+ * \param dtype Expected dtype of the PrimValue.  Can be DLDataType{kDLOpaqueHandle, 0, 0} for unknown dtype.
  * \param err_ctx Additional context if error occurs.
  */
 void CheckPrimValueInfo(ffi::AnyView arg, DLDataType dtype, ffi::Optional<ffi::String> err_ctx) {
@@ -309,15 +309,15 @@ void CheckPrimValueInfo(ffi::AnyView arg, DLDataType dtype, ffi::Optional<ffi::S
     TVM_FFI_THROW(TypeError) << err_ctx.value_or("") << ", expected dtype " << dtype
                              << ", but received ObjectRef of type "
                              << opt_obj.value()->GetTypeKey();
-  } else if (runtime::IsBoolDType(dtype)) {
+  } else if (((dtype).code == kDLBool)) {
     arg.cast<bool>();
-  } else if (runtime::IsIntDType(dtype)) {
+  } else if (((dtype).code == kDLInt)) {
     arg.cast<int64_t>();
-  } else if (runtime::IsUIntDType(dtype)) {
+  } else if (((dtype).code == kDLUInt)) {
     arg.cast<uint64_t>();
-  } else if (runtime::IsFloatDType(dtype)) {
+  } else if (((dtype).code == kDLFloat)) {
     arg.cast<double>();
-  } else if (runtime::IsHandleDType(dtype)) {
+  } else if (dtype.code == kDLOpaqueHandle && !(dtype.bits == 0 && dtype.lanes == 0)) {
     arg.cast<void*>();
   } else {
     TVM_FFI_THROW(TypeError) << err_ctx.value_or("") << ", unsupported dtype " << dtype;

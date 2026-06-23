@@ -114,7 +114,7 @@ class BufferFlattener : public arith::IRMutatorWithAnalyzer {
 
     auto new_buf = GetFlattenedBuffer(node->buffer);
     // TODO(Lunderberg): Move the handling of boolean into a dedicated pass.
-    if (new_buf->dtype->dtype == PrimType::Bool()->dtype) {
+    if (new_buf->dtype->dtype == (DLDataType{kDLBool, 8, 1})) {
       auto writer = new_buf.CopyOnWrite();
       writer->dtype = PrimType::Int(8);
     }
@@ -146,7 +146,7 @@ class BufferFlattener : public arith::IRMutatorWithAnalyzer {
 
     // TODO(Lunderberg): Move the handling of boolean into a
     // dedicated pass.
-    if (flattened->dtype->dtype == PrimType::Bool()->dtype) {
+    if (flattened->dtype->dtype == (DLDataType{kDLBool, 8, 1})) {
       writer->dtype = PrimType::Int(8);
     }
     // canonicalize shape
@@ -169,7 +169,7 @@ class BufferFlattener : public arith::IRMutatorWithAnalyzer {
     // TODO(Lunderberg): Move the handling of boolean into a
     // dedicated pass.
     if (store_returns_bool) {
-      TVM_FFI_ICHECK_EQ(store->buffer->dtype->dtype, PrimType::Int(8)->dtype)
+      TVM_FFI_ICHECK_EQ(store->buffer->dtype->dtype, (DLDataType{kDLInt, 8, 1}))
           << "Expected int8 backing array for boolean tensor";
       auto writer = store.CopyOnWrite();
       writer->value = tvm::cast(PrimType::Int(8), store->value);
@@ -186,7 +186,7 @@ class BufferFlattener : public arith::IRMutatorWithAnalyzer {
     // TODO(Lunderberg): Move the handling of boolean into a
     // dedicated pass.
     if (load_returns_bool) {
-      TVM_FFI_ICHECK_EQ(load->buffer->dtype->dtype, PrimType::Int(8)->dtype)
+      TVM_FFI_ICHECK_EQ(load->buffer->dtype->dtype, (DLDataType{kDLInt, 8, 1}))
           << "Expected int8 backing array for boolean tensor";
       load.CopyOnWrite()->BaseExprNode::ty = PrimType::Int(8);
       return tvm::cast(PrimType::Bool(), load);

@@ -27,7 +27,7 @@
 #include <tvm/ffi/cast.h>
 #include <tvm/ffi/reflection/registry.h>
 #include <tvm/ir/source_map.h>
-#include <tvm/runtime/data_type.h>
+#include <tvm/ffi/dtype.h>
 
 #include <cstdint>
 
@@ -169,6 +169,14 @@ class PrimType : public Type {
 
   TVM_FFI_INLINE bool IsBool() const {
     return get()->dtype.code == static_cast<uint8_t>(DLDataTypeCode::kDLBool);
+  }
+
+  TVM_FFI_INLINE bool IsInt() const {
+    return get()->dtype.code == static_cast<uint8_t>(DLDataTypeCode::kDLInt);
+  }
+
+  TVM_FFI_INLINE bool IsUInt() const {
+    return get()->dtype.code == static_cast<uint8_t>(DLDataTypeCode::kDLUInt);
   }
 
   TVM_FFI_INLINE bool IsScalar() const {

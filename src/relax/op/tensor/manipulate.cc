@@ -35,7 +35,7 @@
 #include <utility>
 #include <vector>
 
-#include "tvm/runtime/data_type.h"
+#include "tvm/ffi/dtype.h"
 
 namespace tvm {
 namespace relax {
@@ -218,7 +218,7 @@ Type InferTypeConcat(const Call& call, const BlockBuilder& ctx) {
 
   const auto* attrs = call->attrs.as<ConcatAttrs>();
   int output_ndim = attrs->axis.has_value() ? kUnknownNDim : 1;
-  DLDataType output_dtype = runtime::VoidDType();
+  DLDataType output_dtype = DLDataType{kDLOpaqueHandle, 0, 0};
   ffi::Optional<VDevice> vdev = std::nullopt;
   bool shape_unknown = false;
   bool is_void_dtype = false;
@@ -228,9 +228,9 @@ Type InferTypeConcat(const Call& call, const BlockBuilder& ctx) {
 
   for (TensorType ty : tensor_ty) {
     // Update the output dtype.
-    if (runtime::IsVoidDType(ty->dtype)) {
+    if ((((ty->dtype).code == kDLOpaqueHandle) && ((ty->dtype).bits == 0) && ((ty->dtype).lanes == 0))) {
       is_void_dtype = true;
-    } else if (runtime::IsVoidDType(output_dtype)) {
+    } else if ((((output_dtype).code == kDLOpaqueHandle) && ((output_dtype).bits == 0) && ((output_dtype).lanes == 0))) {
       output_dtype = ty->dtype;
     } else if (ty->dtype != output_dtype) {
       TVM_FFI_VISIT_THROW(TypeError, call)
@@ -284,7 +284,7 @@ Type InferTypeConcat(const Call& call, const BlockBuilder& ctx) {
   }
 
   if (is_void_dtype) {
-    output_dtype = runtime::VoidDType();
+    output_dtype = DLDataType{kDLOpaqueHandle, 0, 0};
   }
   if (vdevice_unknown) {
     vdev = std::nullopt;
@@ -1492,7 +1492,7 @@ Type InferTypeStack(const Call& call, const BlockBuilder& ctx) {
 
   // Default axis is 0 if not specified
   int output_ndim = tensor_ty[0]->ndim + 1;  // Stack adds one dimension
-  DLDataType output_dtype = runtime::VoidDType();
+  DLDataType output_dtype = DLDataType{kDLOpaqueHandle, 0, 0};
   ffi::Optional<VDevice> vdev = std::nullopt;
   bool shape_unknown = false;
   bool is_void_dtype = false;
@@ -1502,9 +1502,9 @@ Type InferTypeStack(const Call& call, const BlockBuilder& ctx) {
 
   for (TensorType ty : tensor_ty) {
     // Check dtype consistency
-    if (runtime::IsVoidDType(ty->dtype)) {
+    if ((((ty->dtype).code == kDLOpaqueHandle) && ((ty->dtype).bits == 0) && ((ty->dtype).lanes == 0))) {
       is_void_dtype = true;
-    } else if (runtime::IsVoidDType(output_dtype)) {
+    } else if ((((output_dtype).code == kDLOpaqueHandle) && ((output_dtype).bits == 0) && ((output_dtype).lanes == 0))) {
       output_dtype = ty->dtype;
     } else if (ty->dtype != output_dtype) {
       TVM_FFI_VISIT_THROW(TypeError, call)
@@ -1545,7 +1545,7 @@ Type InferTypeStack(const Call& call, const BlockBuilder& ctx) {
     }
   }
 
-  if (is_void_dtype) output_dtype = runtime::VoidDType();
+  if (is_void_dtype) output_dtype = DLDataType{kDLOpaqueHandle, 0, 0};
   if (vdevice_unknown) vdev = std::nullopt;
 
   // Normalize axis (default to 0 if not specified)
@@ -2210,7 +2210,7 @@ Type InferTypeGatherND(const Call& call, const BlockBuilder& ctx) {
   TVM_FFI_ICHECK_GE(attrs->batch_dims, 0);
   int batch_dims = static_cast<int>(attrs->batch_dims);
   int input_dims = data_ty->ndim;
-  if (!indices_ty->IsUnknownDtype() && indices_ty->dtype != PrimType::Int(64)->dtype) {
+  if (!indices_ty->IsUnknownDtype() && indices_ty->dtype != (DLDataType{kDLInt, 64, 1})) {
     TVM_FFI_VISIT_THROW(TypeError, call)
         << "GatherND requires the input indices to have int64 dtype. However, the "
         << "given indices dtype is " << indices_ty->dtype;
@@ -2347,7 +2347,7 @@ Type InferTypeIndexPut(const Call& call, const BlockBuilder& ctx) {
                    << " has not been specified. Assume it has an integer type.";
     } else {
       DLDataType index_dtype = tensor_ty->dtype;
-      if (!(runtime::IsIntDType(index_dtype) || runtime::IsUIntDType(index_dtype))) {
+      if (!(((index_dtype).code == kDLInt) || ((index_dtype).code == kDLUInt))) {
       TVM_FFI_VISIT_THROW(TypeError, call)
           << "IndexPut requires each index tensor to have integer dtype. "
           << "However, index tensor " << i << " has dtype=" << tensor_ty->dtype;
@@ -2449,7 +2449,7 @@ Type InferTypeMeshgrid(const Call& call, const BlockBuilder& ctx) {
   }
 
   std::vector<PrimExpr> lengths;
-  DLDataType common_dtype = runtime::VoidDType();
+  DLDataType common_dtype = DLDataType{kDLOpaqueHandle, 0, 0};
   bool shape_unknown = false;
   ffi::Optional<VDevice> vdev = std::nullopt;
   bool vdevice_unknown = false;
@@ -2463,9 +2463,9 @@ Type InferTypeMeshgrid(const Call& call, const BlockBuilder& ctx) {
           << i;
     }
 
-    if (runtime::IsVoidDType(ty->dtype)) {
+    if ((((ty->dtype).code == kDLOpaqueHandle) && ((ty->dtype).bits == 0) && ((ty->dtype).lanes == 0))) {
       continue;
-    } else if (runtime::IsVoidDType(common_dtype)) {
+    } else if ((((common_dtype).code == kDLOpaqueHandle) && ((common_dtype).bits == 0) && ((common_dtype).lanes == 0))) {
       common_dtype = ty->dtype;
     } else if (ty->dtype != common_dtype) {
       TVM_FFI_VISIT_THROW(TypeError, call)

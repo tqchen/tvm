@@ -118,7 +118,7 @@ class PagedAttentionKVCacheObj : public AttentionKVCacheObj {
   /*! \brief The KV cache dtype. */
   const DLDataType kv_dtype_;
   /*! \brief We fix int32 to be the index dtype of auxiliary data. */
-  const DLDataType dtype_aux_ = runtime::IntDType(32, 1);
+  const DLDataType dtype_aux_ = DLDataType{kDLInt, 32, 1};
 
   /********************* Page Structures *********************/
 
@@ -372,7 +372,7 @@ class PagedAttentionKVCacheObj : public AttentionKVCacheObj {
         pages_.push_back(nvshmem_pages_.CreateView(
             {num_total_pages_, 2, num_kv_heads_, page_size_, qk_head_dim_}, nvshmem_pages_->dtype,
             i * num_total_pages_ * 2 * num_kv_heads_ * page_size_ * qk_head_dim_ *
-                runtime::DTypeBytes(nvshmem_pages_.DataType())));
+                (nvshmem_pages_.DataType().bits + 7) / 8));
       }
 
       const auto f_transfer_kv_ptr = tvm::ffi::Function::GetGlobal("nvshmem.KVTransfer");
@@ -450,9 +450,9 @@ class PagedAttentionKVCacheObj : public AttentionKVCacheObj {
     for (int d = 0; d < kPagedKVCacheMaxBlockDepth; ++d) {
       if (NeedKernelBeginForward()) {
         temp_int_attn_workspace_.push_back(
-            Tensor::Empty({kIntAttnWorkspaceByte}, runtime::UIntDType(8), device));
+            Tensor::Empty({kIntAttnWorkspaceByte}, DLDataType{kDLUInt, 8, 1}, device));
         temp_int_pinned_attn_workspace_.push_back(Tensor::Empty(
-            {kIntAttnWorkspaceByte}, runtime::UIntDType(8), GetPreferredHostDevice(device)));
+            {kIntAttnWorkspaceByte}, DLDataType{kDLUInt, 8, 1}, GetPreferredHostDevice(device)));
       }
       qo_indptr_on_depths_view_.push_back(Tensor());
       page_indptr_on_depths_view_.push_back(Tensor());
@@ -470,11 +470,11 @@ class PagedAttentionKVCacheObj : public AttentionKVCacheObj {
     // Additional workspace for the "prefill with ragged kv" kernel.
     if (NeedKernelBeginForward()) {
       temp_int_attn_workspace_.push_back(
-          Tensor::Empty({kIntAttnWorkspaceByte}, runtime::UIntDType(8), device));
+          Tensor::Empty({kIntAttnWorkspaceByte}, DLDataType{kDLUInt, 8, 1}, device));
       temp_int_pinned_attn_workspace_.push_back(Tensor::Empty(
-          {kIntAttnWorkspaceByte}, runtime::UIntDType(8), GetPreferredHostDevice(device)));
+          {kIntAttnWorkspaceByte}, DLDataType{kDLUInt, 8, 1}, GetPreferredHostDevice(device)));
       temp_float_attn_workspace_ =
-          Tensor::Empty({kFloatAttnWorkspaceByte}, runtime::UIntDType(8), device);
+          Tensor::Empty({kFloatAttnWorkspaceByte}, DLDataType{kDLUInt, 8, 1}, device);
     }
 
     if (std::find(attn_kinds_.begin(), attn_kinds_.end(), AttnKind::kMHA) != attn_kinds_.end()) {
@@ -488,9 +488,9 @@ class PagedAttentionKVCacheObj : public AttentionKVCacheObj {
     temp_attn_output_device_ =
         Tensor::Empty({prefill_chunk_size_, num_qo_heads, v_head_dim}, dtype, device);
     temp_attn_lse_device_ =
-        Tensor::Empty({prefill_chunk_size_, num_qo_heads}, runtime::FloatDType(32), device);
+        Tensor::Empty({prefill_chunk_size_, num_qo_heads}, DLDataType{kDLFloat, 32, 1}, device);
     merged_attn_lse_device_ =
-        Tensor::Empty({prefill_chunk_size_, num_qo_heads}, runtime::FloatDType(32), device);
+        Tensor::Empty({prefill_chunk_size_, num_qo_heads}, DLDataType{kDLFloat, 32, 1}, device);
     for (int64_t page_id = num_total_pages - 1; page_id >= 0; --page_id) {
       free_page_ids_.push_back(page_id);
     }

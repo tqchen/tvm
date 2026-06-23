@@ -138,7 +138,7 @@ class StorageToken : public ffi::ObjectRef {
   explicit StorageToken(ffi::Array<PrimExpr> shape, DLDataType dtype, std::string storage_scope,
                         ffi::Optional<VDevice> vdevice = std::nullopt) {
     // Compute the tensor size from the shape.
-    int64_t const_coeff = runtime::GetVectorBytes(dtype);
+    int64_t const_coeff = ((((dtype).bits * static_cast<int16_t>((dtype).lanes)) + 7) / 8);
     PrimExpr size = IntImm::Int64(1);
     bool size_computed = false;
 
@@ -977,7 +977,7 @@ class StorageAllocationRewriter : public ExprMutator {
           bytes *= upper_bounded_shape[i];
         }
         DLDataType dtype = ty->dtype;
-        bytes *= runtime::GetVectorBytes(dtype);
+        bytes *= ((((dtype).bits * static_cast<int16_t>((dtype).lanes)) + 7) / 8);
         Call alloc_storage(mem_alloc_storage,
                            {/*size=*/ShapeExpr({bytes}),
                             /*virtual_device_index=*/call->args[2].as_or_throw<PrimValue>(),

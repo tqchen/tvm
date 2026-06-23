@@ -371,13 +371,13 @@ void MultiLevelTilingNode::AnnotateCooperativeFetching(Schedule* sch,
   TVM_FFI_ICHECK_EQ(block_node->writes.size(), 1);
   const DLDataType dtype = block_node->writes[0]->buffer->dtype;
   std::function<bool(int)> f_filter = nullptr;
-  if (dtype == runtime::FloatDType(32)) {
+  if (dtype == DLDataType{kDLFloat, 32, 1}) {
     f_filter = [&](int vector_len) { return vector_len <= 4; };
-  } else if (dtype == runtime::FloatDType(16)) {
+  } else if (dtype == DLDataType{kDLFloat, 16, 1}) {
     f_filter = [&](int vector_len) {
       return (vector_len == 1 || vector_len % 2 == 0) && vector_len <= 8;
     };
-  } else if (dtype == runtime::IntDType(8)) {
+  } else if (dtype == DLDataType{kDLInt, 8, 1}) {
     f_filter = [&](int vector_len) { return vector_len <= 16; };
   }
   std::vector<int> valid_vector_lens;

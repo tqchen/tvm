@@ -383,7 +383,7 @@ std::unordered_set<Type, ffi::ObjectPtrHash, ffi::ObjectPtrEqual> GatherCandidat
     const Type& result_ty) {
   if (auto* tensor_info = result_ty.as<TensorTypeNode>()) {
     // don't consider void dtype (don't know the size at compile time)
-    if (runtime::IsVoidDType(tensor_info->dtype)) {
+    if ((((tensor_info->dtype).code == kDLOpaqueHandle) && ((tensor_info->dtype).bits == 0) && ((tensor_info->dtype).lanes == 0))) {
       return {};
     }
     // don't consider cases where we don't know the shape at compile time

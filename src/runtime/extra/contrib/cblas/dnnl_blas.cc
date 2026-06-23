@@ -24,7 +24,7 @@
 #include <tvm/ffi/error.h>
 #include <tvm/ffi/function.h>
 #include <tvm/ffi/reflection/registry.h>
-#include <tvm/runtime/data_type.h>
+#include <tvm/ffi/dtype.h>
 
 extern "C" {
 #include <dnnl.h>

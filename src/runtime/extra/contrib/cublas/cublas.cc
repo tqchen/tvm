@@ -25,7 +25,7 @@
 #include <tvm/ffi/extra/c_env_api.h>
 #include <tvm/ffi/function.h>
 #include <tvm/ffi/reflection/registry.h>
-#include <tvm/runtime/data_type.h>
+#include <tvm/ffi/dtype.h>
 
 #include "../../../../../3rdparty/compiler-rt/builtin_fp16.h"
 #include "../cblas/gemm_common.h"

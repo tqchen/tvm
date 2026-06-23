@@ -156,7 +156,7 @@ Type InferTypeScan(const Call& call, const BlockBuilder& ctx) {
   const auto* attrs = call->attrs.as<ScanopAttrs>();
 
   DLDataType out_type =
-      attrs->dtype == PrimType::Void()->dtype ? data_ty->dtype : attrs->dtype;
+      attrs->dtype == (DLDataType{kDLOpaqueHandle, 0, 0}) ? data_ty->dtype : attrs->dtype;
 
   if (!attrs->axis.has_value()) {
     // flattened
@@ -243,7 +243,7 @@ Expr cumprod(Expr data, ffi::Optional<int64_t> axis, ffi::Optional<DLDataType> d
              bool exclusive) {
   auto attrs = ffi::make_object<ScanopAttrs>();
   attrs->axis = std::move(axis);
-  attrs->dtype = dtype.value_or(PrimType::Void()->dtype);
+  attrs->dtype = dtype.value_or((DLDataType{kDLOpaqueHandle, 0, 0}));
   attrs->exclusive = exclusive;
 
   static const Op& op = Op::Get("relax.cumprod");
@@ -267,7 +267,7 @@ Expr cumsum(Expr data, ffi::Optional<int64_t> axis, ffi::Optional<DLDataType> dt
             bool exclusive) {
   auto attrs = ffi::make_object<ScanopAttrs>();
   attrs->axis = std::move(axis);
-  attrs->dtype = dtype.value_or(PrimType::Void()->dtype);
+  attrs->dtype = dtype.value_or((DLDataType{kDLOpaqueHandle, 0, 0}));
   attrs->exclusive = exclusive;
 
   static const Op& op = Op::Get("relax.cumsum");

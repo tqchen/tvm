@@ -248,20 +248,13 @@ class MatchBufferLower : public StmtExprMutator {
   void Bind(const PrimExpr& arg, PrimExpr value, const std::string& arg_name = "argument") {
     PrimType arg_ty = arg.ty();
     PrimType value_ty = value.ty();
-    DataType arg_dtype(arg_ty->dtype);
-    DataType value_dtype(value_ty->dtype);
-    if (arg_dtype != value_dtype) {
-      bool same_lanes = arg_ty.IsScalableVector() == value_ty.IsScalableVector();
-      if (same_lanes) {
-        same_lanes = arg_ty.IsScalableVector() ? arg_ty.VScaleFactor() == value_ty.VScaleFactor()
-                                               : arg_ty.lanes() == value_ty.lanes();
-      }
-      if (arg_ty.code() == DLDataTypeCode::kDLInt && value_ty.code() == DLDataTypeCode::kDLInt &&
-          same_lanes) {
+    if (arg_ty->dtype != value_ty->dtype) {
+      bool same_lanes = arg_ty.lanes() == value_ty.lanes();
+      if (arg_ty.IsInt() && value_ty.IsInt() && same_lanes) {
         value = cast(arg_ty, value);
       } else {
-        TVM_FFI_ICHECK_EQ(arg_dtype, value_dtype)
-            << "The data type mismatched: " << arg_dtype << " vs. " << value_dtype;
+        TVM_FFI_ICHECK_EQ(arg_ty->dtype, value_ty->dtype)
+            << "The data type mismatched: " << arg_ty->dtype << " vs. " << value_ty->dtype;
       }
     }
     // Handle recursive case

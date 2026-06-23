@@ -64,9 +64,9 @@ Type InferTypeBucketize(const Call& call, const BlockBuilder& ctx) {
   }
 
   auto attrs = call->attrs.as<BucketizeAttrs>();
-  DLDataType out_dtype = runtime::IntDType(64);
+  DLDataType out_dtype = DLDataType{kDLInt, 64, 1};
   if (attrs->out_int32) {
-    out_dtype = runtime::IntDType(32);
+    out_dtype = DLDataType{kDLInt, 32, 1};
   }
 
   const auto* data_shape = input_tensor_info->shape.as<ShapeExprNode>();
@@ -210,7 +210,7 @@ Type InferTypeArgmaxArgmin(const Call& call, const BlockBuilder& ctx) {
     TVM_FFI_ICHECK_GE(out_ndim, 0);
   }
 
-  DLDataType out_dtype = runtime::IntDType(64);
+  DLDataType out_dtype = DLDataType{kDLInt, 64, 1};
   // The inference rule for reduction operator output shapes:
   // - axes is None, keepdims is false -> return the zero-rank shape;
   // - axes is None, keepdims is true -> return the shape whose ndim is the same as input and every

@@ -191,7 +191,7 @@ Type InferTypeSoftmax(const Call& call, const BlockBuilder& ctx) {
   if (!data_ty->IsUnknownDtype()) {
     DLDataType data_dtype = data_ty->dtype;
     // Softmax only requires a floating element kind; lane encoding is irrelevant to the check.
-    if (!runtime::IsFloatDType(data_dtype) && !runtime::IsBFloatDType(data_dtype)) {
+    if (!((data_dtype).code == kDLFloat) && !((data_dtype).code == kDLBfloat)) {
     TVM_FFI_VISIT_THROW(TypeError, call) << "Softmax requires the input tensor to have float "
                                             "dtype. However, the given input dtype is "
                                          << data_ty->dtype;
@@ -389,7 +389,7 @@ bool NormCheckDtypeAndShape(const Call& call, const BlockBuilder& ctx,
   if (!data_ty->IsUnknownDtype()) {
     DLDataType data_dtype = data_ty->dtype;
     // Norm ops only require a floating element kind; lane encoding is irrelevant to the check.
-    if (!runtime::IsFloatDType(data_dtype) && !runtime::IsBFloatDType(data_dtype)) {
+    if (!((data_dtype).code == kDLFloat) && !((data_dtype).code == kDLBfloat)) {
     TVM_FFI_VISIT_THROW(TypeError, call)
         << op << " requires the input data to have float dtype. However, the given data dtype is "
         << data_ty->dtype;

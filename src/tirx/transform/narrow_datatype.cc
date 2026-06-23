@@ -72,8 +72,6 @@ DataType DType(const PrimExpr& expr) { return DType(expr.ty()); }
 
 bool SameDType(const PrimExpr& lhs, const PrimExpr& rhs) { return DType(lhs) == DType(rhs); }
 
-bool IsInt(const PrimType& ty) { return ty.code() == DLDataTypeCode::kDLInt; }
-
 }  // namespace
 
 // Determine the result dtype for Var, IntImm and Cast,
@@ -92,7 +90,7 @@ class DataTypeVisitor final : public StmtExprVisitor {
 
   void VisitExpr(const PrimExpr& e) {
     PrimType e_ty = e.ty();
-    if (IsInt(e_ty)) {
+    if (e_ty.IsInt()) {
       int bits = max_bits_;
       if (bound_.find(e) == bound_.end()) {
         analyzer_->const_int_bound(e, &bound_);
@@ -173,7 +171,7 @@ class DataTypeVisitor final : public StmtExprVisitor {
 
   void VisitExpr_(const IntImmNode* op) {
     PrimType op_ty = op->ty();
-    if (IsInt(op_ty)) {
+    if (op_ty.IsInt()) {
       // We only narrow and never promote, so the result dtype
       // is upperbounded by its original dtype before rewrite.
       int bits = std::min(op_ty.bits(), bits_);
@@ -188,7 +186,7 @@ class DataTypeVisitor final : public StmtExprVisitor {
 
   void VisitExpr_(const CastNode* op) {
     PrimType op_ty = op->ty();
-    if (IsInt(op_ty)) {
+    if (op_ty.IsInt()) {
       // We only narrow and never promote, so the result dtype
       // is upperbounded by its original dtype before rewrite.
       int bits = std::min(op_ty.bits(), bits_);

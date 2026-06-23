@@ -29,7 +29,7 @@
 #include <tvm/ffi/optional.h>
 #include <tvm/ffi/string.h>
 #include <tvm/runtime/base.h>
-#include <tvm/runtime/data_type.h>
+#include <tvm/ffi/dtype.h>
 #include <tvm/runtime/device_api.h>
 #include <tvm/support/io.h>
 #include <tvm/support/serializer.h>

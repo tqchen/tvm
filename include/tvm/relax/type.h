@@ -186,7 +186,7 @@ class TensorTypeNode : public TypeNode {
   bool IsUnknownNdim() const { return ndim == kUnknownNDim; }
 
   /*! \return Whether the type contains unknown dtype. */
-  bool IsUnknownDtype() const { return dtype == tvm::PrimType::Void()->dtype; }
+  bool IsUnknownDtype() const { return dtype == (DLDataType{kDLOpaqueHandle, 0, 0}); }
 
   /*! \return The primitive element type for compiler-side uses. */
   tvm::PrimType GetPrimType() const { return tvm::PrimType(dtype); }

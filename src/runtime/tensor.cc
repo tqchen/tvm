@@ -33,7 +33,7 @@
 
 #include "../support/base64.h"
 #include "../support/bytes_io.h"
-#include "tvm/runtime/data_type.h"
+#include "tvm/ffi/dtype.h"
 
 namespace tvm {
 namespace runtime {

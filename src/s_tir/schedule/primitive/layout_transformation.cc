@@ -991,7 +991,7 @@ class TransformationPaddingTypeError : public ScheduleError {
   TransformationPaddingTypeError(IRModule mod, Buffer buffer, IndexMap pad_value)
       : mod_(mod), buffer_(buffer), pad_value_(pad_value) {
     TVM_FFI_ICHECK_EQ(pad_value_->final_indices.size(), 1);
-    pad_value_dtype_ = DataType(pad_value_->final_indices[0].ty()->dtype);
+    pad_value_dtype_ = pad_value_->final_indices[0].ty()->dtype;
   }
 
   ffi::String FastErrorString() const final {
@@ -1015,7 +1015,7 @@ class TransformationPaddingTypeError : public ScheduleError {
   IRModule mod_;
   Buffer buffer_;
   IndexMap pad_value_;
-  DataType pad_value_dtype_;
+  DLDataType pad_value_dtype_;
 };
 
 class TransformationPaddingExpressionError : public ScheduleError {
@@ -1116,10 +1116,10 @@ IndexMap LegalizeIndexMapDType(const IndexMap& index_map, const ffi::Array<PrimE
 
   ffi::Array<Var> initial_indices;
   ffi::Map<Var, PrimExpr> var_map;
-  std::optional<DataType> index_dtype = std::nullopt;
+  std::optional<DLDataType> index_dtype = std::nullopt;
 
   for (size_t i = 0; i < args.size(); ++i) {
-    DataType arg_dtype(args[i].ty()->dtype);
+    DLDataType arg_dtype = args[i].ty()->dtype;
     if (index_dtype.has_value()) {
       TVM_FFI_ICHECK_EQ(*index_dtype, arg_dtype)
           << "Buffer index " << args[i] << " has dtype " << arg_dtype
@@ -1128,7 +1128,7 @@ IndexMap LegalizeIndexMapDType(const IndexMap& index_map, const ffi::Array<PrimE
       index_dtype = arg_dtype;
     }
 
-    DataType initial_dtype(initial_indices_orig[i].ty()->dtype);
+    DLDataType initial_dtype = initial_indices_orig[i].ty()->dtype;
     if (arg_dtype != initial_dtype) {
       auto new_idx = Var(initial_indices_orig[i]->name_hint, args[i].ty());
       initial_indices.push_back(new_idx);
@@ -1142,7 +1142,7 @@ IndexMap LegalizeIndexMapDType(const IndexMap& index_map, const ffi::Array<PrimE
     auto final_indices = index_map->final_indices.Map([&](PrimExpr index) {
       if (auto* ptr = index.as<IntImmNode>()) {
         TVM_FFI_ICHECK(index_dtype.has_value());
-        return tirx::MakeConst(*index_dtype, ptr->value);
+        return tirx::MakeConst(PrimType(*index_dtype), ptr->value);
       } else {
         return SubstituteWithDataTypeLegalization(index,
                                                   [&](const Var& var) { return var_map.Get(var); });
@@ -1178,8 +1178,7 @@ void TransformLayout(ScheduleState self, const StmtSRef& block_sref, int buffer_
     if (pad_value.value()->final_indices.size() != 1) {
       throw TransformationPaddingIndexMapError(self->mod, pad_value.value());
     }
-    if (DataType(pad_value.value()->final_indices[0].ty()->dtype) !=
-        DataType(old_buffer->dtype->dtype)) {
+    if (pad_value.value()->final_indices[0].ty()->dtype != old_buffer->dtype) {
       throw TransformationPaddingTypeError(self->mod, old_buffer, pad_value.value());
     }
 

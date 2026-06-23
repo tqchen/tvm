@@ -72,7 +72,7 @@ class Mutator : public ExprMutator {
       }();
 
       PrimExpr nbytes = [&]() -> PrimExpr {
-        PrimExpr nbytes = IntImm::Int64(runtime::GetVectorBytes(dtype->value));
+        PrimExpr nbytes = IntImm::Int64(((((dtype->value).bits * static_cast<int16_t>((dtype->value).lanes)) + 7) / 8));
         for (const auto& dim : shape) {
           nbytes *= dim;
         }
@@ -112,7 +112,7 @@ class Mutator : public ExprMutator {
       auto offset = PrimValue::Int64(0);
 
       Expr storage = relax::Call(mem_alloc_storage_op, {size, runtime_device_index, storage_scope,
-                                                        DataTypeImm(PrimType::UInt(8)->dtype)});
+                                                        DataTypeImm((DLDataType{kDLUInt, 8, 1}))});
       storage = builder_->Emit(storage, "storage");
       Expr tensor =
           relax::Call(mem_alloc_tensor_op, {storage, offset, shape_arg, dtype, op->args[2]});

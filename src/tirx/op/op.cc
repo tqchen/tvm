@@ -168,8 +168,6 @@ void BroadcastToMatchLanes(PrimExpr& op_a, PrimExpr& op_b) {  // NOLINT(*)
   }
 }
 
-PrimType GetPrimType(const PrimExpr& expr) { return expr.ty(); }
-
 PrimType PromoteBinaryOpType(PrimType lhs_ty, PrimType rhs_ty) {
   DataType lhs_dtype = DType(lhs_ty);
   DataType rhs_dtype = DType(rhs_ty);
@@ -227,15 +225,15 @@ PrimType PromoteBinaryOpType(PrimType lhs_ty, PrimType rhs_ty) {
 void BinaryOpMatchTypes(PrimExpr& lhs, PrimExpr& rhs, Span span) {  // NOLINT(*)
   TVM_FFI_CHECK(lhs.defined(), ValueError) << "`lhs` is null in the binary operator";
   TVM_FFI_CHECK(rhs.defined(), ValueError) << "`rhs` is null in the binary operator";
-  PrimType lhs_ty = GetPrimType(lhs);
-  PrimType rhs_ty = GetPrimType(rhs);
+  PrimType lhs_ty = lhs.ty();
+  PrimType rhs_ty = rhs.ty();
   if (lhs_ty.same_as(rhs_ty) || DType(lhs_ty) == DType(rhs_ty)) return;
 
   BroadcastToMatchLanes(lhs, rhs);
   BroadcastToMatchLanes(rhs, lhs);
 
-  lhs_ty = GetPrimType(lhs);
-  rhs_ty = GetPrimType(rhs);
+  lhs_ty = lhs.ty();
+  rhs_ty = rhs.ty();
   DataType lhs_dtype = DType(lhs_ty);
   DataType rhs_dtype = DType(rhs_ty);
 
@@ -509,7 +507,7 @@ PrimExpr cast(const DataType& t, PrimExpr value, Span span) {
 PrimExpr reinterpret(PrimType t, PrimExpr value, Span span) {
   DataType target_dtype(t->dtype);
   DataType value_dtype = DType(value);
-  if (runtime::TypeEqual(value.ty()->dtype, t->dtype)) return value;
+  if (value.ty()->dtype == t->dtype) return value;
   if (!target_dtype.is_scalable_vector() && !value_dtype.is_scalable_vector()) {
     TVM_FFI_ICHECK(
         value_dtype.bits() * value_dtype.lanes() == target_dtype.bits() * target_dtype.lanes() ||

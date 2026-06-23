@@ -45,7 +45,7 @@
 #include <vector>
 
 #include "tvm/ir/expr.h"
-#include "tvm/runtime/data_type.h"
+#include "tvm/ffi/dtype.h"
 #include "tvm/tirx/expr.h"
 #include "tvm/tirx/op.h"
 #include "tvm/tirx/var.h"
@@ -1535,7 +1535,7 @@ inline Tensor gather(const Tensor& data, int axis, const Tensor& indices,
   }
   // Index tensors are validated by integer element kind; vector lane encoding is irrelevant here.
   DLDataType indices_dtype = indices->dtype;
-  TVM_FFI_ICHECK(runtime::IsIntDType(indices_dtype) || runtime::IsUIntDType(indices_dtype));
+  TVM_FFI_ICHECK(((indices_dtype).code == kDLInt) || ((indices_dtype).code == kDLUInt));
 
   ffi::Array<PrimExpr> out_shape;
   for (size_t i = 0; i < ndim_i; ++i) {
@@ -1605,7 +1605,7 @@ inline Tensor gather_nd(const Tensor& data, const Tensor& indices, int batch_dim
           // Index tensors are validated by integer element kind; vector lane encoding is
           // irrelevant for choosing whether an index cast is needed.
           DLDataType indices_dtype = indices->dtype;
-          if (runtime::IsIntDType(indices_dtype) || runtime::IsUIntDType(indices_dtype)) {
+          if (((indices_dtype).code == kDLInt) || ((indices_dtype).code == kDLUInt)) {
             real_indices.push_back(indices(indices_position));
           } else {
             real_indices.push_back(tvm::cast(tvm::PrimType::Int(32), indices(indices_position)));

@@ -339,7 +339,7 @@ using FBatchCompute = std::function<ffi::Array<PrimExpr>(const ffi::Array<Var>& 
  * \param dtype the data type of the tensor.
  * \param name The name of the Tensor.
  */
-TVM_DLL Tensor placeholder(ffi::Array<PrimExpr> shape, DLDataType dtype = runtime::FloatDType(32),
+TVM_DLL Tensor placeholder(ffi::Array<PrimExpr> shape, DLDataType dtype = DLDataType{kDLFloat, 32, 1},
                            std::string name = "placeholder");
 
 inline Tensor placeholder(ffi::Array<PrimExpr> shape, PrimType dtype,

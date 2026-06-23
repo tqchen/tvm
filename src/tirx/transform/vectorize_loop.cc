@@ -39,7 +39,7 @@
 #include <vector>
 
 #include "../../tirx/analysis/check_contains.h"
-#include "tvm/runtime/data_type.h"
+#include "tvm/ffi/dtype.h"
 #include "tvm/tirx/buffer.h"
 
 namespace tvm {

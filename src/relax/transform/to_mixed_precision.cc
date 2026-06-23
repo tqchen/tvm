@@ -348,7 +348,7 @@ class ToMixedPrecisionRewriter : public ExprMutator {
   bool AllFP16Castable(const ffi::Array<Expr>& args) {
     auto is_fp16 = [](Type ty) {
       if (auto tensor_ty = ty.as<TensorTypeNode>();
-          tensor_ty && tensor_ty->dtype == PrimType::Float(16)->dtype) {
+          tensor_ty && tensor_ty->dtype == (DLDataType{kDLFloat, 16, 1})) {
         return true;
       }
       return false;
@@ -361,7 +361,7 @@ class ToMixedPrecisionRewriter : public ExprMutator {
         return false;
       }
 
-      if (data.DataType() == runtime::FloatDType(16)) {
+      if (data.DataType() == DLDataType{kDLFloat, 16, 1}) {
         return true;
       }
 
@@ -374,17 +374,17 @@ class ToMixedPrecisionRewriter : public ExprMutator {
       std::vector<uint8_t> bytes(size_1d * elem_bytes);
       data.CopyToBytes(bytes.data(), bytes.size());
 
-      if (data.DataType() == runtime::FloatDType(32)) {
+      if (data.DataType() == DLDataType{kDLFloat, 32, 1}) {
         return CheckInFP16Range<float>(bytes, size_1d);
-      } else if (data.DataType() == runtime::FloatDType(64)) {
+      } else if (data.DataType() == DLDataType{kDLFloat, 64, 1}) {
         return CheckInFP16Range<double>(bytes, size_1d);
-      } else if (data.DataType() == runtime::IntDType(8)) {
+      } else if (data.DataType() == DLDataType{kDLInt, 8, 1}) {
         return CheckInFP16Range<std::int8_t>(bytes, size_1d);
-      } else if (data.DataType() == runtime::IntDType(16)) {
+      } else if (data.DataType() == DLDataType{kDLInt, 16, 1}) {
         return CheckInFP16Range<std::int16_t>(bytes, size_1d);
-      } else if (data.DataType() == runtime::IntDType(32)) {
+      } else if (data.DataType() == DLDataType{kDLInt, 32, 1}) {
         return CheckInFP16Range<std::int32_t>(bytes, size_1d);
-      } else if (data.DataType() == runtime::IntDType(64)) {
+      } else if (data.DataType() == DLDataType{kDLInt, 64, 1}) {
         return CheckInFP16Range<std::int64_t>(bytes, size_1d);
       }
       return false;

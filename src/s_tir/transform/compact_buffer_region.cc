@@ -615,7 +615,7 @@ class BufferCompactor : public StmtExprMutator {
       return alloc_buf;
     }
     const Buffer& new_buffer = it->second.new_buffer;
-    if (op->buffer->dtype->dtype != new_buffer->dtype->dtype) {
+    if (op->buffer->dtype != new_buffer->dtype) {
       return alloc_buf;
     }
     alloc_buf.CopyOnWrite()->buffer = new_buffer;

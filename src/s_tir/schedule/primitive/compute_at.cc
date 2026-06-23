@@ -268,7 +268,7 @@ class ScopeReconstructor : private StmtMutator {
       Range iter_dom = iter_doms[i].dom.CoverRange(block_->iter_vars[i]->dom);
       if (preserve_unit_loops || !is_one(iter_dom->extent)) {
         int bits = std::max(iter_dom->min.ty().bits(), iter_dom->extent.ty().bits());
-        Var var("ax" + std::to_string(loop_vars.size()), DataType::Int(bits));
+        Var var("ax" + std::to_string(loop_vars.size()), PrimType::Int(bits));
         loop_vars.push_back(var);
         loop_extents.push_back(analyzer->Simplify(iter_dom->extent));
         iter_values.push_back(iter_dom->min + var);

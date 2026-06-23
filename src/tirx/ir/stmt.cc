@@ -35,9 +35,9 @@ namespace tirx {
 
 namespace {
 
-DataType DType(const PrimType& ty) { return DataType(ty->dtype); }
+DLDataType DType(const PrimType& ty) { return ty->dtype; }
 
-DataType DType(const PrimExpr& expr) { return DType(expr.ty()); }
+DLDataType DType(const PrimExpr& expr) { return DType(expr.ty()); }
 
 bool SameDType(const PrimExpr& lhs, const PrimExpr& rhs) { return DType(lhs) == DType(rhs); }
 
@@ -419,7 +419,8 @@ BufferStore::BufferStore(Buffer buffer, PrimExpr value, ffi::Array<PrimExpr> ind
   }
 
   bool is_index_scalable = indices.empty() ? false : indices.back().ty().IsScalableVector();
-  bool is_buffer_dtype_scalable = buffer->dtype.IsScalableVector();
+  int16_t buffer_encoded_lanes = static_cast<int16_t>(buffer->dtype.lanes);
+  bool is_buffer_dtype_scalable = buffer_encoded_lanes < -1;
   PrimType value_ty = value.ty();
   bool is_value_dtype_scalable = value_ty.IsScalableVector();
 
@@ -437,7 +438,7 @@ BufferStore::BufferStore(Buffer buffer, PrimExpr value, ffi::Array<PrimExpr> ind
   }
 
   int index_lanes = indices.empty() ? 1 : GetLanesOrVScaleFactor(indices.back().ty());
-  int buffer_lanes = GetLanesOrVScaleFactor(buffer->dtype);
+  int buffer_lanes = is_buffer_dtype_scalable ? -buffer_encoded_lanes : buffer_encoded_lanes;
   int value_dtype_lanes = GetLanesOrVScaleFactor(value_ty);
 
   TVM_FFI_ICHECK_EQ(index_lanes * buffer_lanes, value_dtype_lanes)
@@ -446,28 +447,28 @@ BufferStore::BufferStore(Buffer buffer, PrimExpr value, ffi::Array<PrimExpr> ind
       << " buffer element lanes)";
 
   if (predicate.defined()) {
-    DataType predicate_dtype = DType(predicate.value());
-    int predicate_dtype_lanes = predicate_dtype.get_lanes_or_vscale_factor();
+    PrimType predicate_ty = predicate.value().ty();
+    int predicate_dtype_lanes = GetLanesOrVScaleFactor(predicate_ty);
     TVM_FFI_ICHECK_EQ(value_dtype_lanes, predicate_dtype_lanes)
         << "Got a predicate mask with " << predicate_dtype_lanes
         << " lanes, but trying to store a value with " << value_dtype_lanes
         << " lanes. The number of lanes must match.";
 
-    DataType predicate_element_dtype = predicate_dtype.element_of();
-    TVM_FFI_ICHECK(predicate_element_dtype.is_predicate_dtype())
-        << "Predicate mask elements must be boolean values, but got " << predicate_element_dtype
+    PrimType predicate_element_ty = predicate_ty.WithLanes(1);
+    TVM_FFI_ICHECK(predicate_element_ty.IsPredicate())
+        << "Predicate mask elements must be boolean values, but got " << predicate_element_ty
         << ".";
   }
 
   PrimType buffer_dtype = PrimType::Void();
   if (is_index_scalable || is_buffer_dtype_scalable) {
-    buffer_dtype =
-        PrimType::ScalableVector(buffer->dtype.code(), buffer->dtype.bits(), buffer_lanes * index_lanes);
+    buffer_dtype = PrimType::ScalableVector(static_cast<DLDataTypeCode>(buffer->dtype.code),
+                                            buffer->dtype.bits, buffer_lanes * index_lanes);
   } else {
-    buffer_dtype = buffer->dtype.WithLanes(buffer_lanes * index_lanes);
+    buffer_dtype = PrimType(buffer->dtype).WithLanes(buffer_lanes * index_lanes);
   }
-  DataType value_dtype = DType(value_ty);
-  if (buffer_dtype->dtype != PrimType(value_dtype)->dtype) {
+  DLDataType value_dtype = value_ty->dtype;
+  if (buffer_dtype->dtype != value_dtype) {
     TVM_FFI_THROW(TypeError) << "dtype mismatch on BufferStore: "                 //
                              << "buffer's dtype is `" << buffer->dtype            //
                              << "`, the lanes of indexing are: `" << index_lanes  //

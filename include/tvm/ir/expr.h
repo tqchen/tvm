@@ -30,7 +30,7 @@
 #include <tvm/ir/base_expr.h>
 #include <tvm/ir/cow.h>
 #include <tvm/ir/source_map.h>
-#include <tvm/runtime/data_type.h>
+#include <tvm/ffi/dtype.h>
 
 #include <algorithm>
 #include <functional>

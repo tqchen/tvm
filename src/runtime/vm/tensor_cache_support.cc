@@ -154,7 +154,7 @@ void CopyTensorFromBytes(Tensor param, const void* data, size_t nbytes,
 Tensor TensorCacheMetadata::FileRecord::ParamRecord::Load(
     Device device, const std::string* raw_data, ffi::Optional<Tensor>* staging_buffer) const {
   Tensor arr = Tensor::Empty(shape, dtype, device);
-  if (dtype == runtime::FloatDType(32) && format == "f32-to-bf16") {
+  if (dtype == DLDataType{kDLFloat, 32, 1} && format == "f32-to-bf16") {
     // decode bf16 to f32
     std::vector<uint16_t> buffer(nbytes / 2);
     std::vector<uint32_t> decoded(nbytes / 2);

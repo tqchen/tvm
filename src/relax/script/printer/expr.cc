@@ -87,15 +87,15 @@ ffi::Optional<ExprDoc> SpecialScalar(const runtime::Tensor& n, const AccessPath&
     return std::nullopt;
   }
 
-  if (dtype == runtime::IntDType(8)) {
+  if (dtype == DLDataType{kDLInt, 8, 1}) {
     return LiteralDoc::Int(*reinterpret_cast<const int8_t*>(data), p);
-  } else if (dtype == runtime::IntDType(16)) {
+  } else if (dtype == DLDataType{kDLInt, 16, 1}) {
     return LiteralDoc::Int(*reinterpret_cast<const int16_t*>(data), p);
-  } else if (dtype == runtime::IntDType(32)) {
+  } else if (dtype == DLDataType{kDLInt, 32, 1}) {
     return LiteralDoc::Int(*reinterpret_cast<const int32_t*>(data), p);
-  } else if (dtype == runtime::IntDType(64)) {
+  } else if (dtype == DLDataType{kDLInt, 64, 1}) {
     return LiteralDoc::Int(*reinterpret_cast<const int64_t*>(data), p);
-  } else if (dtype == runtime::FloatDType(16)) {
+  } else if (dtype == DLDataType{kDLFloat, 16, 1}) {
     // From IEEE-754 float16 definition
     //
     // Ref: https://en.wikipedia.org/wiki/Half-precision_floating-point_format
@@ -122,11 +122,11 @@ ffi::Optional<ExprDoc> SpecialScalar(const runtime::Tensor& n, const AccessPath&
     }
 
     return LiteralDoc::Float(value, p);
-  } else if (dtype == runtime::FloatDType(32)) {
+  } else if (dtype == DLDataType{kDLFloat, 32, 1}) {
     return LiteralDoc::Float(*reinterpret_cast<const float*>(data), p);
-  } else if (dtype == runtime::FloatDType(64)) {
+  } else if (dtype == DLDataType{kDLFloat, 64, 1}) {
     return LiteralDoc::Float(*reinterpret_cast<const double*>(data), p);
-  } else if (dtype == runtime::BoolDType()) {
+  } else if (dtype == DLDataType{kDLBool, 8, 1}) {
     return LiteralDoc::Boolean(*reinterpret_cast<const uint8_t*>(data), p);
   } else {
     return std::nullopt;
