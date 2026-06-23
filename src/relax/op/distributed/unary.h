@@ -50,7 +50,12 @@ Type InferDistTypeUnary(const Call& call, const BlockBuilder& ctx, FType f_compu
         << input_tensor_ty->dtype;
   }
   auto output_ty = ffi::make_object<TensorTypeNode>(*input_tensor_ty.get());
-  output_ty->dtype = ::tvm::relax::NormalizeTensorDType(f_compute_out_dtype(input_tensor_ty));
+  auto computed_dtype = f_compute_out_dtype(input_tensor_ty);
+  if constexpr (std::is_same_v<std::decay_t<decltype(computed_dtype)>, PrimType>) {
+    output_ty->dtype = computed_dtype;
+  } else {
+    output_ty->dtype = PrimType(computed_dtype);
+  }
   TensorType out_tensor_ty(output_ty);
   return distributed::DTensorType(out_tensor_ty, input_dtensor_ty->device_mesh,
                                   input_dtensor_ty->placement);

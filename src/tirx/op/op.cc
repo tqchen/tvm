@@ -804,11 +804,10 @@ PrimExpr right_shift(PrimExpr a, PrimExpr b, Span span) {
   BinaryOpMatchTypes(a, b, span);
   TVM_INDEX_CONST_PROPAGATION({
     PrimType result_ty = a.ty();
-    PrimType result_dtype = result_ty;
     if (pb)
-      TVM_FFI_ICHECK(pb->value >= 0 && pb->value < result_dtype.bits())
-          << "Shift amount must be non-negative and less than " << result_dtype.bits()
-          << " for type " << result_dtype;
+      TVM_FFI_ICHECK(pb->value >= 0 && pb->value < result_ty.bits())
+          << "Shift amount must be non-negative and less than " << result_ty.bits() << " for type "
+          << result_ty;
     if (pa && pb) {
       return IntImm(result_ty, (pa->value >> pb->value), span);
     }
@@ -827,11 +826,10 @@ PrimExpr left_shift(PrimExpr a, PrimExpr b, Span span) {
   BinaryOpMatchTypes(a, b, span);
   TVM_INDEX_CONST_PROPAGATION({
     PrimType result_ty = a.ty();
-    PrimType result_dtype = result_ty;
     if (pb)
-      TVM_FFI_ICHECK(pb->value >= 0 && pb->value < result_dtype.bits())
-          << "Shift amount must be non-negative and less than " << result_dtype.bits()
-          << " for type " << result_dtype;
+      TVM_FFI_ICHECK(pb->value >= 0 && pb->value < result_ty.bits())
+          << "Shift amount must be non-negative and less than " << result_ty.bits() << " for type "
+          << result_ty;
     if (pa && pb) return IntImm(result_ty, (pa->value << pb->value), span);
     if (pb) {
       if (pb->value == 0) return a;
