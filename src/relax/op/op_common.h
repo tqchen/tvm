@@ -32,6 +32,7 @@
 #include <tvm/s_tir/data_layout.h>
 
 #include <optional>
+#include <type_traits>
 #include <tuple>
 #include <utility>
 #include <vector>
@@ -184,12 +185,6 @@ std::tuple<ArgTypes...> GetArgType(const Call& call, const BlockBuilder& ctx) {
     tvm::ffi::reflection::GlobalDef().def("relax.op." OpRegName, OpName); \
   }
 
-/************ Utilities ************/
-
-inline PrimType NormalizeTensorDType(DLDataType dtype) { return PrimType(dtype); }
-
-inline PrimType NormalizeTensorDType(const PrimType& dtype) { return dtype; }
-
 /*!
  * \brief Infer the type for unary elementwise ops.
  * \param call The context Call to the operator.
@@ -212,7 +207,12 @@ inline Type InferTypeUnary(const Call& call, const BlockBuilder& ctx, FType f_co
         << input_ty->dtype;
   }
   auto output_ty = ffi::make_object<TensorTypeNode>(*input_ty.get());
-  output_ty->dtype = NormalizeTensorDType(f_compute_out_dtype(input_ty));
+  auto computed_dtype = f_compute_out_dtype(input_ty);
+  if constexpr (std::is_same_v<std::decay_t<decltype(computed_dtype)>, PrimType>) {
+    output_ty->dtype = computed_dtype;
+  } else {
+    output_ty->dtype = PrimType(computed_dtype);
+  }
   if (call->ty_args.size() > 0) {
     auto defined_ty = call->ty_args[0].as<TensorTypeNode>();
     TVM_FFI_ICHECK(defined_ty);
