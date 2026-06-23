@@ -638,7 +638,7 @@ class StorageLegalizer : public StmtExprMutator {
       return ffi::GetRef<Stmt>(op);
     } else {
       if (MatchType(op->value.ty())) {
-        TVM_FFI_ICHECK(new_buf->dtype.IsUInt());
+        TVM_FFI_ICHECK(new_buf->dtype.MatchesCode(DLDataTypeCode::kDLUInt));
       }
       TVM_FFI_ICHECK(!op->predicate.defined())
           << "Predicated buffer store is not currently supported in "

@@ -118,7 +118,7 @@ class IntrinInjecter : public tvm::arith::IRMutatorWithAnalyzer {
     if (op == nullptr) return ret;
     int shift;
     PrimType dtype = op->ty();
-    TVM_FFI_ICHECK(dtype.IsInt() || dtype.IsUInt());
+    TVM_FFI_ICHECK(dtype.MatchesCode(DLDataTypeCode::kDLInt, DLDataTypeCode::kDLUInt));
 
     if (support_bitwise_op_ && is_const_power_of_two_integer(op->b, &shift)) {
       // lower to right shift if possible.
@@ -179,7 +179,7 @@ class IntrinInjecter : public tvm::arith::IRMutatorWithAnalyzer {
     // Lower floordiv to native truncdiv.
     int shift;
     PrimType dtype = op->ty();
-    TVM_FFI_ICHECK(dtype.IsInt() || dtype.IsUInt());
+    TVM_FFI_ICHECK(dtype.MatchesCode(DLDataTypeCode::kDLInt, DLDataTypeCode::kDLUInt));
 
     if (support_bitwise_op_ && is_const_power_of_two_integer(op->b, &shift)) {
       // lower to masking if possible.

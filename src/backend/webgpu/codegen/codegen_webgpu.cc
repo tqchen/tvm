@@ -189,7 +189,7 @@ runtime::FunctionInfo CodeGenWebGPU::AddFunction(const PrimFunc& f, bool skip_re
              "PointerType, "
           << "and must point to a PrimType";
       PrimType value_storage_type(prim->dtype);
-      if (value_storage_type.IsBool()) {
+      if (value_storage_type.MatchesCode(DLDataTypeCode::kDLBool)) {
         // We need a physically addressable buffer type to support boolean tensors.
         // The loaded byte is cast to bool inside the LoadNode visitor below.
         value_storage_type = boolean_storage_type_.WithLanes(value_storage_type.lanes());
@@ -325,7 +325,7 @@ void CodeGenWebGPU::PrintType(DLDataType raw_t, std::ostream& os) {  // NOLINT(*
     TVM_FFI_ICHECK(lanes >= 2 && lanes <= 4)
         << "CodeGenWebGPU: only allows vector with lanes in {2, 3, 4}";
     // Currently WebGPU doesn't support `i8` and an `int8x4` is represented as a `u32`.
-    if (t.IsInt() && t.bits() == 8 && lanes == 4) {
+    if (t.MatchesCode(DLDataTypeCode::kDLInt) && t.bits() == 8 && lanes == 4) {
       os << "u32";
       return;
     }
@@ -339,10 +339,10 @@ void CodeGenWebGPU::PrintType(DLDataType raw_t, std::ostream& os) {  // NOLINT(*
       enable_fp16_ = true;
     }
     os << "f" << t.bits();
-  } else if (t.IsUInt()) {
+  } else if (t.MatchesCode(DLDataTypeCode::kDLUInt)) {
     TVM_FFI_ICHECK(t.bits() != 64) << "CodeGenWebGPU: do not support u64";
     os << "u" << t.bits();
-  } else if (t.IsInt()) {
+  } else if (t.MatchesCode(DLDataTypeCode::kDLInt)) {
     TVM_FFI_ICHECK(t.bits() != 64) << "CodeGenWebGPU: do not support i64";
     os << "i" << t.bits();
   } else {
@@ -496,10 +496,10 @@ void CodeGenWebGPU::VisitExpr_(const LetNode* op, std::ostream& os) {  // NOLINT
 void CodeGenWebGPU::VisitExpr_(const IntImmNode* op, std::ostream& os) {  // NOLINT(*)
   if (op->ty().bits() == 32) {
     std::ostringstream temp;
-    if (op->ty().IsInt()) {
+    if (op->ty().MatchesCode(DLDataTypeCode::kDLInt)) {
       temp << op->value << "i";
     } else {
-      TVM_FFI_ICHECK(op->ty().IsUInt());
+      TVM_FFI_ICHECK(op->ty().MatchesCode(DLDataTypeCode::kDLUInt));
       temp << op->value << "u";
     }
     this->MarkConst(temp.str());

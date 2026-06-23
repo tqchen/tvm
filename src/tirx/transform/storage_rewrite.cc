@@ -1321,7 +1321,7 @@ class VectorTypeAccessChecker : public StmtExprVisitor {
     TVM_FFI_ICHECK(info_map_.find(buffer.get()) == info_map_.end())
         << "Array declaration of " << buffer->name_hint << " occurred multiple times.";
 
-    if (element_dtype.IsBool()) {
+    if (element_dtype.MatchesCode(DLDataTypeCode::kDLBool)) {
       element_dtype = PrimType::Int(8, element_dtype.lanes());
     }
     info_map_.insert_or_assign(buffer.get(),
@@ -1353,7 +1353,7 @@ class VectorTypeAccessChecker : public StmtExprVisitor {
 
     BufferVarInfo& var_info = it->second;
 
-    if (value_dtype.WithLanes(1).IsBool()) {
+    if (value_dtype.WithLanes(1).MatchesCode(DLDataTypeCode::kDLBool)) {
       value_dtype = PrimType::Int(8, value_dtype.lanes());
     }
 

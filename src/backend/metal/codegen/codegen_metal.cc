@@ -245,8 +245,8 @@ void CodeGenMetal::PrintType(DLDataType raw_t, std::ostream& os) {  // NOLINT(*)
       os << lanes;
       return;
     }
-  } else if (t.IsUInt() || t.IsInt()) {
-    if (t.IsUInt()) {
+  } else if (t.MatchesCode(DLDataTypeCode::kDLUInt, DLDataTypeCode::kDLInt)) {
+    if (t.MatchesCode(DLDataTypeCode::kDLUInt)) {
       os << 'u';
     }
     switch (t.bits()) {

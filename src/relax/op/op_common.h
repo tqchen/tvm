@@ -325,7 +325,9 @@ inline DLDataType InferBinaryArithOpOutDtype(const Call& call, const BlockBuilde
 
   if (lhs_dtype.IsVoid() || rhs_dtype.IsVoid()) {
     return DLDataType{kDLOpaqueHandle, 0, 0};
-  } else if (lhs_dtype->dtype != rhs_dtype->dtype && !lhs_dtype.IsBool() && !rhs_dtype.IsBool()) {
+  } else if (lhs_dtype->dtype != rhs_dtype->dtype &&
+             !lhs_dtype.MatchesCode(DLDataTypeCode::kDLBool) &&
+             !rhs_dtype.MatchesCode(DLDataTypeCode::kDLBool)) {
     TVM_FFI_VISIT_THROW(TypeError, call)
         << "Binary operators must have the same datatype for both operands.  "
         << "However, " << call << " uses datatype " << lhs_dtype << " on the LHS (Type of "

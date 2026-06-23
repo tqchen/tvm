@@ -64,7 +64,7 @@ struct CUDAMath {
       } else {
         return "h" + name;
       }
-    } else if (t.IsInt() || t.IsUInt()) {
+    } else if (t.MatchesCode(DLDataTypeCode::kDLInt, DLDataTypeCode::kDLUInt)) {
       switch (t.bits()) {
         case 32:
           return "__" + name;
@@ -111,7 +111,7 @@ struct CUDAFastMathTan : public CUDAMath {
 
 struct CUDAPopcount {
   std::string operator()(PrimType t, std::string name) const {
-    if (t.IsUInt()) {
+    if (t.MatchesCode(DLDataTypeCode::kDLUInt)) {
       switch (t.bits()) {
         case 32:
           return "__popc";

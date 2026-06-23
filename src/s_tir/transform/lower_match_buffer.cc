@@ -250,7 +250,7 @@ class MatchBufferLower : public StmtExprMutator {
     PrimType value_ty = value.ty();
     if (arg_ty->dtype != value_ty->dtype) {
       bool same_lanes = arg_ty.lanes() == value_ty.lanes();
-      if (arg_ty.IsInt() && value_ty.IsInt() && same_lanes) {
+      if (arg_ty.MatchesCode(DLDataTypeCode::kDLInt) && value_ty.MatchesCode(DLDataTypeCode::kDLInt) && same_lanes) {
         value = cast(arg_ty, value);
       } else {
         TVM_FFI_ICHECK_EQ(arg_ty->dtype, value_ty->dtype)
