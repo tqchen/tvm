@@ -367,7 +367,8 @@ class BufferAccessRegionCollector : public StmtExprVisitor {
       }
       // Step 2. Relax the access region
       auto normalize_pred = [](const PrimExpr& pred) {
-        if (pred.ty().IsPredicate()) return pred;
+        PrimType pred_ty = pred.ty();
+        if (pred_ty.MatchesCode(DLDataTypeCode::kDLBool)) return pred;
         return pred != IntImm(pred.ty(), 0);
       };
       PrimExpr predicate = dom_analyzer_->Simplify(std::accumulate(

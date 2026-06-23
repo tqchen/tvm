@@ -82,7 +82,7 @@ TOPI_DECLARE_UNARY_OP(isinf);
 inline Tensor fast_tanh_float(const Tensor& in, std::string name, std::string tag) {
   // Clamp the inputs to the range [-9, 9] since anything outside
   // this range is +/-1.0f in single-precision.
-  PrimType input_type(in->GetDataType());
+  PrimType input_type = in->GetDataType();
   auto x = maximum(MakeConst(input_type, -9.0), minimum(MakeConst(input_type, 9.0), in));
 
   // The monomial coefficients of the numerator polynomial (odd).
@@ -131,7 +131,7 @@ inline Tensor fast_tanh_float(const Tensor& in, std::string name, std::string ta
  */
 inline Tensor fast_tanh(const Tensor& x, std::string name = "T_fast_tanh",
                         std::string tag = kElementWise) {
-  if (PrimType(x->GetDataType()).MatchesElementType(DLDataTypeCode::kDLFloat, 32)) {
+  if (x->GetDataType().MatchesElementType(DLDataTypeCode::kDLFloat, 32)) {
     // invoke fast_tanh_float implementation
     return fast_tanh_float(x, name, tag);
   } else {
@@ -234,7 +234,7 @@ inline Tensor rsqrt(const Tensor& x, std::string name = "tensor", std::string ta
   return compute(
       x->shape,
       [&](const ffi::Array<Var>& i) {
-        PrimExpr one = MakeConst(PrimType(x->GetDataType()), 1);
+        PrimExpr one = MakeConst(x->GetDataType(), 1);
         return one / tvm::sqrt(x(i));
       },
       name, tag);
@@ -392,7 +392,7 @@ inline Tensor full(const ffi::Array<PrimExpr>& shape, PrimType dtype, const Prim
  */
 inline Tensor full_like(const Tensor& x, const PrimExpr fill_value,
                         std::string name = "T_full_like", std::string tag = kElementWise) {
-  PrimExpr ev = cast(PrimType(x->GetDataType()), fill_value);
+  PrimExpr ev = cast(x->GetDataType(), fill_value);
   return compute(x->shape, [&](const ffi::Array<Var>& i) { return ev; }, name, tag);
 }
 
@@ -461,7 +461,7 @@ inline Tensor fast_exp_float32(const Tensor& _x, std::string name, std::string t
  */
 inline Tensor fast_exp(const Tensor& x, std::string name = "T_fast_exp",
                        std::string tag = kElementWise) {
-  if (PrimType(x->GetDataType()).MatchesElementType(DLDataTypeCode::kDLFloat, 32)) {
+  if (x->GetDataType().MatchesElementType(DLDataTypeCode::kDLFloat, 32)) {
     auto ret = fast_exp_float32(x, name, tag);
     return ret;
   } else {

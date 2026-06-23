@@ -32,55 +32,11 @@ namespace tvm {
 
 namespace {
 
-bool IsFloat8Code(DLDataTypeCode code) {
-  return code == DLDataTypeCode::kDLFloat8_e3m4 || code == DLDataTypeCode::kDLFloat8_e4m3 ||
-         code == DLDataTypeCode::kDLFloat8_e4m3b11fnuz ||
-         code == DLDataTypeCode::kDLFloat8_e4m3fn || code == DLDataTypeCode::kDLFloat8_e4m3fnuz ||
-         code == DLDataTypeCode::kDLFloat8_e5m2 || code == DLDataTypeCode::kDLFloat8_e5m2fnuz ||
-         code == DLDataTypeCode::kDLFloat8_e8m0fnu;
-}
-
-bool IsFloat6Code(DLDataTypeCode code) {
-  return code == DLDataTypeCode::kDLFloat6_e2m3fn || code == DLDataTypeCode::kDLFloat6_e3m2fn;
-}
-
-void ValidatePrimTypeSpec(DLDataTypeCode code, int bits, int16_t encoded_lanes) {
-  TVM_FFI_ICHECK_GE(bits, 0);
-  TVM_FFI_ICHECK_LT(bits, 256);
-  if (encoded_lanes < 0) {
-    TVM_FFI_ICHECK_LT(encoded_lanes, -1) << "Invalid scalable vector vscale factor";
-  }
-  if (code == DLDataTypeCode::kDLBfloat) {
-    TVM_FFI_ICHECK_EQ(bits, 16);
-  }
-  if (IsFloat8Code(code)) {
-    TVM_FFI_ICHECK_EQ(bits, 8);
-  }
-  if (IsFloat6Code(code)) {
-    TVM_FFI_ICHECK_EQ(bits, 6);
-  }
-  if (code == DLDataTypeCode::kDLFloat4_e2m1fn) {
-    TVM_FFI_ICHECK_EQ(bits, 4);
-  }
-}
-
-DLDataType MakeDLDataType(DLDataTypeCode code, int bits, int lanes, bool is_scalable = false) {
-  if (is_scalable) {
-    TVM_FFI_ICHECK_GT(lanes, 1) << "Invalid value for vscale factor " << lanes;
-  } else {
-    TVM_FFI_ICHECK_GE(lanes, 0);
-  }
+DLDataType ScalableVectorDType(DLDataTypeCode code, int bits, int lanes) {
+  TVM_FFI_ICHECK_GT(lanes, 1) << "Invalid value for vscale factor " << lanes;
   TVM_FFI_ICHECK_LT(lanes, 32768);
-  int16_t encoded_lanes = is_scalable ? static_cast<int16_t>(-lanes) : static_cast<int16_t>(lanes);
-  ValidatePrimTypeSpec(code, bits, encoded_lanes);
   return DLDataType{static_cast<uint8_t>(code), static_cast<uint8_t>(bits),
-                    static_cast<uint16_t>(encoded_lanes)};
-}
-
-ffi::ObjectPtr<PrimTypeNode> MakePrimTypeNode(DLDataType dtype) {
-  ffi::ObjectPtr<PrimTypeNode> n = ffi::make_object<PrimTypeNode>();
-  n->dtype = dtype;
-  return n;
+                    static_cast<uint16_t>(-lanes)};
 }
 
 uint32_t PackDataTypeKey(DLDataType dtype) {
@@ -104,7 +60,8 @@ ffi::ObjectPtr<PrimTypeNode> GetCachedPrimTypeNode(DLDataType dtype) {
     return it->second;
   }
 
-  ffi::ObjectPtr<PrimTypeNode> node = MakePrimTypeNode(dtype);
+  ffi::ObjectPtr<PrimTypeNode> node = ffi::make_object<PrimTypeNode>();
+  node->dtype = dtype;
   return cache.emplace(key, std::move(node)).first->second;
 }
 
@@ -126,56 +83,56 @@ TVM_FFI_STATIC_INIT_BLOCK() {
 PrimType::PrimType(DLDataType dtype) { data_ = GetCachedPrimTypeNode(dtype); }
 
 PrimType::PrimType(DLDataTypeCode code, int bits, int lanes)
-    : PrimType(MakeDLDataType(code, bits, lanes)) {}
+    : PrimType(DLDataType{static_cast<uint8_t>(code), static_cast<uint8_t>(bits),
+                          static_cast<uint16_t>(lanes)}) {}
 
 PrimType PrimType::Int(int bits, int lanes) {
   if (lanes == 1) {
     if (bits == 32) {
-      thread_local PrimType i32_ty(MakeDLDataType(DLDataTypeCode::kDLInt, 32, 1));
+      static const PrimType i32_ty(DLDataType{kDLInt, 32, 1});
       return i32_ty;
     }
     if (bits == 64) {
-      thread_local PrimType i64_ty(MakeDLDataType(DLDataTypeCode::kDLInt, 64, 1));
+      static const PrimType i64_ty(DLDataType{kDLInt, 64, 1});
       return i64_ty;
     }
   }
-  return PrimType(MakeDLDataType(DLDataTypeCode::kDLInt, bits, lanes));
+  return PrimType(DLDataType{kDLInt, static_cast<uint8_t>(bits), static_cast<uint16_t>(lanes)});
 }
 
 PrimType PrimType::UInt(int bits, int lanes) {
-  return PrimType(MakeDLDataType(DLDataTypeCode::kDLUInt, bits, lanes));
+  return PrimType(DLDataType{kDLUInt, static_cast<uint8_t>(bits), static_cast<uint16_t>(lanes)});
 }
 
 PrimType PrimType::Float(int bits, int lanes) {
   if (bits == 32 && lanes == 1) {
-    thread_local PrimType f32_ty(MakeDLDataType(DLDataTypeCode::kDLFloat, 32, 1));
+    static const PrimType f32_ty(DLDataType{kDLFloat, 32, 1});
     return f32_ty;
   }
-  return PrimType(MakeDLDataType(DLDataTypeCode::kDLFloat, bits, lanes));
+  return PrimType(DLDataType{kDLFloat, static_cast<uint8_t>(bits), static_cast<uint16_t>(lanes)});
 }
 
 PrimType PrimType::BFloat(int bits, int lanes) {
-  return PrimType(MakeDLDataType(DLDataTypeCode::kDLBfloat, bits, lanes));
+  return PrimType(DLDataType{kDLBfloat, static_cast<uint8_t>(bits), static_cast<uint16_t>(lanes)});
 }
 
 PrimType PrimType::Bool(int lanes) {
   if (lanes == 1) {
-    thread_local PrimType bool_ty(MakeDLDataType(DLDataTypeCode::kDLBool, 8, 1));
+    static const PrimType bool_ty(DLDataType{kDLBool, 8, 1});
     return bool_ty;
   }
-  return PrimType(MakeDLDataType(DLDataTypeCode::kDLBool, 8, lanes));
+  return PrimType(DLDataType{kDLBool, 8, static_cast<uint16_t>(lanes)});
 }
 
 PrimType PrimType::Handle(int bits, int lanes) {
-  return PrimType(MakeDLDataType(DLDataTypeCode::kDLOpaqueHandle, bits, lanes));
+  return PrimType(
+      DLDataType{kDLOpaqueHandle, static_cast<uint8_t>(bits), static_cast<uint16_t>(lanes)});
 }
 
-PrimType PrimType::Void() {
-  return PrimType(MakeDLDataType(DLDataTypeCode::kDLOpaqueHandle, 0, 0));
-}
+PrimType PrimType::Void() { return PrimType(DLDataType{kDLOpaqueHandle, 0, 0}); }
 
 PrimType PrimType::ScalableVector(DLDataTypeCode code, int bits, int lanes) {
-  return PrimType(MakeDLDataType(code, bits, lanes, /*is_scalable=*/true));
+  return PrimType(ScalableVectorDType(code, bits, lanes));
 }
 
 TVM_FFI_STATIC_INIT_BLOCK() {

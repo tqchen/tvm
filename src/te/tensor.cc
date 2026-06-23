@@ -100,7 +100,7 @@ Tensor Operation::output(size_t i) const {
   auto node = ffi::make_object<TensorNode>();
   node->op = *this;
   node->value_index = i;
-  node->dtype = (*this)->output_prim_type(i);
+  node->dtype = (*this)->output_dtype(i);
   node->shape = (*this)->output_shape(i);
   return Tensor(node);
 }

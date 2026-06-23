@@ -159,7 +159,7 @@ Type InferTypeOnesZeros(const Call& call, const BlockBuilder& ctx) {
         << call->args[0]->ty->GetTypeKey();
   }
   const auto* attrs = call->attrs.as<InitAttrs>();
-  return TensorType(/*shape=*/call->args[0], attrs->dtype);
+  return TensorType(/*shape=*/call->args[0], PrimType(attrs->dtype));
 }
 
 // Structure info inference for ones_like and zeros_like

@@ -117,7 +117,7 @@ AssertStmt::AssertStmt(PrimExpr condition, StringImm error_kind,
                        ffi::Array<StringImm> message_parts, Span span) {
   TVM_FFI_ICHECK(condition.defined());
   PrimType condition_ty = condition.ty();
-  TVM_FFI_ICHECK(condition_ty.IsPredicate())
+  TVM_FFI_ICHECK(condition_ty.MatchesCode(DLDataTypeCode::kDLBool))
       << "AssertStmt should have boolean condition, "
       << "but received " << condition << " with dtype " << condition_ty;
   TVM_FFI_ICHECK(error_kind.defined());
@@ -445,7 +445,8 @@ BufferStore::BufferStore(Buffer buffer, PrimExpr value, ffi::Array<PrimExpr> ind
         << " lanes. The number of lanes must match.";
 
     PrimType predicate_element_ty = predicate_ty.WithLanes(1);
-    TVM_FFI_ICHECK(predicate_element_ty.IsPredicate())
+    TVM_FFI_ICHECK(predicate_element_ty.MatchesCode(DLDataTypeCode::kDLBool) ||
+                   predicate_element_ty.MatchesElementType(DLDataTypeCode::kDLUInt, 1))
         << "Predicate mask elements must be boolean values, but got " << predicate_element_ty
         << ".";
   }
@@ -667,9 +668,7 @@ SBlockRealize::SBlockRealize(ffi::Array<PrimExpr> values, PrimExpr predicate, SB
   TVM_FFI_CHECK_EQ(block->iter_vars.size(), values.size(), ValueError)
       << "BlockRealize needs to have the same number of iter_vars and binding values";
   PrimType predicate_ty = predicate.ty();
-  TVM_FFI_CHECK(predicate_ty.IsPredicate() ||
-                    (predicate_ty.MatchesCode(DLDataTypeCode::kDLUInt) && predicate_ty.bits() == 1),
-                TypeError)
+  TVM_FFI_CHECK(predicate_ty.MatchesCode(DLDataTypeCode::kDLBool), TypeError)
       << "Expect Block.predicate to be a bool expression";
   ffi::ObjectPtr<SBlockRealizeNode> node = ffi::make_object<SBlockRealizeNode>();
   node->iter_values = std::move(values);

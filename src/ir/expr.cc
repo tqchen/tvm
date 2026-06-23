@@ -36,22 +36,6 @@
 
 namespace tvm {
 
-namespace {
-
-bool IsFloat8Code(DLDataTypeCode code) {
-  return code == DLDataTypeCode::kDLFloat8_e3m4 || code == DLDataTypeCode::kDLFloat8_e4m3 ||
-         code == DLDataTypeCode::kDLFloat8_e4m3b11fnuz ||
-         code == DLDataTypeCode::kDLFloat8_e4m3fn || code == DLDataTypeCode::kDLFloat8_e4m3fnuz ||
-         code == DLDataTypeCode::kDLFloat8_e5m2 || code == DLDataTypeCode::kDLFloat8_e5m2fnuz ||
-         code == DLDataTypeCode::kDLFloat8_e8m0fnu;
-}
-
-bool IsFloat6Code(DLDataTypeCode code) {
-  return code == DLDataTypeCode::kDLFloat6_e2m3fn || code == DLDataTypeCode::kDLFloat6_e3m2fn;
-}
-
-}  // namespace
-
 TVM_FFI_STATIC_INIT_BLOCK() {
   BaseExprNode::RegisterReflection();
   PrimExprNode::RegisterReflection();
@@ -75,8 +59,8 @@ IntImm::IntImm(PrimType value_ty, int64_t value, Span span) {
   int32_t bits = value_ty.bits();
   TVM_FFI_CHECK(!value_ty.IsScalableVector() && !value_ty.IsFixedLengthVector(), ValueError)
       << "IntImm can only take scalar, but " << runtime_dtype << " was supplied.";
-  TVM_FFI_CHECK(code == DLDataTypeCode::kDLInt || code == DLDataTypeCode::kDLUInt ||
-                    code == DLDataTypeCode::kDLBool,
+  TVM_FFI_CHECK(value_ty.MatchesCode(DLDataTypeCode::kDLInt, DLDataTypeCode::kDLUInt,
+                                     DLDataTypeCode::kDLBool),
                 ValueError)
       << "IntImm supports only int or uint or bool type, but " << runtime_dtype << " was supplied.";
   if (code == DLDataTypeCode::kDLUInt) {
@@ -118,9 +102,14 @@ FloatImm::FloatImm(PrimType value_ty, double value, Span span) {
       << "FloatImm can only take scalar.";
 
   TVM_FFI_CHECK(
-      code == DLDataTypeCode::kDLFloat ||
-          value_ty.MatchesElementType(DLDataTypeCode::kDLBfloat, 16) || IsFloat8Code(code) ||
-          IsFloat6Code(code) || value_ty.MatchesElementType(DLDataTypeCode::kDLFloat4_e2m1fn, 4) ||
+      value_ty.MatchesCode(DLDataTypeCode::kDLFloat, DLDataTypeCode::kDLFloat8_e3m4,
+                           DLDataTypeCode::kDLFloat8_e4m3, DLDataTypeCode::kDLFloat8_e4m3b11fnuz,
+                           DLDataTypeCode::kDLFloat8_e4m3fn, DLDataTypeCode::kDLFloat8_e4m3fnuz,
+                           DLDataTypeCode::kDLFloat8_e5m2, DLDataTypeCode::kDLFloat8_e5m2fnuz,
+                           DLDataTypeCode::kDLFloat8_e8m0fnu, DLDataTypeCode::kDLFloat6_e2m3fn,
+                           DLDataTypeCode::kDLFloat6_e3m2fn) ||
+          value_ty.MatchesElementType(DLDataTypeCode::kDLBfloat, 16) ||
+          value_ty.MatchesElementType(DLDataTypeCode::kDLFloat4_e2m1fn, 4) ||
           static_cast<int>(code) >= static_cast<int>(ffi::DLExtDataTypeCode::kDLExtCustomBegin),
       ValueError)
       << "FloatImm supports only float, but " << runtime_dtype << " was supplied.";
@@ -142,7 +131,11 @@ FloatImm::FloatImm(PrimType value_ty, double value, Span span) {
           << "Literal value " << value << " exceeds minimum of " << runtime_dtype;
       TVM_FFI_CHECK_LE(value, support::kMaxBFloat16, ValueError)
           << "Literal value " << value << " exceeds maximum of " << runtime_dtype;
-    } else if (IsFloat8Code(code)) {
+    } else if (value_ty.MatchesCode(
+                   DLDataTypeCode::kDLFloat8_e3m4, DLDataTypeCode::kDLFloat8_e4m3,
+                   DLDataTypeCode::kDLFloat8_e4m3b11fnuz, DLDataTypeCode::kDLFloat8_e4m3fn,
+                   DLDataTypeCode::kDLFloat8_e4m3fnuz, DLDataTypeCode::kDLFloat8_e5m2,
+                   DLDataTypeCode::kDLFloat8_e5m2fnuz, DLDataTypeCode::kDLFloat8_e8m0fnu)) {
       double bound = 0.0;
       bool nonneg = false;
 
@@ -189,7 +182,8 @@ FloatImm::FloatImm(PrimType value_ty, double value, Span span) {
       TVM_FFI_CHECK_LE(value, bound, ValueError)
           << "Literal value " << value << " exceeds maximum of " << runtime_dtype;
 
-    } else if (IsFloat6Code(code)) {
+    } else if (value_ty.MatchesCode(DLDataTypeCode::kDLFloat6_e2m3fn,
+                                    DLDataTypeCode::kDLFloat6_e3m2fn)) {
       double bound =
           (code == DLDataTypeCode::kDLFloat6_e2m3fn) ? support::kMaxE2M3FN : support::kMaxE3M2FN;
       TVM_FFI_CHECK_GE(value, -bound, ValueError)

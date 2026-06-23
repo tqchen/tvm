@@ -440,8 +440,8 @@ And::And(PrimExpr a, PrimExpr b, Span span) {
   TVM_FFI_CHECK(b.defined(), ValueError) << "b is undefined";
   PrimType a_ty = a.ty();
   PrimType b_ty = b.ty();
-  TVM_FFI_ICHECK(a_ty.IsPredicate());
-  TVM_FFI_ICHECK(b_ty.IsPredicate());
+  TVM_FFI_ICHECK(a_ty.MatchesCode(DLDataTypeCode::kDLBool));
+  TVM_FFI_ICHECK(b_ty.MatchesCode(DLDataTypeCode::kDLBool));
   TVM_FFI_CHECK(a_ty == b_ty, TypeError) << "mismatched types";
 
   ffi::ObjectPtr<AndNode> node = ffi::make_object<AndNode>();
@@ -464,8 +464,8 @@ Or::Or(PrimExpr a, PrimExpr b, Span span) {
   TVM_FFI_CHECK(b.defined(), ValueError) << "b is undefined";
   PrimType a_ty = a.ty();
   PrimType b_ty = b.ty();
-  TVM_FFI_ICHECK(a_ty.IsPredicate());
-  TVM_FFI_ICHECK(b_ty.IsPredicate());
+  TVM_FFI_ICHECK(a_ty.MatchesCode(DLDataTypeCode::kDLBool));
+  TVM_FFI_ICHECK(b_ty.MatchesCode(DLDataTypeCode::kDLBool));
   TVM_FFI_CHECK(a_ty == b_ty, TypeError) << "mismatched types";
 
   ffi::ObjectPtr<OrNode> node = ffi::make_object<OrNode>();
@@ -486,7 +486,7 @@ TVM_FFI_STATIC_INIT_BLOCK() {
 Not::Not(PrimExpr a, Span span) {
   TVM_FFI_CHECK(a.defined(), ValueError) << "a is undefined";
   PrimType a_ty = a.ty();
-  TVM_FFI_ICHECK(a_ty.IsPredicate());
+  TVM_FFI_ICHECK(a_ty.MatchesCode(DLDataTypeCode::kDLBool));
 
   ffi::ObjectPtr<NotNode> node = ffi::make_object<NotNode>();
   node->BaseExprNode::ty = PrimType(DLDataType{kDLBool, 8, a_ty->dtype.lanes});
@@ -508,7 +508,7 @@ Select::Select(PrimExpr condition, PrimExpr true_value, PrimExpr false_value, Sp
   PrimType condition_ty = condition.ty();
   PrimType true_ty = true_value.ty();
   PrimType false_ty = false_value.ty();
-  TVM_FFI_ICHECK(condition_ty.IsPredicate());
+  TVM_FFI_ICHECK(condition_ty.MatchesCode(DLDataTypeCode::kDLBool));
   TVM_FFI_ICHECK(GetLanesOrVScaleFactor(condition_ty) == GetLanesOrVScaleFactor(true_ty) ||
                  condition_ty.IsScalar());
   TVM_FFI_CHECK(false_ty == true_ty, TypeError)
@@ -911,7 +911,8 @@ BufferLoad::BufferLoad(Buffer buffer, ffi::Array<PrimExpr> indices,
         << " lanes, but trying to load a vector with " << index_lanes
         << " lanes. The number of lanes must match.";
 
-    TVM_FFI_ICHECK(predicate_ty.IsPredicate())
+    TVM_FFI_ICHECK(predicate_ty.MatchesCode(DLDataTypeCode::kDLBool) ||
+                   predicate_ty.MatchesElementType(DLDataTypeCode::kDLUInt, 1))
         << "Predicate mask elements must be boolean values, but got " << predicate_ty->dtype << ".";
   }
 
@@ -935,7 +936,7 @@ TVM_FFI_STATIC_INIT_BLOCK() {
 // ProducerLoad
 ProducerLoad::ProducerLoad(DataProducer producer, ffi::Array<PrimExpr> indices, Span span) {
   ffi::ObjectPtr<ProducerLoadNode> node = ffi::make_object<ProducerLoadNode>();
-  node->BaseExprNode::ty = PrimType(producer->GetDataType());
+  node->BaseExprNode::ty = producer->GetDataType();
   node->producer = std::move(producer);
   node->indices = std::move(indices);
   node->span = std::move(span);

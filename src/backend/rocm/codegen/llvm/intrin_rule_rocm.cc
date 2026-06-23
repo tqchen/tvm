@@ -57,7 +57,7 @@ inline PrimExpr DispatchPureExternOCML(const PrimExpr& e) {
     new_args.push_back(arg);
   }
 
-  return Call(ffi::GetRef<PrimExpr>(call).ty(), builtin::call_pure_extern(), new_args);
+  return Call(call->ty(), builtin::call_pure_extern(), new_args);
 }
 
 inline PrimExpr DispatchShuffle(const PrimExpr& e) {

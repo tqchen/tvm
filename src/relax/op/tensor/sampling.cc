@@ -85,7 +85,7 @@ Type InferTypeMultinomialFromUniform(const Call& call, const BlockBuilder& ctx) 
   }
   if (prob_ty->IsUnknownNdim() || uniform_sample_ty->IsUnknownNdim() ||
       sample_indices_ty->IsUnknownNdim()) {
-    return TensorType(attrs->dtype, kUnknownNDim, prob_ty->vdevice);
+    return TensorType(PrimType(attrs->dtype), kUnknownNDim, prob_ty->vdevice);
   }
   if (prob_ty->ndim != 2) {
     TVM_FFI_VISIT_THROW(ValueError, call)
@@ -115,7 +115,7 @@ Type InferTypeMultinomialFromUniform(const Call& call, const BlockBuilder& ctx) 
   // The output shape is expected to be `(n, 1)`
 
   if (prob_shape == nullptr || uniform_sample_shape == nullptr || sample_indices_shape == nullptr) {
-    return TensorType(attrs->dtype, 2, prob_ty->vdevice);
+    return TensorType(PrimType(attrs->dtype), 2, prob_ty->vdevice);
   }
 
   PrimExpr batch = prob_shape->values[0];
@@ -138,7 +138,7 @@ Type InferTypeMultinomialFromUniform(const Call& call, const BlockBuilder& ctx) 
         << uniform_sample_ty->shape << " and the given sample_indices tensor has shape "
         << sample_indices_ty->shape;
   }
-  return TensorType(ShapeExpr({n, 1}), attrs->dtype, prob_ty->vdevice);
+  return TensorType(ShapeExpr({n, 1}), PrimType(attrs->dtype), prob_ty->vdevice);
 }
 
 TVM_REGISTER_OP("relax.multinomial_from_uniform")

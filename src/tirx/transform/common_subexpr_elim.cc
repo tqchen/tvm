@@ -296,7 +296,8 @@ class CSEPlanner : public StmtExprVisitor {
     // the predicate directly. BoolImm is already filtered above as an IntImm
     // leaf, so this rule only affects compound bool expressions
     // (LT/LE/GT/GE/EQ/NE/And/Or/Not/Cast-to-bool/Select-of-bool).
-    if (expr.ty().IsPredicate()) return false;
+    PrimType expr_ty = expr.ty();
+    if (expr_ty.MatchesCode(DLDataTypeCode::kDLBool)) return false;
     if (CheckContains::ExprContains(expr, IsForbiddenNode)) return false;
     return true;
   }

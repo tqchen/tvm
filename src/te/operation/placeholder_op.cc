@@ -35,7 +35,7 @@ TVM_FFI_STATIC_INIT_BLOCK() { PlaceholderOpNode::RegisterReflection(); }
 
 int PlaceholderOpNode::num_outputs() const { return 1; }
 
-PrimType PlaceholderOpNode::output_prim_type(size_t i) const {
+PrimType PlaceholderOpNode::output_dtype(size_t i) const {
   TVM_FFI_ICHECK_EQ(i, 0U);
   return dtype;
 }

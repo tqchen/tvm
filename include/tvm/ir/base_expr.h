@@ -117,23 +117,40 @@ class PrimType final : public Type {
    */
   TVM_DLL PrimType(DLDataTypeCode code, int bits, int lanes = 1);
 
-  // Fast constructors.
+  /*! \brief Construct a signed integer type with fixed lanes. */
   TVM_DLL static PrimType Int(int bits, int lanes = 1);
+  /*! \brief Construct an unsigned integer type with fixed lanes. */
   TVM_DLL static PrimType UInt(int bits, int lanes = 1);
+  /*! \brief Construct a floating-point type with fixed lanes. */
   TVM_DLL static PrimType Float(int bits, int lanes = 1);
+  /*! \brief Construct a bfloat type with fixed lanes. */
   TVM_DLL static PrimType BFloat(int bits, int lanes = 1);
+  /*! \brief Construct a boolean type with fixed lanes. */
   TVM_DLL static PrimType Bool(int lanes = 1);
+  /*! \brief Construct an opaque handle type. */
   TVM_DLL static PrimType Handle(int bits = 64, int lanes = 1);
+  /*! \brief Construct the void sentinel type, encoded as handle(0, 0). */
   TVM_DLL static PrimType Void();
+  /*!
+   * \brief Construct a scalable vector type.
+   * \param code The DLPack dtype code.
+   * \param bits The scalar bit width.
+   * \param lanes The positive vscale factor to encode in the DLPack lane field.
+   */
   TVM_DLL static PrimType ScalableVector(DLDataTypeCode code, int bits, int lanes);
 
-  // Accessors.
+  /*! \return The DLPack dtype code. */
   TVM_FFI_INLINE DLDataTypeCode code() const {
     return static_cast<DLDataTypeCode>(static_cast<int>(get()->dtype.code));
   }
 
+  /*! \return The scalar bit width. */
   TVM_FFI_INLINE int32_t bits() const { return get()->dtype.bits; }
 
+  /*!
+   * \return The fixed lane count.
+   * \note Throws on scalable vector types, where the encoded lane field stores a vscale factor.
+   */
   TVM_FFI_INLINE int32_t lanes() const {
     int16_t encoded_lanes = static_cast<int16_t>(get()->dtype.lanes);
     if (TVM_FFI_PREDICT_FALSE(encoded_lanes < 0)) {
@@ -143,48 +160,54 @@ class PrimType final : public Type {
     return encoded_lanes;
   }
 
-  // Quick checks.
+  /*!
+   * \brief Check the scalar element code and bit width.
+   * \note Lane count and scalable-vector encoding are intentionally ignored.
+   */
   TVM_FFI_INLINE bool MatchesElementType(DLDataTypeCode code, int bits) const {
     DLDataType dtype = get()->dtype;
     return dtype.code == static_cast<uint8_t>(code) && dtype.bits == bits;
   }
 
+  /*!
+   * \brief Check whether the dtype code matches any of the provided DLPack codes.
+   * \note Bit width and lanes are intentionally ignored.
+   */
   template <typename... Codes>
   TVM_FFI_INLINE bool MatchesCode(Codes... codes) const {
     uint8_t dtype_code = get()->dtype.code;
     return ((dtype_code == static_cast<uint8_t>(codes)) || ...);
   }
 
+  /*! \brief Whether this type is a scalar, excluding fixed and scalable vectors. */
   TVM_FFI_INLINE bool IsScalar() const {
     int16_t encoded_lanes = static_cast<int16_t>(get()->dtype.lanes);
     return encoded_lanes == 1;
   }
 
+  /*! \brief Whether this type is the void sentinel `handle(0, 0)`. */
   TVM_FFI_INLINE bool IsVoid() const {
     DLDataType dtype = get()->dtype;
     return dtype.code == static_cast<uint8_t>(DLDataTypeCode::kDLOpaqueHandle) && dtype.bits == 0 &&
            static_cast<int16_t>(dtype.lanes) == 0;
   }
 
+  /*! \brief Whether this type is an opaque handle, excluding the void sentinel. */
   TVM_FFI_INLINE bool IsHandle() const {
     return this->code() == DLDataTypeCode::kDLOpaqueHandle && !this->IsVoid();
   }
 
-  TVM_FFI_INLINE bool IsPredicate() const {
-    DLDataType dtype = get()->dtype;
-    return dtype.code == static_cast<uint8_t>(DLDataTypeCode::kDLBool) ||
-           (dtype.code == static_cast<uint8_t>(DLDataTypeCode::kDLUInt) && dtype.bits == 1);
-  }
-
+  /*! \brief Whether this type is a scalable vector. */
   TVM_FFI_INLINE bool IsScalableVector() const {
     return static_cast<int16_t>(get()->dtype.lanes) < -1;
   }
 
+  /*! \brief Whether this type is a fixed-length vector. */
   TVM_FFI_INLINE bool IsFixedLengthVector() const {
     return static_cast<int16_t>(get()->dtype.lanes) > 1;
   }
 
-  // Rewriters.
+  /*! \brief Return the same type with a different dtype code, preserving bits and lanes. */
   TVM_FFI_INLINE PrimType WithCode(DLDataTypeCode code) const {
     DLDataType dtype = get()->dtype;
     int16_t encoded_lanes = static_cast<int16_t>(dtype.lanes);
@@ -194,6 +217,7 @@ class PrimType final : public Type {
     return PrimType(code, dtype.bits, encoded_lanes);
   }
 
+  /*! \brief Return the same type with a different scalar bit width, preserving code and lanes. */
   TVM_FFI_INLINE PrimType WithBits(int bits) const {
     DLDataType dtype = get()->dtype;
     int16_t encoded_lanes = static_cast<int16_t>(dtype.lanes);
@@ -203,10 +227,12 @@ class PrimType final : public Type {
     return PrimType(this->code(), bits, encoded_lanes);
   }
 
+  /*! \brief Return the same scalar element type with a fixed lane count. */
   TVM_FFI_INLINE PrimType WithLanes(int lanes) const {
     return PrimType(this->code(), this->bits(), lanes);
   }
 
+  /*! \return The vscale factor encoded in a scalable vector type. */
   TVM_FFI_INLINE int32_t VScaleFactor() const {
     int16_t encoded_lanes = static_cast<int16_t>(get()->dtype.lanes);
     if (encoded_lanes >= -1) {

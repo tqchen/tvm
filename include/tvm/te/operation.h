@@ -72,14 +72,7 @@ class TVM_DLL OperationNode : public ffi::Object {
    * \param i The output index.
    * \return primitive element type of i-th output.
    */
-  virtual PrimType output_prim_type(size_t i) const = 0;
-  /*!
-   * \brief Get data type. i-th output tensor.
-   * \param i The output index.
-   * \return type of i-th output.
-   *
-   */
-  PrimType output_dtype(size_t i) const { return output_prim_type(i); }
+  virtual PrimType output_dtype(size_t i) const = 0;
   /*!
    * \brief Get shape of i-th output tensor.
    * \param i The output index.
@@ -113,7 +106,7 @@ class PlaceholderOpNode : public OperationNode {
   PrimType dtype{DLDataType{kDLOpaqueHandle, 0, 0}};
   // override behavior.
   int num_outputs() const final;
-  PrimType output_prim_type(size_t i) const final;
+  PrimType output_dtype(size_t i) const final;
   ffi::Array<PrimExpr> output_shape(size_t i) const final;
   ffi::Array<Tensor> InputTensors() const final;
 
@@ -172,7 +165,7 @@ class TVM_DLL ComputeOpNode : public BaseComputeOpNode {
   ComputeOpNode() {}
   // override functions
   int num_outputs() const final;
-  PrimType output_prim_type(size_t i) const final;
+  PrimType output_dtype(size_t i) const final;
   ffi::Array<Tensor> InputTensors() const final;
 
   static void RegisterReflection() {
@@ -227,7 +220,7 @@ class ScanOpNode : public OperationNode {
   ScanOpNode() {}
   // override behavior.
   int num_outputs() const final;
-  PrimType output_prim_type(size_t i) const final;
+  PrimType output_dtype(size_t i) const final;
   ffi::Array<PrimExpr> output_shape(size_t i) const final;
   ffi::Array<Tensor> InputTensors() const final;
 
@@ -276,7 +269,7 @@ class ExternOpNode : public OperationNode {
   ExternOpNode() {}
   // override functions
   int num_outputs() const final;
-  PrimType output_prim_type(size_t i) const final;
+  PrimType output_dtype(size_t i) const final;
   ffi::Array<PrimExpr> output_shape(size_t i) const final;
   ffi::Array<Tensor> InputTensors() const final;
 

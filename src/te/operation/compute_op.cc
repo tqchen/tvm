@@ -75,7 +75,7 @@ static inline void AssertReduceEqual(const tirx::ReduceNode* a, const tirx::Redu
 
 int ComputeOpNode::num_outputs() const { return body.size(); }
 
-PrimType ComputeOpNode::output_prim_type(size_t idx) const {
+PrimType ComputeOpNode::output_dtype(size_t idx) const {
   TVM_FFI_ICHECK_LT(idx, num_outputs());
   return body[idx].ty();
 }

@@ -1399,15 +1399,15 @@ class TilePrimitiveDispatcher : public StmtExprMutator {
         args.push_back(new_arg);
       }
       if (changed) {
-        return tirx::Call(ffi::GetRef<PrimExpr>(call).ty(), call->op, args, call->attrs,
-                          call->span);
+        return tirx::Call(call->ty(), call->op, args, call->attrs, call->span);
       }
     }
     return pred;
   }
 
   PrimExpr AsBool(PrimExpr pred) const {
-    if (pred.ty().IsPredicate()) {
+    PrimType pred_ty = pred.ty();
+    if (pred_ty.MatchesCode(DLDataTypeCode::kDLBool)) {
       return pred;
     }
     return pred != IntImm(pred.ty(), 0);

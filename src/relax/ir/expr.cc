@@ -350,7 +350,7 @@ Constant::Constant(runtime::Tensor data, ffi::Optional<Type> ty_annotation, Span
   if (ty_annotation.defined()) {
     n->ty = ty_annotation.value();
   } else {
-    TensorType tinfo(ShapeExpr(values), n->data.DataType(), VDevice(), span);
+    TensorType tinfo(ShapeExpr(values), PrimType(n->data.DataType()), VDevice(), span);
     n->ty = tinfo;
   }
 

@@ -329,7 +329,7 @@ class VMShapeLowerMutator
 
   VarBinding AllocShapeHeapBinding(IntImm heap_size) {
     if (heap_size->value > 0) {
-      TensorType heap_ty(ShapeDType(), 1);
+      TensorType heap_ty(PrimType(ShapeDType()), 1);
       Var var("shape_heap", heap_ty);
       // set up the builtin func.
       Call call(call_builtin_with_ctx_op_,
@@ -680,7 +680,7 @@ class VMShapeLowerMutator
       // if we only check dynamic shapes, and the shape is static, we can skip.
       return;
     }
-    if (always_check || !IsBaseOf(TensorType(op->dtype, op->ndim), GetType(value))) {
+    if (always_check || !IsBaseOf(TensorType(PrimType(op->dtype), op->ndim), GetType(value))) {
       // check_tensor_info(value, ndim, dtype, err_ctx)
       Call call(builtin_check_tensor_info_,
                 {value, PrimValue::Int64(op->ndim), DataTypeImm(op->dtype->dtype),

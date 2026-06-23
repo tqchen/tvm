@@ -62,7 +62,7 @@ using FExtern = std::function<PrimExpr(ffi::Array<Buffer>, ffi::Array<Buffer>)>;
  * element of out_types.
  */
 inline ffi::Array<Tensor> make_extern(const ffi::Array<ffi::Array<PrimExpr>>& out_shapes,
-                                      const std::vector<DLDataType>& out_types,
+                                      const std::vector<PrimType>& out_types,
                                       const ffi::Array<Tensor>& inputs, FExtern fextern,
                                       std::string name, std::string tag,
                                       ::tvm::ffi::Map<ffi::String, ffi::Any> attrs) {

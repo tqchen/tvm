@@ -50,7 +50,7 @@ inline PrimExpr TVMExternCall(const tirx::CallNode* call, const std::string& fna
   for (PrimExpr arg : call->args) {
     new_args.push_back(arg);
   }
-  return tirx::Call(ffi::GetRef<PrimExpr>(call).ty(), tirx::builtin::call_pure_extern(), new_args);
+  return tirx::Call(call->ty(), tirx::builtin::call_pure_extern(), new_args);
 }
 
 template <std::string& tvm_wrapper, unsigned id, int num_sign>
@@ -81,8 +81,7 @@ inline PrimExpr DispatchTVMQHLWrapperFp16(const PrimExpr& e) {
   new_args.push_back(IntImm(PrimType::UInt(32), id));
   new_args.push_back(IntImm(PrimType::UInt(32), num_sign));
   new_args.insert(new_args.end(), call->args.begin(), call->args.end());
-  return tirx::Call(ffi::GetRef<PrimExpr>(call).ty(), tirx::builtin::call_llvm_pure_intrin(),
-                    new_args);
+  return tirx::Call(call->ty(), tirx::builtin::call_llvm_pure_intrin(), new_args);
 }
 
 void RegisterHexagonIntrinRules() {
@@ -209,7 +208,7 @@ TVM_REGISTER_OP("tirx.sigmoid")
       const PrimExpr v2 = tirx::Min(v1, MaxBound);
 
       ffi::Array<tvm::PrimExpr> new_args = {v2};
-      const tirx::Call new_call = tirx::Call(ffi::GetRef<PrimExpr>(call).ty(), call->op, new_args);
+      const tirx::Call new_call = tirx::Call(call->ty(), call->op, new_args);
 
       // Enable QHL library for FP16 data type
       if (x_ty.MatchesElementType(DLDataTypeCode::kDLFloat, 16) &&

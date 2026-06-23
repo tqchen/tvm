@@ -50,7 +50,7 @@ TEST(Expr, PrimTypeBoolLanes) {
   using namespace tvm;
   PrimType boolx4 = PrimType::Bool(4);
   TVM_FFI_ICHECK(boolx4.IsFixedLengthVector());
-  TVM_FFI_ICHECK(boolx4.IsPredicate());
+  TVM_FFI_ICHECK(boolx4.MatchesCode(DLDataTypeCode::kDLBool));
   TVM_FFI_ICHECK_EQ(boolx4.lanes(), 4);
   TVM_FFI_ICHECK(boolx4.MatchesElementType(DLDataTypeCode::kDLBool, 8));
 }

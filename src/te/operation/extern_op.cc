@@ -37,7 +37,7 @@ TVM_FFI_STATIC_INIT_BLOCK() { ExternOpNode::RegisterReflection(); }
 
 int ExternOpNode::num_outputs() const { return static_cast<int>(output_placeholders.size()); }
 
-PrimType ExternOpNode::output_prim_type(size_t i) const {
+PrimType ExternOpNode::output_dtype(size_t i) const {
   return output_placeholders[i]->ElementType();
 }
 

@@ -213,7 +213,7 @@ namespace axis {
  * \param dtype The data type of the iteration variable.
  * \return The iteration variable.
  */
-Var Spatial(Range dom, PrimExpr binding, DLDataType dtype = DLDataType{kDLInt, 32, 1});
+Var Spatial(Range dom, PrimExpr binding, PrimType dtype = PrimType::Int(32));
 
 /*!
  * \brief The reduced block axis defining function.
@@ -222,7 +222,7 @@ Var Spatial(Range dom, PrimExpr binding, DLDataType dtype = DLDataType{kDLInt, 3
  * \param dtype The data type of the iteration variable.
  * \return The iteration variable.
  */
-Var Reduce(Range dom, PrimExpr binding, DLDataType dtype = DLDataType{kDLInt, 32, 1});
+Var Reduce(Range dom, PrimExpr binding, PrimType dtype = PrimType::Int(32));
 
 /*!
  * \brief The scanning block axis defining function.
@@ -231,7 +231,7 @@ Var Reduce(Range dom, PrimExpr binding, DLDataType dtype = DLDataType{kDLInt, 32
  * \param dtype The data type of the iteration variable.
  * \return The iteration variable.
  */
-Var Scan(Range dom, PrimExpr binding, DLDataType dtype = DLDataType{kDLInt, 32, 1});
+Var Scan(Range dom, PrimExpr binding, PrimType dtype = PrimType::Int(32));
 
 /*!
  * \brief The opaque block axis defining function.
@@ -240,7 +240,7 @@ Var Scan(Range dom, PrimExpr binding, DLDataType dtype = DLDataType{kDLInt, 32, 
  * \param dtype The data type of the iteration variable.
  * \return The iteration variable.
  */
-Var Opaque(Range dom, PrimExpr binding, DLDataType dtype = DLDataType{kDLInt, 32, 1});
+Var Opaque(Range dom, PrimExpr binding, PrimType dtype = PrimType::Int(32));
 
 /*!
  * \brief The block axis remapping function.
@@ -250,7 +250,7 @@ Var Opaque(Range dom, PrimExpr binding, DLDataType dtype = DLDataType{kDLInt, 32
  * \return The iteration variables.
  */
 ffi::Array<Var> Remap(ffi::String kinds, ffi::Array<PrimExpr> bindings,
-                      DLDataType dtype = DLDataType{kDLInt, 32, 1});
+                      PrimType dtype = PrimType::Int(32));
 
 }  // namespace axis
 
@@ -465,7 +465,7 @@ ComposeOpFrame ComposeOp(ffi::Map<ffi::String, Buffer> workspace,
  * \param dtype The data type of the variable.
  * \return The result variable which gets bound to the thread env.
  */
-Var EnvThread(ffi::String thread_tag, DLDataType dtype = DLDataType{kDLInt, 32, 1});
+Var EnvThread(ffi::String thread_tag, PrimType dtype = PrimType::Int(32));
 
 /*!
  * \brief Store data in a buffer.
@@ -501,14 +501,13 @@ void Evaluate(PrimExpr value);
  *
  * \return The pointer.
  */
-inline Var Handle(DLDataType dtype = DLDataType{kDLOpaqueHandle, 0, 0},
-                  ffi::String storage_scope = "global", bool is_size_var = false,
-                  bool is_unknown_type = false) {
+inline Var Handle(PrimType dtype = PrimType::Handle(), ffi::String storage_scope = "global",
+                  bool is_size_var = false, bool is_unknown_type = false) {
   Type type_annotation{nullptr};
   if (is_unknown_type && storage_scope == "global") {
     type_annotation = PrimType::Handle();
   } else {
-    type_annotation = PointerType(PrimType(dtype), storage_scope);
+    type_annotation = PointerType(dtype, storage_scope);
   }
   return is_size_var ? tvm::tirx::SizeVar("", type_annotation)
                      : tvm::tirx::Var("", type_annotation);

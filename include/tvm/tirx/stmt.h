@@ -1283,9 +1283,6 @@ inline bool IsPragmaKey(const std::string& attr_key) {
  * \return Expr a expression with dtype.
  */
 TVM_DLL PrimExpr TypeAnnotation(PrimType dtype, Span span = Span());
-inline PrimExpr TypeAnnotation(DLDataType dtype, Span span = Span()) {
-  return TypeAnnotation(PrimType(dtype), span);
-}
 
 // overload printing of for type.
 TVM_DLL std::ostream& operator<<(std::ostream& os, ForKind kind);

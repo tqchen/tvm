@@ -42,7 +42,7 @@ struct BroadcastHelper {
   std::deque<tvm::tirx::Var> vars2;
 };
 
-static inline PrimType CommonType(PrimType type1, PrimType type2) {
+static inline PrimType CommonType(const PrimType& type1, const PrimType& type2) {
   TVM_FFI_ICHECK(!type1.IsScalableVector() && !type2.IsScalableVector());
   TVM_FFI_ICHECK_EQ(type1.lanes(), 1);
   TVM_FFI_ICHECK_EQ(type2.lanes(), 1);

@@ -313,8 +313,7 @@ Type InferTypeStridedSlice(const Call& call, const BlockBuilder& ctx) {
     }
   }();
 
-  TVM_FFI_ICHECK(
-      IsBaseOf(relax::TensorType((DLDataType{kDLOpaqueHandle, 0, 0}), kUnknownNDim), GetType(data)))
+  TVM_FFI_ICHECK(IsBaseOf(relax::TensorType(PrimType::Void(), kUnknownNDim), GetType(data)))
       << "Operator " << call->op << " requires the first argument to be a tensor.  "
       << "However, in expression " << call << ", the first argument " << data << " has type "
       << GetType(data);

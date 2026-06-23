@@ -167,7 +167,8 @@ Type InferTypeView(const Call& call, const BlockBuilder& ctx) {
     output_ndim = data_ty->ndim;
   }
 
-  DLDataType output_dtype = view_dtype.value_or(data_ty->dtype->dtype);
+  DLDataType output_raw_dtype = view_dtype.value_or(data_ty->dtype->dtype);
+  PrimType output_dtype(output_raw_dtype);
 
   // Helper function returns the number of bytes per vectorized element.
   auto get_size_bytes = [](DLDataType dtype) -> ffi::Optional<IntImm> {
@@ -198,7 +199,7 @@ Type InferTypeView(const Call& call, const BlockBuilder& ctx) {
   ffi::Optional<PrimExpr> output_nelements = get_num_elements(output_shape);
 
   ffi::Optional<IntImm> input_element_size = get_size_bytes(data_ty->dtype->dtype);
-  ffi::Optional<IntImm> output_element_size = get_size_bytes(output_dtype);
+  ffi::Optional<IntImm> output_element_size = get_size_bytes(output_raw_dtype);
 
   if (input_nelements && output_nelements && input_element_size && output_element_size &&
       view_relative_byte_offset) {

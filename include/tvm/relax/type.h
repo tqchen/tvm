@@ -233,10 +233,6 @@ class TensorType : public Type {
   TVM_DLL TensorType(Expr shape, tvm::PrimType dtype, ffi::Optional<VDevice> vdevice = std::nullopt,
                      Span span = Span());
 
-  TensorType(Expr shape, DLDataType dtype, ffi::Optional<VDevice> vdevice = std::nullopt,
-             Span span = Span())
-      : TensorType(std::move(shape), tvm::PrimType(dtype), std::move(vdevice), std::move(span)) {}
-
   /*!
    * \brief Construction with an unknown shape expression.
    * \param dtype The data type of tensor's elements.
@@ -246,10 +242,6 @@ class TensorType : public Type {
    */
   TVM_DLL TensorType(tvm::PrimType dtype, int ndim, ffi::Optional<VDevice> vdevice = std::nullopt,
                      Span span = Span());
-
-  TensorType(DLDataType dtype, int ndim, ffi::Optional<VDevice> vdevice = std::nullopt,
-             Span span = Span())
-      : TensorType(tvm::PrimType(dtype), ndim, std::move(vdevice), std::move(span)) {}
 
   TVM_FFI_DEFINE_OBJECT_REF_METHODS_NOTNULLABLE(TensorType, Type, TensorTypeNode);
 };

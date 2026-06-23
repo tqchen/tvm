@@ -64,9 +64,9 @@ Type InferTypeBucketize(const Call& call, const BlockBuilder& ctx) {
   }
 
   auto attrs = call->attrs.as<BucketizeAttrs>();
-  DLDataType out_dtype = DLDataType{kDLInt, 64, 1};
+  PrimType out_dtype = PrimType::Int(64);
   if (attrs->out_int32) {
-    out_dtype = DLDataType{kDLInt, 32, 1};
+    out_dtype = PrimType::Int(32);
   }
 
   const auto* data_shape = input_tensor_info->shape.as<ShapeExprNode>();
@@ -210,7 +210,7 @@ Type InferTypeArgmaxArgmin(const Call& call, const BlockBuilder& ctx) {
     TVM_FFI_ICHECK_GE(out_ndim, 0);
   }
 
-  DLDataType out_dtype = DLDataType{kDLInt, 64, 1};
+  PrimType out_dtype = PrimType::Int(64);
   // The inference rule for reduction operator output shapes:
   // - axes is None, keepdims is false -> return the zero-rank shape;
   // - axes is None, keepdims is true -> return the shape whose ndim is the same as input and every
@@ -221,9 +221,8 @@ Type InferTypeArgmaxArgmin(const Call& call, const BlockBuilder& ctx) {
   const auto* data_shape = data_ty->shape.as<ShapeExprNode>();
   if (data_shape == nullptr) {
     if (!attrs->axis.has_value() && attrs->keepdims && out_ndim != kUnknownNDim) {
-      return TensorType(
-          ShapeExpr(ffi::Array<PrimExpr>(out_ndim, IntImm(tvm::PrimType(out_dtype), /*value=*/1))),
-          out_dtype, data_ty->vdevice);
+      return TensorType(ShapeExpr(ffi::Array<PrimExpr>(out_ndim, IntImm(out_dtype, /*value=*/1))),
+                        out_dtype, data_ty->vdevice);
     } else {
       return out_ndim == 0
                  ? TensorType(ShapeExpr(ffi::Array<PrimExpr>()), out_dtype, data_ty->vdevice)
@@ -232,7 +231,7 @@ Type InferTypeArgmaxArgmin(const Call& call, const BlockBuilder& ctx) {
   }
 
   if (data_ty->ndim > 0) {
-    out_dtype = data_shape->values[0].ty()->dtype;
+    out_dtype = data_shape->values[0].ty();
   }
 
   ffi::Array<PrimExpr> out_shape;
@@ -241,7 +240,7 @@ Type InferTypeArgmaxArgmin(const Call& call, const BlockBuilder& ctx) {
     if (attrs->axis.has_value() && i != axis) {
       out_shape.push_back(data_shape->values[i]);
     } else if (attrs->keepdims) {
-      out_shape.push_back(IntImm(tvm::PrimType(out_dtype), /*value=*/1));
+      out_shape.push_back(IntImm(out_dtype, /*value=*/1));
     }
   }
   TVM_FFI_ICHECK_EQ(static_cast<int>(out_shape.size()), out_ndim);

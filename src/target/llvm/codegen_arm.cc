@@ -78,7 +78,7 @@ PrimExpr CodeGenARM::ARMPopcount(const CallNode* call) {
     ffi::Array<PrimExpr> vcnt_args;
     vcnt_args.push_back(IntImm(PrimType::UInt(32), ctpop_id));
     vcnt_args.push_back(e);
-    return tirx::Call(ffi::GetRef<PrimExpr>(call).ty(), builtin_call_llvm_pure_intrin_, vcnt_args);
+    return tirx::Call(call->ty(), builtin_call_llvm_pure_intrin_, vcnt_args);
   }
 
   // Popcount lowering rule:
@@ -126,7 +126,7 @@ PrimExpr CodeGenARM::ARMPopcount(const CallNode* call) {
   ffi::Array<PrimExpr> vcnt64_args;
   vcnt64_args.push_back(IntImm(PrimType::UInt(32), vpaddlu_id));
   vcnt64_args.push_back(vcnt32);
-  return tirx::Call(ffi::GetRef<PrimExpr>(call).ty(), builtin_call_llvm_pure_intrin_, vcnt64_args);
+  return tirx::Call(call->ty(), builtin_call_llvm_pure_intrin_, vcnt64_args);
 }
 
 TVM_FFI_STATIC_INIT_BLOCK() {

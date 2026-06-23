@@ -191,7 +191,8 @@ class TrainiumLayoutApplier : public arith::IRMutatorWithAnalyzer {
 
   Stmt VisitStmt_(const BufferStoreNode* op) final {
     BufferStore store = StmtExprMutator::VisitStmt_(op).as_or_throw<BufferStore>();
-    bool store_returns_bool = op->value.ty().IsPredicate();
+    PrimType store_value_ty = op->value.ty();
+    bool store_returns_bool = store_value_ty.MatchesCode(DLDataTypeCode::kDLBool);
     store = VisitBufferAccess(store);
 
     if (store_returns_bool) {
@@ -205,7 +206,8 @@ class TrainiumLayoutApplier : public arith::IRMutatorWithAnalyzer {
   }
 
   PrimExpr VisitExpr_(const BufferLoadNode* op) final {
-    bool load_returns_bool = op->ty().IsPredicate();
+    PrimType load_ty = op->ty();
+    bool load_returns_bool = load_ty.MatchesCode(DLDataTypeCode::kDLBool);
     BufferLoad load = StmtExprMutator::VisitExpr_(op).as_or_throw<BufferLoad>();
     load = VisitBufferAccess(load);
     if (load_returns_bool) {

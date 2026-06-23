@@ -752,7 +752,7 @@ class SplitMutator : public ExprMutator {
     TVM_FFI_ICHECK(lib_func->IsInstance<ExternFuncNode>());
     builder_->UpdateFunction(gv, lib_func);
     tirx::Buffer intermediate_buffer = func1->buffer_map.at(func1->params.back());
-    DLDataType dtype = intermediate_buffer->dtype->dtype;
+    PrimType dtype = intermediate_buffer->dtype;
     Call call1(call_dps_packed_, {lib_func, Tuple(args1)}, call->attrs,
                {TensorType(ShapeExpr(intermediate_buffer->shape), dtype)});
     Var call_var1 = builder_->Emit(call1);
