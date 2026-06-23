@@ -31,7 +31,7 @@ TVM_STATIC_IR_FUNCTOR(IRDocsifier, vtable)
       DLDataType dtype = imm->ty()->dtype;
       if (dtype == d->cfg->int_dtype) {
         return LiteralDoc::Int(imm->value, imm_p->Attr("value"));
-      } else if (dtype == (DLDataType{kDLBool, 8, 1})) {
+      } else if (dtype == DLDataType{kDLBool, 8, 1}) {
         return TIR(d, DType2Str(dtype))
             ->Call({LiteralDoc::Boolean(imm->value, imm_p->Attr("value"))});
       } else {

@@ -114,7 +114,7 @@ class BufferFlattener : public arith::IRMutatorWithAnalyzer {
 
     auto new_buf = GetFlattenedBuffer(node->buffer);
     // TODO(Lunderberg): Move the handling of boolean into a dedicated pass.
-    if (new_buf->dtype->dtype == (DLDataType{kDLBool, 8, 1})) {
+    if (new_buf->dtype->dtype == DLDataType{kDLBool, 8, 1}) {
       auto writer = new_buf.CopyOnWrite();
       writer->dtype = PrimType::Int(8);
     }
@@ -146,7 +146,7 @@ class BufferFlattener : public arith::IRMutatorWithAnalyzer {
 
     // TODO(Lunderberg): Move the handling of boolean into a
     // dedicated pass.
-    if (flattened->dtype->dtype == (DLDataType{kDLBool, 8, 1})) {
+    if (flattened->dtype->dtype == DLDataType{kDLBool, 8, 1}) {
       writer->dtype = PrimType::Int(8);
     }
     // canonicalize shape

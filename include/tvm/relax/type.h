@@ -186,7 +186,7 @@ class TensorTypeNode : public TypeNode {
   bool IsUnknownNdim() const { return ndim == kUnknownNDim; }
 
   /*! \return Whether the type contains unknown dtype. */
-  bool IsUnknownDtype() const { return dtype->dtype == (DLDataType{kDLOpaqueHandle, 0, 0}); }
+  bool IsUnknownDtype() const { return dtype->dtype == DLDataType{kDLOpaqueHandle, 0, 0}; }
 
   /*! \return Shape if it is known. */
   ffi::Optional<ffi::Array<PrimExpr>> GetShape() const {

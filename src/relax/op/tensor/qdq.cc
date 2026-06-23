@@ -54,10 +54,10 @@ TVM_FFI_STATIC_INIT_BLOCK() {
 
 Type InferTypeQuantize(const Call& call, const BlockBuilder& ctx) {
   const auto* attrs = call->attrs.as<QuantizeAttrs>();
-  if (attrs->out_dtype != (DLDataType{kDLInt, 8, 1}) &&
-      attrs->out_dtype != (DLDataType{kDLUInt, 8, 1}) &&
-      attrs->out_dtype != (DLDataType{kDLInt, 16, 1}) &&
-      attrs->out_dtype != (DLDataType{kDLUInt, 16, 1}) &&
+  if (attrs->out_dtype != DLDataType{kDLInt, 8, 1} &&
+      attrs->out_dtype != DLDataType{kDLUInt, 8, 1} &&
+      attrs->out_dtype != DLDataType{kDLInt, 16, 1} &&
+      attrs->out_dtype != DLDataType{kDLUInt, 16, 1} &&
       attrs->out_dtype != DLDataType{static_cast<uint8_t>(kDLFloat8_e4m3fn),
                                      static_cast<uint8_t>(8), static_cast<uint16_t>(1)} &&
       attrs->out_dtype != DLDataType{static_cast<uint8_t>(kDLFloat8_e5m2), static_cast<uint8_t>(8),
@@ -162,8 +162,8 @@ TVM_FFI_STATIC_INIT_BLOCK() {
 
 Type InferTypeDequantize(const Call& call, const BlockBuilder& ctx) {
   const auto* attrs = call->attrs.as<QuantizeAttrs>();
-  if (attrs->out_dtype != (DLDataType{kDLFloat, 16, 1}) &&
-      attrs->out_dtype != (DLDataType{kDLFloat, 32, 1})) {
+  if (attrs->out_dtype != DLDataType{kDLFloat, 16, 1} &&
+      attrs->out_dtype != DLDataType{kDLFloat, 32, 1}) {
     TVM_FFI_VISIT_THROW(TypeError, call)
         << "Unsupported output datatype attribute for operation: " << attrs->out_dtype;
   }
