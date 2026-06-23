@@ -89,11 +89,11 @@ PrimType::PrimType(DLDataTypeCode code, int bits, int lanes)
 PrimType PrimType::Int(int bits, int lanes) {
   if (lanes == 1) {
     if (bits == 32) {
-      static const PrimType i32_ty(DLDataType{kDLInt, 32, 1});
+      thread_local PrimType i32_ty(DLDataType{kDLInt, 32, 1});
       return i32_ty;
     }
     if (bits == 64) {
-      static const PrimType i64_ty(DLDataType{kDLInt, 64, 1});
+      thread_local PrimType i64_ty(DLDataType{kDLInt, 64, 1});
       return i64_ty;
     }
   }
@@ -106,7 +106,7 @@ PrimType PrimType::UInt(int bits, int lanes) {
 
 PrimType PrimType::Float(int bits, int lanes) {
   if (bits == 32 && lanes == 1) {
-    static const PrimType f32_ty(DLDataType{kDLFloat, 32, 1});
+    thread_local PrimType f32_ty(DLDataType{kDLFloat, 32, 1});
     return f32_ty;
   }
   return PrimType(DLDataType{kDLFloat, static_cast<uint8_t>(bits), static_cast<uint16_t>(lanes)});
@@ -118,7 +118,7 @@ PrimType PrimType::BFloat(int bits, int lanes) {
 
 PrimType PrimType::Bool(int lanes) {
   if (lanes == 1) {
-    static const PrimType bool_ty(DLDataType{kDLBool, 8, 1});
+    thread_local PrimType bool_ty(DLDataType{kDLBool, 8, 1});
     return bool_ty;
   }
   return PrimType(DLDataType{kDLBool, 8, static_cast<uint16_t>(lanes)});
