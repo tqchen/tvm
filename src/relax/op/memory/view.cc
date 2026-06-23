@@ -167,7 +167,7 @@ Type InferTypeView(const Call& call, const BlockBuilder& ctx) {
     output_ndim = data_ty->ndim;
   }
 
-  DLDataType output_dtype = view_dtype.value_or(data_ty->dtype);
+  DLDataType output_dtype = view_dtype.value_or(data_ty->dtype->dtype);
 
   // Helper function returns the number of bytes per vectorized element.
   auto get_size_bytes = [](DLDataType dtype) -> ffi::Optional<IntImm> {
@@ -197,7 +197,7 @@ Type InferTypeView(const Call& call, const BlockBuilder& ctx) {
   ffi::Optional<PrimExpr> input_nelements = get_num_elements(input_shape);
   ffi::Optional<PrimExpr> output_nelements = get_num_elements(output_shape);
 
-  ffi::Optional<IntImm> input_element_size = get_size_bytes(data_ty->dtype);
+  ffi::Optional<IntImm> input_element_size = get_size_bytes(data_ty->dtype->dtype);
   ffi::Optional<IntImm> output_element_size = get_size_bytes(output_dtype);
 
   if (input_nelements && output_nelements && input_element_size && output_element_size &&
@@ -327,7 +327,7 @@ Expr LowerBuiltinView(const BlockBuilder& bb, const Call& call) {
   }
 
   if (HasVoidType(dtype)) {
-    DLDataType data_dtype = data->ty.as<TensorType>().value()->dtype;
+    DLDataType data_dtype = data->ty.as<TensorType>().value()->dtype->dtype;
     TVM_FFI_ICHECK(!(((data_dtype).code == kDLOpaqueHandle) && ((data_dtype).bits == 0) && ((data_dtype).lanes == 0)))
         << "Legalization of " << call->op
         << " requires that either the output dtype be explicitly specified, "

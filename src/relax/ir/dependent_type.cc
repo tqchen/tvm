@@ -86,7 +86,7 @@ TVM_FFI_STATIC_INIT_BLOCK() {
 }
 
 // Tensor
-TensorType::TensorType(Expr shape, DLDataType dtype, ffi::Optional<VDevice> vdevice,
+TensorType::TensorType(Expr shape, PrimType dtype, ffi::Optional<VDevice> vdevice,
                        Span span) {
   ffi::ObjectPtr<TensorTypeNode> n = ffi::make_object<TensorTypeNode>();
   // assign ndim before move
@@ -104,7 +104,7 @@ TensorType::TensorType(Expr shape, DLDataType dtype, ffi::Optional<VDevice> vdev
   data_ = std::move(n);
 }
 
-TensorType::TensorType(DLDataType dtype, int ndim, ffi::Optional<VDevice> vdevice, Span span) {
+TensorType::TensorType(PrimType dtype, int ndim, ffi::Optional<VDevice> vdevice, Span span) {
   ffi::ObjectPtr<TensorTypeNode> n = ffi::make_object<TensorTypeNode>();
   TVM_FFI_ICHECK(ndim >= -1) << "ndim of TensorType must be >= -1, but got " << ndim;
   n->ndim = ndim;
@@ -121,9 +121,12 @@ TVM_FFI_STATIC_INIT_BLOCK() {
                              VDevice vdevice, Span span) {
         if (shape.defined()) {
           TVM_FFI_CHECK_EQ(ndim, kUnknownNDim, ValueError) << "Cannot both specify shape and ndim";
-          return TensorType(shape.value(), dtype.value_or(DLDataType{kDLOpaqueHandle, 0, 0}), vdevice, span);
+          return TensorType(shape.value(),
+                            PrimType(dtype.value_or(DLDataType{kDLOpaqueHandle, 0, 0})), vdevice,
+                            span);
         } else {
-          return TensorType(dtype.value_or(DLDataType{kDLOpaqueHandle, 0, 0}), ndim, vdevice, span);
+          return TensorType(PrimType(dtype.value_or(DLDataType{kDLOpaqueHandle, 0, 0})), ndim,
+                            vdevice, span);
         }
       });
 }

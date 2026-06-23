@@ -579,11 +579,11 @@ PrimExpr Buffer::access_ptr(int access_mask, PrimType ptr_type, int content_lane
   return tirx::Call(ptr_type, tirx::builtin::tvm_access_ptr(), acc_args);
 }
 
-Buffer::Buffer(Var data, DLDataType dtype, ffi::Array<PrimExpr> shape, ffi::Array<PrimExpr> strides,
+Buffer::Buffer(Var data, PrimType dtype, ffi::Array<PrimExpr> shape, ffi::Array<PrimExpr> strides,
                PrimExpr elem_offset, ffi::String name, int data_alignment, int offset_factor,
                BufferType buffer_type, ffi::Array<IntImm> axis_separators, Span span,
                ffi::Optional<Layout> layout, ffi::Array<PrimExpr> allocated_addr) {
-  DLDataType storage_dtype = dtype;
+  DLDataType storage_dtype = dtype->dtype;
   // specially handle bool
   if (storage_dtype == DLDataType{kDLBool, 8, 1}) {
     storage_dtype = DLDataType{kDLInt, 8, 1};
@@ -676,7 +676,7 @@ Buffer Buffer::with_allocated_addr(ffi::Array<PrimExpr> allocated_addr) const {
   return output;
 }
 
-Buffer Buffer::with_dtype(DLDataType dtype) const {
+Buffer Buffer::with_dtype(PrimType dtype) const {
   Buffer output = *this;
   auto writer = output.CopyOnWrite();
   writer->dtype = dtype;
@@ -714,7 +714,7 @@ TVM_FFI_STATIC_INIT_BLOCK() {
                     auto buffer_type = args[8].cast<ffi::String>();
                     BufferType type = (buffer_type == "auto_broadcast") ? kAutoBroadcast : kDefault;
                     auto data = args[0].cast<Var>();
-                    auto dtype = args[1].cast<DLDataType>();
+                    auto dtype = args[1].cast<PrimType>();
                     auto shape = args[2].cast<ffi::Array<PrimExpr>>();
                     auto strides = args[3].cast<ffi::Array<PrimExpr>>();
                     auto elem_offset = args[4].cast<PrimExpr>();

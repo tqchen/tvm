@@ -161,7 +161,7 @@ inline PrimType APIType(const PrimType& t) {
   TVM_FFI_ICHECK(!t.IsVoid()) << "Cannot pass void type through packed API.";
   if (t.IsHandle()) return t;
   TVM_FFI_ICHECK_EQ(t.lanes(), 1) << "Cannot pass vector type through packed API.";
-  if (t.IsBool() || t.code() == DLDataTypeCode::kDLUInt || t.code() == DLDataTypeCode::kDLInt) {
+  if (t.IsBool() || t.IsUInt() || t.IsInt()) {
     return PrimType::Int(64);
   }
   TVM_FFI_ICHECK_EQ(t.code(), DLDataTypeCode::kDLFloat);

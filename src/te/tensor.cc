@@ -100,12 +100,12 @@ Tensor Operation::output(size_t i) const {
   auto node = ffi::make_object<TensorNode>();
   node->op = *this;
   node->value_index = i;
-  node->dtype = (*this)->output_prim_type(i)->dtype;
+  node->dtype = (*this)->output_prim_type(i);
   node->shape = (*this)->output_shape(i);
   return Tensor(node);
 }
 
-Tensor::Tensor(ffi::Array<PrimExpr> shape, DLDataType dtype, Operation op, int value_index) {
+Tensor::Tensor(ffi::Array<PrimExpr> shape, PrimType dtype, Operation op, int value_index) {
   auto n = ffi::make_object<TensorNode>();
   n->shape = std::move(shape);
   n->dtype = dtype;
@@ -118,7 +118,7 @@ TVM_FFI_STATIC_INIT_BLOCK() {
   namespace refl = tvm::ffi::reflection;
   refl::GlobalDef().def(
       "te.Tensor", [](ffi::Array<PrimExpr> shape, DLDataType dtype, Operation op, int value_index) {
-        return Tensor(shape, dtype, op, value_index);
+        return Tensor(shape, PrimType(dtype), op, value_index);
       });
 }
 

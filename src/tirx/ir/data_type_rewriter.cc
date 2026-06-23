@@ -42,18 +42,6 @@
 namespace tvm {
 namespace tirx {
 
-namespace {
-
-bool SameType(const PrimExpr& lhs, const PrimExpr& rhs) {
-  return lhs.ty()->dtype == rhs.ty()->dtype;
-}
-
-bool SameType(const PrimExpr& lhs, const PrimType& rhs) { return lhs.ty()->dtype == rhs->dtype; }
-
-bool IsScalar(const PrimType& ty) { return !ty.IsFixedLengthVector() && !ty.IsScalableVector(); }
-
-}  // namespace
-
 Stmt DataTypeLegalizer::VisitStmt_(const ForNode* op) {
   Stmt s = StmtExprMutator::VisitStmt_(op);
   op = s.as<ForNode>();
@@ -75,7 +63,7 @@ Stmt DataTypeLegalizer::VisitStmt_(const SBlockRealizeNode* op) {
   bool changed = false;
   for (int i = 0; i < static_cast<int>(op->iter_values.size()); ++i) {
     PrimType dtype = realize->block->iter_vars[i]->var.ty();
-    if (!SameType(op->iter_values[i], dtype)) {
+    if (op->iter_values[i].ty() != dtype) {
       new_iter_values.push_back(cast(dtype, realize->iter_values[i]));
       changed = true;
     } else {
@@ -93,7 +81,7 @@ Stmt DataTypeLegalizer::VisitStmt_(const SBlockNode* op) {
   ffi::Array<IterVar> new_iter_vars = MutateArray(new_block->iter_vars, [/*this*/](
                                                                             const IterVar& iter) {
     PrimType dtype = iter->var.ty();
-    if (!SameType(iter->dom->min, dtype) || !SameType(iter->dom->extent, dtype)) {
+    if (iter->dom->min.ty() != dtype || iter->dom->extent.ty() != dtype) {
       IterVar new_iter = iter;
       new_iter.CopyOnWrite()->dom =
           Range(cast(dtype, iter->dom->min), cast(dtype, iter->dom->extent));
@@ -141,7 +129,7 @@ PrimExpr DataTypeLegalizer::VisitExpr_(const LetNode* op) {
   PrimExpr value = this->VisitExpr(op->value);
   Var var = op->var;
 
-  if (!SameType(value, op->var)) {
+  if (value.ty() != op->var.ty()) {
     var = op->var.copy_with_dtype(value.ty());
     var_remap_[op->var.get()] = var;
   }
@@ -159,7 +147,7 @@ Stmt DataTypeLegalizer::VisitStmt_(const BindNode* op) {
   PrimExpr value = this->VisitExpr(op->value);
   Var var = op->var;
 
-  if (!SameType(value, op->var)) {
+  if (value.ty() != op->var.ty()) {
     var = op->var.copy_with_dtype(value.ty());
     var_remap_[op->var.get()] = var;
   }
@@ -183,15 +171,15 @@ PrimExpr DataTypeLegalizer::VisitExpr_(const SelectNode* op) {
   PrimExpr true_value = this->VisitExpr(op->true_value);
   PrimExpr false_value = this->VisitExpr(op->false_value);
   if (condition.same_as(op->condition) && true_value.same_as(op->true_value) &&
-      false_value.same_as(op->false_value) && SameType(true_value, false_value)) {
+      false_value.same_as(op->false_value) && true_value.ty() == false_value.ty()) {
     return ffi::GetRef<PrimExpr>(op);
   } else {
     PrimType true_dtype = true_value.ty();
     PrimType false_dtype = false_value.ty();
     int bits = std::max(true_dtype.bits(), false_dtype.bits());
     PrimType dtype = true_dtype.WithBits(bits);
-    if (true_dtype->dtype != dtype->dtype) true_value = cast(dtype, true_value);
-    if (false_dtype->dtype != dtype->dtype) false_value = cast(dtype, false_value);
+    if (true_dtype != dtype) true_value = cast(dtype, true_value);
+    if (false_dtype != dtype) false_value = cast(dtype, false_value);
     return Select(condition, true_value, false_value);
   }
 }
@@ -199,7 +187,7 @@ PrimExpr DataTypeLegalizer::VisitExpr_(const SelectNode* op) {
 PrimExpr DataTypeLegalizer::VisitExpr_(const RampNode* op) {
   PrimExpr base = VisitExpr(op->base);
   PrimExpr stride = VisitExpr(op->stride);
-  if (base.same_as(op->base) && stride.same_as(op->stride) && SameType(base, stride)) {
+  if (base.same_as(op->base) && stride.same_as(op->stride) && base.ty() == stride.ty()) {
     return ffi::GetRef<PrimExpr>(op);
   } else {
     PrimType base_dtype = base.ty();
@@ -221,7 +209,7 @@ PrimExpr DataTypeLegalizer::VisitExpr_(const CastNode* op) {
   PrimExpr DataTypeLegalizer::VisitExpr_(const OP* op) {           \
     PrimExpr a = this->VisitExpr(op->a);                           \
     PrimExpr b = this->VisitExpr(op->b);                           \
-    if (op->a.same_as(a) && op->b.same_as(b) && SameType(a, b)) { \
+    if (op->a.same_as(a) && op->b.same_as(b) && a.ty() == b.ty()) { \
       return ffi::GetRef<PrimExpr>(op);                            \
     } else {                                                       \
       return FUNC(a, b);                                           \
@@ -455,8 +443,8 @@ Stmt IndexDataTypeRewriter::VisitStmt_(const BufferStoreNode* op) {
   Buffer new_buffer = VisitBufferUse(op->buffer);
   auto value = this->VisitExpr(op->value);
   PrimType value_dtype = value.ty();
-  if (new_buffer->dtype != value_dtype->dtype && IsScalar(value_dtype)) {
-    value = cast(PrimType(new_buffer->dtype), value);
+  if (new_buffer->dtype != value_dtype && value_dtype.IsScalar()) {
+    value = cast(new_buffer->dtype, value);
   }
   auto indices = VisitIndices(op->indices);
 
@@ -561,7 +549,7 @@ Stmt IndexDataTypeRewriter::VisitStmt_(const BindNode* op) {
   PrimExpr value = VisitExpr(op->value);
   Var var = var_remap_[bind_stmt->var.get()];
   is_enabled_ = is_enabled;
-  TVM_FFI_ICHECK(SameType(value, var));
+  TVM_FFI_ICHECK(value.ty() == var.ty());
   return Bind(var, value, bind_stmt->span);
 }
 
@@ -603,7 +591,7 @@ PrimExpr IndexDataTypeRewriter::VisitExpr_(const SelectNode* op) {
   PrimExpr false_value = this->VisitExpr(op->false_value);
 
   if (condition.same_as(op->condition) && true_value.same_as(op->true_value) &&
-      false_value.same_as(op->false_value) && SameType(true_value, false_value)) {
+      false_value.same_as(op->false_value) && true_value.ty() == false_value.ty()) {
     return ffi::GetRef<PrimExpr>(op);
   } else {
     PrimType true_dtype = true_value.ty();

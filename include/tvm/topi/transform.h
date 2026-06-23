@@ -1534,8 +1534,8 @@ inline Tensor gather(const Tensor& data, int axis, const Tensor& indices,
     TVM_FFI_ICHECK_GE(indices_dim_i, 1);
   }
   // Index tensors are validated by integer element kind; vector lane encoding is irrelevant here.
-  DLDataType indices_dtype = indices->dtype;
-  TVM_FFI_ICHECK(((indices_dtype).code == kDLInt) || ((indices_dtype).code == kDLUInt));
+  PrimType indices_ty = indices->dtype;
+  TVM_FFI_ICHECK(indices_ty.IsInt() || indices_ty.IsUInt());
 
   ffi::Array<PrimExpr> out_shape;
   for (size_t i = 0; i < ndim_i; ++i) {
@@ -1604,8 +1604,8 @@ inline Tensor gather_nd(const Tensor& data, const Tensor& indices, int batch_dim
           indices_position.Set(0, IntImm::Int32(i));
           // Index tensors are validated by integer element kind; vector lane encoding is
           // irrelevant for choosing whether an index cast is needed.
-          DLDataType indices_dtype = indices->dtype;
-          if (((indices_dtype).code == kDLInt) || ((indices_dtype).code == kDLUInt)) {
+          PrimType indices_ty = indices->dtype;
+          if (indices_ty.IsInt() || indices_ty.IsUInt()) {
             real_indices.push_back(indices(indices_position));
           } else {
             real_indices.push_back(tvm::cast(tvm::PrimType::Int(32), indices(indices_position)));
@@ -2126,7 +2126,7 @@ inline Tensor sparse_to_dense(const Tensor& sparse_indices,
                               const std::string name = "T_sparse_to_dense",
                               const std::string tag = kInjective) {
   // Sparse indices are validated by signed integer element kind; lane encoding is irrelevant here.
-  TVM_FFI_ICHECK_EQ(sparse_indices->dtype.code, DLDataTypeCode::kDLInt)
+  TVM_FFI_ICHECK_EQ(sparse_indices->dtype.code(), DLDataTypeCode::kDLInt)
       << "sparse_indices only accepts integer values";
   TVM_FFI_ICHECK_LE(sparse_indices->shape.size(), 3)
       << "sparse_indices tensor should be 0D, 1D, or 2D only";

@@ -77,7 +77,7 @@ class BufferNode : public ffi::Object {
    */
   Var data;
   /*! \brief dtype in the content of the tensor */
-  DLDataType dtype{DLDataTypeCode::kDLOpaqueHandle, 0, 0};
+  PrimType dtype{DLDataType{kDLOpaqueHandle, 0, 0}};
   /*! \brief The type of the buffer prior to flattening
    *
    * This contains the shape as it is accessed by
@@ -161,7 +161,7 @@ class BufferNode : public ffi::Object {
   }
 
   /*! \return primitive element type for compiler-side uses. */
-  PrimType ElementType() const { return PrimType(dtype); }
+  PrimType ElementType() const { return dtype; }
 
   /*! \brief Determine the offset in the buffer of the given index.
    *
@@ -188,17 +188,17 @@ class Buffer : public ffi::ObjectRef {
  public:
   // User can specify data_alignment and offset_factor to be 0
   // A default value will be picked.
-  TVM_DLL Buffer(Var data, DLDataType dtype, ffi::Array<PrimExpr> shape,
+  TVM_DLL Buffer(Var data, PrimType dtype, ffi::Array<PrimExpr> shape,
                  ffi::Array<PrimExpr> strides, PrimExpr elem_offset, ffi::String name,
                  int data_alignment, int offset_factor, BufferType buffer_type,
                  ffi::Array<IntImm> axis_separators = {}, Span span = Span(),
                  ffi::Optional<Layout> layout = std::nullopt,
                  ffi::Array<PrimExpr> allocated_addr = {});
-  Buffer(Var data, PrimType dtype, ffi::Array<PrimExpr> shape, ffi::Array<PrimExpr> strides,
+  Buffer(Var data, DLDataType dtype, ffi::Array<PrimExpr> shape, ffi::Array<PrimExpr> strides,
          PrimExpr elem_offset, ffi::String name, int data_alignment, int offset_factor,
          BufferType buffer_type, ffi::Array<IntImm> axis_separators = {}, Span span = Span(),
          ffi::Optional<Layout> layout = std::nullopt, ffi::Array<PrimExpr> allocated_addr = {})
-      : Buffer(std::move(data), dtype->dtype, std::move(shape), std::move(strides),
+      : Buffer(std::move(data), PrimType(dtype), std::move(shape), std::move(strides),
                std::move(elem_offset), std::move(name), data_alignment, offset_factor, buffer_type,
                std::move(axis_separators), std::move(span), std::move(layout),
                std::move(allocated_addr)) {}
@@ -288,8 +288,8 @@ class Buffer : public ffi::ObjectRef {
   /*!
    * \brief Return a new buffer with the dtype.
    */
-  TVM_DLL Buffer with_dtype(DLDataType dtype) const;
-  Buffer with_dtype(PrimType dtype) const { return with_dtype(dtype->dtype); }
+  TVM_DLL Buffer with_dtype(PrimType dtype) const;
+  Buffer with_dtype(DLDataType dtype) const { return with_dtype(PrimType(dtype)); }
 
   /*! \return primitive element type for compiler-side uses. */
   PrimType ElementType() const { return (*this)->ElementType(); }
@@ -352,7 +352,7 @@ class DataProducerNode : public PrimExprConvertibleNode {
    * \brief Get the raw element dtype of the result.
    * \return The raw dtype.
    */
-  virtual DLDataType GetDataType() const = 0;
+  virtual PrimType GetDataType() const = 0;
   /*!
    * \brief Get the name hint of the data producer.
    * \return The data type.
