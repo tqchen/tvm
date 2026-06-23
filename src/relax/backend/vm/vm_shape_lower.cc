@@ -684,7 +684,7 @@ class VMShapeLowerMutator
     if (always_check || !IsBaseOf(TensorType(op->dtype, op->ndim), GetType(value))) {
       // check_tensor_info(value, ndim, dtype, err_ctx)
       Call call(builtin_check_tensor_info_,
-                {value, PrimValue::Int64(op->ndim), DataTypeImm(op->dtype),
+                {value, PrimValue::Int64(op->ndim), DataTypeImm(op->dtype->dtype),
                  GetErrContext(err_ctx)},
                 Attrs(), {void_ty_});
       builder_->Emit(call, "_");
