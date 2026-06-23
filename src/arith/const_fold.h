@@ -94,7 +94,7 @@ inline int64_t GetFoldResultInt64Repr(int64_t x, const PrimType& dtype) {
   if (dtype.bits() < 64) {
     x &= (1LL << dtype.bits()) - 1;
   }
-  if (dtype.code() == DLDataTypeCode::kDLInt) {
+  if (dtype.MatchesCode(DLDataTypeCode::kDLInt)) {
     int64_t m = 1LL << (dtype.bits() - 1);
     x = (x ^ m) - m;
   }
@@ -164,8 +164,8 @@ inline ffi::Optional<PrimExpr> TryConstFold<tirx::Add>(PrimExpr a, PrimExpr b) {
 template <>
 inline ffi::Optional<PrimExpr> TryConstFold<tirx::Sub>(PrimExpr a, PrimExpr b) {
   TVM_ARITH_CONST_PROPAGATION({
-    TVM_FFI_ICHECK(!((pa && pa->ty().code() == DLDataTypeCode::kDLUInt && pa->value == 0U) &&
-                     (pb && pb->ty().code() == DLDataTypeCode::kDLUInt && pb->value > 0U)))
+    TVM_FFI_ICHECK(!((pa && pa->ty().MatchesCode(DLDataTypeCode::kDLUInt) && pa->value == 0U) &&
+                     (pb && pb->ty().MatchesCode(DLDataTypeCode::kDLUInt) && pb->value > 0U)))
         << "Checked failed. Minuend 's value is 0U and it's dtype is uint "
         << "while Subtrahend's dtype is uint; which will cause a negative uint";
     PrimType result_ty = a.ty();

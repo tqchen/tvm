@@ -124,7 +124,7 @@ Type InferTypePRelu(const Call& call, const BlockBuilder& ctx) {
   }
   PrimType data_dtype = data_ty->dtype;
   // PRelu preserves the old float-kind check; vector lanes are irrelevant to this check.
-  if (!data_ty->IsUnknownDtype() && data_dtype.code() != DLDataTypeCode::kDLFloat) {
+  if (!data_ty->IsUnknownDtype() && !data_dtype.MatchesCode(DLDataTypeCode::kDLFloat)) {
     TVM_FFI_VISIT_THROW(TypeError, call) << "Prelu requires the input tensor to have float "
                                             "dtype. However, the given input dtype is "
                                          << data_ty->dtype;
@@ -191,7 +191,7 @@ Type InferTypeSoftmax(const Call& call, const BlockBuilder& ctx) {
   if (!data_ty->IsUnknownDtype()) {
     PrimType data_dtype = data_ty->dtype;
     // Softmax only requires a floating element kind; lane encoding is irrelevant to the check.
-    if (data_dtype.code() != kDLFloat && data_dtype.code() != kDLBfloat) {
+    if (!data_dtype.MatchesCode(kDLFloat, kDLBfloat)) {
       TVM_FFI_VISIT_THROW(TypeError, call) << "Softmax requires the input tensor to have float "
                                               "dtype. However, the given input dtype is "
                                            << data_ty->dtype;
@@ -389,7 +389,7 @@ bool NormCheckDtypeAndShape(const Call& call, const BlockBuilder& ctx,
   if (!data_ty->IsUnknownDtype()) {
     PrimType data_dtype = data_ty->dtype;
     // Norm ops only require a floating element kind; lane encoding is irrelevant to the check.
-    if (data_dtype.code() != kDLFloat && data_dtype.code() != kDLBfloat) {
+    if (!data_dtype.MatchesCode(kDLFloat, kDLBfloat)) {
       TVM_FFI_VISIT_THROW(TypeError, call)
           << op << " requires the input data to have float dtype. However, the given data dtype is "
           << data_ty->dtype;
@@ -632,7 +632,7 @@ Type InferTypeGroupNorm(const Call& call, const BlockBuilder& ctx) {
   }
   PrimType data_dtype = data_ty->dtype;
   // GroupNorm preserves the old float-kind check; vector lanes are irrelevant to this check.
-  if (!data_ty->IsUnknownDtype() && data_dtype.code() != DLDataTypeCode::kDLFloat) {
+  if (!data_ty->IsUnknownDtype() && !data_dtype.MatchesCode(DLDataTypeCode::kDLFloat)) {
     TVM_FFI_VISIT_THROW(TypeError, call)
         << op << " expects that data must be float, but got " << data_ty->dtype;
   }

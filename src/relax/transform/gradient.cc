@@ -708,7 +708,7 @@ class GradientMutator : private ExprMutator {
   static bool IsFloatTensorType(const Type& ty) {
     auto* tensor_ty = ty.as<TensorTypeNode>();
     // Gradient eligibility preserves the old float-kind check; lanes do not affect this policy.
-    return tensor_ty && tensor_ty->dtype.code() == DLDataTypeCode::kDLFloat;
+    return tensor_ty && tensor_ty->dtype.MatchesCode(DLDataTypeCode::kDLFloat);
   }
 
   // When the return value is a Var, it is the target;

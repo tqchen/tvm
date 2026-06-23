@@ -75,8 +75,7 @@ ffi::Array<PrimExpr> AsConditions(const ffi::Array<Var>& variables,
 IntGroupBounds::IntGroupBounds(PrimExpr coef, ffi::Array<PrimExpr> lower,
                                ffi::Array<PrimExpr> equal, ffi::Array<PrimExpr> upper) {
   PrimType coef_ty = coef.ty();
-  TVM_FFI_ICHECK(coef_ty.code() == DLDataTypeCode::kDLInt ||
-                 coef_ty.code() == DLDataTypeCode::kDLUInt)
+  TVM_FFI_ICHECK(coef_ty.MatchesCode(DLDataTypeCode::kDLInt, DLDataTypeCode::kDLUInt))
       << "Coefficient in IntGroupBounds must be integers";
   ffi::ObjectPtr<IntGroupBoundsNode> node = ffi::make_object<IntGroupBoundsNode>();
   node->coef = std::move(coef);
@@ -235,8 +234,7 @@ IntConstraints::IntConstraints(ffi::Array<Var> variables, ffi::Map<Var, Range> r
   TVM_FFI_ICHECK(relations.defined());
   for (const auto& var : variables) {
     PrimType var_ty = var.ty();
-    TVM_FFI_ICHECK(var_ty.code() == DLDataTypeCode::kDLInt ||
-                   var_ty.code() == DLDataTypeCode::kDLUInt)
+    TVM_FFI_ICHECK(var_ty.MatchesCode(DLDataTypeCode::kDLInt, DLDataTypeCode::kDLUInt))
         << "Variables in IntConstraints must be integers";
   }
   node->variables = std::move(variables);

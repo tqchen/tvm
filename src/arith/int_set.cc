@@ -74,8 +74,8 @@ IntervalSet Intersect(AnalyzerObj* analyzer, IntervalSet a, IntervalSet b) {
   PrimExpr min_value = max(a->min_value, b->min_value);
   PrimType max_ty = max_value.ty();
   PrimType min_ty = min_value.ty();
-  if ((max_ty.code() == DLDataTypeCode::kDLInt || max_ty.code() == DLDataTypeCode::kDLUInt) &&
-      (min_ty.code() == DLDataTypeCode::kDLInt || min_ty.code() == DLDataTypeCode::kDLUInt) &&
+  if (max_ty.MatchesCode(DLDataTypeCode::kDLInt, DLDataTypeCode::kDLUInt) &&
+      min_ty.MatchesCode(DLDataTypeCode::kDLInt, DLDataTypeCode::kDLUInt) &&
       analyzer->CanProve(max_value < min_value)) {
     return IntervalSet::Empty();
   } else {
@@ -583,7 +583,7 @@ class IntervalSetEvaluator : public ExprFunctor<IntervalSet(const PrimExpr&)> {
 
   IntervalSet VisitExpr_(const BufferLoadNode* op) final {
     PrimType op_ty = op->ty();
-    if (!(op_ty.code() == DLDataTypeCode::kDLInt || op_ty.code() == DLDataTypeCode::kDLUInt)) {
+    if (!op_ty.MatchesCode(DLDataTypeCode::kDLInt, DLDataTypeCode::kDLUInt)) {
       DLOG(WARNING) << "cannot evaluate set BufferLoad which loads from a " << op_ty->dtype
                     << " buffer";
       return IntervalSet::Everything();
@@ -1073,7 +1073,7 @@ IntSet EvalSet(PrimExpr e, const std::unordered_map<const VarNode*, IntSet>& dom
 IntSet EvalSet(Range r, const ffi::Map<Var, IntSet>& dom_map) {
   Analyzer ana;
   PrimType min_ty = r->min.ty();
-  if ((min_ty.code() == DLDataTypeCode::kDLInt || min_ty.code() == DLDataTypeCode::kDLUInt) &&
+  if (min_ty.MatchesCode(DLDataTypeCode::kDLInt, DLDataTypeCode::kDLUInt) &&
       ana->CanProveEqual(r->extent, 1)) {
     return EvalSet(r->min, dom_map);
   }

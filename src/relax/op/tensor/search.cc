@@ -120,7 +120,7 @@ Type InferTypeWhere(const Call& call, const BlockBuilder& ctx) {
 
   PrimType cond_dtype = cond_ty->dtype;
   // Where condition validation only checks the boolean element kind; lanes are irrelevant here.
-  if (cond_dtype.code() != DLDataTypeCode::kDLBool) {
+  if (!cond_dtype.MatchesCode(DLDataTypeCode::kDLBool)) {
     TVM_FFI_VISIT_THROW(TypeError, call)
         << "Where requires the input condition tensor to have boolean dtype. However, "
            "the given condition dtype is "

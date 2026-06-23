@@ -615,8 +615,8 @@ CompareResult TransitiveComparisonAnalyzer::Impl::TryCompare(const PrimExpr& lhs
                                                              const PrimExpr& rhs_expr,
                                                              bool propagate_inequalities) const {
   // Currently only supports integer checks
-  if (lhs_expr.ty().code() != DLDataTypeCode::kDLInt ||
-      rhs_expr.ty().code() != DLDataTypeCode::kDLInt) {
+  if (!lhs_expr.ty().MatchesCode(DLDataTypeCode::kDLInt) ||
+      !rhs_expr.ty().MatchesCode(DLDataTypeCode::kDLInt)) {
     return CompareResult::kUnknown;
   }
 

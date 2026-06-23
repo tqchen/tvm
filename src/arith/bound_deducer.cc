@@ -97,7 +97,7 @@ class BoundDeducer : public ExprFunctor<void(const PrimExpr&)> {
 
   SignType GetSignType(const PrimExpr& e) {
     PrimType e_ty = e.ty();
-    if (e_ty.code() == DLDataTypeCode::kDLUInt) {
+    if (e_ty.MatchesCode(DLDataTypeCode::kDLUInt)) {
       return kPositive;
     }
     return expr_map_[e].GetSignType();
