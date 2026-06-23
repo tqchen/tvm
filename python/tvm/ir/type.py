@@ -53,6 +53,18 @@ class PrimType(Type):
     def __init__(self, dtype):
         self.__init_handle_by_constructor__(_ffi_api.PrimType, dtype)
 
+    def __eq__(self, other):
+        if isinstance(other, str):
+            return self.dtype == other
+        return super().__eq__(other)
+
+    def __ne__(self, other):
+        return not self.__eq__(other)
+
+    def __hash__(self):
+        dtype = self.dtype
+        return hash((dtype.type_code, dtype.bits, dtype.lanes))
+
 
 @tvm_ffi.register_object("ir.PointerType")
 class PointerType(Type):

@@ -56,13 +56,23 @@ def div_ambiguity_error() -> RuntimeError:
 def _dtype_is_int(value):
     if isinstance(value, int):
         return True
-    return isinstance(value, ExprOp) and DataType(value.dtype).type_code == DataTypeCode.INT  # type: ignore
+    if isinstance(value, ExprOp):
+        dtype = value.dtype  # type: ignore
+        if isinstance(dtype, ir.PrimType):
+            dtype = dtype.dtype
+        return DataType(dtype).type_code == DataTypeCode.INT
+    return False
 
 
 def _dtype_is_float(value):
     if isinstance(value, float):
         return True
-    return isinstance(value, ExprOp) and DataType(value.dtype).type_code == DataTypeCode.FLOAT  # type: ignore
+    if isinstance(value, ExprOp):
+        dtype = value.dtype  # type: ignore
+        if isinstance(dtype, ir.PrimType):
+            dtype = dtype.dtype
+        return DataType(dtype).type_code == DataTypeCode.FLOAT
+    return False
 
 
 class ExprOp:

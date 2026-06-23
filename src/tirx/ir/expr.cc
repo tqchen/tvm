@@ -140,7 +140,7 @@ TVM_FFI_STATIC_INIT_BLOCK() {
     TVM_FFI_CHECK(a_ty == b_ty, TypeError)                                                  \
         << "mismatched types. " << a_ty->dtype << " vs. " << b_ty->dtype << "\n";           \
     ffi::ObjectPtr<T> node = ffi::make_object<T>();                                         \
-    node->BaseExprNode::ty = a_ty.WithCode(DLDataTypeCode::kDLBool);                        \
+    node->BaseExprNode::ty = PrimType(DLDataType{kDLBool, 8, a_ty->dtype.lanes});            \
     node->a = std::move(a);                                                                 \
     node->b = std::move(b);                                                                 \
     node->span = std::move(span);                                                           \
@@ -445,7 +445,7 @@ And::And(PrimExpr a, PrimExpr b, Span span) {
   TVM_FFI_CHECK(a_ty == b_ty, TypeError) << "mismatched types";
 
   ffi::ObjectPtr<AndNode> node = ffi::make_object<AndNode>();
-  node->BaseExprNode::ty = a_ty.WithCode(DLDataTypeCode::kDLBool);
+  node->BaseExprNode::ty = PrimType(DLDataType{kDLBool, 8, a_ty->dtype.lanes});
   node->a = std::move(a);
   node->b = std::move(b);
   node->span = std::move(span);
@@ -469,7 +469,7 @@ Or::Or(PrimExpr a, PrimExpr b, Span span) {
   TVM_FFI_CHECK(a_ty == b_ty, TypeError) << "mismatched types";
 
   ffi::ObjectPtr<OrNode> node = ffi::make_object<OrNode>();
-  node->BaseExprNode::ty = a_ty.WithCode(DLDataTypeCode::kDLBool);
+  node->BaseExprNode::ty = PrimType(DLDataType{kDLBool, 8, a_ty->dtype.lanes});
   node->a = std::move(a);
   node->b = std::move(b);
   node->span = std::move(span);
@@ -489,7 +489,7 @@ Not::Not(PrimExpr a, Span span) {
   TVM_FFI_ICHECK(a_ty.IsPredicate());
 
   ffi::ObjectPtr<NotNode> node = ffi::make_object<NotNode>();
-  node->BaseExprNode::ty = a_ty.WithCode(DLDataTypeCode::kDLBool);
+  node->BaseExprNode::ty = PrimType(DLDataType{kDLBool, 8, a_ty->dtype.lanes});
   node->a = std::move(a);
   node->span = std::move(span);
   data_ = std::move(node);

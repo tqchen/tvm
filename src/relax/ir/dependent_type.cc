@@ -117,16 +117,14 @@ TensorType::TensorType(PrimType dtype, int ndim, ffi::Optional<VDevice> vdevice,
 TVM_FFI_STATIC_INIT_BLOCK() {
   namespace refl = tvm::ffi::reflection;
   refl::GlobalDef().def(
-      "relax.TensorType", [](ffi::Optional<Expr> shape, ffi::Optional<DLDataType> dtype, int ndim,
+      "relax.TensorType", [](ffi::Optional<Expr> shape, ffi::Optional<PrimType> dtype, int ndim,
                              VDevice vdevice, Span span) {
+        PrimType resolved_dtype = dtype.value_or(PrimType(DLDataType{kDLOpaqueHandle, 0, 0}));
         if (shape.defined()) {
           TVM_FFI_CHECK_EQ(ndim, kUnknownNDim, ValueError) << "Cannot both specify shape and ndim";
-          return TensorType(shape.value(),
-                            PrimType(dtype.value_or(DLDataType{kDLOpaqueHandle, 0, 0})), vdevice,
-                            span);
+          return TensorType(shape.value(), resolved_dtype, vdevice, span);
         } else {
-          return TensorType(PrimType(dtype.value_or(DLDataType{kDLOpaqueHandle, 0, 0})), ndim,
-                            vdevice, span);
+          return TensorType(resolved_dtype, ndim, vdevice, span);
         }
       });
 }

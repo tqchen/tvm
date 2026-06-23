@@ -25,8 +25,16 @@ from . import cpp, tag
 from .utils import get_const_tuple
 
 
+def _runtime_dtype(dtype):
+    return dtype.dtype if hasattr(dtype, "dtype") else dtype
+
+
+def _dtype_str(dtype):
+    return str(_runtime_dtype(dtype))
+
+
 def _require_float_tensor(op_name, x):
-    if DataType(x.dtype).type_code not in (DataTypeCode.FLOAT, DataTypeCode.BFLOAT):
+    if DataType(_runtime_dtype(x.dtype)).type_code not in (DataTypeCode.FLOAT, DataTypeCode.BFLOAT):
         raise TypeError(f"topi.{op_name} only supports floating-point inputs, but got {x.dtype}")
     return x
 
@@ -478,7 +486,7 @@ def log(x):
     y : tvm.te.Tensor
         The result.
     """
-    if x.dtype.startswith("int"):
+    if _dtype_str(x.dtype).startswith("int"):
         x = te.compute(x.shape, lambda *i: x(*i).astype("float32"))
     return te.compute(x.shape, lambda *i: te.log(x(*i)), tag=tag.ELEMWISE)
 
@@ -496,7 +504,7 @@ def log2(x):
     y : tvm.te.Tensor
         The result.
     """
-    if x.dtype.startswith("int"):
+    if _dtype_str(x.dtype).startswith("int"):
         x = te.compute(x.shape, lambda *i: x(*i).astype("float32"))
     return te.compute(x.shape, lambda *i: te.log2(x(*i)), tag=tag.ELEMWISE)
 
@@ -514,7 +522,7 @@ def log10(x):
     y : tvm.te.Tensor
         The result.
     """
-    if x.dtype.startswith("int"):
+    if _dtype_str(x.dtype).startswith("int"):
         x = te.compute(x.shape, lambda *i: x(*i).astype("float32"))
     return te.compute(x.shape, lambda *i: te.log10(x(*i)), tag=tag.ELEMWISE)
 
@@ -533,7 +541,7 @@ def sqrt(x):
     y : tvm.te.Tensor
         The result.
     """
-    if x.dtype.startswith("int"):
+    if _dtype_str(x.dtype).startswith("int"):
         x = te.compute(x.shape, lambda *i: x(*i).astype("float32"))
     return te.compute(x.shape, lambda *i: te.sqrt(x(*i)))
 
@@ -552,7 +560,7 @@ def rsqrt(x):
     y : tvm.te.Tensor
         The result.
     """
-    if x.dtype.startswith("int"):
+    if _dtype_str(x.dtype).startswith("int"):
         x = te.compute(x.shape, lambda *i: x(*i).astype("float32"))
     return te.compute(x.shape, lambda *i: te.rsqrt(x(*i)))
 
@@ -798,7 +806,7 @@ def fast_exp(x):
     y : tvm.te.Tensor
         The result.
     """
-    if x.dtype.startswith("int") or x.dtype.startswith("uint"):
+    if _dtype_str(x.dtype).startswith("int") or _dtype_str(x.dtype).startswith("uint"):
         x = cast(x, "float32")
     return cpp.fast_exp(x, x.dtype, tag.ELEMWISE)
 
@@ -816,7 +824,7 @@ def fast_tanh(x):
     y : tvm.te.Tensor
         The result.
     """
-    if x.dtype.startswith("int") or x.dtype.startswith("uint"):
+    if _dtype_str(x.dtype).startswith("int") or _dtype_str(x.dtype).startswith("uint"):
         x = cast(x, "float32")
     return cpp.fast_tanh(x, x.dtype, tag.ELEMWISE)
 

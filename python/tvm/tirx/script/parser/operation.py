@@ -17,6 +17,7 @@
 """The tirx expression operation registration"""
 
 from tvm import tirx
+from tvm.ir import PrimType
 from tvm.runtime import DataType, DataTypeCode
 from tvm.script.parser._core import OpMethod, doc, register_op
 from tvm.tirx import IntImm
@@ -26,12 +27,18 @@ from tvm.tirx.expr import FloatImm
 def _register_expr_op(ty: type):  # pylint: disable=invalid-name
     ty._dispatch_type = ty  # pylint: disable=protected-access
 
+    def _runtime_dtype(dtype):
+        return dtype.dtype if isinstance(dtype, PrimType) else dtype
+
+    def _data_type(dtype):
+        return DataType(_runtime_dtype(dtype))
+
     def _and(a, b):
         if isinstance(a, bool):
             a = IntImm("bool", a)
         if isinstance(b, bool):
             b = IntImm("bool", b)
-        if DataType(a.dtype).lanes > 1 or DataType(b.dtype).lanes > 1:
+        if _data_type(a.dtype).lanes > 1 or _data_type(b.dtype).lanes > 1:
             return a & b
         else:
             return tirx.And(a, b)
@@ -41,12 +48,13 @@ def _register_expr_op(ty: type):  # pylint: disable=invalid-name
             a = IntImm("bool", a)
         if isinstance(b, bool):
             b = IntImm("bool", b)
-        if DataType(a.dtype).lanes > 1 or DataType(b.dtype).lanes > 1:
+        if _data_type(a.dtype).lanes > 1 or _data_type(b.dtype).lanes > 1:
             return a | b
         else:
             return tirx.Or(a, b)
 
     def _get_type_str(dtype: str):
+        dtype = str(_runtime_dtype(dtype))
         if DataType(dtype).lanes == 1:
             return dtype
         index = dtype.find("x")
@@ -56,19 +64,19 @@ def _register_expr_op(ty: type):  # pylint: disable=invalid-name
         if isinstance(a, int):
             if hasattr(b, "dtype"):
                 if (
-                    DataType(b.dtype).type_code == DataTypeCode.INT
-                    or DataType(b.dtype).type_code == DataTypeCode.UINT
-                    or DataType(b.dtype).type_code == DataTypeCode.BOOL
+                    _data_type(b.dtype).type_code == DataTypeCode.INT
+                    or _data_type(b.dtype).type_code == DataTypeCode.UINT
+                    or _data_type(b.dtype).type_code == DataTypeCode.BOOL
                 ):
                     a = IntImm(_get_type_str(b.dtype), a)
-                elif DataType(b.dtype).type_code == DataTypeCode.FLOAT:
+                elif _data_type(b.dtype).type_code == DataTypeCode.FLOAT:
                     a = FloatImm(_get_type_str(b.dtype), a)
             elif isinstance(b, float):
                 a = FloatImm("float32", a)
             else:
                 a = IntImm("int32", a)
         elif isinstance(a, float):
-            if DataType(b.dtype).type_code == DataTypeCode.FLOAT:
+            if _data_type(b.dtype).type_code == DataTypeCode.FLOAT:
                 a = FloatImm(_get_type_str(b.dtype), a)
             else:
                 a = FloatImm("float32", a)
@@ -76,23 +84,27 @@ def _register_expr_op(ty: type):  # pylint: disable=invalid-name
         assert isinstance(a, tirx.PrimExpr), "Operand should be a PrimExpr."
         if isinstance(b, int):
             if (
-                DataType(a.dtype).type_code == DataTypeCode.INT
-                or DataType(a.dtype).type_code == DataTypeCode.UINT
-                or DataType(a.dtype).type_code == DataTypeCode.BOOL
+                _data_type(a.dtype).type_code == DataTypeCode.INT
+                or _data_type(a.dtype).type_code == DataTypeCode.UINT
+                or _data_type(a.dtype).type_code == DataTypeCode.BOOL
             ):
                 b = IntImm(_get_type_str(a.dtype), b)
-            elif DataType(a.dtype).type_code == DataTypeCode.FLOAT:
+            elif _data_type(a.dtype).type_code == DataTypeCode.FLOAT:
                 b = FloatImm(_get_type_str(a.dtype), b)
         elif isinstance(b, float):
             b = FloatImm(_get_type_str(a.dtype), b)
 
-        if DataType(a.dtype).lanes == DataType(b.dtype).lanes:
+        if _data_type(a.dtype).lanes == _data_type(b.dtype).lanes:
             return op(a, b)
-        elif DataType(a.dtype).lanes == 1 and DataType(a.dtype).lanes != DataType(b.dtype).lanes:
-            broadcast_a = tirx.Broadcast(a, DataType(b.dtype).lanes)
+        elif _data_type(a.dtype).lanes == 1 and _data_type(a.dtype).lanes != _data_type(
+            b.dtype
+        ).lanes:
+            broadcast_a = tirx.Broadcast(a, _data_type(b.dtype).lanes)
             return op(broadcast_a, b)
-        elif DataType(b.dtype).lanes == 1 and DataType(a.dtype).lanes != DataType(b.dtype).lanes:
-            broadcast_b = tirx.Broadcast(b, DataType(a.dtype).lanes)
+        elif _data_type(b.dtype).lanes == 1 and _data_type(a.dtype).lanes != _data_type(
+            b.dtype
+        ).lanes:
+            broadcast_b = tirx.Broadcast(b, _data_type(a.dtype).lanes)
             return op(a, broadcast_b)
         else:
             raise TypeError("do not know how to deal with it.")

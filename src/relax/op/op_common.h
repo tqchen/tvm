@@ -301,8 +301,8 @@ inline std::optional<PrimType> GetElementDType(const Type& ty) {
  * \return The inferred output dtype.
  * \throw Throw exception if the dtype of two input TensorType don’t match
  */
-inline PrimType InferBinaryArithOpOutDtype(const Call& call, const BlockBuilder& ctx,
-                                           const Type& lhs_ty, const Type& rhs_ty) {
+inline DLDataType InferBinaryArithOpOutDtype(const Call& call, const BlockBuilder& ctx,
+                                             const Type& lhs_ty, const Type& rhs_ty) {
   auto opt_lhs_dtype = GetElementDType(lhs_ty);
   if (!opt_lhs_dtype) {
     TVM_FFI_VISIT_THROW(TypeError, call)
@@ -324,14 +324,14 @@ inline PrimType InferBinaryArithOpOutDtype(const Call& call, const BlockBuilder&
   auto rhs_dtype = opt_rhs_dtype.value();
 
   if (lhs_dtype.IsVoid() || rhs_dtype.IsVoid()) {
-    return PrimType::Void();
-  } else if (lhs_dtype != rhs_dtype && !lhs_dtype.IsBool() && !rhs_dtype.IsBool()) {
+    return DLDataType{kDLOpaqueHandle, 0, 0};
+  } else if (lhs_dtype->dtype != rhs_dtype->dtype && !lhs_dtype.IsBool() && !rhs_dtype.IsBool()) {
     TVM_FFI_VISIT_THROW(TypeError, call)
         << "Binary operators must have the same datatype for both operands.  "
         << "However, " << call << " uses datatype " << lhs_dtype << " on the LHS (Type of "
         << lhs_ty << "), and datatype " << rhs_dtype << " on the RHS (Type of " << rhs_ty << ").";
   }
-  return lhs_dtype;
+  return lhs_dtype->dtype;
 }
 
 /*!
