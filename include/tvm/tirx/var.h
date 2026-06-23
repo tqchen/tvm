@@ -57,7 +57,7 @@ class VarNode : public PrimExprNode {
    *
    * It is an optional field that provides a refined type of the variable than dtype.
    *
-   * \sa tvm/ir/type.h for discussion of relations between runtime::DataType and Type.
+   * \sa tvm/ir/type.h for discussion of relations between DLPack dtype and Type.
    */
   Type type_annotation;
 
