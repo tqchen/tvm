@@ -53,7 +53,7 @@ IndexMap IndexMap::FromFunc(int ndim,
   ffi::Array<Var> initial_indices;
   initial_indices.reserve(ndim);
   for (int i = 0; i < ndim; ++i) {
-    initial_indices.push_back(Var("i" + std::to_string(i), DataType::Int(32)));
+    initial_indices.push_back(Var("i" + std::to_string(i), PrimType::Int(32)));
   }
   return IndexMap(initial_indices, func(initial_indices), std::move(inverse_index_map));
 }
@@ -251,11 +251,11 @@ ffi::Array<Range> IndexMapNode::MapRanges(const ffi::Array<Range>& ranges,
     for (const auto& range : ranges) {
       max_bits = std::max(max_bits, range->extent.ty().bits());
     }
-    return DataType::Int(max_bits);
+    return PrimType::Int(max_bits);
   }();
   output.MutateByApply([&](const Range& range) {
-    if (DataType(range->min.ty()->dtype) != output_dtype ||
-        DataType(range->extent.ty()->dtype) != output_dtype) {
+    if (range->min.ty()->dtype != output_dtype->dtype ||
+        range->extent.ty()->dtype != output_dtype->dtype) {
       return Range::FromMinExtent(cast(output_dtype, range->min),
                                   cast(output_dtype, range->extent));
     } else {

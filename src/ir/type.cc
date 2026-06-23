@@ -88,6 +88,14 @@ uint32_t PackDataTypeKey(DLDataType dtype) {
          static_cast<uint32_t>(dtype.lanes);
 }
 
+int64_t PrimTypeAnyHash(const ffi::Any& src) {
+  return static_cast<int64_t>(PackDataTypeKey(src.cast<PrimType>()->dtype));
+}
+
+bool PrimTypeAnyEqual(const ffi::Any& lhs, const ffi::Any& rhs) {
+  return lhs.cast<PrimType>()->dtype == rhs.cast<PrimType>()->dtype;
+}
+
 ffi::ObjectPtr<PrimTypeNode> GetCachedPrimTypeNode(DLDataType dtype) {
   thread_local std::unordered_map<uint32_t, ffi::ObjectPtr<PrimTypeNode>> cache;
   uint32_t key = PackDataTypeKey(dtype);
@@ -103,8 +111,12 @@ ffi::ObjectPtr<PrimTypeNode> GetCachedPrimTypeNode(DLDataType dtype) {
 }  // namespace
 
 TVM_FFI_STATIC_INIT_BLOCK() {
+  namespace refl = tvm::ffi::reflection;
   TypeNode::RegisterReflection();
   PrimTypeNode::RegisterReflection();
+  refl::TypeAttrDef<PrimTypeNode>()
+      .attr(refl::type_attr::kAnyHash, reinterpret_cast<void*>(&PrimTypeAnyHash))
+      .attr(refl::type_attr::kAnyEqual, reinterpret_cast<void*>(&PrimTypeAnyEqual));
   PointerTypeNode::RegisterReflection();
   TupleTypeNode::RegisterReflection();
   FuncTypeNode::RegisterReflection();

@@ -62,7 +62,7 @@ using FExtern = std::function<PrimExpr(ffi::Array<Buffer>, ffi::Array<Buffer>)>;
  * element of out_types.
  */
 inline ffi::Array<Tensor> make_extern(const ffi::Array<ffi::Array<PrimExpr>>& out_shapes,
-                                      const std::vector<PrimType>& out_types,
+                                      const std::vector<DLDataType>& out_types,
                                       const ffi::Array<Tensor>& inputs, FExtern fextern,
                                       std::string name, std::string tag,
                                       ::tvm::ffi::Map<ffi::String, ffi::Any> attrs) {
@@ -90,20 +90,6 @@ inline ffi::Array<Tensor> make_extern(const ffi::Array<ffi::Array<PrimExpr>>& ou
   return outputs;
 }
 
-inline ffi::Array<Tensor> make_extern(const ffi::Array<ffi::Array<PrimExpr>>& out_shapes,
-                                      const std::vector<DataType>& out_types,
-                                      const ffi::Array<Tensor>& inputs, FExtern fextern,
-                                      std::string name, std::string tag,
-                                      ::tvm::ffi::Map<ffi::String, ffi::Any> attrs) {
-  std::vector<PrimType> prim_types;
-  prim_types.reserve(out_types.size());
-  for (DataType dtype : out_types) {
-    prim_types.emplace_back(dtype);
-  }
-  return make_extern(out_shapes, prim_types, inputs, std::move(fextern), std::move(name),
-                     std::move(tag), std::move(attrs));
-}
-
 /*!
  * \brief This function is used to create a DLTensor structure on the stack to
  * be able to pass a symbolic buffer as arguments to TVM ffi::Function
@@ -127,7 +113,7 @@ inline PrimExpr pack_buffer(Buffer buf) {
                                  shape,
                                  strides,
                                  IntImm::Int32(static_cast<int64_t>(buf->shape.size())),
-                                 MakeConst(buf->dtype, 0),
+                                 MakeConst(PrimType(buf->dtype), 0),
                                  buf->elem_offset};
   return tvm::tirx::Call(PrimType::Handle(), tvm::tirx::builtin::tvm_stack_make_array(), pack_args);
 }

@@ -57,7 +57,7 @@ inline tvm::te::Tensor relu(const tvm::te::Tensor& t, T threshold = static_cast<
   return tvm::te::compute(
       t->shape,
       [&](const tvm::ffi::Array<tvm::tirx::Var>& i) {
-        auto threshold_const = tvm::tirx::MakeConst(t->dtype, threshold);
+        auto threshold_const = tvm::tirx::MakeConst(tvm::PrimType(t->dtype), threshold);
         return tvm::max(t(i), threshold_const);
       },
       name, tag);
@@ -194,7 +194,7 @@ inline tvm::te::Tensor pad(
   }
 
   if (!pad_value.defined()) {
-    pad_value = tvm::tirx::MakeConst(t->dtype, 0);
+    pad_value = tvm::tirx::MakeConst(tvm::PrimType(t->dtype), 0);
   }
 
   auto l = [&](tvm::ffi::Array<tvm::tirx::Var> ovars) {
@@ -507,7 +507,7 @@ inline tvm::te::Tensor space_to_batch_nd(const tvm::te::Tensor& data,
 
   // pad the input with paddings provided
   if (!pad_value.defined()) {
-    pad_value = tvm::tirx::MakeConst(data->dtype, 0);
+    pad_value = tvm::tirx::MakeConst(tvm::PrimType(data->dtype), 0);
   }
   padded_t = pad(data, pad_before_int32, pad_after_int32, pad_value);
 
@@ -677,7 +677,7 @@ inline Tensor nll_loss(const Tensor& predictions, const Tensor& targets, const T
         [&](const tvm::ffi::Array<tvm::tirx::Var>& target_indices) {
           auto c = targets();
           return tvm::tirx::Select(c != ignore_index, -predictions(c) * weights(c),
-                                   tvm::tirx::MakeConst(predictions->dtype, 0));
+                                   tvm::tirx::MakeConst(tvm::PrimType(predictions->dtype), 0));
         },
         name, tag);
     if (reduction == "mean") {
@@ -686,7 +686,7 @@ inline Tensor nll_loss(const Tensor& predictions, const Tensor& targets, const T
           [&](const tvm::ffi::Array<tvm::tirx::Var>& target_indices) {
             auto c = targets();
             return tvm::tirx::Select(c != ignore_index, weights(c),
-                                     tvm::tirx::MakeConst(predictions->dtype, 0));
+                                     tvm::tirx::MakeConst(tvm::PrimType(predictions->dtype), 0));
           },
           name, tag);
       return topi::divide(T, W);
@@ -705,7 +705,7 @@ inline Tensor nll_loss(const Tensor& predictions, const Tensor& targets, const T
           pred_indices.push_back(target_indices[i]);  // indices for multidimensional loss
         }
         return tvm::tirx::Select(c != ignore_index, -predictions(pred_indices) * weights(c),
-                                 tvm::tirx::MakeConst(predictions->dtype, 0));
+                                 tvm::tirx::MakeConst(tvm::PrimType(predictions->dtype), 0));
       },
       name, tag);
   TVM_FFI_ICHECK(T->shape.size() != 0);
@@ -715,7 +715,7 @@ inline Tensor nll_loss(const Tensor& predictions, const Tensor& targets, const T
         [&](const tvm::ffi::Array<tvm::tirx::Var>& target_indices) {
           auto c = targets(target_indices);
           return tvm::tirx::Select(c != ignore_index, weights(c),
-                                   tvm::tirx::MakeConst(predictions->dtype, 0));
+                                   tvm::tirx::MakeConst(tvm::PrimType(predictions->dtype), 0));
         },
         name, tag);
     return topi::divide(topi::sum(T, tvm::ffi::Array<int64_t>(nullptr)),
