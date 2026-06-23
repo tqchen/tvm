@@ -41,15 +41,7 @@ namespace tirx {
 using tvm::tirx::IterVar;
 using tvm::tirx::Layout;
 
-namespace {
-
-DataType DType(const PrimType& ty) { return DataType(ty->dtype); }
-
-DataType DType(const PrimExpr& expr) { return DType(expr.ty()); }
-
-}  // namespace
-
-Buffer BufferDecl(ffi::Array<PrimExpr> shape, DataType dtype, ffi::String buffer_name,
+Buffer BufferDecl(ffi::Array<PrimExpr> shape, DLDataType dtype, ffi::String buffer_name,
                   ffi::Optional<Var> data, ffi::Optional<ffi::Array<PrimExpr>> strides,
                   ffi::Optional<PrimExpr> elem_offset, ffi::String storage_scope, int align,
                   int offset_factor, ffi::String buffer_type,
@@ -65,19 +57,19 @@ Buffer BufferDecl(ffi::Array<PrimExpr> shape, DataType dtype, ffi::String buffer
   }
   Var buffer_data;
   if (!data.defined()) {
-    DataType storage_dtype = dtype;
-    if (storage_dtype == DataType::Bool()) {
-      storage_dtype = DataType::Int(8);
+    DLDataType storage_dtype = dtype;
+    if (storage_dtype == DLDataType{kDLBool, 8, 1}) {
+      storage_dtype = DLDataType{kDLInt, 8, 1};
     }
     buffer_data = tvm::tirx::Var(buffer_name, PointerType(PrimType(storage_dtype), storage_scope));
   } else {
     buffer_data = data.value();
   }
   if (!elem_offset.defined() && offset_factor) {
-    DataType shape_dtype = shape.empty() ? DataType::Int(32) : DType(shape[0]);
+    PrimType shape_dtype = shape.empty() ? PrimType::Int(32) : shape[0].ty();
     elem_offset = tvm::tirx::Var("elem_offset", shape_dtype);
   }
-  return Buffer(buffer_data, dtype, shape, strides.value_or(ffi::Array<PrimExpr>()),
+  return Buffer(buffer_data, PrimType(dtype), shape, strides.value_or(ffi::Array<PrimExpr>()),
                 elem_offset.value_or(PrimExpr()), buffer_name, align, offset_factor,
                 (buffer_type == "auto" ? tvm::tirx::kAutoBroadcast : tvm::tirx::kDefault),
                 axis_separators.value_or(ffi::Array<IntImm>()), Span(), layout, allocated_addr);
@@ -108,7 +100,7 @@ Var Arg(ffi::String name, Var var) {
 Buffer Arg(ffi::String name, Buffer buffer) {
   PrimFuncFrame frame = FindPrimFuncFrame("T.Arg");
   details::Namer::Name(buffer, name);
-  Var handle(buffer->name + "_handle", DataType::Handle());
+  Var handle(buffer->name + "_handle", PrimType::Handle());
   frame->args.push_back(handle);
   frame->buffer_map.Set(handle, buffer);
   return buffer;
@@ -156,7 +148,7 @@ tvm::Type FuncRet(tvm::Type ret_type) {
   return ret_type;
 }
 
-Buffer MatchBuffer(ffi::ObjectRef param, ffi::Array<PrimExpr> shape, DataType dtype,
+Buffer MatchBuffer(ffi::ObjectRef param, ffi::Array<PrimExpr> shape, DLDataType dtype,
                    ffi::Optional<Var> data, ffi::Array<PrimExpr> strides, PrimExpr elem_offset,
                    ffi::String storage_scope, int align, int offset_factor,
                    ffi::String buffer_type_str, ffi::Optional<ffi::Array<IntImm>> axis_separators,
@@ -375,7 +367,7 @@ void BlockAttrs(ffi::Map<ffi::String, Any> attrs) {
 }
 
 ffi::Variant<Buffer, AllocBufferFrame> SBlockAllocBuffer(
-    ffi::Array<PrimExpr> shape, DataType dtype, ffi::Optional<Var> data,
+    ffi::Array<PrimExpr> shape, DLDataType dtype, ffi::Optional<Var> data,
     ffi::Array<PrimExpr> strides, PrimExpr elem_offset, ffi::String storage_scope, int align,
     int offset_factor, ffi::String buffer_type_str,
     ffi::Optional<ffi::Array<IntImm>> axis_separators, ffi::Optional<Layout> layout,
@@ -427,12 +419,13 @@ IterVar PushBlockVar(IterVar iter_var, PrimExpr binding) {
 }
 
 #define TVM_TIRX_IR_BUILDER_AXIS(Method, Kind, Name)                                 \
-  Var Method(Range dom, PrimExpr binding, DataType dtype) {                          \
+  Var Method(Range dom, PrimExpr binding, DLDataType dtype) {                        \
     TVM_FFI_ICHECK(dom.defined()) << Name << " axis must have a domain";             \
     PrimType min_ty = dom->min.ty();                                                 \
     PrimType extent_ty = dom->extent.ty();                                           \
-    int bits = std::max({min_ty.bits(), extent_ty.bits(), dtype.bits()});            \
-    return PushBlockVar(IterVar(/*dom=*/dom, /*var=*/Var("", dtype.with_bits(bits)), \
+    int bits = std::max({min_ty.bits(), extent_ty.bits(), static_cast<int>(dtype.bits)}); \
+    PrimType var_ty(DLDataType{dtype.code, static_cast<uint8_t>(bits), dtype.lanes}); \
+    return PushBlockVar(IterVar(/*dom=*/dom, /*var=*/Var("", var_ty),                \
                                 /*iter_type=*/Kind, /*thread_tag=*/""),              \
                         binding)                                                     \
         ->var;                                                                       \
@@ -443,7 +436,7 @@ TVM_TIRX_IR_BUILDER_AXIS(Scan, tvm::tirx::IterVarType::kOrdered, "Scan");
 TVM_TIRX_IR_BUILDER_AXIS(Opaque, tvm::tirx::IterVarType::kOpaque, "Opaque");
 #undef TVM_TIRX_IR_BUILDER_AXIS
 
-ffi::Array<Var> Remap(ffi::String kinds, ffi::Array<PrimExpr> bindings, DataType dtype) {
+ffi::Array<Var> Remap(ffi::String kinds, ffi::Array<PrimExpr> bindings, DLDataType dtype) {
   using namespace tvm::tirx;
   ffi::Array<Var> results;
   TVM_FFI_ICHECK_EQ(kinds.size(), bindings.size());
@@ -647,7 +640,7 @@ LaunchThreadFrame LaunchThread(Var var, PrimExpr extent) {
 }
 
 LaunchThreadFrame LaunchThread(ffi::String thread_tag, PrimExpr extent) {
-  return LaunchThread(EnvThread(thread_tag, DType(extent)), extent);
+  return LaunchThread(EnvThread(thread_tag, extent.ty()->dtype), extent);
 }
 
 AttrFrame Attr(ffi::Any node, ffi::String attr_key, PrimExpr value) {
@@ -735,8 +728,8 @@ ComposeOpFrame ComposeOp(ffi::Map<ffi::String, Buffer> workspace,
   return ComposeOpFrame(n);
 }
 
-Var EnvThread(ffi::String thread_tag, DataType dtype) {
-  IterVar iter_var(Range{nullptr}, Var("", dtype), tvm::tirx::IterVarType::kThreadIndex,
+Var EnvThread(ffi::String thread_tag, DLDataType dtype) {
+  IterVar iter_var(Range{nullptr}, Var("", PrimType(dtype)), tvm::tirx::IterVarType::kThreadIndex,
                    thread_tag);
   Var var = iter_var->var;
   if (ffi::Optional<PrimFuncFrame> opt_frame = IRBuilder::Current()->FindFrame<PrimFuncFrame>()) {
@@ -749,10 +742,10 @@ Var EnvThread(ffi::String thread_tag, DataType dtype) {
 
 void BufferStore(Buffer buffer, PrimExpr value, ffi::Array<PrimExpr> indices,
                  ffi::Optional<PrimExpr> predicate = std::nullopt) {
-  runtime::DataType buffer_dtype(buffer->dtype->dtype);
+  PrimType buffer_dtype = buffer->dtype;
   PrimType index_ty = indices.empty() ? PrimType::Int(32) : indices.back().ty();
   bool is_index_scalable = !indices.empty() && index_ty.IsScalableVector();
-  bool is_buffer_dtype_scalable = buffer_dtype.is_scalable_vector();
+  bool is_buffer_dtype_scalable = buffer_dtype.IsScalableVector();
 
   TVM_FFI_ICHECK(!(is_index_scalable && is_buffer_dtype_scalable))
       << "Index dtype and buffer dtype can't both be scalable.";
@@ -766,24 +759,25 @@ void BufferStore(Buffer buffer, PrimExpr value, ffi::Array<PrimExpr> indices,
     index_lanes = index_ty.lanes();
   }
 
-  int buffer_lanes = is_buffer_dtype_scalable ? buffer_dtype.vscale_factor() : buffer_dtype.lanes();
+  int buffer_lanes = is_buffer_dtype_scalable ? buffer_dtype.VScaleFactor() : buffer_dtype.lanes();
 
-  runtime::DataType lhs_dtype;
+  PrimType lhs_dtype = buffer_dtype;
   if (is_buffer_dtype_scalable || is_index_scalable) {
-    lhs_dtype = buffer_dtype.with_scalable_vscale_factor(buffer_lanes * index_lanes);
+    lhs_dtype =
+        PrimType::ScalableVector(buffer_dtype.code(), buffer_dtype.bits(), buffer_lanes * index_lanes);
   } else {
-    lhs_dtype = buffer_dtype.with_lanes(buffer_dtype.lanes() * index_lanes);
+    lhs_dtype = buffer_dtype.WithLanes(buffer_dtype.lanes() * index_lanes);
   }
 
-  runtime::DataType rhs_dtype = DType(value);
+  PrimType rhs_dtype = value.ty();
 
   if (lhs_dtype != rhs_dtype) {
-    TVM_FFI_ICHECK(lhs_dtype.is_scalable_vector() == rhs_dtype.is_scalable_vector())
+    TVM_FFI_ICHECK(lhs_dtype.IsScalableVector() == rhs_dtype.IsScalableVector())
         << "Can't mix scalable and fixed length vectors in a statement";
 
     bool lanes_match = false;
-    if (lhs_dtype.is_scalable_vector()) {
-      lanes_match = lhs_dtype.vscale_factor() == rhs_dtype.vscale_factor();
+    if (lhs_dtype.IsScalableVector()) {
+      lanes_match = lhs_dtype.VScaleFactor() == rhs_dtype.VScaleFactor();
     } else {
       lanes_match = lhs_dtype.lanes() == rhs_dtype.lanes();
     }
@@ -796,14 +790,13 @@ void BufferStore(Buffer buffer, PrimExpr value, ffi::Array<PrimExpr> indices,
     if (lhs_dtype.code() != rhs_dtype.code()) {
       if (
           // Case 1. lhs is handle, and rhs needs to be casted to handle.
-          (lhs_dtype.code() == runtime::DataType::kHandle) ||
+          (lhs_dtype.code() == DLDataTypeCode::kDLOpaqueHandle) ||
           // Case 2. rhs is handle, and it needs to be casted to non-handle.
-          (rhs_dtype.code() == runtime::DataType::kHandle) ||
+          (rhs_dtype.code() == DLDataTypeCode::kDLOpaqueHandle) ||
           // Case 3. rhs is float or bfloat, and casting to non-float can lose precision.
-          ((lhs_dtype.code() == runtime::DataType::kInt ||
-            lhs_dtype.code() == runtime::DataType::kUInt) &&
-           (rhs_dtype.code() == runtime::DataType::kFloat ||
-            rhs_dtype.code() == runtime::DataType::kBFloat))) {
+          ((lhs_dtype.IsInt() || lhs_dtype.IsUInt()) &&
+           (rhs_dtype.code() == DLDataTypeCode::kDLFloat ||
+            rhs_dtype.code() == DLDataTypeCode::kDLBfloat))) {
         LOG(WARNING) << "Casting in BufferStore may lose precision"
                      << ": LHS is `" << lhs_dtype << "`, RHS is `" << rhs_dtype
                      << "`, indexing lanes: " << index_lanes;
@@ -814,7 +807,7 @@ void BufferStore(Buffer buffer, PrimExpr value, ffi::Array<PrimExpr> indices,
   AddToParent(tvm::tirx::BufferStore(buffer, value, indices, predicate));
 }
 
-DeclBufferFrame DeclBuffer(ffi::Array<PrimExpr> shape, DataType dtype, ffi::String buffer_name,
+DeclBufferFrame DeclBuffer(ffi::Array<PrimExpr> shape, DLDataType dtype, ffi::String buffer_name,
                            ffi::Optional<Var> data, ffi::Optional<ffi::Array<PrimExpr>> strides,
                            ffi::Optional<PrimExpr> elem_offset, ffi::String storage_scope,
                            int align, int offset_factor, ffi::String buffer_type,
@@ -856,7 +849,7 @@ DeclBufferFrame DeclBuffer(ffi::Array<PrimExpr> shape, DataType dtype, ffi::Stri
   return DeclBufferFrame(n);
 }
 
-Buffer AllocBuffer(ffi::Array<PrimExpr> shape, DataType dtype, ffi::String storage_scope,
+Buffer AllocBuffer(ffi::Array<PrimExpr> shape, DLDataType dtype, ffi::String storage_scope,
                    ffi::Optional<ffi::Map<ffi::String, ffi::Any>> annotations) {
   Buffer buffer = BufferDecl(shape, dtype, "", std::nullopt, std::nullopt, std::nullopt,
                              storage_scope, 0, 0, "", std::nullopt);
@@ -867,8 +860,7 @@ Buffer AllocBuffer(ffi::Array<PrimExpr> shape, DataType dtype, ffi::String stora
 
 void Evaluate(PrimExpr value) { AddToParent(tvm::tirx::Evaluate(value)); }
 
-PrimExpr Ptr(runtime::DataType dtype, ffi::String storage_scope = "global",
-             bool is_size_var = false) {
+PrimExpr Ptr(DLDataType dtype, ffi::String storage_scope = "global", bool is_size_var = false) {
   PointerType type_annotation(PrimType(dtype), storage_scope);
   return is_size_var ? tvm::tirx::SizeVar("", type_annotation)
                      : tvm::tirx::Var("", type_annotation);
@@ -937,7 +929,7 @@ TVM_FFI_STATIC_INIT_BLOCK() {
   namespace refl = tvm::ffi::reflection;
   refl::GlobalDef()
       .def("script.ir_builder.tirx.Buffer",
-           static_cast<Buffer (*)(ffi::Array<PrimExpr>, DataType, ffi::String, ffi::Optional<Var>,
+           static_cast<Buffer (*)(ffi::Array<PrimExpr>, DLDataType, ffi::String, ffi::Optional<Var>,
                                   ffi::Optional<ffi::Array<PrimExpr>>, ffi::Optional<PrimExpr>,
                                   ffi::String, int, int, ffi::String,
                                   ffi::Optional<ffi::Array<IntImm>>, ffi::Optional<Layout>,
