@@ -864,19 +864,21 @@ def ceil_log2(x):
 
     target = tvm.target.Target.current()
 
-    if "vulkan" in target.kind.name:
-        clz = tvm.tirx.clz(x)
-        bits = x.ty.dtype.bits
-        res = tvm.tirx.if_then_else(x & (x - 1) == 0, bits - clz - 1, bits - clz)
-        if res.dtype != x.dtype:
-            return cast(res, x.dtype)
-        return res
+    if target is not None:
+        target_name = target.kind.name
+        if "vulkan" in target_name:
+            clz = tvm.tirx.clz(x)
+            bits = x.ty.dtype.bits
+            res = tvm.tirx.if_then_else(x & (x - 1) == 0, bits - clz - 1, bits - clz)
+            if res.dtype != x.dtype:
+                return cast(res, x.dtype)
+            return res
 
-    if "adreno" in str(target.attrs.get("device", "")) or target.kind.name in [
-        "metal",
-        "rocm",
-        "webgpu",
-    ]:
-        return cast(tvm.tirx.ceil(tvm.tirx.log2(cast(x, "float32"))), x.dtype)
+        if "adreno" in str(target.attrs.get("device", "")) or target_name in [
+            "metal",
+            "rocm",
+            "webgpu",
+        ]:
+            return cast(tvm.tirx.ceil(tvm.tirx.log2(cast(x, "float32"))), x.dtype)
 
     return cast(tvm.tirx.ceil(tvm.tirx.log2(cast(x, "float64"))), x.dtype)
