@@ -469,7 +469,7 @@ int conv2d_packed_fp16(void*, TVMFFIAny* args, int num_args, TVMFFIAny* out_val)
   // Prepare zero_block
   int64_t block_nbytes = 2048;
   void* zero_block = device_api->AllocDataSpace(conv_utils::hexagon_device, 1, &block_nbytes,
-                                                tvm::runtime::DataType::UInt(8), vtcm_scope);
+                                                DLDataType{kDLUInt, 8, 1}, vtcm_scope);
   memset(zero_block, 0, 2048);
 
   // FIXME: Setting bias to zero_block: this works for up to 256 output channels.
