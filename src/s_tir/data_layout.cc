@@ -114,8 +114,8 @@ SLayout::SLayout(const ffi::Array<IterVar>& axes) {
 }
 
 SLayout::SLayout(const std::string& name, PrimType index_ty) {  // NOLINT(*)
-  DataType index_dtype(index_ty->dtype);
-  TVM_FFI_CHECK(index_dtype.is_int(), TypeError) << "The input dtype should be integer type";
+  TVM_FFI_CHECK(index_ty.code() == DLDataTypeCode::kDLInt, TypeError)
+      << "The input dtype should be integer type";
   if (name == "__undef__") return;
 
   auto node = ffi::make_object<SLayoutNode>();
@@ -503,9 +503,8 @@ inline ffi::Array<PrimExpr> TransformShape(const ffi::Array<PrimExpr>& src_shape
       bind_map[orig_axis->var.get()] = IntImm(orig_axis->var.ty(), 0);
     } else {
       bind_map[orig_axis->var.get()] =
-          DataType(orig_axis->var.ty()->dtype) == DataType(orig_shape.ty()->dtype)
-              ? orig_shape
-              : cast(orig_axis->var.ty(), orig_shape);
+          orig_axis->var.ty()->dtype == orig_shape.ty()->dtype ? orig_shape
+                                                               : cast(orig_axis->var.ty(), orig_shape);
     }
   }
   // infer the target shape,
@@ -586,8 +585,7 @@ TVM_FFI_STATIC_INIT_BLOCK() {
 TVM_FFI_STATIC_INIT_BLOCK() {
   namespace refl = tvm::ffi::reflection;
   refl::GlobalDef()
-      .def("s_tir.SLayout",
-           [](std::string name, DataType dtype) { return SLayout(name, PrimType(dtype)); })
+      .def("s_tir.SLayout", [](std::string name, PrimType dtype) { return SLayout(name, dtype); })
       .def("s_tir.SLayoutIndexOf",
            [](SLayout layout, std::string axis) -> int { return layout.IndexOf(axis); })
       .def("s_tir.SLayoutFactorOf",

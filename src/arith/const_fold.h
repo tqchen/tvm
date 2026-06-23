@@ -90,19 +90,6 @@ inline bool IsIndexTypedExpr(const PrimExpr& expr) {
 }
 
 /*! \brief Helper to get const folding result repr in int64. */
-inline int64_t GetFoldResultInt64Repr(int64_t x, const DataType& dtype) {
-  if (dtype.bits() < 64) {
-    x &= (1LL << dtype.bits()) - 1;
-  }
-  if (dtype.is_int()) {
-    // get sign extended value of integer with specified bits
-    int64_t m = 1LL << (dtype.bits() - 1);
-    x = (x ^ m) - m;
-  }
-  return x;
-}
-
-/*! \brief Helper to get const folding result repr in int64. */
 inline int64_t GetFoldResultInt64Repr(int64_t x, const PrimType& dtype) {
   if (dtype.bits() < 64) {
     x &= (1LL << dtype.bits()) - 1;

@@ -478,11 +478,11 @@ bool HasReshapePattern(const PrimFunc& func) {
       }
 
       if (nontrivial_indices.defined()) {
-        DataType dtype = !block->iter_vars.empty() ? DataType(block->iter_vars[0]->var.ty()->dtype)
-                                                   : DataType::Int(64);
+        PrimType dtype =
+            !block->iter_vars.empty() ? block->iter_vars[0]->var.ty() : PrimType::Int(64);
         tirx::Var fused_var("fused", dtype);
         ffi::Map<tirx::Var, PrimExpr> inverse_indices_map;
-        PrimExpr stride = IntImm(tvm::PrimType(dtype), /*value=*/1);
+        PrimExpr stride = IntImm(dtype, /*value=*/1);
         for (int i = static_cast<int>(block->iter_vars.size()) - 1; i >= 0; --i) {
           inverse_indices_map.Set(
               block->iter_vars[i]->var,
@@ -494,7 +494,8 @@ bool HasReshapePattern(const PrimFunc& func) {
 
         ffi::Array<PrimExpr> simplify_res = arith::IterMapSimplify(
             /*indices=*/{flattened_idx},
-            /*input_iters=*/{{fused_var, Range(IntImm(tvm::PrimType(dtype), /*value=*/0), stride)}},
+            /*input_iters=*/ffi::Map<tirx::Var, Range>{
+                {fused_var, Range(IntImm(dtype, /*value=*/0), stride)}},
             /*input_pred=*/IntImm::Bool(true),
             /*check_level=*/arith::IterMapLevel::Surjective,
             /*analyzer=*/this->ana_,

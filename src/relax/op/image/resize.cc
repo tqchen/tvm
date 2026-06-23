@@ -93,8 +93,8 @@ Type InferTypeResize2D(const Call& call, const BlockBuilder& ctx) {
                                                     /*tgt_layout=*/"NCHW",     //
                                                     /*tensor_name=*/"data");
 
-  PrimType out_dtype =
-      attrs->out_dtype == PrimType::Void()->dtype ? data_ty->dtype : PrimType(attrs->out_dtype);
+  DLDataType out_dtype =
+      attrs->out_dtype == PrimType::Void()->dtype ? data_ty->dtype : attrs->out_dtype;
 
   ffi::Optional<ShapeExpr> data_shape =
       CheckNdimPerLayoutAndGetShape(call, ctx, ffi::GetRef<TensorType>(data_ty), data_layout);
@@ -208,8 +208,8 @@ Type InferTypeResize3D(const Call& call, const BlockBuilder& ctx) {
                                                      /*tgt_layout=*/"NCDHW",    //
                                                      /*tensor_name=*/"data");
 
-  PrimType out_dtype =
-      attrs->out_dtype == PrimType::Void()->dtype ? data_ty->dtype : PrimType(attrs->out_dtype);
+  DLDataType out_dtype =
+      attrs->out_dtype == PrimType::Void()->dtype ? data_ty->dtype : attrs->out_dtype;
 
   ffi::Optional<ShapeExpr> data_shape =
       CheckNdimPerLayoutAndGetShape(call, ctx, ffi::GetRef<TensorType>(data_ty), data_layout);
@@ -317,7 +317,7 @@ Type InferTypeGridSample(const Call& call, const BlockBuilder& ctx) {
                                                    /*tgt_layout=*/is_ncdhw ? "NCDHW" : "NCHW",
                                                    /*tensor_name=*/"data");
 
-  PrimType out_dtype = data_ty->dtype;
+  DLDataType out_dtype = data_ty->dtype;
 
   ffi::Optional<ShapeExpr> data_shape =
       CheckNdimPerLayoutAndGetShape(call, ctx, ffi::GetRef<TensorType>(data_ty), data_layout);
@@ -424,7 +424,7 @@ Type InferTypeAffineGrid(const Call& call, const BlockBuilder& ctx) {
     }
   }
 
-  PrimType out_dtype = data_ty->dtype;
+  DLDataType out_dtype = data_ty->dtype;
 
   if (data_shape == nullptr || size_value == nullptr) {
     return TensorType(out_dtype, /*ndim=*/4, data_ty->vdevice);

@@ -156,7 +156,6 @@ class JSONTokenizer {
   bool NextFalse() { return NextLiteral("false", 5); }
 
   bool NextNumber(Token* token) {
-    using runtime::DataType;
     bool is_float = false;
     const char* st = cur_;
     for (; cur_ != end_; ++cur_) {

@@ -356,10 +356,10 @@ inline void CodeGenCHost::PrintTernaryCondExpr(const T* op, const char* compare,
                                                std::ostream& os) {  // NOLINT(*)
   std::ostringstream temp_a;
   VisitExpr(op->a, temp_a);
-  std::string a_id = SSAGetID(temp_a.str(), DataType(op->a.ty()->dtype));
+  std::string a_id = SSAGetID(temp_a.str(), op->a.ty()->dtype);
   std::ostringstream temp_b;
   VisitExpr(op->b, temp_b);
-  std::string b_id = SSAGetID(temp_b.str(), DataType(op->b.ty()->dtype));
+  std::string b_id = SSAGetID(temp_b.str(), op->b.ty()->dtype);
 
   os << "((" << a_id << ") " << compare << " (" << b_id << ") "
      << "? (" << a_id << ") : (" << b_id << "))";

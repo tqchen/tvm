@@ -34,7 +34,7 @@ void CodeGenSourceBase::ClearFuncState() {
   scope_mark_.clear();
 }
 
-std::string CodeGenSourceBase::SSAGetID(std::string src, DataType t) {
+std::string CodeGenSourceBase::SSAGetID(std::string src, PrimType t) {
   if (name_supply_->ContainsName(src)) return src;
   auto it = ssa_assign_map_.find(src);
   if (it != ssa_assign_map_.end()) {

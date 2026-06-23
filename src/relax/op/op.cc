@@ -738,7 +738,7 @@ Expr NormalizeCallTIRInPlace(const BlockBuilder& ctx, Call call) {
 
     if (!tinfo_input ||
         (tinfo_output->IsUnknownDtype() ||
-         tinfo_output->dtype->dtype != tinfo_input->dtype->dtype) ||
+         tinfo_output->dtype != tinfo_input->dtype) ||
         (!tinfo_input->shape.defined() ||
          !CanProveShapeEqual(tinfo_input->shape.value(), tinfo_output->shape.value(),
                              ctx->GetAnalyzer()))) {

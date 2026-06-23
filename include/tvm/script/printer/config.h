@@ -53,15 +53,15 @@ class PrinterConfigNode : public ffi::Object {
    */
   ffi::String module_alias = "cls";
   /*! \brief Default buffer dtype */
-  DataType buffer_dtype = DataType::Float(32);
+  DLDataType buffer_dtype = runtime::FloatDType(32);
   /*! \brief Default data type of integer literals */
-  DataType int_dtype = DataType::Int(32);
+  DLDataType int_dtype = runtime::IntDType(32);
   /*!
    * \brief Default data type of float literals. Right now we always print out the explicit type
    * of floating point values, so setting it to Void means we do not print without the
    * T.float32/T.float64 wrapper.
    */
-  DataType float_dtype = DataType::Void();
+  DLDataType float_dtype = runtime::VoidDType();
   /*! \brief Whether or not to verbose print expressions. */
   bool verbose_expr = false;
   /*! \brief Number of spaces used for indentation*/

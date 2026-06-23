@@ -49,7 +49,7 @@ IterVar reduce_axis(Range dom, std::string name) {
   return IterVar(dom, Var(name, dom->extent.ty()), kCommReduce);
 }
 
-Var var(std::string name_hint, DataType t) { return Var(name_hint, t); }
+Var var(std::string name_hint, PrimType t) { return Var(name_hint, t); }
 
 // Tensor
 inline PrimExpr Tensor::IndexTensor(ffi::Array<PrimExpr> indices,
@@ -105,7 +105,7 @@ Tensor Operation::output(size_t i) const {
   return Tensor(node);
 }
 
-Tensor::Tensor(ffi::Array<PrimExpr> shape, PrimType dtype, Operation op, int value_index) {
+Tensor::Tensor(ffi::Array<PrimExpr> shape, DLDataType dtype, Operation op, int value_index) {
   auto n = ffi::make_object<TensorNode>();
   n->shape = std::move(shape);
   n->dtype = dtype;
@@ -117,8 +117,8 @@ Tensor::Tensor(ffi::Array<PrimExpr> shape, PrimType dtype, Operation op, int val
 TVM_FFI_STATIC_INIT_BLOCK() {
   namespace refl = tvm::ffi::reflection;
   refl::GlobalDef().def(
-      "te.Tensor", [](ffi::Array<PrimExpr> shape, DataType dtype, Operation op, int value_index) {
-        return Tensor(shape, PrimType(dtype), op, value_index);
+      "te.Tensor", [](ffi::Array<PrimExpr> shape, DLDataType dtype, Operation op, int value_index) {
+        return Tensor(shape, dtype, op, value_index);
       });
 }
 

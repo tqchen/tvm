@@ -74,9 +74,9 @@ Type InferTypeMatmul(const Call& call, const BlockBuilder& ctx) {
   }
 
   const auto* attrs = call->attrs.as<MatmulAttrs>();
-  PrimType out_dtype = attrs->out_dtype == PrimType::Void()->dtype
-                           ? InferBinaryArithOpOutDtype(call, ctx, x1_ty, x2_ty)
-                           : PrimType(attrs->out_dtype);
+  DLDataType out_dtype = attrs->out_dtype == PrimType::Void()->dtype
+                           ? InferBinaryArithOpOutDtype(call, ctx, x1_ty, x2_ty)->dtype
+                           : attrs->out_dtype;
 
   if (x1_ty->IsUnknownNdim() || x2_ty->IsUnknownNdim()) {
     if (vdev.defined()) {
@@ -218,13 +218,13 @@ Type InferTypeEinsum(const Call& call, const BlockBuilder& ctx) {
 
   ffi::String subscripts = attrs->subscripts;
 
-  PrimType operand_dtype = operands_tensor_ty[0]->dtype;
+  DLDataType operand_dtype = operands_tensor_ty[0]->dtype;
   std::vector<ffi::Array<PrimExpr>> input_shapes;
   input_shapes.reserve(operands_tensor_ty.size());
 
   for (TensorType tensor_ty : operands_tensor_ty) {
     // Check the input tuple consists of tensors with same dtype
-    if (tensor_ty->dtype->dtype != operand_dtype->dtype) {
+    if (tensor_ty->dtype != operand_dtype) {
       TVM_FFI_VISIT_THROW(TypeError, call)
           << "Einsum expects all input tensors to have the same dtype. However, the "
              "input contains tensors with dtype "

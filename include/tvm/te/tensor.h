@@ -71,8 +71,8 @@ class TensorNode : public DataProducerNode {
  public:
   /*! \brief The shape of the tensor */
   ffi::Array<PrimExpr> shape;
-  /*! \brief primitive type in the content of the tensor */
-  PrimType dtype{PrimType::Void()};
+  /*! \brief dtype in the content of the tensor */
+  DLDataType dtype{DLDataTypeCode::kDLOpaqueHandle, 0, 0};
   /*! \brief the source operation, can be None */
   Operation op;
   /*! \brief the output index from source operation */
@@ -82,9 +82,9 @@ class TensorNode : public DataProducerNode {
 
   ffi::Array<PrimExpr> GetShape() const final { return shape; }
 
-  DataType GetDataType() const final { return DataType(dtype->dtype); }
+  DLDataType GetDataType() const final { return dtype; }
 
-  PrimType GetPrimType() const final { return dtype; }
+  PrimType GetPrimType() const final { return PrimType(dtype); }
 
   TVM_DLL PrimExpr ToPrimExpr() const final;
 
@@ -110,9 +110,9 @@ class Tensor : public DataProducer {
   inline PrimExpr IndexTensor(ffi::Array<PrimExpr> indices, bool support_negative_indices) const;
 
  public:
-  TVM_DLL Tensor(ffi::Array<PrimExpr> shape, PrimType dtype, Operation op, int value_index);
-  Tensor(ffi::Array<PrimExpr> shape, DataType dtype, Operation op, int value_index)
-      : Tensor(std::move(shape), PrimType(dtype), std::move(op), value_index) {}
+  TVM_DLL Tensor(ffi::Array<PrimExpr> shape, DLDataType dtype, Operation op, int value_index);
+  Tensor(ffi::Array<PrimExpr> shape, PrimType dtype, Operation op, int value_index)
+      : Tensor(std::move(shape), dtype->dtype, std::move(op), value_index) {}
   /*!
    * \brief check if two tensors equals each other.
    * \param other tensor to be checked.

@@ -78,10 +78,6 @@ TVM_DLL Type GetType(const PrimExpr& expr);
  */
 TVM_DLL Type GetTypeFromRuntimeDataType(DLDataType dtype);
 
-inline Type GetTypeFromRuntimeDataType(const DataType& dtype) {
-  return GetTypeFromRuntimeDataType(dtype.operator DLDataType());
-}
-
 /*!
  * \brief Get the implied DLPack dtype for storing values with type during runtime.
  *
@@ -92,9 +88,7 @@ inline Type GetTypeFromRuntimeDataType(const DataType& dtype) {
  */
 TVM_DLL DLDataType GetRuntimeDLDataType(const Type& type);
 
-inline runtime::DataType GetRuntimeDataType(const Type& type) {
-  return runtime::DataType(GetRuntimeDLDataType(type));
-}
+inline DLDataType GetRuntimeDataType(const Type& type) { return GetRuntimeDLDataType(type); }
 
 /*!
  * \brief Return the value.
@@ -135,10 +129,6 @@ TVM_DLL PrimExpr break_loop(Span span = Span());
  */
 TVM_DLL PrimExpr max_value(PrimType dtype, Span span = Span());
 
-inline PrimExpr max_value(const DataType& dtype, Span span = Span()) {
-  return max_value(PrimType(dtype), std::move(span));
-}
-
 /*!
  * Query the minimum possible value of dtype.
  * \param dtype The primitive type.
@@ -147,10 +137,6 @@ inline PrimExpr max_value(const DataType& dtype, Span span = Span()) {
  */
 TVM_DLL PrimExpr min_value(PrimType dtype, Span span = Span());
 
-inline PrimExpr min_value(const DataType& dtype, Span span = Span()) {
-  return min_value(PrimType(dtype), std::move(span));
-}
-
 /*!
  * Get the value of infinity.
  * \param dtype The primitive type.
@@ -158,10 +144,6 @@ inline PrimExpr min_value(const DataType& dtype, Span span = Span()) {
  * \return the infinity value in this format.
  */
 TVM_DLL PrimExpr infinity(PrimType dtype, Span span = Span());
-
-inline PrimExpr infinity(const DataType& dtype, Span span = Span()) {
-  return infinity(PrimType(dtype), std::move(span));
-}
 
 /*!
  * \brief cast value to type.
@@ -174,16 +156,6 @@ inline PrimExpr infinity(const DataType& dtype, Span span = Span()) {
  */
 TVM_DLL PrimExpr cast(PrimType t, PrimExpr value, Span span = Span());
 /*!
- * \brief cast value to type.
- *
- * \param t the target data type.
- * \param value The value
- * \param span The location of this operation in the source.
- * \return The result expression.
- * \note This function may return value if the type is the same.
- */
-TVM_DLL PrimExpr cast(const DataType& t, PrimExpr value, Span span = Span());
-/*!
  * \brief perform reinterpret cast value to type.
  *
  * \param t the target type.
@@ -193,16 +165,6 @@ TVM_DLL PrimExpr cast(const DataType& t, PrimExpr value, Span span = Span());
  * \note This function may return value if the type is the same.
  */
 TVM_DLL PrimExpr reinterpret(PrimType t, PrimExpr value, Span span = Span());
-/*!
- * \brief perform reinterpret cast value to type.
- *
- * \param t the target data type.
- * \param value The value
- * \param span The location of this operation in the source.
- * \return The result expression.
- * \note This function may return value if the type is the same.
- */
-TVM_DLL PrimExpr reinterpret(const DataType& t, PrimExpr value, Span span = Span());
 /*!
  * \brief add operator
  *
@@ -861,10 +823,6 @@ inline bool IsPointerType(const Type& type, DLDataType element_type) {
   return false;
 }
 
-inline bool IsPointerType(const Type& type, const DataType& element_type) {
-  return IsPointerType(type, element_type.operator DLDataType());
-}
-
 /*!
  * \brief Make a const value with certain data type.
  *
@@ -880,10 +838,6 @@ inline bool IsPointerType(const Type& type, const DataType& element_type) {
  * \tparam ValueType The constant value type
  * \param span The location of this operation in the source.
  */
-template <typename ValueType,
-          typename = typename std::enable_if<std::is_standard_layout<ValueType>::value &&
-                                             std::is_trivial<ValueType>::value>::type>
-inline PrimExpr MakeConst(DataType dtype, ValueType value, Span span = Span());
 template <typename ValueType,
           typename = typename std::enable_if<std::is_standard_layout<ValueType>::value &&
                                              std::is_trivial<ValueType>::value>::type>
@@ -1063,19 +1017,9 @@ inline PrimExpr MakeConstScalar(PrimType dtype, ValueType value, Span span = Spa
   throw;
 }
 
-template <typename ValueType>
-inline PrimExpr MakeConstScalar(DataType dtype, ValueType value, Span span = Span()) {
-  return MakeConstScalar(PrimType(dtype), value, span);
-}
-
 template <>
 inline PrimExpr MakeConstScalar(PrimType dtype, bool value, Span span) {
   return MakeConstScalar(dtype, static_cast<int>(value), span);
-}
-
-template <>
-inline PrimExpr MakeConstScalar(DataType dtype, bool value, Span span) {
-  return MakeConstScalar(PrimType(dtype), value, span);
 }
 
 template <typename ValueType, typename>
@@ -1090,11 +1034,6 @@ inline PrimExpr MakeConst(PrimType dtype, ValueType value, Span span) {
   PrimExpr lanes =
       tirx::Mul(tirx::Call(PrimType::Int(32), tirx::builtin::vscale(), {}), dtype.VScaleFactor());
   return tirx::Broadcast(MakeConstScalar(elem_ty, value, span), lanes, span);
-}
-
-template <typename ValueType, typename>
-inline PrimExpr MakeConst(DataType dtype, ValueType value, Span span) {
-  return MakeConst(PrimType(dtype), value, span);
 }
 
 inline PrimExpr ConstHandle(int64_t value, Span span) {

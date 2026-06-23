@@ -174,8 +174,8 @@ class TensorTypeNode : public TypeNode {
    *  is expected to be executed.
    */
   ffi::Optional<VDevice> vdevice;
-  /*! \brief The content primitive type, use void to denote the dtype is unknown. */
-  tvm::PrimType dtype{tvm::PrimType::Void()};
+  /*! \brief The content dtype, use void to denote the dtype is unknown. */
+  DLDataType dtype{DLDataTypeCode::kDLOpaqueHandle, 0, 0};
   /*!
    * \brief The number of dimension of the tensor, can be unknown.
    * \sa kUnknownNDim
@@ -186,10 +186,10 @@ class TensorTypeNode : public TypeNode {
   bool IsUnknownNdim() const { return ndim == kUnknownNDim; }
 
   /*! \return Whether the type contains unknown dtype. */
-  bool IsUnknownDtype() const { return dtype.IsVoid(); }
+  bool IsUnknownDtype() const { return dtype == tvm::PrimType::Void()->dtype; }
 
   /*! \return The primitive element type for compiler-side uses. */
-  tvm::PrimType GetPrimType() const { return dtype; }
+  tvm::PrimType GetPrimType() const { return tvm::PrimType(dtype); }
 
   /*! \return Shape if it is known. */
   ffi::Optional<ffi::Array<PrimExpr>> GetShape() const {
@@ -233,12 +233,12 @@ class TensorType : public Type {
    *
    * \note shape must already be normalized.
    */
-  TVM_DLL TensorType(Expr shape, tvm::PrimType dtype,
+  TVM_DLL TensorType(Expr shape, DLDataType dtype,
                      ffi::Optional<VDevice> vdevice = std::nullopt, Span span = Span());
 
-  TensorType(Expr shape, DataType dtype, ffi::Optional<VDevice> vdevice = std::nullopt,
+  TensorType(Expr shape, tvm::PrimType dtype, ffi::Optional<VDevice> vdevice = std::nullopt,
              Span span = Span())
-      : TensorType(std::move(shape), tvm::PrimType(dtype), std::move(vdevice), std::move(span)) {}
+      : TensorType(std::move(shape), dtype->dtype, std::move(vdevice), std::move(span)) {}
 
   /*!
    * \brief Construction with an unknown shape expression.
@@ -247,12 +247,12 @@ class TensorType : public Type {
    * \param vdevice The virtual device.
    * \param span The span of the AST.
    */
-  TVM_DLL TensorType(tvm::PrimType dtype, int ndim,
+  TVM_DLL TensorType(DLDataType dtype, int ndim,
                      ffi::Optional<VDevice> vdevice = std::nullopt, Span span = Span());
 
-  TensorType(DataType dtype, int ndim, ffi::Optional<VDevice> vdevice = std::nullopt,
+  TensorType(tvm::PrimType dtype, int ndim, ffi::Optional<VDevice> vdevice = std::nullopt,
              Span span = Span())
-      : TensorType(tvm::PrimType(dtype), ndim, std::move(vdevice), std::move(span)) {}
+      : TensorType(dtype->dtype, ndim, std::move(vdevice), std::move(span)) {}
 
   TVM_FFI_DEFINE_OBJECT_REF_METHODS_NOTNULLABLE(TensorType, Type, TensorTypeNode);
 };

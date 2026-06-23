@@ -316,7 +316,7 @@ class ToMixedPrecisionRewriter : public ExprMutator {
       if (NTypeEqual()(to[0], NTypeFrom(expr))) return expr;
       // We only rewrite the expr if the dtype is fp16 or fp32, dtypes such as int32, float64 is not
       // supported to be rewritten
-      DLDataType tensor_dtype = tensor->dtype->dtype;
+      DLDataType tensor_dtype = tensor->dtype;
       if (tensor_dtype != fp16_ && tensor_dtype != fp32_) return expr;
       return astype(expr, ffi::StringToDLDataType(to[0].LeafValue()));
     };
@@ -348,7 +348,7 @@ class ToMixedPrecisionRewriter : public ExprMutator {
   bool AllFP16Castable(const ffi::Array<Expr>& args) {
     auto is_fp16 = [](Type ty) {
       if (auto tensor_ty = ty.as<TensorTypeNode>();
-          tensor_ty && tensor_ty->dtype->dtype == PrimType::Float(16)->dtype) {
+          tensor_ty && tensor_ty->dtype == PrimType::Float(16)->dtype) {
         return true;
       }
       return false;
@@ -361,7 +361,7 @@ class ToMixedPrecisionRewriter : public ExprMutator {
         return false;
       }
 
-      if (data.DataType() == DataType::Float(16)) {
+      if (data.DataType() == runtime::FloatDType(16)) {
         return true;
       }
 
@@ -374,17 +374,17 @@ class ToMixedPrecisionRewriter : public ExprMutator {
       std::vector<uint8_t> bytes(size_1d * elem_bytes);
       data.CopyToBytes(bytes.data(), bytes.size());
 
-      if (data.DataType() == DataType::Float(32)) {
+      if (data.DataType() == runtime::FloatDType(32)) {
         return CheckInFP16Range<float>(bytes, size_1d);
-      } else if (data.DataType() == DataType::Float(64)) {
+      } else if (data.DataType() == runtime::FloatDType(64)) {
         return CheckInFP16Range<double>(bytes, size_1d);
-      } else if (data.DataType() == DataType::Int(8)) {
+      } else if (data.DataType() == runtime::IntDType(8)) {
         return CheckInFP16Range<std::int8_t>(bytes, size_1d);
-      } else if (data.DataType() == DataType::Int(16)) {
+      } else if (data.DataType() == runtime::IntDType(16)) {
         return CheckInFP16Range<std::int16_t>(bytes, size_1d);
-      } else if (data.DataType() == DataType::Int(32)) {
+      } else if (data.DataType() == runtime::IntDType(32)) {
         return CheckInFP16Range<std::int32_t>(bytes, size_1d);
-      } else if (data.DataType() == DataType::Int(64)) {
+      } else if (data.DataType() == runtime::IntDType(64)) {
         return CheckInFP16Range<std::int64_t>(bytes, size_1d);
       }
       return false;
