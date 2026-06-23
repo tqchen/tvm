@@ -171,7 +171,7 @@ TVM_REGISTER_OP("tirx.clz")
       PrimExpr msb;
       if (arg_ty.bits() == 64) {
         // SPIR-V FindUMsb intrinsic only supports 32 bit input
-        auto int32 = DataType::Int(32);
+        auto int32 = PrimType::Int(32);
         PrimExpr arg_hi32 = tvm::tirx::Cast(int32, arg >> 32);
         PrimExpr arg_lo32 = tvm::tirx::Cast(int32, arg);
         PrimExpr msb_hi = CallGLSLIntrin<GLSLstd450FindUMsb>(e, {arg_hi32});

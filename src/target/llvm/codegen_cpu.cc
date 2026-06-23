@@ -80,7 +80,7 @@ void CodeGenCPU::Init(const std::string& module_name, LLVMTarget* llvm_target,
 
   // Runtime types.
   t_tvm_shape_index_ =
-      llvm::Type::getIntNTy(*llvm_target_->GetContext(), DataType::ShapeIndex().bits());
+      llvm::Type::getIntNTy(*llvm_target_->GetContext(), DefaultIndexPrimType().bits());
   // Defined in 3rdparty/dlpack/include/dlpack/dlpack.h:
   // typedef struct { DLDeviceType device_type; int device_id; } DLDevice;
   t_tvm_device_ = llvm::StructType::create({t_int_, t_int_});
@@ -278,7 +278,7 @@ std::unique_ptr<llvm::Module> CodeGenCPU::Finish() {
   return CodeGenLLVM::Finish();
 }
 
-CodeGenLLVM::TypedPointer CodeGenCPU::CreateStructRefPtr(DataType t, llvm::Value* buf,
+CodeGenLLVM::TypedPointer CodeGenCPU::CreateStructRefPtr(PrimType t, llvm::Value* buf,
                                                          llvm::Value* index, int kind) {
   if (kind < builtin::kDLTensorKindBound_) {
     if (buf->getType() == t_void_p_) {
@@ -366,21 +366,21 @@ CodeGenLLVM::TypedPointer CodeGenCPU::CreateStructRefPtr(DataType t, llvm::Value
       buf = builder_->CreatePointerCast(buf, llvmGetPointerTo(t_tvm_ffi_any_, 0));
       // field 2 is the union value
       buf = builder_->CreateInBoundsGEP(t_tvm_ffi_any_, buf, {index, ConstInt32(2)});
-      if (t.is_bool()) {
+      if (t.MatchesCode(DLDataTypeCode::kDLBool)) {
         // it should be safe to set the pointer to the first byte of the union value
         buf = builder_->CreatePointerCast(buf, llvmGetPointerTo(DTypeToLLVMType(t), 0));
         return TypedPointer(t_int8_, buf);
-      } else if (t.is_int() && t.bits() == 64) {
+      } else if (t.MatchesCode(DLDataTypeCode::kDLInt) && t.bits() == 64) {
         buf = builder_->CreatePointerCast(buf, llvmGetPointerTo(t_int64_, 0));
         return TypedPointer(t_int64_, buf);
-      } else if (t.is_float() && t.bits() == 64) {
+      } else if (t.MatchesCode(DLDataTypeCode::kDLFloat) && t.bits() == 64) {
         buf = builder_->CreatePointerCast(buf, llvmGetPointerTo(t_float64_, 0));
         return TypedPointer(t_float64_, buf);
-      } else if (t.is_handle()) {
+      } else if (t.IsHandle()) {
         buf = builder_->CreatePointerCast(buf, llvmGetPointerTo(t_void_p_, 0));
         return TypedPointer(t_void_p_, buf);
       } else {
-        LOG(DEBUG) << "DataType " << t << " cannot be stored into a TVMFFIAny's value field";
+        LOG(DEBUG) << "PrimType " << t << " cannot be stored into a TVMFFIAny's value field";
       }
     }
     case builtin::kInt64ArrayElem: {
@@ -578,7 +578,7 @@ void CodeGenCPU::CreateComputeScope(const AttrStmtNode* op) {
 
   function_ = fcompute;
   di_subprogram_ = CreateDebugFunction(MakeStringRef(value->value), vargs.Map(GetType),
-                                       PrimType(DataType::Int(32)));
+                                       PrimType::Int(32));
   auto* compute_entry = llvm::BasicBlock::Create(*ctx, "entry", function_);
   builder_->SetInsertPoint(compute_entry);
   this->VisitStmt(op->body);
@@ -655,8 +655,8 @@ void CodeGenCPU::CreateParallelLaunch(const Stmt& body, int num_task, std::strin
   UnpackClosureData(cdata, vfields, &new_vmap);
   // setup parallel env
   ParallelEnv par_env;
-  par_env.task_id = Var("task_id", DataType::Int(32));
-  par_env.num_task = Var("num_task", DataType::Int(32));
+  par_env.task_id = Var("task_id", PrimType::Int(32));
+  par_env.num_task = Var("num_task", PrimType::Int(32));
   new_vmap[par_env.task_id.get()] = task_id;
   new_vmap[par_env.num_task.get()] = builder_->CreateLoad(
       t_int32_,
@@ -787,7 +787,7 @@ llvm::Value* CodeGenCPU::GetPackedFuncHandle(const std::string& fname) {
 }
 
 CodeGenCPU::PackedCall CodeGenCPU::MakeCallPackedLowered(const ffi::Array<PrimExpr>& args,
-                                                         const DataType& r_type,
+                                                         const PrimType& r_type,
                                                          const int64_t begin, const int64_t end,
                                                          bool use_env_lookup) {
   std::string func_name = [&]() {
@@ -835,9 +835,9 @@ CodeGenCPU::PackedCall CodeGenCPU::MakeCallPackedLowered(const ffi::Array<PrimEx
 
   PackedCall pc = {nullptr};
 
-  if (!r_type.is_void()) {
+  if (!r_type.IsVoid()) {
     // Load the return value and cast it to the designated type (r_type).
-    DataType r_api_type = tirx::APIType(r_type);
+    PrimType r_api_type = tirx::APIType(r_type);
     llvm::Type* llvm_r_api_type = DTypeToLLVMType(r_api_type);
     llvm::Value* result_value =
         builder_->CreateInBoundsGEP(t_tvm_ffi_any_, result, {ConstInt32(0), ConstInt32(2)});
@@ -860,7 +860,7 @@ CodeGenCPU::PackedCall CodeGenCPU::MakeCallPackedLowered(const ffi::Array<PrimEx
 llvm::Value* CodeGenCPU::CreateCallPacked(const CallNode* op) {
   TVM_FFI_ICHECK_EQ(op->args.size(), 4U);
   bool use_string_lookup = op->op.same_as(builtin::tvm_call_packed_lowered());
-  PackedCall pc = MakeCallPackedLowered(op->args, DataType(op->ty()->dtype),
+  PackedCall pc = MakeCallPackedLowered(op->args, PrimType(op->ty()->dtype),
                                         op->args[2].as<IntImmNode>()->value,
                                         op->args[3].as<IntImmNode>()->value, use_string_lookup);
   return pc.ret_value;
@@ -868,7 +868,7 @@ llvm::Value* CodeGenCPU::CreateCallPacked(const CallNode* op) {
 
 llvm::Value* CodeGenCPU::CreateCallTracePacked(const CallNode* op) {
   TVM_FFI_ICHECK_EQ(op->args.size(), 5U);
-  PackedCall pc = MakeCallPackedLowered(op->args, DataType(op->ty()->dtype),
+  PackedCall pc = MakeCallPackedLowered(op->args, PrimType(op->ty()->dtype),
                                         op->args[2].as<IntImmNode>()->value,
                                         op->args[3].as<IntImmNode>()->value, true);
   llvm::LLVMContext* ctx = llvm_target_->GetContext();
@@ -1031,7 +1031,7 @@ llvm::Value* CodeGenCPU::CreateIntrinsic(const CallNode* op) {
   } else if (op->op.same_as(builtin::tvm_struct_get())) {
     TVM_FFI_ICHECK_EQ(op->args.size(), 3U);
     int kind = op->args[2].as<IntImm>().value()->value;
-    DataType op_dtype(op->ty()->dtype);
+    PrimType op_dtype(op->ty()->dtype);
     TypedPointer ref =
         CreateStructRefPtr(op_dtype, MakeValue(op->args[0]), MakeValue(op->args[1]), kind);
     if (kind == builtin::kDLTensorAddr) {
@@ -1040,8 +1040,8 @@ llvm::Value* CodeGenCPU::CreateIntrinsic(const CallNode* op) {
 
     llvm::Value* struct_value = builder_->CreateLoad(ref.type, ref.addr);
 
-    if (op_dtype == DataType::Bool()) {
-      struct_value = CreateCast(DataType::Int(64), op_dtype, struct_value);
+    if (op_dtype == PrimType::Bool()) {
+      struct_value = CreateCast(PrimType::Int(64), op_dtype, struct_value);
     }
 
     return struct_value;
@@ -1049,7 +1049,7 @@ llvm::Value* CodeGenCPU::CreateIntrinsic(const CallNode* op) {
     TVM_FFI_ICHECK_EQ(op->args.size(), 4U);
     int kind = op->args[2].as<IntImm>().value()->value;
     llvm::Value* value = MakeValue(op->args[3]);
-    TypedPointer ref = CreateStructRefPtr(DataType(op->args[3].ty()->dtype), MakeValue(op->args[0]),
+    TypedPointer ref = CreateStructRefPtr(PrimType(op->args[3].ty()->dtype), MakeValue(op->args[0]),
                                           MakeValue(op->args[1]), kind);
     TVM_FFI_ICHECK(kind != builtin::kDLTensorAddr);
     if (value->getType()->isPointerTy()) {
@@ -1183,7 +1183,7 @@ void CodeGenCPU::VisitStmt_(const ForNode* op) {
       TVM_FFI_ICHECK(parallel_env_.task_id.defined());
       TVM_FFI_ICHECK(parallel_env_.num_task.defined());
       TVM_FFI_ICHECK(parallel_env_.penv != nullptr);
-      DataType t(op->extent.ty()->dtype);
+      PrimType t(op->extent.ty()->dtype);
       PrimExpr num_task = cast(t, parallel_env_.num_task);
       PrimExpr task_id = cast(t, parallel_env_.task_id);
       TVM_FFI_ICHECK(!parallel_env_.in_parallel_loop)
