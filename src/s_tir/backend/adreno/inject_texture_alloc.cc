@@ -68,7 +68,7 @@ class TextureAllocInjector : public arith::IRMutatorWithAnalyzer {
       op = stmt.as<AllocBufferNode>();
       const auto& extents = op->buffer->shape;
       TVM_FFI_ICHECK(extents.size() >= 3) << "Only 2D Array RGBA texture is currently supported";
-      const int data_bits = op->buffer->dtype.bits,
+      const int data_bits = op->buffer->dtype.bits(),
                 vec_length = static_cast<int>(extents.back().as<IntImmNode>()->value);
       const int channel_size = data_bits * vec_length;
       TVM_FFI_ICHECK(channel_size == 128 || channel_size == 64)

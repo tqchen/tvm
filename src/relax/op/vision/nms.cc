@@ -252,12 +252,12 @@ Type InferTypeNMS(const Call& call, const BlockBuilder& ctx) {
         << "non_max_suppression expects indices to be 2-D, got ndim " << indices_ty->ndim;
   }
   if (!valid_count_ty->IsUnknownDtype() &&
-      valid_count_ty->dtype != (DLDataType{kDLInt, 32, 1})) {
+      valid_count_ty->dtype != PrimType::Int(32)) {
     TVM_FFI_VISIT_THROW(TypeError, call)
         << "non_max_suppression expects valid_count to have dtype int32, got "
         << valid_count_ty->dtype;
   }
-  if (!indices_ty->IsUnknownDtype() && indices_ty->dtype != (DLDataType{kDLInt, 32, 1})) {
+  if (!indices_ty->IsUnknownDtype() && indices_ty->dtype != PrimType::Int(32)) {
     TVM_FFI_VISIT_THROW(TypeError, call)
         << "non_max_suppression expects indices to have dtype int32, got " << indices_ty->dtype;
   }

@@ -316,7 +316,7 @@ class ToMixedPrecisionRewriter : public ExprMutator {
       if (NTypeEqual()(to[0], NTypeFrom(expr))) return expr;
       // We only rewrite the expr if the dtype is fp16 or fp32, dtypes such as int32, float64 is not
       // supported to be rewritten
-      DLDataType tensor_dtype = tensor->dtype;
+      DLDataType tensor_dtype = tensor->dtype->dtype;
       if (tensor_dtype != fp16_ && tensor_dtype != fp32_) return expr;
       return astype(expr, ffi::StringToDLDataType(to[0].LeafValue()));
     };
@@ -347,8 +347,7 @@ class ToMixedPrecisionRewriter : public ExprMutator {
 
   bool AllFP16Castable(const ffi::Array<Expr>& args) {
     auto is_fp16 = [](Type ty) {
-      if (auto tensor_ty = ty.as<TensorTypeNode>();
-          tensor_ty && tensor_ty->dtype == (DLDataType{kDLFloat, 16, 1})) {
+      if (auto tensor_ty = ty.as<TensorTypeNode>(); tensor_ty && tensor_ty->dtype == PrimType::Float(16)) {
         return true;
       }
       return false;

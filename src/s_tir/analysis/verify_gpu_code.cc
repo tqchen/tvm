@@ -76,7 +76,7 @@ class GPUCodeVerifier : public StmtExprVisitor {
         break;
       }
     }
-    DLDataType dtype = op->buffer->dtype;
+    DLDataType dtype = op->buffer->dtype->dtype;
     if (storage_scope.rank == runtime::StorageRank::kLocal) {
       local_memory_per_block_ += static_cast<size_t>(const_size) * (((dtype).bits + 7) / 8) *
                                  static_cast<int16_t>((dtype).lanes);
