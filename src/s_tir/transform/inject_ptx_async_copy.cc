@@ -59,7 +59,7 @@ class PTXAsyncCopyInjector : public StmtMutator {
       TVM_FFI_ICHECK(load->indices[0].ty().lanes() == store->indices[0].ty().lanes());
 
       const int indices_lanes = load->indices[0].ty().lanes();
-      const int bytes = indices_lanes * (((load->buffer->dtype).bits + 7) / 8);
+      const int bytes = indices_lanes * ((load->buffer->dtype.bits() + 7) / 8);
 
       if (bytes == 4 || bytes == 8 || bytes == 16) {
         auto dst_elem_type = GetPointerType(store->buffer->data->type_annotation);
@@ -91,7 +91,7 @@ class PTXAsyncCopyInjector : public StmtMutator {
             args.push_back(predicate_value);
           }
           static const Op& ptx_cp_async_op = Op::Get("tirx.ptx.cp_async_raw");
-          return Evaluate(Call(PrimType(store->buffer->dtype), ptx_cp_async_op, args));
+          return Evaluate(Call(store->buffer->dtype, ptx_cp_async_op, args));
         }
 
         // Predicated load don't support vectorized indexing.
@@ -120,7 +120,7 @@ class PTXAsyncCopyInjector : public StmtMutator {
           }();
           if (src_offset.defined() && dst_offset.defined()) {
             static const Op& ptx_cp_async_op = Op::Get("tirx.ptx.cp_async_raw");
-            return Evaluate(Call(PrimType(store->buffer->dtype), ptx_cp_async_op,
+            return Evaluate(Call(store->buffer->dtype, ptx_cp_async_op,
                                  {store->buffer->data, mul(dst_offset, PrimExpr(index_factor)),
                                   load->buffer->data, src_offset, PrimExpr(bytes)}));
           }
@@ -151,7 +151,7 @@ class PTXAsyncCopyInjector : public StmtMutator {
           if (src_offset.defined() && dst_offset.defined()) {
             static const Op& ptx_cp_async_op = Op::Get("tirx.ptx.cp_async_raw");
             return Evaluate(
-                Call(PrimType(store->buffer->dtype), ptx_cp_async_op,
+                Call(store->buffer->dtype, ptx_cp_async_op,
                      {store->buffer->data, mul(dst_offset, PrimExpr(index_factor)),
                       load->buffer->data, src_offset, PrimExpr(bytes), predicate_value}));
           }

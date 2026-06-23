@@ -453,7 +453,7 @@ class SharedMemoryRewriter : public StmtExprMutator {
           << "FlattenBuffer";
       ffi::Array<PrimExpr> indices = {
           node->indices[0] +
-              this->GetBufferOffset(node->buffer->data, node->buffer->dtype)};
+              this->GetBufferOffset(node->buffer->data, node->buffer->dtype->dtype)};
 
       auto writer = node.CopyOnWrite();
       writer->buffer = GetUpdatedBuffer(node->buffer);
@@ -650,7 +650,7 @@ class SharedMemoryRewriter : public StmtExprMutator {
         for (const VarNode* buffer : e->allocs[i]) {
           const Buffer& buf = scope.shmem_allocs.at(buffer);
           int elem_bytes =
-              (static_cast<int>(buf->dtype.bits) * static_cast<int>(buf->dtype.lanes) + 7) / 8;
+              (static_cast<int>(buf->dtype.bits()) * static_cast<int>(buf->dtype.lanes()) + 7) / 8;
           align[i] = std::max(align[i], elem_bytes);
         }
       }
@@ -664,7 +664,7 @@ class SharedMemoryRewriter : public StmtExprMutator {
           const Buffer& buf = scope.shmem_allocs.at(buffer);
           ffi::Array<PrimExpr> alloc_shape = GetBufferAllocationShape(buf);
           int elem_bytes =
-              (static_cast<int>(buf->dtype.bits) * static_cast<int>(buf->dtype.lanes) + 7) / 8;
+              (static_cast<int>(buf->dtype.bits()) * static_cast<int>(buf->dtype.lanes()) + 7) / 8;
           int align_bytes = std::max(align[i], elem_bytes);
           if (buf->data_alignment > 0) {
             TVM_FFI_ICHECK(buf->data_alignment % align_bytes == 0)
@@ -709,7 +709,7 @@ class SharedMemoryRewriter : public StmtExprMutator {
     // compiler can do a better job with register allocation.
     const uint64_t match_range = 16;
     ffi::Array<PrimExpr> alloc_shape = GetBufferAllocationShape(buf);
-    DLDataType dtype = buf->dtype;
+    DLDataType dtype = buf->dtype->dtype;
     uint64_t op_elem_bits = static_cast<uint64_t>(dtype.bits) * dtype.lanes;
     uint64_t const_nbits =
         static_cast<uint64_t>(ConstantAllocationSize(alloc_shape) * op_elem_bits);

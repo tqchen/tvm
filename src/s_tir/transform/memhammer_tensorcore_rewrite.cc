@@ -237,7 +237,7 @@ Stmt RewriteWmmaStore(Stmt stmt) {
   Buffer src_buffer = buf_load->buffer;
   Buffer tgt_buffer = buf_store->buffer;
 
-  const PrimType dtype_ty(src_buffer->dtype);
+  PrimType dtype_ty = src_buffer->dtype;
   const DLDataType dtype = dtype_ty->dtype;
 
   Buffer new_src_buffer(/*data=*/Var("src", PointerType(dtype_ty, src_buffer.scope())),
@@ -460,7 +460,7 @@ Stmt RewriteMmaStore(Stmt stmt) {
   // Step 3.1. Generate new buffer
   Buffer src_buffer = buf_load->buffer;
   Buffer tgt_buffer = buf_store->buffer;
-  const PrimType dtype_ty(src_buffer->dtype);
+  PrimType dtype_ty = src_buffer->dtype;
   const DLDataType dtype = dtype_ty->dtype;
   Buffer new_src_buffer(/*data=*/Var("src", PointerType(dtype_ty, src_buffer.scope())),
                         /*dtype=*/dtype,

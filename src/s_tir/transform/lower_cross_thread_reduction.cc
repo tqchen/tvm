@@ -147,7 +147,7 @@ ffi::Array<Buffer> MakeScratchpads(const ffi::Array<Buffer>& reduction_buffers,
   for (const Buffer& buffer : reduction_buffers) {
     ffi::String name = is_cross_thread_buffer ? "cross" : "in";
     name = name + "_thread_" + buffer->name;
-    new_buffers.push_back(Buffer(/*ptr=*/Var(name, PointerType(PrimType(buffer->dtype), "local")),
+    new_buffers.push_back(Buffer(/*ptr=*/Var(name, PointerType(buffer->dtype, "local")),
                                  /*dtype=*/buffer->dtype,
                                  /*shape=*/{IntImm::Int32(1)},
                                  /*strides=*/{IntImm::Int32(1)},
