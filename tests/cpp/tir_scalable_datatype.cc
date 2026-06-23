@@ -19,7 +19,7 @@
 
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
-#include <tvm/runtime/data_type.h>
+#include <tvm/ffi/dtype.h>
 #include <tvm/script/printer/printer.h>
 #include <tvm/tirx/builtin.h>
 #include <tvm/tirx/expr.h>
@@ -112,7 +112,7 @@ TEST(ScalableDataType, TestGetScalableVectorBytes) {
   EXPECT_THROW(
       {
         try {
-          tvm::runtime::GetVectorBytes(scalable_type);
+          tvm::((((scalable_type).bits * static_cast<int16_t>((scalable_type).lanes)) + 7) / 8);
         } catch (const tvm::ffi::Error& e) {
           EXPECT_THAT(e.what(),
                       HasSubstr("Can't fetch the lanes of a scalable vector at a compile time"));

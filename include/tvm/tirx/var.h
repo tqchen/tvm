@@ -26,7 +26,7 @@
 
 #include <tvm/ir/cow.h>
 #include <tvm/ir/expr.h>
-#include <tvm/runtime/data_type.h>
+#include <tvm/ffi/dtype.h>
 
 #include <functional>
 #include <string>

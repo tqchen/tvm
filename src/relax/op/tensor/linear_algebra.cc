@@ -44,7 +44,7 @@ TVM_FFI_STATIC_INIT_BLOCK() {
 
 Expr matmul(Expr x1, Expr x2, ffi::Optional<DLDataType> out_dtype) {
   ffi::ObjectPtr<MatmulAttrs> attrs = ffi::make_object<MatmulAttrs>();
-  attrs->out_dtype = out_dtype.value_or(PrimType::Void()->dtype);
+  attrs->out_dtype = out_dtype.value_or((DLDataType{kDLOpaqueHandle, 0, 0}));
 
   static const Op& op = Op::Get("relax.matmul");
   return Call(op, {std::move(x1), std::move(x2)}, Attrs(attrs), {});
@@ -74,7 +74,7 @@ Type InferTypeMatmul(const Call& call, const BlockBuilder& ctx) {
   }
 
   const auto* attrs = call->attrs.as<MatmulAttrs>();
-  DLDataType out_dtype = attrs->out_dtype == PrimType::Void()->dtype
+  DLDataType out_dtype = attrs->out_dtype == (DLDataType{kDLOpaqueHandle, 0, 0})
                            ? InferBinaryArithOpOutDtype(call, ctx, x1_ty, x2_ty)->dtype
                            : attrs->out_dtype;
 

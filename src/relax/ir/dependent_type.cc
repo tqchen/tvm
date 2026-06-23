@@ -121,9 +121,9 @@ TVM_FFI_STATIC_INIT_BLOCK() {
                              VDevice vdevice, Span span) {
         if (shape.defined()) {
           TVM_FFI_CHECK_EQ(ndim, kUnknownNDim, ValueError) << "Cannot both specify shape and ndim";
-          return TensorType(shape.value(), dtype.value_or(runtime::VoidDType()), vdevice, span);
+          return TensorType(shape.value(), dtype.value_or(DLDataType{kDLOpaqueHandle, 0, 0}), vdevice, span);
         } else {
-          return TensorType(dtype.value_or(runtime::VoidDType()), ndim, vdevice, span);
+          return TensorType(dtype.value_or(DLDataType{kDLOpaqueHandle, 0, 0}), ndim, vdevice, span);
         }
       });
 }

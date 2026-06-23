@@ -54,7 +54,7 @@ ffi::Array<PrimExpr> SimplifyArray(arith::AnalyzerObj* ana, ffi::Array<PrimExpr>
 Buffer decl_buffer(ffi::Array<PrimExpr> shape, DLDataType dtype, ffi::String name,
                    ffi::String storage_scope, ffi::Optional<ffi::Array<IntImm>> axis_separators,
                    Span span) {
-  DLDataType storage_dtype = (dtype == runtime::BoolDType() ? runtime::IntDType(8) : dtype);
+  DLDataType storage_dtype = (dtype == DLDataType{kDLBool, 8, 1} ? DLDataType{kDLInt, 8, 1} : dtype);
   return Buffer(Var(name, PointerType(PrimType(storage_dtype), storage_scope), span), dtype, shape,
                 ffi::Array<PrimExpr>(), PrimExpr(), name, 0, 0, kDefault,
                 axis_separators.value_or(ffi::Array<IntImm>()), span, std::nullopt,
@@ -432,8 +432,11 @@ PrimExpr Buffer::vload(ffi::Array<PrimExpr> begin, PrimType value_dtype,
   const BufferNode* n = operator->();
   TVM_FFI_ICHECK(n != nullptr);
   PrimType buffer_dtype(n->dtype);
+  int value_lanes = value_dtype.IsScalableVector() ? value_dtype.VScaleFactor() : value_dtype.lanes();
+  int buffer_lanes =
+      buffer_dtype.IsScalableVector() ? buffer_dtype.VScaleFactor() : buffer_dtype.lanes();
   TVM_FFI_ICHECK(value_dtype.WithLanes(1)->dtype == buffer_dtype.WithLanes(1)->dtype &&
-                 GetLanesOrVScaleFactor(value_dtype) % GetLanesOrVScaleFactor(buffer_dtype) == 0)
+                 value_lanes % buffer_lanes == 0)
       << "Cannot load " << value_dtype << " from buffer of " << n->dtype;
 
   ffi::Array<PrimExpr> indices = begin;
@@ -455,8 +458,11 @@ Stmt Buffer::vstore(ffi::Array<PrimExpr> begin, PrimExpr value,
   TVM_FFI_ICHECK(n != nullptr);
   PrimType value_dtype = value.ty();
   PrimType buffer_dtype(n->dtype);
+  int value_lanes = value_dtype.IsScalableVector() ? value_dtype.VScaleFactor() : value_dtype.lanes();
+  int buffer_lanes =
+      buffer_dtype.IsScalableVector() ? buffer_dtype.VScaleFactor() : buffer_dtype.lanes();
   TVM_FFI_ICHECK(value_dtype.WithLanes(1)->dtype == buffer_dtype.WithLanes(1)->dtype &&
-                 GetLanesOrVScaleFactor(value_dtype) % GetLanesOrVScaleFactor(buffer_dtype) == 0)
+                 value_lanes % buffer_lanes == 0)
       << "Cannot store " << value_dtype << " to buffer of " << n->dtype;
 
   ffi::Array<PrimExpr> indices = begin;
@@ -487,7 +493,7 @@ Buffer Buffer::MakeStrideView() const {
   const BufferNode* self = operator->();
   TVM_FFI_ICHECK(self != nullptr);
   auto n = ffi::make_object<BufferNode>(*self);
-  PrimExpr acc = MakeConst(n->DefaultIndexType(), 1);
+  PrimExpr acc = MakeConst(PrimType(n->DefaultIndexType()), 1);
   for (size_t i = n->shape.size(); i != 0; --i) {
     temp.push_back(acc);
     acc = acc * n->shape[i - 1];
@@ -547,7 +553,7 @@ PrimExpr Buffer::access_ptr(int access_mask, PrimType ptr_type, int content_lane
   PrimExpr e_dtype;
   PrimExpr extent;
   if (self->shape.size() == 0) {
-    extent = MakeConst(self->DefaultIndexType(), 1);
+    extent = MakeConst(PrimType(self->DefaultIndexType()), 1);
   } else if (self->strides.size() == self->shape.size()) {
     int highest_dim = 0;
     extent = self->strides[highest_dim] * self->shape[highest_dim] - offset;
@@ -579,8 +585,8 @@ Buffer::Buffer(Var data, DLDataType dtype, ffi::Array<PrimExpr> shape, ffi::Arra
                ffi::Optional<Layout> layout, ffi::Array<PrimExpr> allocated_addr) {
   DLDataType storage_dtype = dtype;
   // specially handle bool
-  if (storage_dtype == runtime::BoolDType()) {
-    storage_dtype = runtime::IntDType(8);
+  if (storage_dtype == DLDataType{kDLBool, 8, 1}) {
+    storage_dtype = DLDataType{kDLInt, 8, 1};
   }
   // The buffer dtype may differ from the dtype of the underlying
   // allocation, such as a single allocation that backs multiple
@@ -639,7 +645,7 @@ Buffer::Buffer(Var data, DLDataType dtype, ffi::Array<PrimExpr> shape, ffi::Arra
 tirx::Buffer BufferWithOffsetAlignment(ffi::Array<PrimExpr> shape, DLDataType dtype, std::string name,
                                        int data_alignment, int offset_factor, bool compact,
                                        std::string memory_scope) {
-  DLDataType storage_dtype = (dtype == runtime::BoolDType() ? runtime::IntDType(8) : dtype);
+  DLDataType storage_dtype = (dtype == DLDataType{kDLBool, 8, 1} ? DLDataType{kDLInt, 8, 1} : dtype);
   auto data = tirx::Var(name, PointerType(PrimType(storage_dtype), memory_scope));
   bool has_any = false;
   if (!compact) {

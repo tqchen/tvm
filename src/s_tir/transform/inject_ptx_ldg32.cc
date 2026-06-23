@@ -98,7 +98,7 @@ class PTXRewriter : public StmtMutator {
         new_indice = BufferLoad(addr_buffer, {IntImm::Int32(1)});
         BufferStore value_store(store->buffer, imm_value, {new_indice});
         static const Op& ptx_ldg32_op = Op::Get("tirx.ptx.ldg32");
-        Evaluate ptx_load(Call(store->buffer->dtype, ptx_ldg32_op,
+        Evaluate ptx_load(Call(PrimType(store->buffer->dtype), ptx_ldg32_op,
                                {store->buffer->data, new_predicate, new_lhs, new_indice}));
         ffi::Array<Stmt> tmp_seq = {addr_store, local_addr_store, predicate_store, value_store,
                                     ptx_load};
@@ -115,8 +115,10 @@ class PTXRewriter : public StmtMutator {
     }
     has_buffer_1 = true;
     // addr[0] -> global_addr /  addr[1] -> local_addr
-    addr_buffer = decl_buffer({IntImm::Int32(2)}, DataType::Int(32), "addr", "local");
-    predicate_buffer = decl_buffer({IntImm::Int32(1)}, DataType::Bool(), "predicate", "local");
+    addr_buffer =
+        decl_buffer({IntImm::Int32(2)}, DLDataType{kDLInt, 32, 1}, "addr", "local");
+    predicate_buffer =
+        decl_buffer({IntImm::Int32(1)}, DLDataType{kDLBool, 8, 1}, "predicate", "local");
   }
 
   bool has_buffer_1 = false, has_buffer_2 = false;

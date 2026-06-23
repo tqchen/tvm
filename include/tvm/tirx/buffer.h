@@ -49,7 +49,13 @@ inline PrimType DefaultIndexPrimType() {
   return default_index_ty;
 }
 
-inline DLDataType DefaultIndexType() { return DefaultIndexPrimType()->dtype; }
+inline DLDataType DefaultIndexType() {
+#if TVM_INDEX_DEFAULT_I64
+  return DLDataType{kDLInt, 64, 1};
+#else
+  return DLDataType{kDLInt, 32, 1};
+#endif
+}
 
 // forward declare Stmt
 class Stmt;
@@ -308,7 +314,7 @@ class Buffer : public ffi::ObjectRef {
  * \return The created buffer.
  * \sa Buffer for complete constructor.
  */
-TVM_DLL Buffer decl_buffer(ffi::Array<PrimExpr> shape, DLDataType dtype = runtime::FloatDType(32),
+TVM_DLL Buffer decl_buffer(ffi::Array<PrimExpr> shape, DLDataType dtype = DLDataType{kDLFloat, 32, 1},
                            ffi::String name = "buffer", ffi::String storage_scope = "",
                            ffi::Optional<ffi::Array<IntImm>> axis_separators = std::nullopt,
                            Span span = Span());
@@ -347,11 +353,6 @@ class DataProducerNode : public PrimExprConvertibleNode {
    * \return The raw dtype.
    */
   virtual DLDataType GetDataType() const = 0;
-  /*!
-   * \brief Get the primitive element type of the result.
-   * \return The primitive type.
-   */
-  virtual PrimType GetPrimType() const { return PrimType(GetDataType()); }
   /*!
    * \brief Get the name hint of the data producer.
    * \return The data type.

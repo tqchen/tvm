@@ -873,10 +873,11 @@ void BufferLoadNode::LegalizeDType() {
   }
 
   if (indices.empty()) {
-    this->BaseExprNode::ty = buffer->dtype;
+    this->BaseExprNode::ty = PrimType(buffer->dtype);
   } else {
     PrimType index_ty = indices.back().ty();
-    bool is_buffer_dtype_scalable = buffer->dtype.IsScalableVector();
+    int16_t buffer_encoded_lanes = static_cast<int16_t>(buffer->dtype.lanes);
+    bool is_buffer_dtype_scalable = buffer_encoded_lanes < -1;
     bool is_index_scalable = index_ty.IsScalableVector();
 
     TVM_FFI_ICHECK(!(is_index_scalable && is_buffer_dtype_scalable))
@@ -884,15 +885,15 @@ void BufferLoadNode::LegalizeDType() {
 
     if (is_index_scalable) {
       this->BaseExprNode::ty = PrimType::ScalableVector(
-          static_cast<DLDataTypeCode>(buffer->dtype.code()), buffer->dtype.bits(),
-          index_ty.VScaleFactor() * buffer->dtype.lanes());
+          static_cast<DLDataTypeCode>(buffer->dtype.code), buffer->dtype.bits,
+          index_ty.VScaleFactor() * buffer->dtype.lanes);
     } else if (is_buffer_dtype_scalable) {
       this->BaseExprNode::ty = PrimType::ScalableVector(
-          static_cast<DLDataTypeCode>(buffer->dtype.code()), buffer->dtype.bits(),
-          buffer->dtype.VScaleFactor() * index_ty.lanes());
+          static_cast<DLDataTypeCode>(buffer->dtype.code), buffer->dtype.bits,
+          -buffer_encoded_lanes * index_ty.lanes());
     } else {
       this->BaseExprNode::ty =
-          buffer->dtype.WithLanes(index_ty.lanes() * buffer->dtype.lanes());
+          PrimType(buffer->dtype).WithLanes(index_ty.lanes() * buffer->dtype.lanes);
     }
   }
 }
@@ -911,7 +912,8 @@ BufferLoad::BufferLoad(Buffer buffer, ffi::Array<PrimExpr> indices,
     TVM_FFI_ICHECK_EQ(is_index_scalable, is_predicate_scalable)
         << "Predicate mask dtype and load indices must both be scalable.";
 
-    int buffer_lanes = GetLanesOrVScaleFactor(buffer->dtype);
+    int16_t buffer_encoded_lanes = static_cast<int16_t>(buffer->dtype.lanes);
+    int buffer_lanes = buffer_encoded_lanes < -1 ? -buffer_encoded_lanes : buffer_encoded_lanes;
     int index_lanes = indices.empty() ? 1 : GetLanesOrVScaleFactor(indices.back().ty());
     int predicate_lanes = GetLanesOrVScaleFactor(predicate_ty);
     TVM_FFI_ICHECK_EQ(index_lanes * buffer_lanes, predicate_lanes)
@@ -943,7 +945,7 @@ TVM_FFI_STATIC_INIT_BLOCK() {
 // ProducerLoad
 ProducerLoad::ProducerLoad(DataProducer producer, ffi::Array<PrimExpr> indices, Span span) {
   ffi::ObjectPtr<ProducerLoadNode> node = ffi::make_object<ProducerLoadNode>();
-  node->BaseExprNode::ty = producer->GetPrimType();
+  node->BaseExprNode::ty = PrimType(producer->GetDataType());
   node->producer = std::move(producer);
   node->indices = std::move(indices);
   node->span = std::move(span);

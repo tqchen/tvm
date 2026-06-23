@@ -1017,7 +1017,7 @@ class TypeLCAFinder : public TypeFunctor<Type(const Type&, const Type&)> {
     if (rhs == nullptr) return ObjectType(lhs->span);
 
     // find the target dtype, ndim, and vdevice.
-    DLDataType dtype = lhs->dtype == rhs->dtype ? lhs->dtype : runtime::VoidDType();
+    DLDataType dtype = lhs->dtype == rhs->dtype ? lhs->dtype : DLDataType{kDLOpaqueHandle, 0, 0};
     int ndim = lhs->ndim == rhs->ndim ? lhs->ndim : kUnknownNDim;
     VDevice vdev = VDevice();
     if (lhs->vdevice.defined() && rhs->vdevice.defined() &&

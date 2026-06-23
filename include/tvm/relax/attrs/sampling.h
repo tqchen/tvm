@@ -37,7 +37,7 @@ struct MultinomialFromUniformAttrs : public AttrsNode {
     namespace refl = tvm::ffi::reflection;
     refl::ObjectDef<MultinomialFromUniformAttrs>().def_ro(
         "dtype", &MultinomialFromUniformAttrs::dtype, "Data type of the output indices.",
-        refl::DefaultValue(PrimType::Int(64)->dtype));
+        refl::DefaultValue((DLDataType{kDLInt, 64, 1})));
   }
   TVM_FFI_DECLARE_OBJECT_INFO_FINAL("relax.attrs.MultinomialFromUniformAttrs",
                                     MultinomialFromUniformAttrs, AttrsNode);

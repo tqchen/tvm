@@ -411,23 +411,23 @@ ffi::Array<StmtSRef> Split(ScheduleState self, const StmtSRef& loop_sref,
   CheckLoopStartsWithZero(self, loop_sref, analyzer.get());
 
   // Find the most common dtype
-  DataType dtype;
+  PrimType dtype = PrimType::Int(32);
   {
     int bits = loop->loop_var.ty().bits();
     for (const PrimExpr& factor : factors) {
       bits = std::max(bits, factor.ty().bits());
     }
-    dtype = DataType::Int(bits);
+    dtype = PrimType::Int(bits);
   }
   int n = factors.size();
-  PrimExpr substitute_value = IntImm(PrimType(dtype), 0);
+  PrimExpr substitute_value = IntImm(dtype, 0);
   std::vector<Var> new_loop_vars;
   new_loop_vars.reserve(n);
   for (int i = 0; i < n; i++) {
     const PrimExpr& factor = factors[i];
     Var var = loop->loop_var.copy_with_suffix("_" + std::to_string(i)).copy_with_dtype(dtype);
     substitute_value = substitute_value * factor + var;
-    analyzer->Bind(var, Range::FromMinExtent(IntImm(PrimType(dtype), 0), tvm::cast(dtype, factor)));
+    analyzer->Bind(var, Range::FromMinExtent(IntImm(dtype, 0), tvm::cast(dtype, factor)));
     new_loop_vars.emplace_back(std::move(var));
   }
   ffi::Map<SBlock, SBlock> opaque_block_reuse;
@@ -655,13 +655,13 @@ ffi::Array<StmtSRef> LoopPartition(ScheduleState self, const StmtSRef& loop_sref
 
   arith::Analyzer analyzer;
   // Find the most common dtype
-  DataType dtype;
+  PrimType dtype = PrimType::Int(32);
   {
     int bits = loop->loop_var.ty().bits();
     for (const PrimExpr& factor : factors) {
       bits = std::max(bits, factor.ty().bits());
     }
-    dtype = DataType::Int(bits);
+    dtype = PrimType::Int(bits);
   }
 
   ffi::String block_name = get_sblock_name(loop->body) + "_" + loop->loop_var->name_hint;
@@ -928,7 +928,7 @@ StmtSRef Fuse(ScheduleState self, const ffi::Array<StmtSRef>& loop_srefs,
   }
   suffix += "_fused";
 
-  Var fused_var = loops[0]->loop_var.copy_with_suffix(suffix).copy_with_dtype(DataType::Int(bits));
+  Var fused_var = loops[0]->loop_var.copy_with_suffix(suffix).copy_with_dtype(PrimType::Int(bits));
   ffi::Array<PrimExpr> substitute_value;
   substitute_value.resize(loops.size());
   PrimExpr lower = 1;
@@ -1144,7 +1144,7 @@ void Reorder(ScheduleState self, const ffi::Array<StmtSRef>& ordered_loop_srefs)
 StmtSRef AddUnitLoop(ScheduleState self, StmtSRef sref) {
   if (sref->stmt->IsInstance<ForNode>()) {
     For new_loop =
-        For(Var("u", DataType::Int(32)), 0, 1, ForKind::kSerial, ffi::GetRef<Stmt>(sref->stmt));
+        For(Var("u", PrimType::Int(32)), 0, 1, ForKind::kSerial, ffi::GetRef<Stmt>(sref->stmt));
     self->Replace(sref, new_loop, {});
     return self->stmt2ref.at(new_loop.get());
   }
@@ -1154,7 +1154,7 @@ StmtSRef AddUnitLoop(ScheduleState self, StmtSRef sref) {
 
     Stmt VisitStmt_(const SBlockRealizeNode* realize) final {
       if (realize->block.get() == src_block_) {
-        new_loop_ = For(Var("u", DataType::Int(32)), 0, 1, ForKind::kSerial,
+        new_loop_ = For(Var("u", PrimType::Int(32)), 0, 1, ForKind::kSerial,
                         ffi::GetRef<SBlockRealize>(realize));
         return new_loop_;
       }

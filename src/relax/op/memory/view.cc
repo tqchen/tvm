@@ -116,7 +116,7 @@ Type InferTypeView(const Call& call, const BlockBuilder& ctx) {
     } else if (ty.as<ObjectTypeNode>()) {
       // The view changes the datatype, but we don't know what it is
       // being changed into.
-      return runtime::VoidDType();
+      return DLDataType{kDLOpaqueHandle, 0, 0};
     } else {
       TVM_FFI_THROW(TypeError) << "Operator " << call->op
                                << " expects the dtype argument to be a relax::DataTypeImm, "
@@ -131,7 +131,7 @@ Type InferTypeView(const Call& call, const BlockBuilder& ctx) {
       // No byte offset is specified, so no change is applied.
       return IntImm::Int64(0);
     } else if (auto prim_ty = ty.as<PrimTypeNode>()) {
-      TVM_FFI_CHECK_EQ(prim_ty->dtype, PrimType::Int(64)->dtype, TypeError)
+      TVM_FFI_CHECK_EQ(prim_ty->dtype, (DLDataType{kDLInt, 64, 1}), TypeError)
           << "Operator " << call->op
           << " expects the relative_byte_offset to be a 64-bit integer, but received "
           << arg_relative_byte_offset << ", which has type " << ty;
@@ -171,10 +171,10 @@ Type InferTypeView(const Call& call, const BlockBuilder& ctx) {
 
   // Helper function returns the number of bytes per vectorized element.
   auto get_size_bytes = [](DLDataType dtype) -> ffi::Optional<IntImm> {
-    if (runtime::IsVoidDType(dtype)) {
+    if ((((dtype).code == kDLOpaqueHandle) && ((dtype).bits == 0) && ((dtype).lanes == 0))) {
       return std::nullopt;
     } else {
-      auto size_bits = runtime::DTypeBits(dtype) * runtime::DTypeLanes(dtype);
+      auto size_bits = ((dtype).bits) * static_cast<int16_t>((dtype).lanes);
       return IntImm::Int64((size_bits + 7) / 8);
     }
   };
@@ -328,7 +328,7 @@ Expr LowerBuiltinView(const BlockBuilder& bb, const Call& call) {
 
   if (HasVoidType(dtype)) {
     DLDataType data_dtype = data->ty.as<TensorType>().value()->dtype;
-    TVM_FFI_ICHECK(!runtime::IsVoidDType(data_dtype))
+    TVM_FFI_ICHECK(!(((data_dtype).code == kDLOpaqueHandle) && ((data_dtype).bits == 0) && ((data_dtype).lanes == 0)))
         << "Legalization of " << call->op
         << " requires that either the output dtype be explicitly specified, "
         << "or the input dtype is known.  "

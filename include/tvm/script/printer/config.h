@@ -33,7 +33,8 @@
 #include <tvm/ffi/reflection/access_path.h>
 #include <tvm/ffi/reflection/registry.h>
 #include <tvm/ffi/string.h>
-#include <tvm/runtime/data_type.h>
+#include <tvm/ffi/dtype.h>
+#include <tvm/runtime/base.h>
 
 #include <string>
 
@@ -53,15 +54,15 @@ class PrinterConfigNode : public ffi::Object {
    */
   ffi::String module_alias = "cls";
   /*! \brief Default buffer dtype */
-  DLDataType buffer_dtype = runtime::FloatDType(32);
+  DLDataType buffer_dtype = DLDataType{kDLFloat, 32, 1};
   /*! \brief Default data type of integer literals */
-  DLDataType int_dtype = runtime::IntDType(32);
+  DLDataType int_dtype = DLDataType{kDLInt, 32, 1};
   /*!
    * \brief Default data type of float literals. Right now we always print out the explicit type
    * of floating point values, so setting it to Void means we do not print without the
    * T.float32/T.float64 wrapper.
    */
-  DLDataType float_dtype = runtime::VoidDType();
+  DLDataType float_dtype = DLDataType{kDLOpaqueHandle, 0, 0};
   /*! \brief Whether or not to verbose print expressions. */
   bool verbose_expr = false;
   /*! \brief Number of spaces used for indentation*/

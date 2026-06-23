@@ -141,18 +141,17 @@ template <>
 inline ffi::Optional<PrimExpr> TryConstFold<tirx::Add>(PrimExpr a, PrimExpr b) {
   TVM_ARITH_CONST_PROPAGATION({
     PrimType result_ty = a.ty();
-    const PrimType& result_dtype = result_ty;
     if (pa && pb) {
       int64_t res = pa->value + pb->value;
-      return IntImm(result_ty, GetFoldResultInt64Repr(res, result_dtype));
+      return IntImm(result_ty, GetFoldResultInt64Repr(res, result_ty));
     }
     if (pa && pa->value == 0) return b;
     if (pb && pb->value == 0) return a;
     if (fa && fb) {
-      if (result_dtype.bits() == 32) {
+      if (result_ty.bits() == 32) {
         return FloatImm(result_ty, GetFoldResultDoubleRepr(static_cast<float>(fa->value) +
                                                            static_cast<float>(fb->value)));
-      } else if (result_dtype.bits() == 64) {
+      } else if (result_ty.bits() == 64) {
         return FloatImm(result_ty, fa->value + fb->value);
       }
     }
@@ -170,17 +169,16 @@ inline ffi::Optional<PrimExpr> TryConstFold<tirx::Sub>(PrimExpr a, PrimExpr b) {
         << "Checked failed. Minuend 's value is 0U and it's dtype is uint "
         << "while Subtrahend's dtype is uint; which will cause a negative uint";
     PrimType result_ty = a.ty();
-    const PrimType& result_dtype = result_ty;
     if (pa && pb) {
       int64_t res = pa->value - pb->value;
-      return IntImm(result_ty, GetFoldResultInt64Repr(res, result_dtype));
+      return IntImm(result_ty, GetFoldResultInt64Repr(res, result_ty));
     }
     if (pb && pb->value == 0) return a;
     if (fa && fb) {
-      if (result_dtype.bits() == 32) {
+      if (result_ty.bits() == 32) {
         return FloatImm(result_ty, GetFoldResultDoubleRepr(static_cast<float>(fa->value) -
                                                            static_cast<float>(fb->value)));
-      } else if (result_dtype.bits() == 64) {
+      } else if (result_ty.bits() == 64) {
         return FloatImm(result_ty, fa->value - fb->value);
       }
     }
@@ -193,10 +191,9 @@ template <>
 inline ffi::Optional<PrimExpr> TryConstFold<tirx::Mul>(PrimExpr a, PrimExpr b) {
   TVM_ARITH_CONST_PROPAGATION({
     PrimType result_ty = a.ty();
-    const PrimType& result_dtype = result_ty;
     if (pa && pb) {
       int64_t res = pa->value * pb->value;
-      return IntImm(result_ty, GetFoldResultInt64Repr(res, result_dtype));
+      return IntImm(result_ty, GetFoldResultInt64Repr(res, result_ty));
     }
     if (pa) {
       if (pa->value == 1) return b;
@@ -207,10 +204,10 @@ inline ffi::Optional<PrimExpr> TryConstFold<tirx::Mul>(PrimExpr a, PrimExpr b) {
       if (pb->value == 0) return b;
     }
     if (fa && fb) {
-      if (result_dtype.bits() == 32) {
+      if (result_ty.bits() == 32) {
         return FloatImm(result_ty, GetFoldResultDoubleRepr(static_cast<float>(fa->value) *
                                                            static_cast<float>(fb->value)));
-      } else if (result_dtype.bits() == 64) {
+      } else if (result_ty.bits() == 64) {
         return FloatImm(result_ty, fa->value * fb->value);
       }
     }
@@ -230,13 +227,12 @@ template <>
 inline ffi::Optional<PrimExpr> TryConstFold<tirx::Div>(PrimExpr a, PrimExpr b) {
   TVM_ARITH_CONST_PROPAGATION({
     PrimType result_ty = a.ty();
-    const PrimType& result_dtype = result_ty;
     if (pa && pb) {
       // due to division and mod can have different modes
       // NOTE: this will assumes truc div.
       TVM_FFI_ICHECK_NE(pb->value, 0) << "Divide by zero";
       int64_t res = pa->value / pb->value;
-      return IntImm(result_ty, GetFoldResultInt64Repr(res, result_dtype));
+      return IntImm(result_ty, GetFoldResultInt64Repr(res, result_ty));
     }
     if (pa) {
       if (pa->value == 0) return a;
@@ -247,10 +243,10 @@ inline ffi::Optional<PrimExpr> TryConstFold<tirx::Div>(PrimExpr a, PrimExpr b) {
     }
     if (fa && fb) {
       TVM_FFI_ICHECK_NE(fb->value, 0) << "Divide by zero";
-      if (result_dtype.bits() == 32) {
+      if (result_ty.bits() == 32) {
         return FloatImm(result_ty, GetFoldResultDoubleRepr(static_cast<float>(fa->value) /
                                                            static_cast<float>(fb->value)));
-      } else if (result_dtype.bits() == 64) {
+      } else if (result_ty.bits() == 64) {
         return FloatImm(result_ty, fa->value / fb->value);
       }
     }
@@ -267,18 +263,17 @@ template <>
 inline ffi::Optional<PrimExpr> TryConstFold<tirx::Mod>(PrimExpr a, PrimExpr b) {
   TVM_INDEX_CONST_PROPAGATION({
     PrimType result_ty = a.ty();
-    const PrimType& result_dtype = result_ty;
     if (pa && pb) {
       TVM_FFI_ICHECK_NE(pb->value, 0) << "Divide by zero";
       int64_t res = pa->value % pb->value;
-      return IntImm(result_ty, GetFoldResultInt64Repr(res, result_dtype));
+      return IntImm(result_ty, GetFoldResultInt64Repr(res, result_ty));
     }
     if (pa) {
       if (pa->value == 0) return a;
     }
     if (pb) {
       // MakeConst can handle both vector and scalar types.
-      if (pb->value == 1) return tirx::MakeConst(result_dtype, 0);
+      if (pb->value == 1) return tirx::MakeConst(result_ty, 0);
       TVM_FFI_ICHECK_NE(pb->value, 0) << "Divide by zero";
     }
   });
@@ -289,11 +284,10 @@ template <>
 inline ffi::Optional<PrimExpr> TryConstFold<tirx::FloorDiv>(PrimExpr a, PrimExpr b) {
   TVM_ARITH_CONST_PROPAGATION({
     PrimType result_ty = a.ty();
-    const PrimType& result_dtype = result_ty;
     if (pa && pb) {
       TVM_FFI_ICHECK_NE(pb->value, 0) << "Divide by zero";
       int64_t res = arith::floordiv(pa->value, pb->value);
-      return IntImm(result_ty, GetFoldResultInt64Repr(res, result_dtype));
+      return IntImm(result_ty, GetFoldResultInt64Repr(res, result_ty));
     }
     if (pa) {
       if (pa->value == 0) return a;
@@ -303,11 +297,11 @@ inline ffi::Optional<PrimExpr> TryConstFold<tirx::FloorDiv>(PrimExpr a, PrimExpr
       TVM_FFI_ICHECK_NE(pb->value, 0) << "Divide by zero";
     }
     if (fa && fb && fb->value != 0) {
-      if (result_dtype.bits() == 32) {
+      if (result_ty.bits() == 32) {
         return FloatImm(result_ty,
                         GetFoldResultDoubleRepr(std::floor(static_cast<float>(fa->value) /
                                                            static_cast<float>(fb->value))));
-      } else if (result_dtype.bits() == 64) {
+      } else if (result_ty.bits() == 64) {
         return FloatImm(result_ty, std::floor(fa->value / fb->value));
       } else {
         return std::nullopt;
@@ -326,18 +320,17 @@ template <>
 inline ffi::Optional<PrimExpr> TryConstFold<tirx::FloorMod>(PrimExpr a, PrimExpr b) {
   TVM_INDEX_CONST_PROPAGATION({
     PrimType result_ty = a.ty();
-    const PrimType& result_dtype = result_ty;
     if (pa && pb) {
       TVM_FFI_ICHECK_NE(pb->value, 0) << "Divide by zero";
       int64_t res = arith::floormod(pa->value, pb->value);
-      return IntImm(result_ty, GetFoldResultInt64Repr(res, result_dtype));
+      return IntImm(result_ty, GetFoldResultInt64Repr(res, result_ty));
     }
     if (pa) {
       if (pa->value == 0) return a;
     }
     if (pb) {
       // MakeConst can handle both vector and scalar types.
-      if (pb->value == 1) return tirx::MakeConst(result_dtype, 0);
+      if (pb->value == 1) return tirx::MakeConst(result_ty, 0);
       TVM_FFI_ICHECK_NE(pb->value, 0) << "Divide by zero";
     }
   });

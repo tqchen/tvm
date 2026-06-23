@@ -31,7 +31,7 @@
 #include <tvm/ffi/container/map.h>
 #include <tvm/ffi/extra/json.h>
 #include <tvm/ffi/string.h>
-#include <tvm/runtime/data_type.h>
+#include <tvm/ffi/dtype.h>
 
 #include <cstdint>
 #include <cstdio>

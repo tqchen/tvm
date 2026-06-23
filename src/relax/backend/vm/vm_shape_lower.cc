@@ -298,7 +298,7 @@ class VMShapeLowerMutator
   //-------------------------------------------------------
   // PrimExpr slot handling
   //-------------------------------------------------------
-  static DLDataType ShapeDType() { return runtime::IntDType(64); }
+  static DLDataType ShapeDType() { return DLDataType{kDLInt, 64, 1}; }
 
   /*! \brief populate additional information in the slot. */
   void PopulateSlotInfo() {

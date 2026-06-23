@@ -86,7 +86,7 @@ Type InferTypeTake(const Call& call, const BlockBuilder& ctx) {
     LOG(WARNING) << "Data type of indices has not been specified. Assume it has an integer type.";
   } else {
     DLDataType indices_dtype = indices_ty->dtype;
-    if (!(runtime::IsIntDType(indices_dtype) || runtime::IsUIntDType(indices_dtype))) {
+    if (!(((indices_dtype).code == kDLInt) || ((indices_dtype).code == kDLUInt))) {
     TVM_FFI_VISIT_THROW(TypeError, call)
         << "Take op requires the input indices to have integer dtype. However, the "
            "given indices dtype is "
@@ -312,7 +312,8 @@ Type InferTypeStridedSlice(const Call& call, const BlockBuilder& ctx) {
     }
   }();
 
-  TVM_FFI_ICHECK(IsBaseOf(relax::TensorType(runtime::VoidDType(), kUnknownNDim), GetType(data)))
+  TVM_FFI_ICHECK(IsBaseOf(relax::TensorType((DLDataType{kDLOpaqueHandle, 0, 0}), kUnknownNDim),
+                          GetType(data)))
       << "Operator " << call->op << " requires the first argument to be a tensor.  "
       << "However, in expression " << call << ", the first argument " << data << " has type "
       << GetType(data);
@@ -350,7 +351,7 @@ Type InferTypeStridedSlice(const Call& call, const BlockBuilder& ctx) {
 
   const auto* data_ty = data->ty.as<TensorTypeNode>();
 
-  DLDataType dtype = runtime::VoidDType();
+  DLDataType dtype = DLDataType{kDLOpaqueHandle, 0, 0};
   ffi::Optional<VDevice> vdevice = std::nullopt;
   int ndim = kUnknownNDim;
   if (data_ty) {
@@ -548,7 +549,7 @@ Type InferTypeDynStridedSlice(const Call& call, const BlockBuilder& ctx) {
       LOG(WARNING) << "Dynamic strided slice assumes " << name
                    << " to be int64 when it is not specified.";
     } else {
-      TVM_FFI_ICHECK(ty->dtype == PrimType::Int(64)->dtype)
+      TVM_FFI_ICHECK(ty->dtype == (DLDataType{kDLInt, 64, 1}))
           << "Dynamic strided_slice expects the input " << name
           << "values to be all int64. However, " << name << " has dtype " << ty->dtype << ".";
     }

@@ -25,7 +25,7 @@
 #include <tvm/ffi/function.h>
 #include <tvm/ffi/reflection/registry.h>
 #include <tvm/ir/expr.h>
-#include <tvm/runtime/data_type.h>
+#include <tvm/ffi/dtype.h>
 #include <tvm/runtime/logging.h>
 #include <tvm/s_tir/data_layout.h>
 #include <tvm/tirx/analysis.h>

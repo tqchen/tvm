@@ -29,7 +29,7 @@
 #include <tvm/relax/expr_functor.h>
 #include <tvm/relax/op_attr_types.h>
 #include <tvm/relax/type.h>
-#include <tvm/runtime/data_type.h>
+#include <tvm/ffi/dtype.h>
 #include <tvm/tirx/op.h>
 
 namespace tvm {
@@ -85,7 +85,7 @@ class LowerRuntimeBuiltinMutator : public ExprMutator {
   Expr MakeMemAllocStorage(const Call& call) {
     PrimValue runtime_device_index = call->args[1].as_or_throw<PrimValue>();
     StringImm storage_scope = call->args[2].as_or_throw<StringImm>();
-    DataTypeImm output_dtype = DataTypeImm(PrimType::UInt(8)->dtype);
+    DataTypeImm output_dtype = DataTypeImm((DLDataType{kDLUInt, 8, 1}));
     return Call(vm_alloc_storage_op_,
                 {call->args[0], runtime_device_index, output_dtype, storage_scope}, Attrs());
   }

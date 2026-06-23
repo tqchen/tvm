@@ -22,7 +22,7 @@
 #include <tvm/ffi/container/shape.h>
 #include <tvm/ffi/reflection/registry.h>
 #include <tvm/ir/module.h>
-#include <tvm/runtime/data_type.h>
+#include <tvm/ffi/dtype.h>
 #include <tvm/tirx/function.h>
 
 namespace tvm {

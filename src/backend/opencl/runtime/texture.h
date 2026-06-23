@@ -124,9 +124,9 @@ size_t GetTextureMemorySize(T shape, int bits, int lanes, std::string mem_scope,
  */
 inline DLDataType GetChannelType(size_t channel_size) {
   if (channel_size == 128)
-    return FloatDType(32, 4);
+    return DLDataType{kDLFloat, 32, 4};
   else if (channel_size == 64)
-    return FloatDType(16, 4);
+    return DLDataType{kDLFloat, 16, 4};
 
   TVM_FFI_THROW(InternalError) << "Unsupported Channel Size: " << channel_size;
 }

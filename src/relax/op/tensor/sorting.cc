@@ -85,7 +85,7 @@ Type InferTypeArgsort(const Call& call, const BlockBuilder& ctx) {
   TensorType data_ty = GetUnaryInputTensorType(call, ctx);
   const auto* attrs = call->attrs.as<ArgsortAttrs>();
   DLDataType out_type =
-      attrs->dtype == PrimType::Void()->dtype ? data_ty->dtype : attrs->dtype;
+      attrs->dtype == (DLDataType{kDLOpaqueHandle, 0, 0}) ? data_ty->dtype : attrs->dtype;
   if (data_ty->shape.defined()) {
     return TensorType(data_ty->shape.value(), out_type, data_ty->vdevice);
   }
@@ -123,7 +123,7 @@ Type InferTypeTopK(const Call& call, const BlockBuilder& ctx) {
   const auto* data_shape = data_ty->shape.as<ShapeExprNode>();
   const auto* attrs = call->attrs.as<TopKAttrs>();
   DLDataType indices_type =
-      attrs->dtype == PrimType::Void()->dtype ? data_ty->dtype : attrs->dtype;
+      attrs->dtype == (DLDataType{kDLOpaqueHandle, 0, 0}) ? data_ty->dtype : attrs->dtype;
   int ndim = data_ty->ndim;
   int k = attrs->k;
   ffi::String ret_type = attrs->ret_type;

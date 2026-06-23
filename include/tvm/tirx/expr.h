@@ -33,7 +33,7 @@
 #include <tvm/ir/expr.h>
 #include <tvm/ir/node_functor.h>
 #include <tvm/runtime/base.h>
-#include <tvm/runtime/data_type.h>
+#include <tvm/ffi/dtype.h>
 #include <tvm/tirx/buffer.h>
 #include <tvm/tirx/var.h>
 

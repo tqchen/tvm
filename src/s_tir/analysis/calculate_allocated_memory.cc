@@ -76,7 +76,7 @@ class AllocBufferCalculator : public StmtExprVisitor {
         break;
       }
     }
-    size *= runtime::DTypeBytes(op->buffer->dtype) * runtime::DTypeLanes(op->buffer->dtype);
+    size *= (((op->buffer->dtype).bits + 7) / 8) * static_cast<int16_t>((op->buffer->dtype).lanes);
     _current_size[storage_scope] += size;
     _max_size[storage_scope] = std::max(_current_size[storage_scope], _max_size[storage_scope]);
     StmtExprVisitor::VisitStmt_(op);

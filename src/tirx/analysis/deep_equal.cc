@@ -34,7 +34,7 @@ namespace {
 
 template <typename LHS, typename RHS>
 bool SameType(const LHS* lhs, const RHS* rhs) {
-  return DataType(lhs->ty()->dtype) == DataType(rhs->ty()->dtype);
+  return lhs->ty()->dtype == rhs->ty()->dtype;
 }
 
 }  // namespace
