@@ -84,13 +84,19 @@ inline PrimExpr DivImpl(PrimExpr a, PrimExpr b, DivMode mode) {
  * \return whether value fits in dtype
  */
 bool CastIsSafe(PrimType dtype, PrimExpr value, AnalyzerObj* analyzer) {
-  if (!IsIndexType(dtype->dtype)) {
+  DLDataType target_dtype = dtype->dtype;
+  if (!IsIndexType(target_dtype)) {
     return false;
   }
   ConstIntBound bound = analyzer->const_int_bound(value);
-  int64_t ubound = max_value(dtype).as_or_throw<IntImm>()->value;
-  int64_t lbound = min_value(dtype).as_or_throw<IntImm>()->value;
-  if (value.ty().bits() <= dtype.bits() ||  // upcast is safe
+  int64_t ubound = target_dtype.bits == 64 ? std::numeric_limits<int64_t>::max()
+                                           : (int64_t{1} << (target_dtype.bits - 1)) - 1;
+  int64_t lbound = target_dtype.bits == 64 ? std::numeric_limits<int64_t>::lowest()
+                                           : -(int64_t{1} << (target_dtype.bits - 1));
+  const auto* value_node = static_cast<const PrimExprNode*>(value.get());
+  const auto* value_ty = value_node->BaseExprNode::ty.as<PrimTypeNode>();
+  TVM_FFI_DCHECK(value_ty != nullptr);
+  if (value_ty->dtype.bits <= target_dtype.bits ||  // upcast is safe
       (bound->max_value <= ubound && bound->min_value >= lbound)) {
     return true;
   }
@@ -161,7 +167,8 @@ class SplitExprNode : public CanonicalExprNode {
     // cast(dtype, index) % upper_factor / lower_factor * scale
     // iff it is an upcast (dtype.bits >= self.dtype.bits) or all of
     // its intermediate results fit in the range of dtype
-    if (dtype.bits() >= this->ty().bits()) {
+    PrimType self_ty = this->ty();
+    if (dtype.bits() >= self_ty.bits()) {
       return true;  // upcast is safe
     }
     PrimExpr res = this->index;
@@ -172,20 +179,20 @@ class SplitExprNode : public CanonicalExprNode {
       return false;
     }
     if (this->upper_factor != SplitExprNode::kPosInf) {
-      res = ModImpl(res, MakeConst(this->ty(), this->upper_factor), div_mode);
+      res = ModImpl(res, MakeConst(self_ty, this->upper_factor), div_mode);
       if (!CastIsSafe(dtype, res, analyzer)) {
         return false;
       }
     }
     if (this->lower_factor != 1) {
-      res = DivImpl(res, MakeConst(this->ty(), this->lower_factor), div_mode);
+      res = DivImpl(res, MakeConst(self_ty, this->lower_factor), div_mode);
       if (!CastIsSafe(dtype, res, analyzer)) {
         return false;
       }
     }
     if (this->scale != 1) {
-      TVM_FFI_ICHECK(this->ty().code() != DLDataTypeCode::kDLUInt || this->scale > 0);
-      res = res * MakeConst(this->ty(), this->scale);
+      TVM_FFI_ICHECK(self_ty.code() != DLDataTypeCode::kDLUInt || this->scale > 0);
+      res = res * MakeConst(self_ty, this->scale);
       if (!CastIsSafe(dtype, res, analyzer)) {
         return false;
       }
@@ -250,11 +257,12 @@ class SumExprNode : public CanonicalExprNode {
    * \return The normal expression.
    */
   PrimExpr Normalize() const final {
+    PrimType dtype = this->ty();
     // quick path 1.
     if (this->args.size() == 0) {
-      return MakeConst(this->ty(), this->base);
+      return MakeConst(dtype, this->base);
     }
-    return Normalize_(this->ty(), SimplifySplitExprs(args), base);
+    return Normalize_(dtype, SimplifySplitExprs(args), base);
   }
   /*!
    * \brief Whether self is divisible by scale.
@@ -341,7 +349,8 @@ class SumExprNode : public CanonicalExprNode {
     // cast(dtype, arg_1) + ... + cast(dtype, arg_n)
     // iff it is an upcast (dtype.bits >= self.dtype.bits) or all of
     // its intermediate results fit in the range of dtype
-    if (dtype.bits() >= this->ty().bits()) {
+    PrimType self_ty = this->ty();
+    if (dtype.bits() >= self_ty.bits()) {
       return true;  // upcast is safe
     }
     PrimExpr res = IntImm(dtype, 0);
