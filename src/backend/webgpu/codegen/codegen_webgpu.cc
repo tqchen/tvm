@@ -404,7 +404,7 @@ void CodeGenWebGPU::VisitExpr_(const CallNode* op, std::ostream& os) {  // NOLIN
   if (op->op.same_as(builtin::reinterpret())) {
     // generate bitcast<TYPE>(ARG)
     os << "bitcast<";
-    this->PrintType(GetPrimType(op)->dtype, os);
+    this->PrintType(ffi::GetRef<PrimExpr>(op).ty()->dtype, os);
     os << ">(";
     this->PrintExpr(op->args[0], os);
     os << ")";
@@ -428,7 +428,7 @@ void CodeGenWebGPU::VisitExpr_(const CallNode* op, std::ostream& os) {  // NOLIN
     std::string cond = PrintExpr(op->args[0]);
     this->PrintIndent();
     this->stream << "var " << result << " : ";
-    PrintType(GetPrimType(op)->dtype, this->stream);
+    PrintType(ffi::GetRef<PrimExpr>(op).ty()->dtype, this->stream);
     this->stream << ";\n";
     this->PrintIndent();
     this->stream << "if (" << cond << ") {\n";

@@ -434,7 +434,7 @@ void CodeGenMetal::VisitExpr_(const CallNode* op, std::ostream& os) {  // NOLINT
   } else if (op->op.same_as(builtin::reinterpret())) {
     // generate as_type<TYPE>(ARG)
     os << "(as_type<";
-    this->PrintType(GetPrimType(op)->dtype, os);
+    this->PrintType(ffi::GetRef<PrimExpr>(op).ty()->dtype, os);
     os << ">(";
     this->PrintExpr(op->args[0], os);
     os << "))";

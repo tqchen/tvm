@@ -500,7 +500,7 @@ class SharedMemoryRewriter : public StmtExprMutator {
 
       PrimExpr offset = this->VisitExpr(op->args[2].as_or_throw<PrimExpr>());
       PrimExpr extent = this->VisitExpr(op->args[3].as_or_throw<PrimExpr>());
-      return tirx::Call(GetPrimType(op), op->op,
+      return tirx::Call(ffi::GetRef<PrimExpr>(op).ty(), op->op,
                         {op->args[0].as_or_throw<PrimExpr>(), scope_stack_.back().merged_buf_var,
                          extra_offset + offset, extent, op->args[4].as_or_throw<PrimExpr>()});
     } else if (op->op.same_as(ptx_cp_async_op)) {
@@ -523,13 +523,13 @@ class SharedMemoryRewriter : public StmtExprMutator {
       int index_factor = (static_cast<int>(dtype.bits) * static_cast<int>(dtype.lanes) + 7) / 8;
       if (op->args.size() == 5)
         return tirx::Call(
-            GetPrimType(op), op->op,
+            ffi::GetRef<PrimExpr>(op).ty(), op->op,
             {scope_stack_.back().merged_buf_var, mul(extra_offset + offset, PrimExpr(index_factor)),
              op->args[2].as_or_throw<PrimExpr>(), op->args[3].as_or_throw<PrimExpr>(),
              op->args[4].as_or_throw<PrimExpr>()});
       else
         return tirx::Call(
-            GetPrimType(op), op->op,
+            ffi::GetRef<PrimExpr>(op).ty(), op->op,
             {scope_stack_.back().merged_buf_var, mul(extra_offset + offset, PrimExpr(index_factor)),
              op->args[2].as_or_throw<PrimExpr>(), op->args[3].as_or_throw<PrimExpr>(),
              op->args[4].as_or_throw<PrimExpr>(), op->args[5].as_or_throw<PrimExpr>()});

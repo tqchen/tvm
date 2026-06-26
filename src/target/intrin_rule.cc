@@ -131,7 +131,7 @@ TVM_REGISTER_OP("tirx.tvm_access_ptr")
       PrimType dtype = call->args[0].as_or_throw<PrimExpr>().ty();
       Var buffer_var = call->args[1].as_or_throw<Var>();
       PrimExpr offset = call->args[2].as_or_throw<PrimExpr>();
-      TVM_FFI_ICHECK(GetPrimType(call).IsHandle());
+      TVM_FFI_ICHECK(ffi::GetRef<PrimExpr>(call).ty().IsHandle());
       if (dtype.lanes() != 1) {
         PrimType offset_ty = offset.ty();
         offset = offset * MakeConst(offset_ty, dtype.lanes());

@@ -109,11 +109,12 @@ bool TensorizeComparator::VisitExpr(const PrimExpr& n, const PrimExpr& other) {
 bool TensorizeComparator::VisitExpr_(const CallNode* op, const PrimExpr& other) {
   const auto* rhs = other.as<CallNode>();
   if (!rhs->op.same_as(op->op)) return false;
-  if (GetPrimType(op).code() != GetPrimType(rhs).code()) {
+  if (ffi::GetRef<PrimExpr>(op).ty().code() != ffi::GetRef<PrimExpr>(rhs).ty().code()) {
     if (assert_mode_) {
       std::ostringstream os;
-      os << "CallNode data type codes do not match: op->dtype.code()=" << GetPrimType(op).code()
-         << " vs rhs->dtype.code()=" << GetPrimType(rhs).code();
+      os << "CallNode data type codes do not match: op->dtype.code()="
+         << ffi::GetRef<PrimExpr>(op).ty().code()
+         << " vs rhs->dtype.code()=" << ffi::GetRef<PrimExpr>(rhs).ty().code();
       EmitError(os.str());
     }
     return false;

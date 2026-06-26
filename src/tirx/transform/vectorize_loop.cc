@@ -563,7 +563,7 @@ class Vectorizer : public StmtMutator, public ExprFunctor<PrimExpr(const PrimExp
       bool is_scalable = t.ty().IsScalableVector() || f.ty().IsScalableVector();
       t = BroadcastTo(t, lanes, is_scalable);
       f = BroadcastTo(f, lanes, is_scalable);
-      PrimType op_ty = GetPrimType(op);
+      PrimType op_ty = ffi::GetRef<PrimExpr>(op).ty();
       if (is_scalable) {
         return Call(PrimType::ScalableVector(op_ty.code(), op_ty.bits(), lanes), op->op,
                     {cond, t, f}, op->attrs, op->span);
@@ -581,7 +581,7 @@ class Vectorizer : public StmtMutator, public ExprFunctor<PrimExpr(const PrimExp
       return ffi::GetRef<PrimExpr>(op);
     } else {
       int lanes = GetLanesOrVScaleFactor(value.ty());
-      PrimType op_ty = GetPrimType(op);
+      PrimType op_ty = ffi::GetRef<PrimExpr>(op).ty();
       if (value.ty().IsScalableVector()) {
         return Call(PrimType::ScalableVector(op_ty.code(), op_ty.bits(), lanes), op->op, {value},
                     op->attrs, op->span);
@@ -617,7 +617,8 @@ class Vectorizer : public StmtMutator, public ExprFunctor<PrimExpr(const PrimExp
       for (const Expr& arg : new_args) {
         prim_args.push_back(arg.as_or_throw<PrimExpr>());
       }
-      return Call(GetPrimType(op).WithLanes(lane), op->op, prim_args, op->attrs, op->span);
+      return Call(ffi::GetRef<PrimExpr>(op).ty().WithLanes(lane), op->op, prim_args, op->attrs,
+                  op->span);
     } else if (op->op.same_as(builtin::texture2d_store())) {
       int lane = 0;
       // Vectorize the value to store
@@ -634,13 +635,14 @@ class Vectorizer : public StmtMutator, public ExprFunctor<PrimExpr(const PrimExp
           op->args[0].as_or_throw<PrimExpr>(), op->args[1].as_or_throw<PrimExpr>(),
           op->args[2].as_or_throw<PrimExpr>(), op->args[3].as_or_throw<PrimExpr>(),
           op->args[4].as_or_throw<PrimExpr>(), mutated_value[0]};
-      return Call(GetPrimType(op).WithLanes(lane), op->op, new_args, op->attrs, op->span);
+      return Call(ffi::GetRef<PrimExpr>(op).ty().WithLanes(lane), op->op, new_args, op->attrs,
+                  op->span);
     } else if (op->op.same_as(builtin::reinterpret())) {
       return MutateReinterpretExpr_(op);
     }
     auto optional_op = op->op.as<Op>();
     bool vectorizable = optional_op && op_vectorizable_.get(optional_op.value(), false) &&
-                        !GetPrimType(op).IsScalableVector();
+                        !ffi::GetRef<PrimExpr>(op).ty().IsScalableVector();
 
     if (!vectorizable) {
       // Cannot vectorize this op
@@ -687,7 +689,8 @@ class Vectorizer : public StmtMutator, public ExprFunctor<PrimExpr(const PrimExp
       if (op->args.same_as(new_args)) {
         return ffi::GetRef<PrimExpr>(op);
       } else {
-        return Call(GetPrimType(op).WithLanes(lane), op->op, new_args, op->attrs, op->span);
+        return Call(ffi::GetRef<PrimExpr>(op).ty().WithLanes(lane), op->op, new_args, op->attrs,
+                    op->span);
       }
     }
   }

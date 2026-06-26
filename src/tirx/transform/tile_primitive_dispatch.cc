@@ -1401,7 +1401,8 @@ class TilePrimitiveDispatcher : public StmtExprMutator {
         args.push_back(new_arg);
       }
       if (changed) {
-        return tirx::Call(GetPrimType(call), call->op, args, call->attrs, call->span);
+        return tirx::Call(ffi::GetRef<PrimExpr>(call).ty(), call->op, args, call->attrs,
+                          call->span);
       }
     }
     return pred;

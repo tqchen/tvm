@@ -258,7 +258,7 @@ PrimExpr DataTypeLegalizer::VisitExpr_(const CallNode* op) {
   if (op->op.same_as(pow_op)) {
     return pow(op->args[0].as_or_throw<PrimExpr>(), op->args[1].as_or_throw<PrimExpr>());
   } else if (op->op.same_as(builtin::if_then_else())) {
-    return Call(GetPrimType(op), op->op,
+    return Call(ffi::GetRef<PrimExpr>(op).ty(), op->op,
                 {op->args[0].as_or_throw<PrimExpr>(), op->args[1].as_or_throw<PrimExpr>(),
                  op->args[2].as_or_throw<PrimExpr>()},
                 op->attrs, op->span);
@@ -581,7 +581,7 @@ PrimExpr IndexDataTypeRewriter::VisitExpr_(const CallNode* op) {
     is_condition_ = true;
     PrimExpr cond = VisitExpr(op->args[0].as_or_throw<PrimExpr>());
     is_condition_ = is_condition;
-    return Call(GetPrimType(op), op->op,
+    return Call(ffi::GetRef<PrimExpr>(op).ty(), op->op,
                 {cond, VisitExpr(op->args[1].as_or_throw<PrimExpr>()),
                  VisitExpr(op->args[2].as_or_throw<PrimExpr>())},
                 op->attrs, op->span);

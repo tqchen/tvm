@@ -485,7 +485,7 @@ void CodeGenOpenCL::VisitExpr_(const CallNode* op, std::ostream& os) {
     enable_compliant_texture_reads_ = true;
     std::stringstream ss;
     const int channel_size = op->args[4].as_or_throw<IntImm>()->value;
-    PrimType op_ty = GetPrimType(op);
+    PrimType op_ty = ffi::GetRef<PrimExpr>(op).ty();
     const int data_lanes = channel_size / op_ty.bits();
     TVM_FFI_ICHECK(channel_size == 64 || channel_size == 128)
         << "Unsupported Channel Size: " << channel_size;
@@ -540,7 +540,8 @@ void CodeGenOpenCL::VisitExpr_(const CallNode* op, std::ostream& os) {
   } else if (op->op.same_as(builtin_call_extern_) || op->op.same_as(builtin_call_pure_extern_)) {
     auto func = op->args[0].as_or_throw<StringImm>();
     // Enable atomics extension if used.
-    if (func->value == "atomic_add" && GetPrimType(op).code() == DLDataTypeCode::kDLFloat) {
+    if (func->value == "atomic_add" &&
+        ffi::GetRef<PrimExpr>(op).ty().code() == DLDataTypeCode::kDLFloat) {
       enable_atomics_ = true;
       this->PrintCallExtern(GetType(ffi::GetRef<PrimExpr>(op)), "atomic_add_float_emu",
                             AsPrimExprArray(op->args), true, os);

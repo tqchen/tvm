@@ -385,7 +385,7 @@ class VMShapeLowerMutator
     args.push_back(value_or_index);
 
     // make_shape(heap, n, c[0], r[0], c[1], r[1] ..., c[n], r[n])
-    Call call(builtin_make_prim_value_, args, Attrs(), {GetPrimType(op)});
+    Call call(builtin_make_prim_value_, args, Attrs(), {ffi::GetRef<PrimExpr>(op).ty()});
     return call;
   }
 

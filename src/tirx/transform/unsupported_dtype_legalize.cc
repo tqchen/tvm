@@ -268,7 +268,7 @@ class ComputeLegalizer : public StmtExprMutator {
       return PromoteToTarget(this->VisitExpr(e.as_or_throw<PrimExpr>()));
     };
     ffi::Array<PrimExpr> args = op->args.Map(fmutate);
-    PrimType op_ty = GetPrimType(op);
+    PrimType op_ty = ffi::GetRef<PrimExpr>(op).ty();
     if (MatchType(op_ty)) {
       return Call(promote_dtype_.WithLanes(op_ty.lanes()), op->op, args, op->attrs, op->span);
     }
@@ -684,7 +684,7 @@ class StorageLegalizer : public StmtExprMutator {
     if (op->op.same_as(builtin::reinterpret())) {
       PrimExpr value = VisitExpr(op->args[0].as_or_throw<PrimExpr>());
       // sometimes the input dtype can change and we can skip.
-      PrimType op_dtype = GetPrimType(op);
+      PrimType op_dtype = ffi::GetRef<PrimExpr>(op).ty();
       if (value.ty() == op_dtype) return value;
       if (MatchType(op_dtype)) {
         return reinterpret(GetStorageUIntDType(op_dtype), value);

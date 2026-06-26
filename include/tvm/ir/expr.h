@@ -144,14 +144,6 @@ class PrimExpr : public PrimExprBase {
   TVM_DLL static PrimExpr ConvertFallbackValue(ffi::String value);  // NOLINT(*)
 };
 
-inline PrimType GetPrimType(const ExprNode* node) {
-  TVM_FFI_DCHECK(node != nullptr);
-  TVM_FFI_DCHECK(node->ExprNode::ty.defined());
-  const auto* ty_node = node->ExprNode::ty.as<PrimTypeNode>();
-  TVM_FFI_DCHECK(ty_node != nullptr);
-  return ffi::GetRef<PrimType>(ty_node);
-}
-
 /*!
  * \brief Base class for other IR constructs that can be converted to PrimExpr.
  * This is useful for the FFI to convert the expressions to PrimExpr.
@@ -539,11 +531,8 @@ WithFields(Call call, ffi::Optional<Type> opt_ret_ty = ffi::Optional<Type>(),
  * \brief Constant integer literals in the program.
  * \sa IntImm
  */
-class IntImmNode : public ExprNode {
+class IntImmNode : public PrimExprNode {
  public:
-  /*! \return the primitive type of this literal. */
-  PrimType ty() const { return GetPrimType(this); }
-
   /*! \brief the Internal value. */
   int64_t value;
 
@@ -551,7 +540,7 @@ class IntImmNode : public ExprNode {
     namespace refl = tvm::ffi::reflection;
     refl::ObjectDef<IntImmNode>().def_ro("value", &IntImmNode::value);
   }
-  TVM_FFI_DECLARE_OBJECT_INFO_FINAL("ir.IntImm", IntImmNode, ExprNode);
+  TVM_FFI_DECLARE_OBJECT_INFO_FINAL("ir.IntImm", IntImmNode, PrimExprNode);
 };
 
 /*!
@@ -604,11 +593,8 @@ class IntImm : public PrimExpr {
  * \brief Constant floating point literals in the program.
  * \sa FloatImm
  */
-class FloatImmNode : public ExprNode {
+class FloatImmNode : public PrimExprNode {
  public:
-  /*! \return the primitive type of this literal. */
-  PrimType ty() const { return GetPrimType(this); }
-
   /*! \brief The constant value content. */
   double value;
 
@@ -616,7 +602,7 @@ class FloatImmNode : public ExprNode {
     namespace refl = tvm::ffi::reflection;
     refl::ObjectDef<FloatImmNode>().def_ro("value", &FloatImmNode::value);
   }
-  TVM_FFI_DECLARE_OBJECT_INFO_FINAL("ir.FloatImm", FloatImmNode, ExprNode);
+  TVM_FFI_DECLARE_OBJECT_INFO_FINAL("ir.FloatImm", FloatImmNode, PrimExprNode);
 };
 
 /*!

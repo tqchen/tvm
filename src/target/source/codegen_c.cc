@@ -534,7 +534,7 @@ template <typename T>
 inline void PrintBinaryExpr(const T* op, const char* opstr,
                             std::ostream& os,  // NOLINT(*)
                             CodeGenC* p) {
-  PrimType op_ty = GetPrimType(op);
+  PrimType op_ty = ffi::GetRef<PrimExpr>(op).ty();
   if (op_ty.lanes() == 1) {
     if (isalpha(opstr[0])) {
       os << opstr << '(';
@@ -557,7 +557,7 @@ inline void PrintBinaryExpr(const T* op, const char* opstr,
 inline void PrintBinaryIntrinsic(const CallNode* op, const char* opstr,
                                  std::ostream& os,  // NOLINT(*)
                                  CodeGenC* p) {
-  PrimType op_ty = GetPrimType(op);
+  PrimType op_ty = ffi::GetRef<PrimExpr>(op).ty();
   if (op_ty.lanes() == 1) {
     TVM_FFI_ICHECK_EQ(op->args.size(), 2U);
     os << '(';
@@ -693,7 +693,7 @@ void CodeGenC::VisitExpr_(const CallNode* op, std::ostream& os) {  // NOLINT(*)
       uint64_t low = static_cast<uint64_t>(op->args[0].as_or_throw<IntImm>()->value);
       uint64_t high = static_cast<uint64_t>(op->args[1].as_or_throw<IntImm>()->value);
       uint64_t val = (high << 32U) | low;
-      PrintUIntConst(GetPrimType(op)->dtype, val, os, this);
+      PrintUIntConst(ffi::GetRef<PrimExpr>(op).ty()->dtype, val, os, this);
     } else if (op->op.same_as(builtin::bitwise_xor())) {
       PrintBinaryIntrinsic(op, " ^ ", os, this);
     } else if (op->op.same_as(builtin::bitwise_or())) {
@@ -712,7 +712,7 @@ void CodeGenC::VisitExpr_(const CallNode* op, std::ostream& os) {  // NOLINT(*)
       std::string result = name_supply_->FreshName("condval");
       std::string cond = PrintExpr(op->args[0]);
       this->PrintIndent();
-      PrintType(GetPrimType(op), this->stream);
+      PrintType(ffi::GetRef<PrimExpr>(op).ty(), this->stream);
       this->stream << " " << result << ";\n";
       this->PrintIndent();
       this->stream << "if (" << cond << ") {\n";
@@ -773,8 +773,8 @@ void CodeGenC::VisitExpr_(const CallNode* op, std::ostream& os) {  // NOLINT(*)
       }
     } else if (op->op.same_as(builtin::tvm_struct_get())) {
       TVM_FFI_ICHECK_EQ(op->args.size(), 3U);
-      os << GetStructRef(GetPrimType(op), AsPrimExpr(op->args[0]), AsPrimExpr(op->args[1]),
-                         op->args[2].as<IntImmNode>()->value);
+      os << GetStructRef(ffi::GetRef<PrimExpr>(op).ty(), AsPrimExpr(op->args[0]),
+                         AsPrimExpr(op->args[1]), op->args[2].as<IntImmNode>()->value);
     } else if (op->op.same_as(builtin::isnullptr())) {
       TVM_FFI_ICHECK_EQ(op->args.size(), 1U);
       os << "(";
@@ -797,7 +797,7 @@ void CodeGenC::VisitExpr_(const CallNode* op, std::ostream& os) {  // NOLINT(*)
       this->PrintExpr(op->args[1], os);
       os << "))";
     } else if (op->op.same_as(builtin::reinterpret())) {
-      PrimType target_dtype = GetPrimType(op);
+      PrimType target_dtype = ffi::GetRef<PrimExpr>(op).ty();
       PrimType source_dtype = AsPrimExpr(op->args[0]).ty();
       TVM_FFI_ICHECK_EQ(target_dtype.lanes() * target_dtype.bits(),
                         source_dtype.lanes() * source_dtype.bits())

@@ -1207,7 +1207,7 @@ void CodeGenCUDA::VisitExpr_(const CallNode* op, std::ostream& os) {
     std::string local_ptr = this->PrintExpr(op->args[3]);
     std::string local_offset = this->PrintExpr(op->args[4]);
     std::string smem_ptr = this->PrintExpr(op->args[5]);
-    if (trans && GetPrimType(op).bits() == 8) {
+    if (trans && ffi::GetRef<PrimExpr>(op).ty().bits() == 8) {
       // ldmatrix can't transpose 8-bit elements (it assumes 16-bit), so
       // synthesize the equivalent manual gather loop. args[6] is the
       // shared-memory stride for this fallback.
@@ -1328,7 +1328,7 @@ void CodeGenCUDA::VisitExpr_(const CallNode* op, std::ostream& os) {
            << guard << ")\n";
     stream << ");\n";
   } else if (op->op.same_as(builtin::reinterpret())) {
-    PrimType tgt_ty = GetPrimType(op);
+    PrimType tgt_ty = ffi::GetRef<PrimExpr>(op).ty();
     PrimExpr value = op->args[0].as_or_throw<PrimExpr>();
     PrimType src_ty = value.ty();
 
@@ -1423,7 +1423,7 @@ void CodeGenCUDA::VisitExpr_(const CallNode* op, std::ostream& os) {
 
     PrimExpr arg = op->args[0].as_or_throw<PrimExpr>();
     const auto* var_node = arg.as<VarNode>();
-    PrimType dtype_ty = GetPrimType(op);
+    PrimType dtype_ty = ffi::GetRef<PrimExpr>(op).ty();
     bool is_string = op->args[2].as<IntImmNode>()->value;
     bool is_scalar = op->args[3].as<IntImmNode>()->value;
     int num_dims = op->args[4].as<IntImmNode>()->value;

@@ -844,7 +844,7 @@ PrimExpr RewriteSimplifier::Impl::VisitExpr_(const DivNode* op) {
     if (truncdiv(c1, c2).Match(ret)) {
       int64_t c1val = c1.Eval()->value;
       int64_t c2val = c2.Eval()->value;
-      return MakeConst(GetPrimType(op), truncdiv(c1val, c2val));
+      return MakeConst(ffi::GetRef<PrimExpr>(op).ty(), truncdiv(c1val, c2val));
     }
 
     // while it is always true for trunc div
@@ -1025,7 +1025,7 @@ PrimExpr RewriteSimplifier::Impl::VisitExpr_(const ModNode* op) {
     // NOTE: trunc div required
     TVM_TRY_RECURSIVE_REWRITE_IF(
         truncmod(x, c1),
-        truncmod(x, PConst<PrimExpr>(MakeConst(GetPrimType(op), -c1.Eval()->value))),
+        truncmod(x, PConst<PrimExpr>(MakeConst(ffi::GetRef<PrimExpr>(op).ty(), -c1.Eval()->value))),
         c1.Eval()->value < 0);
 
     // try modular analysis
@@ -1768,9 +1768,9 @@ PrimExpr RewriteSimplifier::Impl::VisitExpr_(const NENode* op) {
     CompareResult result = TryCompare(op->a, op->b);
     if (result == CompareResult::kNE || result == CompareResult::kGT ||
         result == CompareResult::kLT) {
-      return MakeConst(GetPrimType(op), true);
+      return MakeConst(ffi::GetRef<PrimExpr>(op).ty(), true);
     } else if (result == CompareResult::kEQ) {
-      return MakeConst(GetPrimType(op), false);
+      return MakeConst(ffi::GetRef<PrimExpr>(op).ty(), false);
     } else if (result == CompareResult::kGE) {
       // Known: a >= b
       //
@@ -1812,9 +1812,9 @@ PrimExpr RewriteSimplifier::Impl::VisitExpr_(const LENode* op) {
     CompareResult result = TryCompare(op->a, op->b);
     if (result == CompareResult::kLE || result == CompareResult::kLT ||
         result == CompareResult::kEQ) {
-      return MakeConst(GetPrimType(op), true);
+      return MakeConst(ffi::GetRef<PrimExpr>(op).ty(), true);
     } else if (result == CompareResult::kGT) {
-      return MakeConst(GetPrimType(op), false);
+      return MakeConst(ffi::GetRef<PrimExpr>(op).ty(), false);
     } else if (result == CompareResult::kNE) {
       // Known: a != b
       //
@@ -2110,7 +2110,7 @@ PrimExpr RewriteSimplifier::Impl::VisitExpr_(const AndNode* op) {
     TVM_TRY_REWRITE(broadcast(x, lanes) && broadcast(y, lanes), broadcast(x && y, lanes));
   }
 
-  auto cfalse = PConst<PrimExpr>(MakeConst(GetPrimType(op), false));
+  auto cfalse = PConst<PrimExpr>(MakeConst(ffi::GetRef<PrimExpr>(op).ty(), false));
   TVM_TRY_REWRITE(x == y && x != y, cfalse);
   TVM_TRY_REWRITE(x != y && x == y, cfalse);
   TVM_TRY_REWRITE(x && !x, cfalse);
@@ -2258,7 +2258,7 @@ PrimExpr RewriteSimplifier::Impl::VisitExpr_(const OrNode* op) {
     TVM_TRY_REWRITE(broadcast(x, lanes) || broadcast(y, lanes), broadcast(x || y, lanes));
   }
 
-  auto ctrue = PConst<PrimExpr>(MakeConst(GetPrimType(op), true));
+  auto ctrue = PConst<PrimExpr>(MakeConst(ffi::GetRef<PrimExpr>(op).ty(), true));
 
   TVM_TRY_REWRITE(x == y || x != y, ctrue);
   TVM_TRY_REWRITE(x != y || x == y, ctrue);
@@ -2326,7 +2326,7 @@ PrimExpr RewriteSimplifier::Impl::VisitExpr_(const CallNode* op) {
   static const Op& ceil_op = Op::Get("tirx.ceil");
   static const Op& log2_op = Op::Get("tirx.log2");
   static const Op& clz_op = Op::Get("tirx.clz");
-  PrimType ret_ty = GetPrimType(op);
+  PrimType ret_ty = ffi::GetRef<PrimExpr>(op).ty();
   if (op->op.same_as(ceil_op)) {
     PrimExpr ceil_arg = op->args[0].as_or_throw<PrimExpr>();
     if (auto arg_int = op->args[0].as<IntImmNode>()) {
@@ -2393,7 +2393,7 @@ PrimExpr RewriteSimplifier::Impl::VisitExpr_(const CallNode* op) {
 
 PrimExpr RewriteSimplifier::Impl::VisitExpr_(const VarNode* op) {
   Var var = ffi::GetRef<Var>(op);
-  PrimType op_ty = GetPrimType(op);
+  PrimType op_ty = ffi::GetRef<PrimExpr>(op).ty();
   if (op_ty.MatchesElementType(DLDataTypeCode::kDLBool, 8) && !op_ty.IsScalableVector() &&
       !op_ty.IsFixedLengthVector()) {
     if (auto match = TryMatchLiteralConstraint(var)) {
