@@ -370,7 +370,7 @@ class VMShapeLowerMutator
     }
   }
 
-  Expr VisitExpr_(const PrimExprNode* op) final {
+  Expr VisitExpr_(const ::tvm::ExprNode* op) final {
     using runtime::vm::MakeShapeCode;
     PrimExpr value = ffi::GetRef<PrimExpr>(op);
     // Constant shape can be preserved.
@@ -385,7 +385,7 @@ class VMShapeLowerMutator
     args.push_back(value_or_index);
 
     // make_shape(heap, n, c[0], r[0], c[1], r[1] ..., c[n], r[n])
-    Call call(builtin_make_prim_value_, args, Attrs(), {op->ty()});
+    Call call(builtin_make_prim_value_, args, Attrs(), {GetPrimType(op)});
     return call;
   }
 

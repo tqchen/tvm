@@ -955,7 +955,7 @@ void CodeGenCUDA::VisitExpr_(const CallNode* op, std::ostream& os) {
     if (codegen.has_value()) {
       // codegen is registered, it should return a Call to cuda_func_call
       auto func_call = codegen.value()(op->args);
-      auto res = func_call.cast<ffi::Tuple<Call, ffi::Array<ffi::String>>>();
+      auto res = func_call.cast<ffi::Tuple<tirx::Call, ffi::Array<ffi::String>>>();
       print_cuda_func_call(res.get<0>().get(), os);
       for (const auto& tag : res.get<1>()) {
         codegen_tags_.insert(tag.operator std::string());
@@ -1120,7 +1120,7 @@ void CodeGenCUDA::VisitExpr_(const CallNode* op, std::ostream& os) {
     std::string dst = this->PrintExpr(op->args[2]);
     std::string src = this->PrintExpr(op->args[3]);
     std::string src_offset = this->PrintExpr(op->args[4]);
-    PrimExpr stride = op->args[5];
+    PrimExpr stride = op->args[5].as_or_throw<PrimExpr>();
 
     TVM_FFI_ICHECK(m == 16 && n == 16) << "Only m == 16 && n == 16 case supported for now";
 
@@ -1207,7 +1207,7 @@ void CodeGenCUDA::VisitExpr_(const CallNode* op, std::ostream& os) {
     std::string local_ptr = this->PrintExpr(op->args[3]);
     std::string local_offset = this->PrintExpr(op->args[4]);
     std::string smem_ptr = this->PrintExpr(op->args[5]);
-    if (trans && op->ty().bits() == 8) {
+    if (trans && GetPrimType(op).bits() == 8) {
       // ldmatrix can't transpose 8-bit elements (it assumes 16-bit), so
       // synthesize the equivalent manual gather loop. args[6] is the
       // shared-memory stride for this fallback.
@@ -1232,7 +1232,7 @@ void CodeGenCUDA::VisitExpr_(const CallNode* op, std::ostream& os) {
     std::string dst = this->PrintExpr(op->args[2]);
     std::string src = this->PrintExpr(op->args[3]);
     std::string src_offset = this->PrintExpr(op->args[4]);
-    PrimExpr stride = op->args[5];
+    PrimExpr stride = op->args[5].as_or_throw<PrimExpr>();
 
     TVM_FFI_ICHECK(m == 16 && n == 16) << "Only m == 16 && n == 16 case supported for now";
 
@@ -1328,9 +1328,9 @@ void CodeGenCUDA::VisitExpr_(const CallNode* op, std::ostream& os) {
            << guard << ")\n";
     stream << ");\n";
   } else if (op->op.same_as(builtin::reinterpret())) {
-    PrimType tgt_ty = op->ty();
-    PrimType src_ty = op->args[0].ty();
-    PrimExpr value = op->args[0];
+    PrimType tgt_ty = GetPrimType(op);
+    PrimExpr value = op->args[0].as_or_throw<PrimExpr>();
+    PrimType src_ty = value.ty();
 
     if (src_ty.IsHandle() && tgt_ty.IsScalar() &&
         tgt_ty.MatchesCode(DLDataTypeCode::kDLUInt, DLDataTypeCode::kDLInt) &&
@@ -1421,9 +1421,9 @@ void CodeGenCUDA::VisitExpr_(const CallNode* op, std::ostream& os) {
   } else if (op->op.same_as(builtin::print_buffer())) {
     TVM_FFI_ICHECK_GE(op->args.size(), 5U) << "Print operation expects at least 5 arguments";
 
-    const PrimExpr& arg = op->args[0];
+    PrimExpr arg = op->args[0].as_or_throw<PrimExpr>();
     const auto* var_node = arg.as<VarNode>();
-    PrimType dtype_ty = op->ty();
+    PrimType dtype_ty = GetPrimType(op);
     bool is_string = op->args[2].as<IntImmNode>()->value;
     bool is_scalar = op->args[3].as<IntImmNode>()->value;
     int num_dims = op->args[4].as<IntImmNode>()->value;
@@ -1467,7 +1467,7 @@ void CodeGenCUDA::VisitExpr_(const CallNode* op, std::ostream& os) {
 
     Array<PrimExpr> shape;
     for (size_t i = 5; i < op->args.size(); ++i) {
-      shape.push_back(op->args[i]);
+      shape.push_back(op->args[i].as_or_throw<PrimExpr>());
     }
 
     std::string format_specifier;
@@ -1584,7 +1584,7 @@ void CodeGenCUDA::VisitStmt_(const AttrStmtNode* op) {
         << "For CUDA, the index of an async queue must be 0.";
     this->VisitStmt(op->body);
     static const Op& ptx_cp_async_commit_group_op = Op::Get("tirx.ptx.cp_async_commit_group");
-    auto commit_group = Call(PrimType::Void(), ptx_cp_async_commit_group_op, {});
+    auto commit_group = tirx::Call(PrimType::Void(), ptx_cp_async_commit_group_op, {});
     this->PrintIndent();
     this->VisitExpr(commit_group, this->stream);
     this->stream << ";\n";
@@ -1596,7 +1596,7 @@ void CodeGenCUDA::VisitStmt_(const AttrStmtNode* op) {
         << "For CUDA, the index of an async queue must be 0.";
     auto wait_cnt = wait_attrs.second;
     static const Op& ptx_cp_async_wait_group_op = Op::Get("tirx.ptx.cp_async_wait_group");
-    auto wait_group = Call(PrimType::Void(), ptx_cp_async_wait_group_op, {wait_cnt});
+    auto wait_group = tirx::Call(PrimType::Void(), ptx_cp_async_wait_group_op, {wait_cnt});
     this->PrintIndent();
     this->VisitExpr(wait_group, this->stream);
     this->stream << ";\n";

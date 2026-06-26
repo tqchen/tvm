@@ -74,6 +74,14 @@ class ExprDeepEqualChecker : private ExprFunctor<bool(const PrimExpr&, const Pri
     return true;
   }
 
+  bool ArrayDeepEqual(const ffi::Array<Expr>& lhs, const ffi::Array<Expr>& rhs) {
+    if (lhs.size() != rhs.size()) return false;
+    for (size_t i = 0; i < lhs.size(); i++) {
+      if (!VisitExpr(lhs[i].as_or_throw<PrimExpr>(), rhs[i].as_or_throw<PrimExpr>())) return false;
+    }
+    return true;
+  }
+
   bool ArrayDeepEqual(const ffi::Array<IterVar>& lhs, const ffi::Array<IterVar>& rhs) {
     // for iter var, we require pointer equality
     if (lhs.size() != rhs.size()) return false;
@@ -123,7 +131,7 @@ class ExprDeepEqualChecker : private ExprFunctor<bool(const PrimExpr&, const Pri
 
   bool VisitExpr_(const CallNode* plhs, const PrimExpr& rhs) final {
     const auto* prhs = rhs.as<CallNode>();
-    return plhs->ty() == prhs->ty() && plhs->op.same_as(prhs->op) &&
+    return GetPrimType(plhs) == GetPrimType(prhs) && plhs->op.same_as(prhs->op) &&
            ArrayDeepEqual(plhs->args, prhs->args) &&
            ffi::StructuralEqual()(plhs->attrs, prhs->attrs);
   }

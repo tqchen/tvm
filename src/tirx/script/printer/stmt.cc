@@ -77,7 +77,7 @@ ffi::Optional<PrimExpr> FindReturnValue(const tirx::Stmt& node) {
 
   if (call->args.size() != 1) return std::nullopt;
 
-  return call->args[0];
+  return call->args[0].as_or_throw<PrimExpr>();
 }
 
 TVM_STATIC_IR_FUNCTOR(IRDocsifier, vtable)

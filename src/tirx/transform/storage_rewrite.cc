@@ -498,22 +498,25 @@ class StoragePlanRewriter : public StmtExprMutator {
   PrimExpr VisitExpr_(const CallNode* op) final {
     if (op->op.same_as(builtin::tvm_access_ptr())) {
       TVM_FFI_ICHECK_EQ(op->args.size(), 5U);
-      PrimType dtype = op->args[0].ty();
+      PrimExpr dtype_marker = op->args[0].as_or_throw<PrimExpr>();
+      PrimType dtype = dtype_marker.ty();
       const VarNode* buffer = op->args[1].as<VarNode>();
       auto it = alloc_map_.find(buffer);
       if (it == alloc_map_.end()) {
         return StmtExprMutator::VisitExpr_(op);
       }
       const StorageEntry* se = it->second;
-      PrimExpr offset = this->VisitExpr(op->args[2]);
-      PrimExpr extent = this->VisitExpr(op->args[3]);
+      PrimExpr offset = this->VisitExpr(op->args[2].as_or_throw<PrimExpr>());
+      PrimExpr extent = this->VisitExpr(op->args[3].as_or_throw<PrimExpr>());
       uint64_t elem_bits = dtype.bits() * dtype.lanes();
       TVM_FFI_ICHECK_EQ(se->bits_offset % elem_bits, 0U);
       if (se->bits_offset != 0) {
         offset = MakeConst(offset.ty(), se->bits_offset / elem_bits) + offset;
       }
-      return Call(ffi::GetRef<PrimExpr>(op).ty(), op->op,
-                  {op->args[0], se->alloc_var, offset, extent, op->args[4]}, op->attrs, op->span);
+      return Call(
+          ffi::GetRef<PrimExpr>(op).ty(), op->op,
+          {dtype_marker, se->alloc_var, offset, extent, op->args[4].as_or_throw<PrimExpr>()},
+          op->attrs, op->span);
     } else {
       return StmtExprMutator::VisitExpr_(op);
     }
@@ -1253,9 +1256,9 @@ class VectorTypeAccessChecker : public StmtExprVisitor {
 
   void VisitExpr_(const CallNode* op) final {
     if (op->op.same_as(builtin::tvm_access_ptr())) {
-      PrimType dtype = op->args[0].ty();
+      PrimType dtype = op->args[0].as_or_throw<PrimExpr>().ty();
       const VarNode* buffer = op->args[1].as<VarNode>();
-      PrimExpr index = op->args[2];
+      PrimExpr index = op->args[2].as_or_throw<PrimExpr>();
       // args[1] may be a nested Call (e.g. another tvm_access_ptr) rather
       // than a raw Var; OnArrayAccess derefs `buffer` so skip the record
       // here and let the recursive visit handle any inner buffer var.
@@ -1659,9 +1662,9 @@ class VectorTypeRewriter : public StmtExprMutator {
       }
       const auto& info = it->second;
 
-      PrimExpr index = op->args[2];
-      PrimExpr extent = op->args[3];
-      PrimExpr flag = op->args[4];
+      PrimExpr index = op->args[2].as_or_throw<PrimExpr>();
+      PrimExpr extent = op->args[3].as_or_throw<PrimExpr>();
+      PrimExpr flag = op->args[4].as_or_throw<PrimExpr>();
 
       PrimExpr e_dtype = tirx::TypeAnnotation(info.new_element_dtype);
       int factor = info.factor();

@@ -77,10 +77,10 @@ TVM_REGISTER_OP("relax.clip")
     .set_attr<bool>("FPurity", true);
 
 Expr clip(Expr x, Expr min, Expr max) {
-  TVM_FFI_ICHECK(min->IsInstance<PrimExprNode>())
+  TVM_FFI_ICHECK(min.as<PrimExpr>())
       << "The argument `min` of relax.clip is expected to be a PrimExpr, but got "
       << min->GetTypeKey();
-  TVM_FFI_ICHECK(max->IsInstance<PrimExprNode>())
+  TVM_FFI_ICHECK(max.as<PrimExpr>())
       << "The argument `max` of relax.clip is expected to be a PrimExpr, but got "
       << max->GetTypeKey();
   static const Op& op = Op::Get("relax.clip");

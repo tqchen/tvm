@@ -1215,8 +1215,8 @@ Type InferTypeAllocateTensor(const Call& call, const BlockBuilder& ctx) {
     out_dtype = PrimType(dtype_imm->value);
   }
   int64_t vdevice_index = -1;
-  if (auto* prim_value_node = call->args[2].as<PrimExprNode>()) {
-    vdevice_index = ffi::GetRef<PrimExpr>(prim_value_node).as<IntImmNode>()->value;
+  if (auto prim_value = call->args[2].as<PrimExpr>()) {
+    vdevice_index = prim_value.value().as<IntImmNode>()->value;
   }
   auto vdevice = GetGlobalVDevice(ctx->GetContextIRModule(), vdevice_index);
 
@@ -1292,8 +1292,8 @@ Type InferTypeMemAllocTensor(const Call& call, const BlockBuilder& ctx) {
 
   if (call->args.size() == 5) {
     int64_t vdevice_index = -1;
-    if (auto* prim_value_node = call->args[4].as<PrimExprNode>()) {
-      vdevice_index = ffi::GetRef<PrimExpr>(prim_value_node).as<IntImmNode>()->value;
+    if (auto prim_value = call->args[4].as<PrimExpr>()) {
+      vdevice_index = prim_value.value().as<IntImmNode>()->value;
     }
     auto vdevice = GetGlobalVDevice(ctx->GetContextIRModule(), vdevice_index);
     if (vdevice.defined()) {
@@ -1414,8 +1414,8 @@ Type InferTypeVMAllocTensor(const Call& call, const BlockBuilder& ctx) {
     out_dtype = PrimType(dtype_imm->value);
   }
   int64_t vdevice_index = -1;
-  if (auto* prim_value_node = call->args[4].as<PrimExprNode>()) {
-    vdevice_index = ffi::GetRef<PrimExpr>(prim_value_node).as<IntImmNode>()->value;
+  if (auto prim_value = call->args[4].as<PrimExpr>()) {
+    vdevice_index = prim_value.value().as<IntImmNode>()->value;
   }
   auto vdevice = GetGlobalVDevice(ctx->GetContextIRModule(), vdevice_index);
 

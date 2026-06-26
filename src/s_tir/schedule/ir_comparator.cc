@@ -109,23 +109,34 @@ bool TensorizeComparator::VisitExpr(const PrimExpr& n, const PrimExpr& other) {
 bool TensorizeComparator::VisitExpr_(const CallNode* op, const PrimExpr& other) {
   const auto* rhs = other.as<CallNode>();
   if (!rhs->op.same_as(op->op)) return false;
-  if (op->ty().code() != rhs->ty().code()) {
+  if (GetPrimType(op).code() != GetPrimType(rhs).code()) {
     if (assert_mode_) {
       std::ostringstream os;
-      os << "CallNode data type codes do not match: op->dtype.code()=" << op->ty().code()
-         << " vs rhs->dtype.code()=" << rhs->ty().code();
+      os << "CallNode data type codes do not match: op->dtype.code()=" << GetPrimType(op).code()
+         << " vs rhs->dtype.code()=" << GetPrimType(rhs).code();
       EmitError(os.str());
     }
     return false;
   }
-  if (!CompareArray(op->args, rhs->args, &TensorizeComparator::VisitExpr)) {
+  if (op->args.size() != rhs->args.size()) {
     if (assert_mode_) {
       std::ostringstream os;
-      os << "CallNode iter_values do not match: op->iter_values=" << op->args
-         << " vs rhs->iter_values=" << rhs->args;
+      os << "CallNode arg size mismatch: op->args.size()=" << op->args.size()
+         << " vs rhs->args.size()=" << rhs->args.size();
       EmitError(os.str());
     }
     return false;
+  }
+  for (size_t i = 0; i < op->args.size(); ++i) {
+    if (!VisitExpr(op->args[i].as_or_throw<PrimExpr>(), rhs->args[i].as_or_throw<PrimExpr>())) {
+      if (assert_mode_) {
+        std::ostringstream os;
+        os << "CallNode args do not match at index " << i << ": op->args[i]=" << op->args[i]
+           << " vs rhs->args[i]=" << rhs->args[i];
+        EmitError(os.str());
+      }
+      return false;
+    }
   }
   return true;
 }

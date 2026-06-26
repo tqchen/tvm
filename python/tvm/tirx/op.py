@@ -614,6 +614,11 @@ def tvm_struct_set(arr, index, field, value):
     return call_intrin("int32", "tirx.tvm_struct_set", arr, index, field, value)
 
 
+def _is_tir_var(obj: object) -> bool:
+    type_info = getattr(type(obj), "__tvm_ffi_type_info__", None)
+    return type_info is not None and type_info.type_key in {"tirx.Var", "tirx.SizeVar"}
+
+
 def _is_tensormap_var(obj: Var) -> bool:
     type_annotation = obj.type_annotation
     return isinstance(type_annotation, PointerType) and isinstance(
@@ -641,7 +646,7 @@ def address_of(obj: Buffer | BufferLoad | Var, span: Span | None = None) -> Prim
         n_dim = len(obj.shape)
         buffer_load = BufferLoad(obj, [0] * n_dim)
         return call_intrin("handle", "tirx.address_of", buffer_load, span=span)
-    elif isinstance(obj, Var):
+    elif _is_tir_var(obj):
         dtype = "uint64" if _is_tensormap_var(obj) else "handle"
         return call_intrin(dtype, "tirx.address_of", obj, span=span)
     elif isinstance(obj, BufferLoad):
@@ -1138,8 +1143,8 @@ def ret(val, span=None):
     ret : PrimExpr
         The return expression
     """
-
-    return _ffi_api.ret(val, span)
+    val = tirx.convert(val)
+    return Call(_primexpr_ty(val), Op.get("tirx.ret"), [val], span=span)
 
 
 def any(*args, span=None):

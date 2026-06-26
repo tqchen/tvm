@@ -91,8 +91,8 @@ class PatternMatcher : public ExprVisitor {
       } else {
         PrimExpr tmp = expr_to_match_;
         for (size_t i = 0; i < op->args.size(); ++i) {
-          expr_to_match_ = ptr->args[i];
-          VisitExpr(op->args[i]);
+          expr_to_match_ = ptr->args[i].as_or_throw<PrimExpr>();
+          VisitExpr(op->args[i].as_or_throw<PrimExpr>());
         }
         std::swap(expr_to_match_, tmp);
       }

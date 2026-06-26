@@ -160,7 +160,7 @@ Stmt RewriteWmmaLoad(Stmt stmt) {
           /*writes=*/{BufferRegion(tgt_buffer, write_region)},
           /*name_hint=*/"wmma_load",
           /*body=*/
-          Evaluate(Call(
+          Evaluate(tirx::Call(
               /*data=*/PrimType::Handle(),
               /*op=*/tvm_load_matrix_sync_op,
               {
@@ -171,7 +171,7 @@ Stmt RewriteWmmaLoad(Stmt stmt) {
                   /*4:*/ floordiv(new_tgt_buffer->elem_offset, 256) +
                       floordiv(floormod(new_tgt_buffer->elem_offset, 256), 16),
                   /*5:*/
-                  Call(
+                  tirx::Call(
                       /*dtype=*/PrimType::Handle(),
                       /*op=*/builtin::tvm_access_ptr(),
                       /*args=*/
@@ -269,7 +269,7 @@ Stmt RewriteWmmaStore(Stmt stmt) {
              /*reads=*/{BufferRegion(src_buffer, read_region)},
              /*writes=*/{BufferRegion(tgt_buffer, write_region)},
              /*name_hint=*/"wmma_store",
-             Evaluate(Call(
+             Evaluate(tirx::Call(
                  /*data=*/PrimType::Handle(),
                  /*op=*/tvm_store_matrix_sync_op,
                  {/*0:*/ new_src_buffer->data,
@@ -279,7 +279,7 @@ Stmt RewriteWmmaStore(Stmt stmt) {
                   /*4:*/ floordiv(new_src_buffer->elem_offset, 256) +
                       floordiv(floormod(new_src_buffer->elem_offset, 256), 16),
                   /*5:*/
-                  Call(
+                  tirx::Call(
                       /*data=*/PrimType::Handle(),
                       /*op=*/builtin::tvm_access_ptr(),
                       {

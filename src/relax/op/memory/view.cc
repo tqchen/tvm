@@ -151,10 +151,10 @@ Type InferTypeView(const Call& call, const BlockBuilder& ctx) {
           << "Operator " << call->op
           << " expects the relative_byte_offset to be a 64-bit integer, but received "
           << arg_relative_byte_offset << ", which has type " << ty;
-      if (const auto* prim_value = arg_relative_byte_offset.as<PrimExprNode>()) {
+      if (auto prim_value = arg_relative_byte_offset.as<PrimExpr>()) {
         // An offset of known value is applied.  The known value may
         // be dynamic.
-        return ffi::GetRef<PrimExpr>(prim_value);
+        return prim_value.value();
       } else {
         // An offset of unknown value is applied.
         return std::nullopt;

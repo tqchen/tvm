@@ -64,7 +64,7 @@ class ReturnRewriter : public StmtMutator {
       if (call->op.same_as(builtin::ret())) {
         TVM_FFI_ICHECK_EQ(in_parallel_, 0) << "tirx.ret cannot be used in parallel scope.";
         TVM_FFI_ICHECK_EQ(call->args.size(), 1) << "tirx.ret expect a single argument.";
-        ret = WriteToOut(call->args[0]);
+        ret = WriteToOut(call->args[0].as_or_throw<PrimExpr>());
       }
     }
     return ret;
@@ -147,8 +147,8 @@ class SubroutineCallRewriter : public StmtExprMutator {
       if (auto symbol = packed_func_methods.Get(gvar)) {
         ffi::Array<PrimExpr> cpacked_args;
         cpacked_args.push_back(tirx::StringImm(symbol.value()));
-        for (auto arg : node->args) {
-          cpacked_args.push_back(arg);
+        for (const Expr& arg : node->args) {
+          cpacked_args.push_back(arg.as_or_throw<PrimExpr>());
         }
 
         // push an empty handle to be compatible with current cpacked convention

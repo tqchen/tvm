@@ -47,7 +47,7 @@ void ExprVisitor::VisitExpr_(const LetNode* op) {
 }
 
 void ExprVisitor::VisitExpr_(const CallNode* op) {
-  VisitArray(op->args, [this](const PrimExpr& e) { this->VisitExpr(e); });
+  VisitArray(op->args, [this](const Expr& e) { this->VisitExpr(e.as_or_throw<PrimExpr>()); });
 }
 
 #define DEFINE_BINOP_VISIT_(OP)                \
@@ -149,8 +149,11 @@ PrimExpr ExprMutator::VisitExpr_(const LetNode* op) {
 }
 
 PrimExpr ExprMutator::VisitExpr_(const CallNode* op) {
-  auto fmutate = [this](const PrimExpr& e) { return this->VisitExpr(e); };
-  ffi::Array<PrimExpr> args = op->args.Map(fmutate);
+  ffi::Array<PrimExpr> args;
+  args.reserve(op->args.size());
+  for (const Expr& arg : op->args) {
+    args.push_back(this->VisitExpr(arg.as_or_throw<PrimExpr>()));
+  }
 
   if (args.same_as(op->args)) {
     return ffi::GetRef<PrimExpr>(op);

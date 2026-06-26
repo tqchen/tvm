@@ -293,8 +293,8 @@ class ThreadSyncAfterWaitQueueInserter : public StmtExprMutator {
 
   Stmt VisitStmt_(const AttrStmtNode* op) final {
     if (op->attr_key == s_tir::attr::async_wait_queue_scope) {
-      auto sync = Evaluate(Call(PrimType::Int(32), builtin::tvm_storage_sync(),
-                                {StringImm(sync_scope_.to_string())}));
+      auto sync = Evaluate(tirx::Call(PrimType::Int(32), builtin::tvm_storage_sync(),
+                                      {StringImm(sync_scope_.to_string())}));
       auto inner = op->body.as<AttrStmtNode>();
       TVM_FFI_ICHECK(inner && inner->attr_key == s_tir::attr::async_wait_inflight_count);
       auto zero = IntImm::Int32(0);
@@ -318,8 +318,8 @@ class ThreadSyncInserter : public StmtExprMutator {
   Stmt VisitStmt(const Stmt& stmt) final {
     if (syncs_.size() == 0) return stmt;
     if (syncs_.count(stmt.get())) {
-      Stmt barrier = Evaluate(Call(PrimType::Int(32), builtin::tvm_storage_sync(),
-                                   {StringImm(sync_scope_.to_string())}));
+      Stmt barrier = Evaluate(tirx::Call(PrimType::Int(32), builtin::tvm_storage_sync(),
+                                         {StringImm(sync_scope_.to_string())}));
       // Mutate after query, to avoid stmt change.
       auto ret = StmtExprMutator::VisitStmt(stmt);
       ret = SeqStmt({barrier, ret});

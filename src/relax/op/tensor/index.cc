@@ -264,12 +264,12 @@ ffi::Optional<ffi::Array<PrimType>> UnpackTupleOfPrimExpr(ffi::Optional<Expr> ex
     ffi::Array<PrimType> output;
     for (size_t i = 0; i < tuple->fields.size(); i++) {
       const Expr& field = tuple->fields[i];
-      auto prim_value = field.as<PrimExprNode>();
+      auto prim_value = field.as<PrimExpr>();
       TVM_FFI_CHECK(prim_value, TypeError)
           << "The expression " << value << " cannot contain a tuple whose elements are "
           << PrimType::ContainerType::_type_key << ", because element " << i << " is " << field;
 
-      PrimExpr prim_expr = ffi::GetRef<PrimExpr>(prim_value);
+      PrimExpr prim_expr = prim_value.value();
       TVM_FFI_CHECK(prim_expr.template as<typename PrimType::ContainerType>(), TypeError)
           << "The expression " << value << " cannot contain a tuple whose elements are "
           << PrimType::ContainerType::_type_key << ", because element " << i << " has value "

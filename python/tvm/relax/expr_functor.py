@@ -656,7 +656,7 @@ class PyExprVisitor:
 
     def visit_prim_expr_(self, op: PrimExpr) -> None:
         """Visit PrimExpr.
-        Users can customized this function to overwrite VisitExpr_(const PrimExprNode* op)
+        Users can customize this function to overwrite VisitPrimExpr(const PrimExpr& op)
         on the C++ side.
 
         Parameters
@@ -1278,7 +1278,7 @@ class PyExprMutator:
 
     def visit_prim_expr_(self, op: PrimExpr) -> Expr:
         """Visit PrimExpr.
-        Users can customized this function to overwrite VisitExpr_(const PrimExprNode* op)
+        Users can customize this function to overwrite VisitPrimExpr(const PrimExpr& op)
         on the C++ side.
 
         Parameters

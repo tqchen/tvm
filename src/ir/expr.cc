@@ -36,11 +36,20 @@
 
 namespace tvm {
 
+namespace {
+
+bool IsCallOperatorType(const Type& ty) {
+  return !ty.defined() || ty->IsInstance<FuncTypeNode>() || ty->GetTypeKey() == "relax.FuncType";
+}
+
+}  // namespace
+
 TVM_FFI_STATIC_INIT_BLOCK() {
   ExprNode::RegisterReflection();
   PrimExprNode::RegisterReflection();
   BaseFuncNode::RegisterReflection();
   GlobalVarNode::RegisterReflection();
+  CallNode::RegisterReflection();
   IntImmNode::RegisterReflection();
   FloatImmNode::RegisterReflection();
   RangeNode::RegisterReflection();
@@ -239,10 +248,76 @@ GlobalVar::GlobalVar(ffi::String name_hint, Span span) {
   data_ = std::move(n);
 }
 
+Call::Call(Type ret_ty, Expr op, ffi::Array<Expr> args, Attrs attrs, ffi::Array<Type> ty_args,
+           Span span) {
+  TVM_FFI_CHECK(op.defined(), ValueError) << "Call expects a defined operator";
+  TVM_FFI_CHECK(IsCallOperatorType(op->ty), ValueError)
+      << "Call expects its operator to have FuncType, "
+      << "but operator " << op << ", which was called with arguments " << args << ", has type "
+      << op->ty;
+
+  ffi::ObjectPtr<CallNode> n = ffi::make_object<CallNode>();
+  n->ExprNode::ty = std::move(ret_ty);
+  n->op = std::move(op);
+  n->args = std::move(args);
+  n->attrs = std::move(attrs);
+  n->ty_args = std::move(ty_args);
+  n->span = std::move(span);
+  data_ = std::move(n);
+}
+
+Call WithFields(Call call, ffi::Optional<Type> opt_ret_ty, ffi::Optional<Expr> opt_op,
+                ffi::Optional<ffi::Array<Expr>> opt_args, ffi::Optional<Attrs> opt_attrs,
+                ffi::Optional<ffi::Array<Type>> opt_ty_args, ffi::Optional<Span> opt_span) {
+  Type ret_ty = opt_ret_ty.value_or(call->ExprNode::ty);
+  Expr op = opt_op.value_or(call->op);
+  ffi::Array<Expr> args = opt_args.value_or(call->args);
+  Attrs attrs = opt_attrs.value_or(call->attrs);
+  ffi::Array<Type> ty_args = opt_ty_args.value_or(call->ty_args);
+  Span span = opt_span.value_or(call->span);
+
+  TVM_FFI_CHECK(op.defined(), ValueError) << "Call expects a defined operator";
+
+  bool unchanged = ret_ty.same_as(call->ExprNode::ty) && op.same_as(call->op) &&
+                   attrs.same_as(call->attrs) && span.same_as(call->span);
+  if (unchanged) {
+    if (args.size() == call->args.size()) {
+      for (size_t i = 0; i < args.size(); i++) {
+        unchanged &= args[i].same_as(call->args[i]);
+      }
+    } else {
+      unchanged = false;
+    }
+  }
+  if (unchanged) {
+    if (ty_args.size() == call->ty_args.size()) {
+      for (size_t i = 0; i < ty_args.size(); i++) {
+        unchanged &= ty_args[i].same_as(call->ty_args[i]);
+      }
+    } else {
+      unchanged = false;
+    }
+  }
+
+  if (!unchanged) {
+    CallNode* cow_call_node = call.CopyOnWrite();
+    cow_call_node->ExprNode::ty = ret_ty;
+    cow_call_node->op = op;
+    cow_call_node->args = args;
+    cow_call_node->attrs = attrs;
+    cow_call_node->ty_args = ty_args;
+    cow_call_node->span = span;
+  }
+  return call;
+}
+
 TVM_FFI_STATIC_INIT_BLOCK() {
   namespace refl = tvm::ffi::reflection;
   refl::GlobalDef()
       .def("ir.GlobalVar", [](ffi::String name) { return GlobalVar(name); })
+      .def("ir.Call",
+           [](Type ret_ty, Expr op, ffi::Array<Expr> args, Attrs attrs, ffi::Array<Type> ty_args,
+              Span span) { return Call(ret_ty, op, args, attrs, ty_args, span); })
       .def("ir.DebugPrint", [](ffi::ObjectRef ref) {
         std::stringstream ss;
         ss << ref;

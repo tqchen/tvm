@@ -62,6 +62,12 @@ class ExprFunctor;
     return self->VisitExpr_(static_cast<const OP*>(n.get()), std::forward<Args>(args)...);  \
   });
 
+#define RELAX_PRIM_EXPR_FUNCTOR_DISPATCH(OP)                                                \
+  vtable.template set_dispatch<OP>([](const ffi::ObjectRef& n, TSelf* self, Args... args) { \
+    return self->VisitExpr_(static_cast<const ::tvm::ExprNode*>(n.get()),                   \
+                            std::forward<Args>(args)...);                                   \
+  });
+
 #define RELAX_PRIM_EXPR_NODE_DISPATCH_LIST(V) \
   V(::tvm::IntImmNode)                        \
   V(::tvm::FloatImmNode)                      \
@@ -93,7 +99,6 @@ class ExprFunctor;
   V(::tvm::tirx::RampNode)                    \
   V(::tvm::tirx::BroadcastNode)               \
   V(::tvm::tirx::LetNode)                     \
-  V(::tvm::tirx::CallNode)                    \
   V(::tvm::tirx::ShuffleNode)                 \
   V(::tvm::tirx::ReduceNode)
 
@@ -189,7 +194,7 @@ class ExprFunctor<R(const Expr& n, Args...)> {
   virtual R VisitExpr_(const IfNode* op, Args... args) EXPR_FUNCTOR_DEFAULT;
   virtual R VisitExpr_(const OpNode* op, Args... args) EXPR_FUNCTOR_DEFAULT;
   virtual R VisitExpr_(const TupleGetItemNode* op, Args... args) EXPR_FUNCTOR_DEFAULT;
-  virtual R VisitExpr_(const PrimExprNode* op, Args... args) EXPR_FUNCTOR_DEFAULT;
+  virtual R VisitExpr_(const ::tvm::ExprNode* op, Args... args) EXPR_FUNCTOR_DEFAULT;
   virtual R VisitExpr_(const StringImmNode* op, Args... args) EXPR_FUNCTOR_DEFAULT;
   virtual R VisitExpr_(const DataTypeImmNode* op, Args... args) EXPR_FUNCTOR_DEFAULT;
   virtual R VisitExprDefault_(const ffi::Object* op, Args...) {
@@ -215,7 +220,7 @@ class ExprFunctor<R(const Expr& n, Args...)> {
     RELAX_EXPR_FUNCTOR_DISPATCH(IfNode);
     RELAX_EXPR_FUNCTOR_DISPATCH(OpNode);
     RELAX_EXPR_FUNCTOR_DISPATCH(TupleGetItemNode);
-    RELAX_PRIM_EXPR_NODE_DISPATCH_LIST(RELAX_EXPR_FUNCTOR_DISPATCH);
+    RELAX_PRIM_EXPR_NODE_DISPATCH_LIST(RELAX_PRIM_EXPR_FUNCTOR_DISPATCH);
     RELAX_EXPR_FUNCTOR_DISPATCH(StringImmNode);
     RELAX_EXPR_FUNCTOR_DISPATCH(DataTypeImmNode);
     vtable.Finalize();
@@ -248,7 +253,7 @@ class ExprVisitor : public ExprFunctor<void(const Expr&)> {
   void VisitExpr_(const IfNode* op) override;
   void VisitExpr_(const OpNode* op) override;
   void VisitExpr_(const TupleGetItemNode* op) override;
-  void VisitExpr_(const PrimExprNode* op) override;
+  void VisitExpr_(const ::tvm::ExprNode* op) override;
   void VisitExpr_(const StringImmNode* op) override;
   void VisitExpr_(const DataTypeImmNode* op) override;
 
@@ -275,7 +280,7 @@ class ExprVisitor : public ExprFunctor<void(const Expr&)> {
   virtual void VisitBinding_(const VarBindingNode* binding, const IfNode* val);
   virtual void VisitBinding_(const VarBindingNode* binding, const OpNode* val);
   virtual void VisitBinding_(const VarBindingNode* binding, const TupleGetItemNode* val);
-  virtual void VisitBinding_(const VarBindingNode* binding, const PrimExprNode* val);
+  virtual void VisitBinding_(const VarBindingNode* binding, const ::tvm::ExprNode* val);
   virtual void VisitBinding_(const VarBindingNode* binding, const StringImmNode* val);
   virtual void VisitBinding_(const VarBindingNode* binding, const DataTypeImmNode* val);
   /*!
@@ -375,7 +380,7 @@ class ExprMutatorBase : public ExprFunctor<Expr(const Expr&)> {
   Expr VisitExpr_(const IfNode* op) override;
   Expr VisitExpr_(const OpNode* op) override;
   Expr VisitExpr_(const TupleGetItemNode* op) override;
-  Expr VisitExpr_(const PrimExprNode* op) override;
+  Expr VisitExpr_(const ::tvm::ExprNode* op) override;
   Expr VisitExpr_(const StringImmNode* op) override;
   Expr VisitExpr_(const DataTypeImmNode* op) override;
 
@@ -494,7 +499,7 @@ class ExprMutator : public ExprMutatorBase {
   virtual void VisitBinding_(const VarBindingNode* binding, const IfNode* val);
   virtual void VisitBinding_(const VarBindingNode* binding, const OpNode* val);
   virtual void VisitBinding_(const VarBindingNode* binding, const TupleGetItemNode* val);
-  virtual void VisitBinding_(const VarBindingNode* binding, const PrimExprNode* val);
+  virtual void VisitBinding_(const VarBindingNode* binding, const ::tvm::ExprNode* val);
   virtual void VisitBinding_(const VarBindingNode* binding, const StringImmNode* val);
   virtual void VisitBinding_(const VarBindingNode* binding, const DataTypeImmNode* val);
   /*!

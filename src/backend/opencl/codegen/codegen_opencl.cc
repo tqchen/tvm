@@ -37,6 +37,19 @@
 namespace tvm {
 namespace codegen {
 
+namespace {
+
+ffi::Array<PrimExpr> AsPrimExprArray(const ffi::Array<Expr>& args) {
+  ffi::Array<PrimExpr> result;
+  result.reserve(args.size());
+  for (const Expr& arg : args) {
+    result.push_back(arg.as_or_throw<PrimExpr>());
+  }
+  return result;
+}
+
+}  // namespace
+
 class InferTextureAccess : public StmtExprVisitor {
  public:
   static constexpr const uint8_t kReadAccess = 1;
@@ -442,7 +455,7 @@ void CodeGenOpenCL::VisitExpr_(const CallNode* op, std::ostream& os) {
 
     DLDataType buffer_type = ptr_type->element_type.as<PrimTypeNode>()->dtype;
     std::stringstream ss;
-    this->PrintExpr(op->args[5], ss);
+    this->PrintExpr(op->args[5].as_or_throw<PrimExpr>(), ss);
     std::string value;
     value = this->SSAGetID(ss.str(),
                            PrimType(buffer_type).WithLanes(channel_size / buffer_type.bits)->dtype);
@@ -453,14 +466,14 @@ void CodeGenOpenCL::VisitExpr_(const CallNode* op, std::ostream& os) {
     } else {
       TVM_FFI_THROW(InternalError) << "Unsupported Channel Size: " << channel_size;
     }
-    this->PrintExpr(op->args[0], os);
+    this->PrintExpr(op->args[0].as_or_throw<PrimExpr>(), os);
     os << ", ";
     os << "(int4)(";
-    this->PrintExpr(op->args[1], os);
+    this->PrintExpr(op->args[1].as_or_throw<PrimExpr>(), os);
     os << ", ";
-    this->PrintExpr(op->args[2], os);
+    this->PrintExpr(op->args[2].as_or_throw<PrimExpr>(), os);
     os << ", ";
-    this->PrintExpr(op->args[3], os);
+    this->PrintExpr(op->args[3].as_or_throw<PrimExpr>(), os);
     os << ", ";
     this->PrintExpr(IntImm::Int32(0), os);
     os << "), ";
@@ -472,11 +485,12 @@ void CodeGenOpenCL::VisitExpr_(const CallNode* op, std::ostream& os) {
     enable_compliant_texture_reads_ = true;
     std::stringstream ss;
     const int channel_size = op->args[4].as_or_throw<IntImm>()->value;
-    const int data_lanes = channel_size / op->ty().bits();
+    PrimType op_ty = GetPrimType(op);
+    const int data_lanes = channel_size / op_ty.bits();
     TVM_FFI_ICHECK(channel_size == 64 || channel_size == 128)
         << "Unsupported Channel Size: " << channel_size;
     ss << "as_";
-    this->PrintType(op->ty().WithLanes(data_lanes)->dtype, ss);
+    this->PrintType(op_ty.WithLanes(data_lanes)->dtype, ss);
     ss << "(";
     if (channel_size == 64) {
       ss << "READ_IMAGEH(";
@@ -485,20 +499,20 @@ void CodeGenOpenCL::VisitExpr_(const CallNode* op, std::ostream& os) {
     } else {
       TVM_FFI_THROW(InternalError) << "Unsupported Channel Size: " << channel_size;
     }
-    this->PrintExpr(op->args[0], ss);
+    this->PrintExpr(op->args[0].as_or_throw<PrimExpr>(), ss);
     ss << ", ";
     ss << "image_sampler, ";
     ss << "((int4)(";
-    this->PrintExpr(op->args[1], ss);
+    this->PrintExpr(op->args[1].as_or_throw<PrimExpr>(), ss);
     ss << ", ";
-    this->PrintExpr(op->args[2], ss);
+    this->PrintExpr(op->args[2].as_or_throw<PrimExpr>(), ss);
     ss << ", ";
-    this->PrintExpr(op->args[3], ss);
+    this->PrintExpr(op->args[3].as_or_throw<PrimExpr>(), ss);
     ss << ", ";
     this->PrintExpr(IntImm::Int32(0), ss);
     ss << "))))";
 
-    std::string rhs = SSAGetID(ss.str(), op->ty().WithLanes(data_lanes)->dtype);
+    std::string rhs = SSAGetID(ss.str(), op_ty.WithLanes(data_lanes)->dtype);
     if (auto ramp = op->args.back().as<RampNode>()) {
       if (ramp->base.as<IntImmNode>() && *tirx::as_const_int(ramp->base) == 0 &&
           *tirx::as_const_int(ramp->lanes) == data_lanes &&
@@ -506,10 +520,10 @@ void CodeGenOpenCL::VisitExpr_(const CallNode* op, std::ostream& os) {
         os << rhs;
       } else if (*tirx::as_const_int(ramp->stride) == 1) {
         os << "(*(";
-        this->PrintType(op->ty().WithLanes(*tirx::as_const_int(ramp->lanes))->dtype, os);
+        this->PrintType(op_ty.WithLanes(*tirx::as_const_int(ramp->lanes))->dtype, os);
         os << "*)";
         os << "((";
-        this->PrintType(op->ty().WithLanes(1)->dtype, os);
+        this->PrintType(op_ty.WithLanes(1)->dtype, os);
         os << "*)&" << rhs << " + ";
         this->PrintExpr(ramp->base, os);
         os << "))";
@@ -518,20 +532,21 @@ void CodeGenOpenCL::VisitExpr_(const CallNode* op, std::ostream& os) {
       }
     } else {
       os << "((";
-      this->PrintType(op->ty().WithLanes(1)->dtype, os);
+      this->PrintType(op_ty.WithLanes(1)->dtype, os);
       os << "*)&" << rhs << ")[";
-      this->PrintExpr(op->args.back(), os);
+      this->PrintExpr(op->args.back().as_or_throw<PrimExpr>(), os);
       os << "]";
     }
   } else if (op->op.same_as(builtin_call_extern_) || op->op.same_as(builtin_call_pure_extern_)) {
     auto func = op->args[0].as_or_throw<StringImm>();
     // Enable atomics extension if used.
-    if (func->value == "atomic_add" && op->ty().code() == DLDataTypeCode::kDLFloat) {
+    if (func->value == "atomic_add" && GetPrimType(op).code() == DLDataTypeCode::kDLFloat) {
       enable_atomics_ = true;
-      this->PrintCallExtern(GetType(ffi::GetRef<PrimExpr>(op)), "atomic_add_float_emu", op->args,
-                            true, os);
+      this->PrintCallExtern(GetType(ffi::GetRef<PrimExpr>(op)), "atomic_add_float_emu",
+                            AsPrimExprArray(op->args), true, os);
     } else if (func->value == "nearbyint") {
-      this->PrintCallExtern(GetType(ffi::GetRef<PrimExpr>(op)), "rint", op->args, true, os);
+      this->PrintCallExtern(GetType(ffi::GetRef<PrimExpr>(op)), "rint", AsPrimExprArray(op->args),
+                            true, os);
     } else {
       if (func->value == "atomic_add") {
         enable_atomics_ = true;

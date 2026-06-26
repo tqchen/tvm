@@ -242,7 +242,7 @@ class CodeGenVM : public ExprFunctor<Instruction::Arg(const Expr&)> {
     return builder_->ConvertConstant(ffi::Shape(shape));
   }
 
-  Instruction::Arg VisitExpr_(const PrimExprNode* op) final {
+  Instruction::Arg VisitExpr_(const ::tvm::ExprNode* op) final {
     PrimExpr value = ffi::GetRef<PrimExpr>(op);
     if (auto* int_imm = value.as<IntImmNode>()) {
       return builder_->ConvertConstant(int_imm->value);
@@ -354,8 +354,8 @@ class CodeGenVM : public ExprFunctor<Instruction::Arg(const Expr&)> {
       args.push_back(this->VisitExpr(call_node->args[i]));
     }
     int64_t vdevice_index = -1;
-    if (auto* prim_value_node = call_node->args[4].as<PrimExprNode>()) {
-      vdevice_index = ffi::GetRef<PrimExpr>(prim_value_node).as<IntImmNode>()->value;
+    if (auto prim_value = call_node->args[4].as<PrimExpr>()) {
+      vdevice_index = prim_value.value().as<IntImmNode>()->value;
     }
     auto vdevice = GetGlobalVDevice(ctx_mod_, vdevice_index);
 

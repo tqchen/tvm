@@ -427,11 +427,11 @@ class BuiltinLower : public StmtExprMutator {
   }
 
   PrimExpr MakeDMACopy(const CallNode* op) {
-    PrimExpr queue_id = op->args[0];
-    PrimExpr dst = op->args[1];
-    PrimExpr src = op->args[2];
-    PrimExpr size = op->args[3];
-    PrimExpr bypass_cache = op->args[4];
+    PrimExpr queue_id = op->args[0].as_or_throw<PrimExpr>();
+    PrimExpr dst = op->args[1].as_or_throw<PrimExpr>();
+    PrimExpr src = op->args[2].as_or_throw<PrimExpr>();
+    PrimExpr size = op->args[3].as_or_throw<PrimExpr>();
+    PrimExpr bypass_cache = op->args[4].as_or_throw<PrimExpr>();
 
     auto method_name = GetDeviceMethodName("dma_copy");
     Call call_packed = Call(PrimType::Int(32), builtin::tvm_call_packed(),
@@ -440,8 +440,8 @@ class BuiltinLower : public StmtExprMutator {
   }
 
   PrimExpr MakeDMAWait(const CallNode* op) {
-    PrimExpr queue_id = op->args[0];
-    PrimExpr inflight = op->args[1];
+    PrimExpr queue_id = op->args[0].as_or_throw<PrimExpr>();
+    PrimExpr inflight = op->args[1].as_or_throw<PrimExpr>();
 
     auto method_name = GetDeviceMethodName("dma_wait");
     Call call_packed =
@@ -450,7 +450,7 @@ class BuiltinLower : public StmtExprMutator {
   }
 
   PrimExpr MakeDMAStartGroup(const CallNode* op) {
-    PrimExpr queue_id = op->args[0];
+    PrimExpr queue_id = op->args[0].as_or_throw<PrimExpr>();
 
     auto method_name = GetDeviceMethodName("dma_start_group");
     Call call_packed = Call(PrimType::Int(32), builtin::tvm_call_packed(), {method_name, queue_id});
@@ -458,7 +458,7 @@ class BuiltinLower : public StmtExprMutator {
   }
 
   PrimExpr MakeDMAEndGroup(const CallNode* op) {
-    PrimExpr queue_id = op->args[0];
+    PrimExpr queue_id = op->args[0].as_or_throw<PrimExpr>();
 
     auto method_name = GetDeviceMethodName("dma_end_group");
     Call call_packed = Call(PrimType::Int(32), builtin::tvm_call_packed(), {method_name, queue_id});
@@ -480,8 +480,9 @@ class BuiltinLower : public StmtExprMutator {
     op = expr.as<CallNode>();
     // no need to perform any store for a scalar shape
     for (size_t i = 0; i < op->args.size(); ++i) {
-      prep_seq.emplace_back(BufferStore(scope.stack_shape, cast(PrimType::Int(64), op->args[i]),
-                                        {ConstInt32(stack_begin + i)}));
+      prep_seq.emplace_back(BufferStore(
+          scope.stack_shape, cast(PrimType::Int(64), op->args[i].as_or_throw<PrimExpr>()),
+          {ConstInt32(stack_begin + i)}));
     }
     return AddressOffset(scope.stack_shape->data, PrimType::Int(64), stack_begin);
   }
@@ -496,18 +497,18 @@ class BuiltinLower : public StmtExprMutator {
     PrimExpr expr = StmtExprMutator::VisitExpr_(op);
     op = expr.as<CallNode>();
 
-    prep_seq.emplace_back(
-        TVMStructSet(scope.stack_array, idx, builtin::kDLTensorData, op->args[0]));
-    prep_seq.emplace_back(
-        TVMStructSet(scope.stack_array, idx, builtin::kDLTensorShape, op->args[1]));
-    PrimExpr strides = op->args[2];
+    prep_seq.emplace_back(TVMStructSet(scope.stack_array, idx, builtin::kDLTensorData,
+                                       op->args[0].as_or_throw<PrimExpr>()));
+    prep_seq.emplace_back(TVMStructSet(scope.stack_array, idx, builtin::kDLTensorShape,
+                                       op->args[1].as_or_throw<PrimExpr>()));
+    PrimExpr strides = op->args[2].as_or_throw<PrimExpr>();
     if (!strides.defined() || is_zero(strides)) {
       strides = ConstHandle(0);
     }
     prep_seq.emplace_back(TVMStructSet(scope.stack_array, idx, builtin::kDLTensorStrides, strides));
-    prep_seq.emplace_back(
-        TVMStructSet(scope.stack_array, idx, builtin::kDLTensorNDim, op->args[3]));
-    PrimType dtype = op->args[4].ty();
+    prep_seq.emplace_back(TVMStructSet(scope.stack_array, idx, builtin::kDLTensorNDim,
+                                       op->args[3].as_or_throw<PrimExpr>()));
+    PrimType dtype = op->args[4].as_or_throw<PrimExpr>().ty();
     prep_seq.emplace_back(TVMStructSet(scope.stack_array, idx, builtin::kDLTensorTypeCode,
                                        IntImm(PrimType::UInt(8), static_cast<int>(dtype.code()))));
     prep_seq.emplace_back(TVMStructSet(scope.stack_array, idx, builtin::kDLTensorTypeBits,
@@ -516,7 +517,7 @@ class BuiltinLower : public StmtExprMutator {
                                        IntImm(PrimType::UInt(16), dtype.lanes())));
     // set byte offset
     int data_bytes = GetVectorBytes(dtype);
-    PrimExpr elem_offset = op->args[5];
+    PrimExpr elem_offset = op->args[5].as_or_throw<PrimExpr>();
     PrimExpr byte_offset;
     if (!is_zero(elem_offset)) {
       byte_offset = elem_offset * MakeConst(elem_offset.ty(), data_bytes);
@@ -542,7 +543,8 @@ class BuiltinLower : public StmtExprMutator {
       static const Op& anylist_set_packed_arg_op = Op::Get("tirx.TVMBackendAnyListSetPackedArg");
       prep_seq->emplace_back(Evaluate(Call(
           PrimType::Int(32), anylist_set_packed_arg_op,
-          {call_pattern->args[0], call_pattern->args[1], args_stack, ConstInt32(stack_offset)})));
+          {call_pattern->args[0].as_or_throw<PrimExpr>(),
+           call_pattern->args[1].as_or_throw<PrimExpr>(), args_stack, ConstInt32(stack_offset)})));
     } else {
       PrimType arg_ty = arg.ty();
       PrimType api_ty = APIType(arg_ty);
@@ -591,13 +593,13 @@ class BuiltinLower : public StmtExprMutator {
   }
 
   PrimExpr MakeAnyListSetItemCallPacked(const CallNode* op, const Op& lowered_op) {
-    PrimExpr list_handle = op->args[0];
-    PrimExpr list_index = op->args[1];
+    PrimExpr list_handle = op->args[0].as_or_throw<PrimExpr>();
+    PrimExpr list_index = op->args[1].as_or_throw<PrimExpr>();
 
     Call call = MakeCallPackedGeneric(op, 2, lowered_op, false);
-    PrimExpr args_stack = call->args[1];
+    PrimExpr args_stack = call->args[1].as_or_throw<PrimExpr>();
     // The stack offset of return value stack_end
-    PrimExpr ret_offset = call->args[3];
+    PrimExpr ret_offset = call->args[3].as_or_throw<PrimExpr>();
     auto& prep_seq = prep_seq_stack_.back();
     prep_seq.emplace_back(Evaluate(call));
     static const Op& anylist_move_from_packed_return_op =
@@ -635,8 +637,8 @@ class BuiltinLower : public StmtExprMutator {
     op = expr.as<CallNode>();
 
     for (size_t i = 0; i < num_args; ++i) {
-      this->SetPackedArg(op->args[args_begin + i], scope.stack_ffi_any, arg_stack_begin + i,
-                         &prep_seq);
+      this->SetPackedArg(op->args[args_begin + i].as_or_throw<PrimExpr>(), scope.stack_ffi_any,
+                         arg_stack_begin + i, &prep_seq);
     }
     // explicitly set return value to None to avoid bad state interpretation
     prep_seq.emplace_back(TVMStructSet(scope.stack_ffi_any, num_args, builtin::kTVMFFIAnyTypeIndex,
@@ -654,13 +656,13 @@ class BuiltinLower : public StmtExprMutator {
     scope.run_sizes.shape_stack = restore_shape_stack;
     scope.run_sizes.array_stack = restore_array_stack;
     scope.run_sizes.arg_stack = arg_stack_begin;
-    ffi::Array<PrimExpr> packed_args = {op->args[name_offset], scope.stack_ffi_any,
-                                        ConstInt32(arg_stack_begin),
+    ffi::Array<PrimExpr> packed_args = {op->args[name_offset].as_or_throw<PrimExpr>(),
+                                        scope.stack_ffi_any, ConstInt32(arg_stack_begin),
                                         ConstInt32(arg_stack_begin + num_args)};
     if (pass_last_arg_as_traced_value) {
       // pass in last element as traced value
       // used by call_packed_traced
-      packed_args.push_back(op->args[op->args.size() - 1]);
+      packed_args.push_back(op->args[op->args.size() - 1].as_or_throw<PrimExpr>());
     }
     return Call(ffi::GetRef<PrimExpr>(op).ty(), lowered_packed_op, packed_args);
   }
@@ -681,7 +683,7 @@ class BuiltinLower : public StmtExprMutator {
     };
 
     for (size_t i = 0; i < call->args.size(); ++i) {
-      args.push_back(call->args[i]);
+      args.push_back(call->args[i].as_or_throw<PrimExpr>());
     }
 
     Call call_packed = Call(let->var.ty(), builtin::tvm_call_packed(), args);
@@ -690,7 +692,7 @@ class BuiltinLower : public StmtExprMutator {
 
     // Construct free_nd call and register in current scope.
     // The free will be emitted on scope exit, matching the old LetStmt body semantics.
-    PrimExpr storage_scope = call->args[0];
+    PrimExpr storage_scope = call->args[0].as_or_throw<PrimExpr>();
     Call free_op = Call(PrimType::Int(32), builtin::tvm_call_packed(),
                         {GetDeviceMethodName("free_nd"), device_type_.value(), device_id_.value(),
                          storage_scope, let->var});

@@ -36,7 +36,7 @@ class PrimExprComputeInjector : public ExprMutator {
 
   using ExprMutator::VisitExpr_;
 
-  Expr VisitExpr_(const PrimExprNode* op) override {
+  Expr VisitExpr_(const ::tvm::ExprNode* op) override {
     auto node = ExprMutator::VisitExpr_(op).as_or_throw<PrimExpr>();
 
     if (node->IsInstance<tirx::IntImmNode>() || node->IsInstance<tirx::VarNode>()) {

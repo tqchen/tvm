@@ -260,7 +260,7 @@ class ExprPathRenderer : public ExprFunctor<std::string(const PrimExpr&)> {
   // Fallback: use operator<< for unhandled expression types.
   std::string VisitExprDefault_(const ffi::Object* op) final {
     std::ostringstream os;
-    os << ffi::GetRef<PrimExpr>(static_cast<const PrimExprNode*>(op));
+    os << ffi::GetRef<Expr>(static_cast<const ExprNode*>(op)).as_or_throw<PrimExpr>();
     return os.str();
   }
 

@@ -35,13 +35,29 @@ class Expr(Node):
     ty: "tvm.ir.Type | None"
 
 
+class _PrimExprMeta(type(Expr)):
+    def __instancecheck__(cls, instance: object) -> bool:
+        if cls is not PrimExpr:
+            return super().__instancecheck__(instance)
+        return super().__instancecheck__(instance) or (
+            isinstance(instance, Expr)
+            and isinstance(getattr(instance, "ty", None), tvm.ir.PrimType)
+        )
+
+
 @tvm_ffi.register_object("ir.PrimExpr")
-class PrimExpr(Expr):
+class PrimExpr(Expr, metaclass=_PrimExprMeta):
     """Base class of all primitive expressions.
 
     PrimExpr is used in the low-level code
     optimizations and integer analysis.
     """
+
+
+def _is_prim_expr(value: object) -> bool:
+    return isinstance(value, PrimExpr) or (
+        isinstance(value, Expr) and isinstance(value.ty, tvm.ir.PrimType)
+    )
 
 
 @tvm_ffi.register_object("ir.GlobalVar")
@@ -77,7 +93,7 @@ class GlobalVar(Expr):
         """
         # pylint: disable=import-outside-toplevel
 
-        if args and all(isinstance(x, Number | PrimExpr) for x in args):
+        if args and all(isinstance(x, Number) or _is_prim_expr(x) for x in args):
             return tvm.tirx.call_tir(self, *args)
 
         if all(isinstance(x, Expr) for x in args):

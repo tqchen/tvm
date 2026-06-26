@@ -190,7 +190,7 @@ class DataTypeVisitor final : public StmtExprVisitor {
   }
 
   // the narrowed datatype of Var and IntImm
-  std::unordered_map<const PrimExprNode*, PrimType> vmap;
+  std::unordered_map<const ExprNode*, PrimType> vmap;
 
  protected:
   // internal analyzer

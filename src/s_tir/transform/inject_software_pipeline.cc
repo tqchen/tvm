@@ -43,6 +43,15 @@ using namespace tvm::tirx;
 
 namespace software_pipeline {
 
+ffi::Array<PrimExpr> AsPrimExprArray(const ffi::Array<Expr>& args) {
+  ffi::Array<PrimExpr> result;
+  result.reserve(args.size());
+  for (const Expr& arg : args) {
+    result.push_back(arg.as_or_throw<PrimExpr>());
+  }
+  return result;
+}
+
 /*!
  * \brief Create a block and infer the access region with the given body.
  *
@@ -104,7 +113,7 @@ class PipelineOpaqueAccessRewriter {
         pipeline_loop_(pipeline_loop),
         fragment_info_(fragment_info) {}
 
-  PrimExpr Rewrite(const Call& call) {
+  PrimExpr Rewrite(const tirx::Call& call) {
     // Intrinsic calls should be handled explicitly here as they are opaque accesses to
     // buffer.
     static const auto& access_ptr = builtin::tvm_access_ptr();
@@ -117,16 +126,17 @@ class PipelineOpaqueAccessRewriter {
       const Buffer& buffer = buffer_data_to_buffer_.at(call->args[0].as_or_throw<Var>());
       auto it = buffer_remap_.find(buffer);
       if (it != buffer_remap_.end()) {
-        ffi::Array<PrimExpr> new_args = call->args;
+        ffi::Array<PrimExpr> new_args = AsPrimExprArray(call->args);
         const Buffer& new_buffer = (*it).second;
-        new_args.Set(4, RewriteWmmaFragmentIndex(buffer, new_buffer, call->args[4]));
-        return Call(call.ty(), call->op, new_args, call->attrs, call->span);
+        new_args.Set(
+            4, RewriteWmmaFragmentIndex(buffer, new_buffer, call->args[4].as_or_throw<PrimExpr>()));
+        return tirx::Call(call.ty(), call->op, new_args, call->attrs, call->span);
       }
     } else if (call->op.same_as(mma_sync)) {
-      ffi::Array<PrimExpr> new_args = call->args;
+      ffi::Array<PrimExpr> new_args = AsPrimExprArray(call->args);
       for (int i = 0; i < 4; i++) {
         const Var& buffer_var = call->args[i * 2].as_or_throw<Var>();
-        const PrimExpr& index = call->args[i * 2 + 1];
+        PrimExpr index = call->args[i * 2 + 1].as_or_throw<PrimExpr>();
         const Buffer& buffer = buffer_data_to_buffer_.at(buffer_var);
         auto it = buffer_remap_.find(buffer);
         if (it != buffer_remap_.end()) {
@@ -134,7 +144,7 @@ class PipelineOpaqueAccessRewriter {
           new_args.Set(i * 2 + 1, new_index);
         }
       }
-      return Call(call.ty(), call->op, new_args, call->attrs, call->span);
+      return tirx::Call(call.ty(), call->op, new_args, call->attrs, call->span);
     } else if (call->op.same_as(access_ptr)) {
       return RewriteBufferAccess(call, {1});
     } else if (call->op.same_as(ptx_mma_legacy)) {
@@ -167,18 +177,18 @@ class PipelineOpaqueAccessRewriter {
     return new_buffer_offset;
   }
 
-  PrimExpr RewriteBufferAccess(const Call& call, const std::vector<int> arg_indices) {
+  PrimExpr RewriteBufferAccess(const tirx::Call& call, const std::vector<int> arg_indices) {
     auto product = [](const ffi::Array<PrimExpr>& input) {
       return foldl([](PrimExpr a, PrimExpr b, Span span) { return mul(a, b, span); },
                    IntImm::Int32(1), input);
     };
-    ffi::Array<PrimExpr> new_args = call->args;
+    ffi::Array<PrimExpr> new_args = AsPrimExprArray(call->args);
     for (int i : arg_indices) {
       const Buffer& buffer = buffer_data_to_buffer_.at(call->args[i].as_or_throw<Var>());
       auto it = buffer_remap_.find(buffer);
       if (it != buffer_remap_.end()) {
         const Buffer& new_buffer = (*it).second;
-        const PrimExpr& old_index = call->args[i + 1];
+        PrimExpr old_index = call->args[i + 1].as_or_throw<PrimExpr>();
         PrimExpr offset;
         if (new_buffer->strides.empty()) {
           offset = product(buffer->shape);
@@ -197,7 +207,7 @@ class PipelineOpaqueAccessRewriter {
         new_args.Set(i + 1, new_index);
       }
     }
-    return Call(call.ty(), call->op, new_args, call->attrs, call->span);
+    return tirx::Call(call.ty(), call->op, new_args, call->attrs, call->span);
   }
 
   const ffi::Map<Var, Buffer>& buffer_data_to_buffer_;
@@ -303,7 +313,7 @@ class PipelineBodyRewriter : public StmtExprMutator {
   }
 
   PrimExpr VisitExpr_(const CallNode* op) final {
-    Call call = StmtExprMutator::VisitExpr_(op).as_or_throw<Call>();
+    tirx::Call call = StmtExprMutator::VisitExpr_(op).as_or_throw<tirx::Call>();
     return opaque_access_rewriter_.Rewrite(call);
   }
 
@@ -767,8 +777,8 @@ class PipelineRewriter : public StmtExprMutator {
           // If the async operation that this wait_queue is waiting on is predicated, and we cannot
           // prove that the predicate is always true, the precise wait count is only valid
           // at iterations where the predicate is true;
-          auto wait_count = Call(PrimType::Int(32), builtin::if_then_else(),
-                                 {state.predicate.value(), state.pending_wait.wait_count, 0});
+          auto wait_count = tirx::Call(PrimType::Int(32), builtin::if_then_else(),
+                                       {state.predicate.value(), state.pending_wait.wait_count, 0});
           attach_wait_scope(state.pending_wait.insert_before, stage_id, wait_count);
         } else {
           attach_wait_scope(state.pending_wait.insert_before, stage_id,

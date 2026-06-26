@@ -69,8 +69,8 @@ std::tuple<TensorType, ffi::Optional<int64_t>> GetTensorArgInfoWithIndex(const C
       << "but the second argument " << arg << " in expression " << call << " has type " << axis->ty;
 
   ffi::Optional<int64_t> int_imm_axis = std::nullopt;
-  if (const auto* prim_value = axis.as<PrimExprNode>()) {
-    if (const auto* int_imm = ffi::GetRef<PrimExpr>(prim_value).as<IntImmNode>()) {
+  if (auto prim_value = axis.as<PrimExpr>()) {
+    if (const auto* int_imm = prim_value.value().as<IntImmNode>()) {
       int_imm_axis = int_imm->value;
     }
   }

@@ -38,6 +38,11 @@ from .entry import constexpr as _constexpr_sentinel
 from .entry import inline
 
 
+def _is_tir_var(value: object) -> bool:
+    type_info = getattr(type(value), "__tvm_ffi_type_info__", None)
+    return type_info is not None and type_info.type_key in {"tirx.Var", "tirx.SizeVar"}
+
+
 def slice_buffer_from_region(br: BufferRegion) -> Buffer:
     """Create a matched DeclBuffer from a BufferRegion.
 
@@ -735,7 +740,7 @@ def visit_expr_stmt(self: Parser, node: doc.Expr) -> None:
         for f in res.frames:
             f.add_callback(partial(f.__exit__, None, None, None))
             f.__enter__()
-    elif isinstance(res, Var):
+    elif _is_tir_var(res):
         # Standalone Var expression (e.g. from T.bind(value, var=v)) --
         # the Bind statement was already emitted to the parent frame by the FFI call,
         # so just discard the returned Var.

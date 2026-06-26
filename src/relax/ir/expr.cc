@@ -29,7 +29,6 @@ namespace relax {
 
 TVM_FFI_STATIC_INIT_BLOCK() {
   IdNode::RegisterReflection();
-  CallNode::RegisterReflection();
   TupleNode::RegisterReflection();
   TupleGetItemNode::RegisterReflection();
   ShapeExprNode::RegisterReflection();
@@ -55,20 +54,13 @@ Id::Id(ffi::String name_hint) {
   data_ = std::move(n);
 }
 
-Call::Call(Expr op, ffi::Array<Expr> args, Attrs attrs, ffi::Array<Type> ty_args, Span span) {
+Call::Call(Expr op, ffi::Array<Expr> args, Attrs attrs, ffi::Array<Type> ty_args, Span span)
+    : tvm::Call(Type(), op, args, attrs, ty_args, span) {
   TVM_FFI_CHECK(op.defined(), ValueError) << "Call expects a defined operator";
   TVM_FFI_CHECK(!op->ty.defined() || op->ty->IsInstance<FuncTypeNode>(), ValueError)
       << "Call expects its operator to have FuncType, "
       << "but operator " << op << ", which was called with arguments " << args << ", has type "
       << op->ty;
-
-  ffi::ObjectPtr<CallNode> n = ffi::make_object<CallNode>();
-  n->op = std::move(op);
-  n->args = std::move(args);
-  n->attrs = std::move(attrs);
-  n->ty_args = std::move(ty_args);
-  n->span = std::move(span);
-  data_ = std::move(n);
 }
 
 Call WithFields(Call call, ffi::Optional<Expr> opt_op, ffi::Optional<ffi::Array<Expr>> opt_args,

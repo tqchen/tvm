@@ -197,7 +197,12 @@ class PrimFuncInliner : StmtExprMutator {
     }();
     if (!is_same_target) return std::nullopt;
 
-    Stmt inlined = InlineArguments(gvar.value(), callee, call->args);
+    ffi::Array<PrimExpr> args;
+    args.reserve(call->args.size());
+    for (const Expr& arg : call->args) {
+      args.push_back(arg.as_or_throw<PrimExpr>());
+    }
+    Stmt inlined = InlineArguments(gvar.value(), callee, args);
     return VisitStmt(inlined);
   }
 

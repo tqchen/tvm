@@ -243,26 +243,28 @@ PrimExpr DataTypeLegalizer::VisitExpr_(const CallNode* op) {
   TVM_FFI_ICHECK(op != nullptr) << "Expected type to be CallNode"
                                 << ", but get " << e->GetTypeKey();
   if (op->op.same_as(builtin::shift_right())) {
-    return op->args[0] >> op->args[1];
+    return op->args[0].as_or_throw<PrimExpr>() >> op->args[1].as_or_throw<PrimExpr>();
   } else if (op->op.same_as(builtin::shift_left())) {
-    return op->args[0] << op->args[1];
+    return op->args[0].as_or_throw<PrimExpr>() << op->args[1].as_or_throw<PrimExpr>();
   } else if (op->op.same_as(builtin::bitwise_and())) {
-    return op->args[0] & op->args[1];
+    return op->args[0].as_or_throw<PrimExpr>() & op->args[1].as_or_throw<PrimExpr>();
   } else if (op->op.same_as(builtin::bitwise_or())) {
-    return op->args[0] | op->args[1];
+    return op->args[0].as_or_throw<PrimExpr>() | op->args[1].as_or_throw<PrimExpr>();
   } else if (op->op.same_as(builtin::bitwise_xor())) {
-    return op->args[0] ^ op->args[1];
+    return op->args[0].as_or_throw<PrimExpr>() ^ op->args[1].as_or_throw<PrimExpr>();
   }
   static const Op& pow_op = Op::Get("tirx.pow");
   static const Op& clz_op = Op::Get("tirx.clz");
   if (op->op.same_as(pow_op)) {
-    return pow(op->args[0], op->args[1]);
+    return pow(op->args[0].as_or_throw<PrimExpr>(), op->args[1].as_or_throw<PrimExpr>());
   } else if (op->op.same_as(builtin::if_then_else())) {
-    return Call(ffi::GetRef<PrimExpr>(op).ty(), op->op, {op->args[0], op->args[1], op->args[2]},
+    return Call(GetPrimType(op), op->op,
+                {op->args[0].as_or_throw<PrimExpr>(), op->args[1].as_or_throw<PrimExpr>(),
+                 op->args[2].as_or_throw<PrimExpr>()},
                 op->attrs, op->span);
   } else if (op->op.same_as(clz_op)) {
-    PrimType before_dtype = before->args[0].ty();
-    PrimType after_dtype = op->args[0].ty();
+    PrimType before_dtype = before->args[0].as_or_throw<PrimExpr>().ty();
+    PrimType after_dtype = op->args[0].as_or_throw<PrimExpr>().ty();
     TVM_FFI_ICHECK((before_dtype.code() == DLDataTypeCode::kDLInt ||
                     before_dtype.code() == DLDataTypeCode::kDLUInt) &&
                    (before_dtype.bits() == 32 || before_dtype.bits() == 64))
@@ -577,10 +579,12 @@ PrimExpr IndexDataTypeRewriter::VisitExpr_(const CallNode* op) {
   if (op->op.same_as(builtin::if_then_else())) {
     bool is_condition = is_condition_;
     is_condition_ = true;
-    PrimExpr cond = VisitExpr(op->args[0]);
+    PrimExpr cond = VisitExpr(op->args[0].as_or_throw<PrimExpr>());
     is_condition_ = is_condition;
-    return Call(ffi::GetRef<PrimExpr>(op).ty(), op->op,
-                {cond, VisitExpr(op->args[1]), VisitExpr(op->args[2])}, op->attrs, op->span);
+    return Call(GetPrimType(op), op->op,
+                {cond, VisitExpr(op->args[1].as_or_throw<PrimExpr>()),
+                 VisitExpr(op->args[2].as_or_throw<PrimExpr>())},
+                op->attrs, op->span);
   }
   return Parent::VisitExpr_(op);
 }

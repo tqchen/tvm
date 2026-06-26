@@ -1311,8 +1311,18 @@ class CallEffectKind:
     Opaque = UpdateState
 
 
-@tvm_ffi.register_object("tirx.Call")
-class Call(PrimExprWithOp):
+def _is_core_call(value: object) -> bool:
+    type_info = getattr(type(value), "__tvm_ffi_type_info__", None)
+    return type_info is not None and type_info.type_key == "ir.Call"
+
+
+class _TIRCallMeta(type(PrimExprWithOp)):
+    def __instancecheck__(cls, instance: object) -> bool:
+        return _is_core_call(instance) and isinstance(getattr(instance, "ty", None), ir.PrimType)
+
+
+@tvm_ffi.register_object("ir.Call")
+class Call(PrimExprWithOp, metaclass=_TIRCallMeta):
     """Call node.
 
     Parameters

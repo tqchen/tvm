@@ -77,7 +77,7 @@ inline bool IsIndexType(DLDataType type) {
          (type.bits == 32 || type.bits == 64) && type.lanes == 1;
 }
 
-inline bool IsIndexTypedExpr(const PrimExprNode* expr) {
+inline bool IsIndexTypedExpr(const ExprNode* expr) {
   TVM_FFI_DCHECK(expr != nullptr);
   TVM_FFI_DCHECK(expr->ExprNode::ty.defined());
   const auto* prim_ty = expr->ExprNode::ty.as<PrimTypeNode>();
@@ -85,9 +85,7 @@ inline bool IsIndexTypedExpr(const PrimExprNode* expr) {
   return IsIndexType(prim_ty->dtype);
 }
 
-inline bool IsIndexTypedExpr(const PrimExpr& expr) {
-  return IsIndexTypedExpr(static_cast<const PrimExprNode*>(expr.get()));
-}
+inline bool IsIndexTypedExpr(const PrimExpr& expr) { return IsIndexTypedExpr(expr.get()); }
 
 /*! \brief Helper to get const folding result repr in int64. */
 inline int64_t GetFoldResultInt64Repr(int64_t x, const PrimType& dtype) {
@@ -164,8 +162,10 @@ inline ffi::Optional<PrimExpr> TryConstFold<tirx::Add>(PrimExpr a, PrimExpr b) {
 template <>
 inline ffi::Optional<PrimExpr> TryConstFold<tirx::Sub>(PrimExpr a, PrimExpr b) {
   TVM_ARITH_CONST_PROPAGATION({
-    TVM_FFI_ICHECK(!((pa && pa->ty().MatchesCode(DLDataTypeCode::kDLUInt) && pa->value == 0U) &&
-                     (pb && pb->ty().MatchesCode(DLDataTypeCode::kDLUInt) && pb->value > 0U)))
+    TVM_FFI_ICHECK(!((pa && ffi::GetRef<PrimExpr>(pa).ty().MatchesCode(DLDataTypeCode::kDLUInt) &&
+                      pa->value == 0U) &&
+                     (pb && ffi::GetRef<PrimExpr>(pb).ty().MatchesCode(DLDataTypeCode::kDLUInt) &&
+                      pb->value > 0U)))
         << "Checked failed. Minuend 's value is 0U and it's dtype is uint "
         << "while Subtrahend's dtype is uint; which will cause a negative uint";
     PrimType result_ty = a.ty();

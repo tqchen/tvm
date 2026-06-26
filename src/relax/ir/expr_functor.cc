@@ -214,9 +214,9 @@ void ExprVisitor::VisitExpr_(const SeqExprNode* op) {
   VisitExprDepTypeFieldIfNeeded(this, op->ty);
 }
 
-void ExprVisitor::VisitExpr_(const PrimExprNode* op) {
+void ExprVisitor::VisitExpr_(const ::tvm::ExprNode* op) {
   this->VisitPrimExpr(ffi::GetRef<PrimExpr>(op));
-  VisitExprDepTypeFieldIfNeeded(this, op->ty());
+  VisitExprDepTypeFieldIfNeeded(this, op->ty);
   this->VisitSpan(op->span);
 }
 
@@ -243,7 +243,7 @@ RELAX_EXPR_VISITOR_VISIT_BINDING_IMPL(SeqExprNode);
 RELAX_EXPR_VISITOR_VISIT_BINDING_IMPL(IfNode);
 RELAX_EXPR_VISITOR_VISIT_BINDING_IMPL(OpNode);
 RELAX_EXPR_VISITOR_VISIT_BINDING_IMPL(TupleGetItemNode);
-RELAX_EXPR_VISITOR_VISIT_BINDING_IMPL(PrimExprNode);
+RELAX_EXPR_VISITOR_VISIT_BINDING_IMPL(::tvm::ExprNode);
 RELAX_EXPR_VISITOR_VISIT_BINDING_IMPL(StringImmNode);
 RELAX_EXPR_VISITOR_VISIT_BINDING_IMPL(DataTypeImmNode);
 
@@ -457,7 +457,7 @@ Expr ExprMutatorBase::VisitExpr_(const TupleGetItemNode* op) {
   }
 }
 
-Expr ExprMutatorBase::VisitExpr_(const PrimExprNode* op) {
+Expr ExprMutatorBase::VisitExpr_(const ::tvm::ExprNode* op) {
   PrimExpr prim_expr = ffi::GetRef<PrimExpr>(op);
   auto value = this->VisitPrimExpr(prim_expr);
   if (prim_expr.same_as(value)) {
@@ -647,7 +647,7 @@ RELAX_EXPR_MUTATOR_VISIT_BINDING_IMPL(SeqExprNode);
 RELAX_EXPR_MUTATOR_VISIT_BINDING_IMPL(IfNode);
 RELAX_EXPR_MUTATOR_VISIT_BINDING_IMPL(OpNode);
 RELAX_EXPR_MUTATOR_VISIT_BINDING_IMPL(TupleGetItemNode);
-RELAX_EXPR_MUTATOR_VISIT_BINDING_IMPL(PrimExprNode);
+RELAX_EXPR_MUTATOR_VISIT_BINDING_IMPL(::tvm::ExprNode);
 RELAX_EXPR_MUTATOR_VISIT_BINDING_IMPL(StringImmNode);
 RELAX_EXPR_MUTATOR_VISIT_BINDING_IMPL(DataTypeImmNode);
 

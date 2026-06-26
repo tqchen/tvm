@@ -21,6 +21,7 @@
 #include <tvm/relax/attrs/op.h>
 #include <tvm/relax/distributed/type.h>
 
+#include "../../../tirx/script/printer/utils.h"
 #include "./utils.h"
 
 namespace tvm {
@@ -247,8 +248,12 @@ ffi::Optional<ExprDoc> PrintRelaxPrint(const relax::Call& n, const AccessPath& n
 }
 
 TVM_STATIC_IR_FUNCTOR(IRDocsifier, vtable)
-    .set_dispatch<relax::Call>(  //
-        "", [](relax::Call n, AccessPath n_p, IRDocsifier d) -> Doc {
+    .set_dispatch<tvm::Call>(  //
+        "", [](tvm::Call call, AccessPath n_p, IRDocsifier d) -> Doc {
+          if (call->ty.as<PrimTypeNode>()) {
+            return PrintTIRCall(call.as_or_throw<tirx::Call>(), n_p, d);
+          }
+          relax::Call n = call.as_or_throw<relax::Call>();
           // Special case: call_tir, call_dps_packed, call_tir_with_grad
           if (ffi::Optional<ExprDoc> doc = PrintCallTIRDPSPacked(n, n_p, d)) {
             return doc.value();
@@ -333,7 +338,15 @@ TVM_STATIC_IR_FUNCTOR(IRDocsifier, vtable)
           return prefix->Call(args, kwargs_keys, kwargs_values);
         });
 
-TVM_REGISTER_SCRIPT_AS_REPR(relax::CallNode, ReprPrintRelax);
+std::string ReprPrintCall(const ffi::ObjectRef& obj, const PrinterConfig& cfg) {
+  tvm::Call call = obj.as_or_throw<tvm::Call>();
+  if (call->ty.as<PrimTypeNode>()) {
+    return ReprPrintTIR(obj, cfg);
+  }
+  return ReprPrintRelax(obj, cfg);
+}
+
+TVM_REGISTER_SCRIPT_AS_REPR(tvm::CallNode, ReprPrintCall);
 
 }  // namespace printer
 }  // namespace script

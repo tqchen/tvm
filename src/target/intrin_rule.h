@@ -36,6 +36,15 @@ namespace codegen {
 namespace intrin {
 using namespace tirx;
 
+inline ffi::Array<PrimExpr> AsPrimExprArray(const ffi::Array<Expr>& args) {
+  ffi::Array<PrimExpr> result;
+  result.reserve(args.size());
+  for (const Expr& arg : args) {
+    result.push_back(arg.as_or_throw<PrimExpr>());
+  }
+  return result;
+}
+
 // Add float suffix to the intrinsics
 struct FloatSuffix {
   std::string operator()(const PrimType& ty, std::string name) const {
@@ -73,15 +82,15 @@ inline PrimExpr DispatchPureExtern(const PrimExpr& e) {
   if (dtype_from_arg) {
     TVM_FFI_ICHECK_EQ(call->args.size(), 1U);
   }
-  PrimType dtype = dtype_from_arg ? call->args[0].ty() : call->ty();
+  PrimType dtype = dtype_from_arg ? call->args[0].as_or_throw<PrimExpr>().ty() : GetPrimType(call);
   name = T()(dtype, name.substr(5));
 
   if (name.length() != 0) {
     ffi::Array<PrimExpr> new_args = {StringImm(name)};
-    for (auto arg : call->args) {
-      new_args.push_back(arg);
+    for (const Expr& arg : call->args) {
+      new_args.push_back(arg.as_or_throw<PrimExpr>());
     }
-    return Call(e.ty(), builtin::call_pure_extern(), new_args);
+    return tirx::Call(e.ty(), builtin::call_pure_extern(), new_args);
   } else {
     return e;
   }

@@ -44,7 +44,7 @@ class SplitExpr;
  * \brief Base class of all temporary expression introduced
  *        for canonicalization.
  */
-class CanonicalExprNode : public PrimExprNode {
+class CanonicalExprNode : public ExprNode {
  public:
   virtual ~CanonicalExprNode() {}
   /*!
@@ -55,7 +55,9 @@ class CanonicalExprNode : public PrimExprNode {
   virtual PrimExpr Normalize() const = 0;
 
   static constexpr const uint32_t _type_child_slots = 2;
-  TVM_FFI_DECLARE_OBJECT_INFO("arith.CanonicalExpr", CanonicalExprNode, PrimExprNode);
+  PrimType ty() const { return GetPrimType(this); }
+
+  TVM_FFI_DECLARE_OBJECT_INFO("arith.CanonicalExpr", CanonicalExprNode, ExprNode);
 };
 
 inline PrimExpr ModImpl(PrimExpr a, PrimExpr b, DivMode mode) {
@@ -699,7 +701,7 @@ class CanonicalSimplifier::Impl : public RewriteSimplifier::Impl {
 };
 
 PrimExpr CanonicalSimplifier::Impl::VisitExpr_(const AddNode* op) {
-  if (!IsIndexTypedExpr(op)) {
+  if (!IsIndexTypedExpr(ffi::GetRef<PrimExpr>(op))) {
     return Rewriter::VisitExpr_(op);
   }
   // normalize
@@ -723,7 +725,7 @@ PrimExpr CanonicalSimplifier::Impl::VisitExpr_(const AddNode* op) {
 }
 
 PrimExpr CanonicalSimplifier::Impl::VisitExpr_(const SubNode* op) {
-  if (!IsIndexTypedExpr(op)) {
+  if (!IsIndexTypedExpr(ffi::GetRef<PrimExpr>(op))) {
     return Rewriter::VisitExpr_(op);
   }
   // normalize
@@ -747,7 +749,7 @@ PrimExpr CanonicalSimplifier::Impl::VisitExpr_(const SubNode* op) {
 }
 
 PrimExpr CanonicalSimplifier::Impl::VisitExpr_(const MulNode* op) {
-  if (!IsIndexTypedExpr(op)) {
+  if (!IsIndexTypedExpr(ffi::GetRef<PrimExpr>(op))) {
     return Rewriter::VisitExpr_(op);
   }
   // normalize
@@ -917,7 +919,7 @@ bool CanonicalSimplifier::Impl::ProdDivSimplify(PrimExpr* plhs, PrimExpr* prhs,
 }
 
 PrimExpr CanonicalSimplifier::Impl::VisitExpr_(const DivNode* op) {
-  if (!IsIndexTypedExpr(op)) {
+  if (!IsIndexTypedExpr(ffi::GetRef<PrimExpr>(op))) {
     return Rewriter::VisitExpr_(op);
   }
 
@@ -981,7 +983,7 @@ PrimExpr CanonicalSimplifier::Impl::VisitExpr_(const DivNode* op) {
 }
 
 PrimExpr CanonicalSimplifier::Impl::VisitExpr_(const FloorDivNode* op) {
-  if (!IsIndexTypedExpr(op)) {
+  if (!IsIndexTypedExpr(ffi::GetRef<PrimExpr>(op))) {
     return Rewriter::VisitExpr_(op);
   }
   PrimExpr a = this->CanonicalMutate(op->a);
@@ -1127,7 +1129,7 @@ SplitExpr CanonicalSimplifier::Impl::SplitModConst(SplitExpr lhs, int64_t cval, 
 }
 
 PrimExpr CanonicalSimplifier::Impl::VisitExpr_(const ModNode* op) {
-  if (!IsIndexTypedExpr(op)) {
+  if (!IsIndexTypedExpr(ffi::GetRef<PrimExpr>(op))) {
     return Rewriter::VisitExpr_(op);
   }
   // normalize
@@ -1201,7 +1203,7 @@ PrimExpr CanonicalSimplifier::Impl::VisitExpr_(const ModNode* op) {
 }
 
 PrimExpr CanonicalSimplifier::Impl::VisitExpr_(const FloorModNode* op) {
-  if (!IsIndexTypedExpr(op)) {
+  if (!IsIndexTypedExpr(ffi::GetRef<PrimExpr>(op))) {
     return Rewriter::VisitExpr_(op);
   }
   // normalize
@@ -1363,7 +1365,7 @@ PrimExpr CanonicalSimplifier::Impl::VisitExpr_(const ReduceNode* op) {
 }
 
 PrimExpr CanonicalSimplifier::Impl::VisitExpr_(const CastNode* op) {
-  if (!IsIndexTypedExpr(op)) {
+  if (!IsIndexTypedExpr(ffi::GetRef<PrimExpr>(op))) {
     return Rewriter::VisitExpr_(op);
   }
   // normalize

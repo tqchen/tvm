@@ -758,6 +758,9 @@ Stmt IRTransform(Stmt ir_node, const ffi::Function& f_preorder, const ffi::Funct
   std::unordered_set<uint32_t> only_type_index;
   if (only_enable.defined()) {
     for (auto s : only_enable.value()) {
+      if (s == "tirx.Call") {
+        s = "ir.Call";
+      }
       only_type_index.insert(ffi::TypeKeyToIndex(s.c_str()));
     }
   }
@@ -837,7 +840,7 @@ void PreOrderVisit(const ffi::ObjectRef& stmt_or_expr,
 
    private:
     void VisitExpr(const PrimExpr& expr) final {
-      const PrimExprNode* p_expr = expr.get();
+      const ExprNode* p_expr = expr.get();
       if (visited_.count(p_expr) == 0) {
         visited_.insert(p_expr);
         if (f_(expr)) {

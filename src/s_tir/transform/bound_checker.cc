@@ -54,7 +54,11 @@ class BoundCollector : public StmtVisitor {
       const VarNode* key = op->node.as<VarNode>();
       const CallNode* container = op->value.as<CallNode>();
       if (key && container) {
-        mem_to_shape[key] = container->args;
+        ffi::Array<PrimExpr> shape;
+        for (const Expr& arg : container->args) {
+          shape.push_back(arg.as_or_throw<PrimExpr>());
+        }
+        mem_to_shape[key] = shape;
       }
     }
     StmtVisitor::VisitStmt_(op);

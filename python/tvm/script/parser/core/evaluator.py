@@ -397,9 +397,9 @@ class ExprEvaluator:
         if isinstance(test, bool):
             return body if test else orelse
         elif (
-            isinstance(test, tvm.tirx.PrimExpr)
+            isinstance(test, tvm.ir.Expr)
             and isinstance(test.ty, tvm.ir.PrimType)
-            and test.ty.matches_code(tvm.DataTypeCode.BOOL)
+            and (test.ty.matches_code(tvm.DataTypeCode.BOOL))
         ):
             return tvm.tirx.op.if_then_else(test, body, orelse)
         else:

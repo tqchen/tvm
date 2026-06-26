@@ -54,7 +54,7 @@ class ExprFunctor:
             "tirx.BufferLoad": self.visit_buffer_load_,
             "tirx.ProducerLoad": self.visit_producer_load_,
             "tirx.Let": self.visit_let_,
-            "tirx.Call": self.visit_call_,
+            "ir.Call": self.visit_call_,
             "tirx.Add": self.visit_add_,
             "tirx.Sub": self.visit_sub_,
             "tirx.Mul": self.visit_mul_,
@@ -79,6 +79,8 @@ class ExprFunctor:
             "tirx.Ramp": self.visit_ramp_,
             "tirx.Broadcast": self.visit_broadcast_,
             "tirx.Shuffle": self.visit_shuffle_,
+            "ir.IntImm": self.visit_int_imm_,
+            "ir.FloatImm": self.visit_float_imm_,
             "tirx.IntImm": self.visit_int_imm_,
             "tirx.FloatImm": self.visit_float_imm_,
             "tirx.StringImm": self.visit_string_imm_,
@@ -100,11 +102,15 @@ class ExprFunctor:
         if expr is None:
             return None
 
-        key = expr.__class__.__name__
-        if key.endswith("Node"):
-            key = key[:-4]  # Remove the "Node" suffix
+        type_info = getattr(type(expr), "__tvm_ffi_type_info__", None)
+        if type_info is not None:
+            key = type_info.type_key
+        else:
+            key = expr.__class__.__name__
+            if key.endswith("Node"):
+                key = key[:-4]  # Remove the "Node" suffix
+            key = "tirx." + key
 
-        key = "tirx." + key
         if key in self._dispatch_map:
             return self._dispatch_map[key](expr)
 

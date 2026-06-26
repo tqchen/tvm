@@ -101,7 +101,6 @@ TVM_FFI_STATIC_INIT_BLOCK() {
   RampNode::RegisterReflection();
   BroadcastNode::RegisterReflection();
   LetNode::RegisterReflection();
-  CallNode::RegisterReflection();
   ShuffleNode::RegisterReflection();
   CommReducerNode::RegisterReflection();
   ReduceNode::RegisterReflection();
@@ -676,15 +675,18 @@ static ffi::Array<PrimExpr> ConvertCallArgs(ffi::Array<CallArg> args) {
 }
 
 Call::Call(PrimType ret_ty, tvm::Expr op, ffi::Array<PrimExpr> args, Attrs attrs, Span span) {
+  ffi::Array<Expr> expr_args;
   for (size_t i = 0; i < args.size(); ++i) {
     TVM_FFI_ICHECK(args[i].defined()) << "arg " << i << " is not defined()";
+    expr_args.push_back(args[i]);
   }
 
   ffi::ObjectPtr<CallNode> node = ffi::make_object<CallNode>();
   node->ExprNode::ty = std::move(ret_ty);
   node->op = std::move(op);
-  node->args = std::move(args);
+  node->args = std::move(expr_args);
   node->attrs = std::move(attrs);
+  node->ty_args = {};
   node->span = std::move(span);
   data_ = std::move(node);
 }

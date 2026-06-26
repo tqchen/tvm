@@ -280,11 +280,12 @@ Type InferTypeEye(const Call& call, const BlockBuilder& ctx) {
   }
 
   auto get_prim_value = [&ctx](const Expr& expr, std::string key) {
-    if (!expr->IsInstance<PrimExprNode>()) {
+    auto prim_value = expr.as<PrimExpr>();
+    if (!prim_value) {
       TVM_FFI_VISIT_THROW(TypeError, expr)
           << "Eye expects the `" << key << "` to be a PrimExpr, but got " << expr->GetTypeKey();
     }
-    return expr.as_or_throw<PrimExpr>();
+    return prim_value.value();
   };
 
   PrimExpr n = get_prim_value(call->args[0], "n");
@@ -362,11 +363,12 @@ Type InferTypeArange(const Call& call, const BlockBuilder& ctx) {
   }
   // TODO(Siyuan): Support indirect prim_values
   auto get_prim_value = [&ctx](const Expr& expr, std::string key) {
-    if (!expr->IsInstance<PrimExprNode>()) {
+    auto prim_value = expr.as<PrimExpr>();
+    if (!prim_value) {
       TVM_FFI_VISIT_THROW(TypeError, expr)
           << "Arange expects the `" << key << "` to be a PrimExpr, but got " << expr->GetTypeKey();
     }
-    return expr.as_or_throw<PrimExpr>();
+    return prim_value.value();
   };
   PrimExpr start = get_prim_value(call->args[0], "start");
   PrimExpr end = get_prim_value(call->args[1], "end");
@@ -421,11 +423,12 @@ Type InferTypeHammingWindow(const Call& call, const BlockBuilder& ctx) {
         << "Hamming Window expects the datatype to be float but got " << dtype;
   }
   auto get_prim_value = [&ctx](const Expr& expr, std::string key) {
-    if (!expr->IsInstance<PrimExprNode>()) {
+    auto prim_value = expr.as<PrimExpr>();
+    if (!prim_value) {
       TVM_FFI_VISIT_THROW(TypeError, expr) << "Hamming_window expects the `" << key
                                            << "` to be a PrimExpr, but got " << expr->GetTypeKey();
     }
-    return expr.as_or_throw<PrimExpr>();
+    return prim_value.value();
   };
   PrimExpr window_size = get_prim_value(call->args[0], "window_size");
 

@@ -504,8 +504,8 @@ class CUDAGraphRewritePlanner : public ExprVisitor {
         expr->IsInstance<StringImmNode>() || expr->IsInstance<GlobalVarNode>()) {
       return true;
     }
-    if (const auto* prim_value = expr.as<PrimExprNode>()) {
-      return IsStatic(ffi::GetRef<PrimExpr>(prim_value), vars_collector, tir_vars_collector);
+    if (auto prim_value = expr.as<PrimExpr>()) {
+      return IsStatic(prim_value.value(), vars_collector, tir_vars_collector);
     }
     if (const auto* var = expr.as<VarNode>()) {
       if (vars_collector != nullptr) {

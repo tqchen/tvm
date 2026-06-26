@@ -123,7 +123,7 @@ Type GetType(const PrimExpr& expr) {
     if (access->op.same_as(builtin::tvm_access_ptr())) {
       TVM_FFI_ICHECK(access->args.size())
           << "Builtin tvm_access_ptr() may not have empty arguments";
-      auto type_annotation = access->args[0].as_or_throw<Call>();
+      auto type_annotation = access->args[0].as_or_throw<tirx::Call>();
       TVM_FFI_ICHECK(type_annotation->op.same_as(type_annotation_op))
           << "Expected the first argument of builtin tvm_access_ptr() "
           << "to be a type annotation, but found " << type_annotation->op;
@@ -131,7 +131,7 @@ Type GetType(const PrimExpr& expr) {
     }
     if (access->op.same_as(builtin::ptr_byte_offset())) {
       TVM_FFI_ICHECK_EQ(access->args.size(), 3U);
-      auto type_annotation = access->args[2].as_or_throw<Call>();
+      auto type_annotation = access->args[2].as_or_throw<tirx::Call>();
       TVM_FFI_ICHECK(type_annotation->op.same_as(type_annotation_op))
           << "Expected the third argument of builtin ptr_byte_offset() "
           << "to be a type annotation, but found " << type_annotation->op;
@@ -189,8 +189,8 @@ void BroadcastToMatchLanes(PrimExpr& op_a, PrimExpr& op_b) {  // NOLINT(*)
       (ty_b.IsScalableVector() || ty_b.IsFixedLengthVector())) {
     if (ty_b.IsScalableVector()) {
       PrimType i32_ty = PrimType::Int(32);
-      op_a = tirx::Broadcast(op_a,
-                             tirx::Mul(ty_b.VScaleFactor(), Call(i32_ty, builtin::vscale(), {})));
+      op_a = tirx::Broadcast(
+          op_a, tirx::Mul(ty_b.VScaleFactor(), tirx::Call(i32_ty, builtin::vscale(), {})));
     } else {
       op_a = tirx::Broadcast(op_a, ty_b.lanes());
     }
@@ -500,7 +500,8 @@ PrimExpr cast(PrimType t, PrimExpr value, Span span) {
       }
       if (dtype.IsScalableVector()) {
         return tirx::Broadcast(
-            value, tirx::Mul(dtype.VScaleFactor(), Call(PrimType::Int(32), builtin::vscale(), {})),
+            value,
+            tirx::Mul(dtype.VScaleFactor(), tirx::Call(PrimType::Int(32), builtin::vscale(), {})),
             span);
       } else {
         return tirx::Broadcast(value, dtype.lanes(), span);

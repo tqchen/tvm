@@ -242,7 +242,9 @@ class ForMatcher : public TensorizeComparator {
     if (lhs_op->name != rhs_op->name) return false;
     if (call->args.size() != rhs->args.size()) return false;
     for (size_t i = 0; i < call->args.size(); ++i) {
-      if (!VisitExpr(call->args[i], rhs->args[i])) return false;
+      if (!VisitExpr(call->args[i].as_or_throw<PrimExpr>(), rhs->args[i].as_or_throw<PrimExpr>())) {
+        return false;
+      }
     }
     return true;
   }

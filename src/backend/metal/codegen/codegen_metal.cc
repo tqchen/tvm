@@ -382,7 +382,7 @@ void CodeGenMetal::VisitExpr_(const BroadcastNode* op, std::ostream& os) {  // N
 void CodeGenMetal::VisitExpr_(const CallNode* op, std::ostream& os) {  // NOLINT(*)
   TVM_FFI_ICHECK(!op->op.as<GlobalVarNode>())
       << "CodegenMetal does not support inter-function calls, "
-      << "but expression " << ffi::GetRef<Call>(op) << " calls PrimFunc " << op->op;
+      << "but expression " << ffi::GetRef<tirx::Call>(op) << " calls PrimFunc " << op->op;
   auto f_check_simdgroup_shape = [](PrimExpr col, PrimExpr row) {
     TVM_FFI_ICHECK(col->IsInstance<IntImmNode>() && row->IsInstance<IntImmNode>())
         << "Only constant shape is supported for simdgroup matrix, but got " << col << "x" << row;
@@ -405,19 +405,22 @@ void CodeGenMetal::VisitExpr_(const CallNode* op, std::ostream& os) {  // NOLINT
     TVM_FFI_ICHECK(it != simdgroup_dtype_.end())
         << "Cannot find variable allocation for simdgroup: " << var;
     const std::string& dtype_str = it->second;
-    f_check_simdgroup_shape(op->args[3], op->args[4]);
+    f_check_simdgroup_shape(op->args[3].as_or_throw<PrimExpr>(),
+                            op->args[4].as_or_throw<PrimExpr>());
     os << PrintExpr(var) << "[" << PrintExpr(op->args[1]) << "] = make_filled_simdgroup_matrix<"
        << dtype_str << ", " << PrintExpr(op->args[3]) << ", " << PrintExpr(op->args[4]) << ">("
        << PrintExpr(op->args[2]) << ")";
   } else if (op->op.same_as(simdgroup_load_op)) {
     TVM_FFI_ICHECK_EQ(op->args.size(), 7);
-    f_check_simdgroup_shape(op->args[4], op->args[5]);
+    f_check_simdgroup_shape(op->args[4].as_or_throw<PrimExpr>(),
+                            op->args[5].as_or_throw<PrimExpr>());
     os << "simdgroup_load(" << PrintExpr(op->args[0]) << "[" << PrintExpr(op->args[1]) << "], "
        << PrintExpr(op->args[2]) << ", " << PrintExpr(op->args[3]) << ", 0, "
        << PrintExpr(op->args[6]) << ")";
   } else if (op->op.same_as(simdgroup_store_op)) {
     TVM_FFI_ICHECK_EQ(op->args.size(), 7);
-    f_check_simdgroup_shape(op->args[4], op->args[5]);
+    f_check_simdgroup_shape(op->args[4].as_or_throw<PrimExpr>(),
+                            op->args[5].as_or_throw<PrimExpr>());
     os << "simdgroup_store(" << PrintExpr(op->args[0]) << "[" << PrintExpr(op->args[1]) << "], "
        << PrintExpr(op->args[2]) << ", " << PrintExpr(op->args[3]) << ", 0, "
        << PrintExpr(op->args[6]) << ")";
@@ -431,7 +434,7 @@ void CodeGenMetal::VisitExpr_(const CallNode* op, std::ostream& os) {  // NOLINT
   } else if (op->op.same_as(builtin::reinterpret())) {
     // generate as_type<TYPE>(ARG)
     os << "(as_type<";
-    this->PrintType(op->ty()->dtype, os);
+    this->PrintType(GetPrimType(op)->dtype, os);
     os << ">(";
     this->PrintExpr(op->args[0], os);
     os << "))";

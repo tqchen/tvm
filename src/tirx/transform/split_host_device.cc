@@ -567,8 +567,8 @@ class DeviceKernelMutator : public StmtExprMutator {
         extern_function_call_.insert(gvar);
         ffi::Array<PrimExpr> args;
         args.push_back(StringImm(gvar->name_hint));
-        for (const auto& arg : node->args) {
-          args.push_back(arg);
+        for (const Expr& arg : node->args) {
+          args.push_back(arg.as_or_throw<PrimExpr>());
         }
         return Call(node.ty(), builtin::call_extern(), args);
       }
@@ -591,7 +591,7 @@ class DeviceKernelMutator : public StmtExprMutator {
           << "Function " << gvar->name_hint << " accepts " << dev_info.params.size()
           << " arguments as input, but is called using " << node->args.size() << " arguments";
       for (size_t i = 0; i < node->args.size(); i++) {
-        param_map.Set(dev_info.params[i], node->args[i]);
+        param_map.Set(dev_info.params[i], node->args[i].as_or_throw<PrimExpr>());
       }
       return param_map;
     }();
@@ -600,14 +600,15 @@ class DeviceKernelMutator : public StmtExprMutator {
 
     ffi::Array<PrimExpr> call_args;
     call_args.push_back(StringImm(dev_info.global_symbol));
-    for (PrimExpr arg : node->args) {
-      call_args.push_back(arg);
+    for (const Expr& arg : node->args) {
+      call_args.push_back(arg.as_or_throw<PrimExpr>());
     }
     for (const auto& launch_arg : dev_info.launch_args) {
       call_args.push_back(Substitute(launch_arg, param_map));
     }
 
-    PrimType ret_ty = node->ty().IsVoid() ? PrimType::Int(32) : node.ty();
+    PrimType node_ty = node.ty();
+    PrimType ret_ty = node_ty.IsVoid() ? PrimType::Int(32) : node_ty;
 
     return Call(ret_ty, builtin::tvm_call_packed(), call_args);
   }

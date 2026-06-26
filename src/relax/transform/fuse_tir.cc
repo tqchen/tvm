@@ -1256,8 +1256,8 @@ class TIRFuseMutator : public ExprMutator {
           tir_vars.push_back(prim_value);
         }
       } else if (const auto* prim_value = ty.as<PrimTypeNode>()) {
-        if (const auto* literal = arg.as<PrimExprNode>()) {
-          tir_vars.push_back(ffi::GetRef<PrimExpr>(literal));
+        if (auto literal = arg.as<PrimExpr>()) {
+          tir_vars.push_back(literal.value());
         } else if (const auto* var = arg.as<VarNode>()) {
           tir_vars.push_back(tirx::Var(var->name_hint(), tvm::PrimType(prim_value->dtype)));
         } else {

@@ -65,7 +65,7 @@ class PyExprVisitorNode : public ffi::Object, public ExprVisitor {
   ffi::Function f_visit_op_{nullptr};
   /*! \brief The packed function to the `VisitExpr_(const TupleGetItemNode* op)` function. */
   ffi::Function f_visit_tuple_getitem_{nullptr};
-  /*! \brief The packed function to the `VisitExpr_(const PrimExprNode* op)` function. */
+  /*! \brief The packed function to the `VisitPrimExpr(const PrimExpr& op)` function. */
   ffi::Function f_visit_prim_expr_{nullptr};
   /*! \brief The packed function to the `VisitExpr_(const StringImmNode* op)` function. */
   ffi::Function f_visit_string_imm_{nullptr};
@@ -197,7 +197,7 @@ class PyExprVisitor : public ffi::ObjectRef {
    * \param f_visit_if_ The packed function of `VisitExpr_(const IfNode* op)`.
    * \param f_visit_op_ The packed function of `VisitExpr_(const OpNode* op)`.
    * \param f_visit_tuple_getitem_ The packed function of `VisitExpr_(const TupleGetItemNode* op)`.
-   * \param f_visit_prim_expr_ The packed function of `VisitExpr_(const PrimExprNode* op)`.
+   * \param f_visit_prim_expr_ The packed function of `VisitPrimExpr(const PrimExpr& op)`.
    * \param f_visit_string_imm_ The packed function of `VisitExpr_(const StringImmNode* op)`.
    * \param f_visit_data_type_imm_ The packed function of `VisitExpr_(const DataTypeImmNode* op)`.
    * \param f_visit_binding The packed function of `VisitBinding(const Binding& binding)`.
@@ -303,7 +303,7 @@ class PyExprMutatorNode : public ffi::Object, public ExprMutator {
   ffi::Function f_visit_op_{nullptr};
   /*! \brief The packed function to the `VisitExpr_(const TupleGetItemNode* op)` function. */
   ffi::Function f_visit_tuple_getitem_{nullptr};
-  /*! \brief The packed function to the `VisitExpr_(const PrimExprNode* op)` function. */
+  /*! \brief The packed function to the `VisitPrimExpr(const PrimExpr& op)` function. */
   ffi::Function f_visit_prim_expr_{nullptr};
   /*! \brief The packed function to the `VisitExpr_(const StringImmNode* op)` function. */
   ffi::Function f_visit_string_imm_{nullptr};
@@ -484,7 +484,7 @@ class PyExprMutator : public ffi::ObjectRef {
    * \param f_visit_if_ The packed function of `VisitExpr_(const IfNode* op)`.
    * \param f_visit_op_ The packed function of `VisitExpr_(const OpNode* op)`.
    * \param f_visit_tuple_getitem_ The packed function of `VisitExpr_(const TupleGetItemNode* op)`.
-   * \param f_visit_prim_expr_ The packed function of `VisitExpr_(const PrimExprNode* op)`.
+   * \param f_visit_prim_expr_ The packed function of `VisitPrimExpr(const PrimExpr& op)`.
    * \param f_visit_string_imm_ The packed function of `VisitExpr_(const StringImmNode* op)`.
    * \param f_visit_data_type_imm_ The packed function of `VisitExpr_(const DataTypeImmNode* op)`.
    * \param f_visit_binding The packed function of `VisitBinding(const Binding& binding)`.

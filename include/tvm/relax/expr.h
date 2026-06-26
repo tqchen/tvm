@@ -74,50 +74,9 @@ class Id : public ffi::ObjectRef {
   TVM_FFI_DEFINE_OBJECT_REF_METHODS_NULLABLE(Id, ffi::ObjectRef, IdNode);
 };
 
-/*!
- * \brief Call corresponds to callable invocation.
- *  Corresponds to operation in computational graph terminology.
- */
-class CallNode : public ExprNode {
- public:
-  /*!
-   * \brief The operator(function) being invoked
-   *
-   *  - It can be tvm::Op which corresponds to the primitive operators.
-   *  - It can also be user defined functions (Function, GlobalVar, Var).
-   */
-  Expr op;
+using tvm::CallNode;
 
-  /*! \brief The arguments(inputs) of the call */
-  tvm::ffi::Array<Expr> args;
-
-  /*! \brief The additional attributes */
-  Attrs attrs;
-
-  /*!
-   * \brief The type information arguments of a CallNode.
-   * ty_args is by default designed to be non-empty only for intrinsic op (e.g.,
-   * call_tir, call_builtin_with_ctx, etc.) and calls to ExternFuncs, with the main
-   * usage of type information inference.
-   *
-   * Regular ops also at times may have ty_args defined to specialize partial
-   * or complete type information. Like VDevice customization with mixed input memory_scopes.
-   * The customized pass can set this info and operator specific inference will respect it.
-   */
-  ffi::Array<Type> ty_args;
-
-  static void RegisterReflection() {
-    namespace refl = tvm::ffi::reflection;
-    refl::ObjectDef<CallNode>()
-        .def_ro("op", &CallNode::op)
-        .def_ro("args", &CallNode::args)
-        .def_ro("attrs", &CallNode::attrs)
-        .def_ro("ty_args", &CallNode::ty_args);
-  }
-  TVM_FFI_DECLARE_OBJECT_INFO_FINAL("relax.expr.Call", CallNode, ExprNode);
-};
-
-class Call : public Expr {
+class Call : public tvm::Call {
  public:
   /*!
    * \brief The constructor
@@ -130,7 +89,7 @@ class Call : public Expr {
   TVM_DLL Call(Expr op, ffi::Array<Expr> args, Attrs attrs = Attrs(),
                ffi::Array<Type> ty_args = ffi::Array<Type>(), Span span = Span());
 
-  TVM_FFI_DEFINE_OBJECT_REF_METHODS_NULLABLE(Call, Expr, CallNode);
+  TVM_FFI_DEFINE_OBJECT_REF_METHODS_NULLABLE(Call, tvm::Call, CallNode);
   TVM_DEFINE_OBJECT_REF_COW_METHOD(CallNode);
 };
 

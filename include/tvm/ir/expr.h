@@ -28,6 +28,7 @@
 #include <tvm/ffi/extra/dataclass.h>
 #include <tvm/ffi/reflection/registry.h>
 #include <tvm/ffi/string.h>
+#include <tvm/ir/attrs.h>
 #include <tvm/ir/base_expr.h>
 #include <tvm/ir/cow.h>
 #include <tvm/ir/source_map.h>
@@ -35,6 +36,7 @@
 #include <algorithm>
 #include <functional>
 #include <limits>
+#include <optional>
 #include <string>
 #include <type_traits>
 
@@ -86,10 +88,39 @@ class PrimExprNode : public ExprNode {
 };
 
 /*!
- * \brief Reference to PrimExprNode.
+ * \brief Typed expression reference.
+ *
+ * A typed expression is an Expr whose ExprNode::ty is present and is an
+ * instance of TypeRef.  This is a reference-level refinement; the underlying
+ * node remains an ExprNode subclass.
+ *
+ * \tparam TypeRef The required expression type.
+ */
+template <typename TypeRef>
+class TypedExpr : public Expr {
+ public:
+  /*! \return the refined type of this expression. */
+  TypeRef ty() const {
+    const auto* node = get();
+    TVM_FFI_DCHECK(node != nullptr);
+    TVM_FFI_DCHECK(node->ExprNode::ty.defined());
+    using TypeNode = typename TypeRef::ContainerType;
+    const auto* ty_node = node->ExprNode::ty.template as<TypeNode>();
+    TVM_FFI_DCHECK(ty_node != nullptr);
+    return ffi::GetRef<TypeRef>(ty_node);
+  }
+
+  TVM_FFI_DEFINE_OBJECT_REF_METHODS_NULLABLE(TypedExpr, Expr, ExprNode);
+  static constexpr bool _type_container_is_exact = false;
+};
+
+using PrimExprBase = TypedExpr<PrimType>;
+
+/*!
+ * \brief Reference to a primitive-typed expression.
  * \sa PrimExprNode
  */
-class PrimExpr : public Expr {
+class PrimExpr : public PrimExprBase {
  public:
   /*!
    * \brief construct from integer.
@@ -103,14 +134,8 @@ class PrimExpr : public Expr {
   TVM_DLL PrimExpr(float value);  // NOLINT(*)
 
   /*! \return the primitive type of this expression. */
-  PrimType ty() const {
-    const auto* node = static_cast<const PrimExprNode*>(get());
-    TVM_FFI_DCHECK(node->ExprNode::ty.defined());
-    TVM_FFI_DCHECK(node->ExprNode::ty->IsInstance<PrimTypeNode>());
-    return ffi::GetRef<PrimType>(static_cast<const PrimTypeNode*>(node->ExprNode::ty.get()));
-  }
-
-  TVM_FFI_DEFINE_OBJECT_REF_METHODS_NULLABLE(PrimExpr, Expr, PrimExprNode);
+  TVM_FFI_DEFINE_OBJECT_REF_METHODS_NULLABLE(PrimExpr, PrimExprBase, ExprNode);
+  static constexpr bool _type_container_is_exact = true;
 
   /*!
    * \brief construct from string to form a StringImm.
@@ -118,6 +143,14 @@ class PrimExpr : public Expr {
    */
   TVM_DLL static PrimExpr ConvertFallbackValue(ffi::String value);  // NOLINT(*)
 };
+
+inline PrimType GetPrimType(const ExprNode* node) {
+  TVM_FFI_DCHECK(node != nullptr);
+  TVM_FFI_DCHECK(node->ExprNode::ty.defined());
+  const auto* ty_node = node->ExprNode::ty.as<PrimTypeNode>();
+  TVM_FFI_DCHECK(ty_node != nullptr);
+  return ffi::GetRef<PrimType>(ty_node);
+}
 
 /*!
  * \brief Base class for other IR constructs that can be converted to PrimExpr.
@@ -151,6 +184,30 @@ template <>
 struct TypeTraits<PrimExpr>
     : public ObjectRefWithFallbackTraitsBase<PrimExpr, StrictBool, int64_t, double, ffi::String,
                                              PrimExprConvertible> {
+  TVM_FFI_INLINE static bool CheckAnyStrict(const TVMFFIAny* src) {
+    if (src->type_index == TypeIndex::kTVMFFINone) {
+      return PrimExpr::_type_is_nullable;
+    }
+    if (src->type_index < TypeIndex::kTVMFFIStaticObjectBegin ||
+        !details::IsObjectInstance<ExprNode>(src->type_index)) {
+      return false;
+    }
+    const auto* expr = static_cast<const ExprNode*>(
+        details::ObjectUnsafe::ObjectPtrFromUnowned<Object>(src->v_obj).get());
+    return expr->ty.defined() && expr->ty.as<PrimTypeNode>() != nullptr;
+  }
+
+  TVM_FFI_INLINE static std::optional<PrimExpr> TryCastFromAnyView(const TVMFFIAny* src) {
+    if (CheckAnyStrict(src)) {
+      if (src->type_index == TypeIndex::kTVMFFINone) {
+        return details::ObjectUnsafe::ObjectRefFromObjectPtr<PrimExpr>(nullptr);
+      }
+      return details::ObjectUnsafe::ObjectRefFromObjectPtr<PrimExpr>(
+          details::ObjectUnsafe::ObjectPtrFromUnowned<ExprNode>(src->v_obj));
+    }
+    return TryFallbackTypes<StrictBool, int64_t, double, ffi::String, PrimExprConvertible>(src);
+  }
+
   TVM_FFI_INLINE static PrimExpr ConvertFallbackValue(StrictBool value);
   TVM_FFI_INLINE static PrimExpr ConvertFallbackValue(int64_t value);
   TVM_FFI_INLINE static PrimExpr ConvertFallbackValue(double value);
@@ -422,11 +479,71 @@ class GlobalVar : public Expr {
 };
 
 /*!
+ * \brief Call corresponds to callable invocation.
+ */
+class CallNode : public ExprNode {
+ public:
+  /*!
+   * \brief The operator/function being invoked.
+   *
+   * It can be an Op, a GlobalVar, a local function value, or another callable
+   * expression.
+   */
+  Expr op;
+
+  /*! \brief The arguments of the call. */
+  ffi::Array<Expr> args;
+
+  /*! \brief The additional attributes. */
+  Attrs attrs;
+
+  /*! \brief The type information arguments passed to the callee. */
+  ffi::Array<Type> ty_args;
+
+  static void RegisterReflection() {
+    namespace refl = tvm::ffi::reflection;
+    refl::ObjectDef<CallNode>()
+        .def_ro("op", &CallNode::op)
+        .def_ro("args", &CallNode::args)
+        .def_ro("attrs", &CallNode::attrs)
+        .def_ro("ty_args", &CallNode::ty_args);
+  }
+
+  TVM_FFI_DECLARE_OBJECT_INFO_FINAL("ir.Call", CallNode, ExprNode);
+};
+
+/*!
+ * \brief Managed reference to CallNode.
+ */
+class Call : public Expr {
+ public:
+  TVM_DLL Call(Type ret_ty, Expr op, ffi::Array<Expr> args, Attrs attrs = Attrs(),
+               ffi::Array<Type> ty_args = ffi::Array<Type>(), Span span = Span());
+
+  TVM_FFI_DEFINE_OBJECT_REF_METHODS_NULLABLE(Call, Expr, CallNode);
+  TVM_DEFINE_OBJECT_REF_COW_METHOD(CallNode);
+};
+
+/*!
+ * \brief Return \p call with the given properties.
+ */
+TVM_DLL Call
+WithFields(Call call, ffi::Optional<Type> opt_ret_ty = ffi::Optional<Type>(),
+           ffi::Optional<Expr> opt_op = ffi::Optional<Expr>(),
+           ffi::Optional<ffi::Array<Expr>> opt_args = ffi::Optional<ffi::Array<Expr>>(),
+           ffi::Optional<Attrs> opt_attrs = ffi::Optional<Attrs>(),
+           ffi::Optional<ffi::Array<Type>> opt_ty_args = ffi::Optional<ffi::Array<Type>>(),
+           ffi::Optional<Span> opt_span = ffi::Optional<Span>());
+
+/*!
  * \brief Constant integer literals in the program.
  * \sa IntImm
  */
-class IntImmNode : public PrimExprNode {
+class IntImmNode : public ExprNode {
  public:
+  /*! \return the primitive type of this literal. */
+  PrimType ty() const { return GetPrimType(this); }
+
   /*! \brief the Internal value. */
   int64_t value;
 
@@ -434,7 +551,7 @@ class IntImmNode : public PrimExprNode {
     namespace refl = tvm::ffi::reflection;
     refl::ObjectDef<IntImmNode>().def_ro("value", &IntImmNode::value);
   }
-  TVM_FFI_DECLARE_OBJECT_INFO_FINAL("ir.IntImm", IntImmNode, PrimExprNode);
+  TVM_FFI_DECLARE_OBJECT_INFO_FINAL("ir.IntImm", IntImmNode, ExprNode);
 };
 
 /*!
@@ -487,8 +604,11 @@ class IntImm : public PrimExpr {
  * \brief Constant floating point literals in the program.
  * \sa FloatImm
  */
-class FloatImmNode : public PrimExprNode {
+class FloatImmNode : public ExprNode {
  public:
+  /*! \return the primitive type of this literal. */
+  PrimType ty() const { return GetPrimType(this); }
+
   /*! \brief The constant value content. */
   double value;
 
@@ -496,7 +616,7 @@ class FloatImmNode : public PrimExprNode {
     namespace refl = tvm::ffi::reflection;
     refl::ObjectDef<FloatImmNode>().def_ro("value", &FloatImmNode::value);
   }
-  TVM_FFI_DECLARE_OBJECT_INFO_FINAL("ir.FloatImm", FloatImmNode, PrimExprNode);
+  TVM_FFI_DECLARE_OBJECT_INFO_FINAL("ir.FloatImm", FloatImmNode, ExprNode);
 };
 
 /*!

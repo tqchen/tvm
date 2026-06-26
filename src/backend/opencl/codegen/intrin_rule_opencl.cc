@@ -38,11 +38,13 @@ static PrimExpr DispatchIntelShuffle(const PrimExpr& e) {
   TVM_FFI_ICHECK(call != nullptr);
   TVM_FFI_ICHECK_EQ(call->args.size(), 5);  // mask, value, warp_id, width, warp_size
   arith::Analyzer analyzer;
-  TVM_FFI_ICHECK(analyzer->CanProve(call->args[3] == call->args[4]))
+  TVM_FFI_ICHECK(analyzer->CanProve(call->args[3].as_or_throw<PrimExpr>() ==
+                                    call->args[4].as_or_throw<PrimExpr>()))
       << "Intel warp shuffle dose not support width != warp_size";
-  ffi::Array<PrimExpr> opencl_args{
-      {StringImm("intel_sub_group_shuffle"), call->args[1], call->args[2]}};
-  return Call(e.ty(), builtin::call_pure_extern(), opencl_args);
+  ffi::Array<PrimExpr> opencl_args{StringImm("intel_sub_group_shuffle"),
+                                   call->args[1].as_or_throw<PrimExpr>(),
+                                   call->args[2].as_or_throw<PrimExpr>()};
+  return tirx::Call(e.ty(), builtin::call_pure_extern(), opencl_args);
 }
 
 void RegisterOpenCLIntrinRules() {
@@ -72,8 +74,8 @@ TVM_REGISTER_OP("tirx.round")
       const tirx::CallNode* call = e.as<tirx::CallNode>();
       TVM_FFI_ICHECK(call != nullptr);
       ffi::Array<PrimExpr> new_args = {tirx::StringImm("rint")};
-      for (auto arg : call->args) {
-        new_args.push_back(arg);
+      for (const Expr& arg : call->args) {
+        new_args.push_back(arg.as_or_throw<PrimExpr>());
       }
       return tirx::Call(e.ty(), tirx::builtin::call_pure_extern(), new_args);
     });

@@ -264,9 +264,11 @@ class ComputeLegalizer : public StmtExprMutator {
       return StmtExprMutator::VisitExpr_(op);
     }
     // update normal computations to return f32 instead.
-    auto fmutate = [this](const PrimExpr& e) { return PromoteToTarget(this->VisitExpr(e)); };
+    auto fmutate = [this](const Expr& e) {
+      return PromoteToTarget(this->VisitExpr(e.as_or_throw<PrimExpr>()));
+    };
     ffi::Array<PrimExpr> args = op->args.Map(fmutate);
-    PrimType op_ty = op->ty();
+    PrimType op_ty = GetPrimType(op);
     if (MatchType(op_ty)) {
       return Call(promote_dtype_.WithLanes(op_ty.lanes()), op->op, args, op->attrs, op->span);
     }
@@ -680,9 +682,9 @@ class StorageLegalizer : public StmtExprMutator {
   PrimExpr VisitExpr_(const CallNode* op) final {
     // remap re-interpret so un-necessary reinterpret can be skipped.
     if (op->op.same_as(builtin::reinterpret())) {
-      PrimExpr value = VisitExpr(op->args[0]);
+      PrimExpr value = VisitExpr(op->args[0].as_or_throw<PrimExpr>());
       // sometimes the input dtype can change and we can skip.
-      PrimType op_dtype = op->ty();
+      PrimType op_dtype = GetPrimType(op);
       if (value.ty() == op_dtype) return value;
       if (MatchType(op_dtype)) {
         return reinterpret(GetStorageUIntDType(op_dtype), value);
@@ -709,7 +711,7 @@ class StorageLegalizer : public StmtExprMutator {
     if (!MatchType(value_dtype)) return value;
     auto* call = value.as<CallNode>();
     if (call && call->op.same_as(builtin::reinterpret())) {
-      return reinterpret(GetStorageUIntDType(value_dtype), call->args[0]);
+      return reinterpret(GetStorageUIntDType(value_dtype), call->args[0].as_or_throw<PrimExpr>());
     } else {
       return value;
     }

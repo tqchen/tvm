@@ -529,8 +529,20 @@ class _DLTensorStrideProxy(tvm.runtime.ObjectConvertible):
         return tvm.relax.Call(op, [self.tensor, axis])
 
 
-@tvm_ffi.register_object("relax.expr.Call")
-class Call(ExprWithOp):
+def _is_core_call(value: object) -> bool:
+    type_info = getattr(type(value), "__tvm_ffi_type_info__", None)
+    return type_info is not None and type_info.type_key == "ir.Call"
+
+
+class _RelaxCallMeta(type(ExprWithOp)):
+    def __instancecheck__(cls, instance: object) -> bool:
+        if not _is_core_call(instance):
+            return False
+        return not isinstance(getattr(instance, "ty", None), tvm.ir.PrimType)
+
+
+@tvm_ffi.register_object("ir.Call")
+class Call(ExprWithOp, metaclass=_RelaxCallMeta):
     """Function call node in Relax.
 
     Call node corresponds the operator application node
@@ -581,6 +593,12 @@ class Call(ExprWithOp):
             ty_args,
             span,  # type: ignore
         )
+
+    def equal(self, other: PrimExpr, span: Span | None = None) -> bool:
+        """Check structural equality for primitive-valued core calls."""
+        if not isinstance(self.ty, tvm.ir.PrimType):
+            raise TypeError(f"Cannot use TIR equality on Relax call with type {self.ty}")
+        return tvm_ffi.structural_equal(self, other)
 
 
 @tvm_ffi.register_object("relax.expr.If")

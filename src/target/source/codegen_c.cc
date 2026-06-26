@@ -38,6 +38,21 @@ namespace codegen {
 
 using namespace tirx;
 
+namespace {
+
+ffi::Array<PrimExpr> AsPrimExprArray(const ffi::Array<Expr>& args) {
+  ffi::Array<PrimExpr> result;
+  result.reserve(args.size());
+  for (const Expr& arg : args) {
+    result.push_back(arg.as_or_throw<PrimExpr>());
+  }
+  return result;
+}
+
+PrimExpr AsPrimExpr(const Expr& expr) { return expr.as_or_throw<PrimExpr>(); }
+
+}  // namespace
+
 void CodeGenC::Init(bool output_ssa) { print_ssa_form_ = output_ssa; }
 
 void CodeGenC::InitFuncState(const PrimFunc& f) {
@@ -519,7 +534,8 @@ template <typename T>
 inline void PrintBinaryExpr(const T* op, const char* opstr,
                             std::ostream& os,  // NOLINT(*)
                             CodeGenC* p) {
-  if (op->ty().lanes() == 1) {
+  PrimType op_ty = GetPrimType(op);
+  if (op_ty.lanes() == 1) {
     if (isalpha(opstr[0])) {
       os << opstr << '(';
       p->PrintExpr(op->a, os);
@@ -541,7 +557,8 @@ inline void PrintBinaryExpr(const T* op, const char* opstr,
 inline void PrintBinaryIntrinsic(const CallNode* op, const char* opstr,
                                  std::ostream& os,  // NOLINT(*)
                                  CodeGenC* p) {
-  if (op->ty().lanes() == 1) {
+  PrimType op_ty = GetPrimType(op);
+  if (op_ty.lanes() == 1) {
     TVM_FFI_ICHECK_EQ(op->args.size(), 2U);
     os << '(';
     p->PrintExpr(op->args[0], os);
@@ -549,7 +566,7 @@ inline void PrintBinaryIntrinsic(const CallNode* op, const char* opstr,
     p->PrintExpr(op->args[1], os);
     os << ')';
   } else {
-    p->PrintVecBinaryOp(opstr, op->ty(), op->args[0], op->args[1], os);
+    p->PrintVecBinaryOp(opstr, op_ty, AsPrimExpr(op->args[0]), AsPrimExpr(op->args[1]), os);
   }
 }
 void CodeGenC::VisitExpr_(const CastNode* op, std::ostream& os) {  // NOLINT(*)
@@ -652,14 +669,15 @@ void CodeGenC::VisitExpr_(const CallNode* op, std::ostream& os) {  // NOLINT(*)
     } else if (op->op.same_as(builtin_call_extern_) || op->op.same_as(builtin_call_pure_extern_)) {
       TVM_FFI_ICHECK_GE(op->args.size(), 1U);
       auto func = op->args[0].as_or_throw<StringImm>();
-      this->PrintCallExtern(GetType(ffi::GetRef<PrimExpr>(op)), func->value, op->args, true, os);
+      ffi::Array<PrimExpr> args = AsPrimExprArray(op->args);
+      this->PrintCallExtern(GetType(ffi::GetRef<PrimExpr>(op)), func->value, args, true, os);
 
       // If the call_extern refers to an function within the IRModule, then
       // the forward declaration is already provided from DeclareFunction.
       if (!func_name_supply_->ContainsName(func->value)) {
         ffi::Array<Type> arg_types;
         for (size_t i = 1; i < op->args.size(); i++) {
-          arg_types.push_back(GetType(op->args[i]));
+          arg_types.push_back(GetType(AsPrimExpr(op->args[i])));
         }
         Type ret_type = GetType(ffi::GetRef<PrimExpr>(op));
         this->GenerateForwardFunctionDeclarations(func->value, arg_types, ret_type);
@@ -667,7 +685,7 @@ void CodeGenC::VisitExpr_(const CallNode* op, std::ostream& os) {  // NOLINT(*)
     } else if (op_attr_global_symbol_.count(call_op)) {
       // call extern if the op itself have a global symbol.
       this->PrintCallExtern(GetType(ffi::GetRef<PrimExpr>(op)), op_attr_global_symbol_[call_op],
-                            op->args, false, os);
+                            AsPrimExprArray(op->args), false, os);
     } else if (op->op.same_as(builtin::bitwise_and())) {
       PrintBinaryIntrinsic(op, " & ", os, this);
     } else if (op->op.same_as(builtin::large_uint_imm())) {
@@ -675,7 +693,7 @@ void CodeGenC::VisitExpr_(const CallNode* op, std::ostream& os) {  // NOLINT(*)
       uint64_t low = static_cast<uint64_t>(op->args[0].as_or_throw<IntImm>()->value);
       uint64_t high = static_cast<uint64_t>(op->args[1].as_or_throw<IntImm>()->value);
       uint64_t val = (high << 32U) | low;
-      PrintUIntConst(op->ty()->dtype, val, os, this);
+      PrintUIntConst(GetPrimType(op)->dtype, val, os, this);
     } else if (op->op.same_as(builtin::bitwise_xor())) {
       PrintBinaryIntrinsic(op, " ^ ", os, this);
     } else if (op->op.same_as(builtin::bitwise_or())) {
@@ -694,7 +712,7 @@ void CodeGenC::VisitExpr_(const CallNode* op, std::ostream& os) {  // NOLINT(*)
       std::string result = name_supply_->FreshName("condval");
       std::string cond = PrintExpr(op->args[0]);
       this->PrintIndent();
-      PrintType(op->ty(), this->stream);
+      PrintType(GetPrimType(op), this->stream);
       this->stream << " " << result << ";\n";
       this->PrintIndent();
       this->stream << "if (" << cond << ") {\n";
@@ -755,7 +773,8 @@ void CodeGenC::VisitExpr_(const CallNode* op, std::ostream& os) {  // NOLINT(*)
       }
     } else if (op->op.same_as(builtin::tvm_struct_get())) {
       TVM_FFI_ICHECK_EQ(op->args.size(), 3U);
-      os << GetStructRef(op->ty(), op->args[0], op->args[1], op->args[2].as<IntImmNode>()->value);
+      os << GetStructRef(GetPrimType(op), AsPrimExpr(op->args[0]), AsPrimExpr(op->args[1]),
+                         op->args[2].as<IntImmNode>()->value);
     } else if (op->op.same_as(builtin::isnullptr())) {
       TVM_FFI_ICHECK_EQ(op->args.size(), 1U);
       os << "(";
@@ -764,7 +783,7 @@ void CodeGenC::VisitExpr_(const CallNode* op, std::ostream& os) {  // NOLINT(*)
     } else if (op->op.same_as(builtin::ptr_byte_offset())) {
       TVM_FFI_ICHECK_EQ(op->args.size(), 3U);
       os << "((";
-      PrintType(op->args[2].ty(), os);
+      PrintType(AsPrimExpr(op->args[2]).ty(), os);
       os << "*)(((char*)";
       this->PrintExpr(op->args[0], os);
       os << ") + ";
@@ -778,8 +797,8 @@ void CodeGenC::VisitExpr_(const CallNode* op, std::ostream& os) {  // NOLINT(*)
       this->PrintExpr(op->args[1], os);
       os << "))";
     } else if (op->op.same_as(builtin::reinterpret())) {
-      PrimType target_dtype = op->ty();
-      PrimType source_dtype = op->args[0].ty();
+      PrimType target_dtype = GetPrimType(op);
+      PrimType source_dtype = AsPrimExpr(op->args[0]).ty();
       TVM_FFI_ICHECK_EQ(target_dtype.lanes() * target_dtype.bits(),
                         source_dtype.lanes() * source_dtype.bits())
           << "reinterpret expects source and target to have the same number of bits";
@@ -810,7 +829,8 @@ void CodeGenC::VisitExpr_(const CallNode* op, std::ostream& os) {  // NOLINT(*)
   } else if (auto opt = op->op.as<GlobalVar>()) {
     auto gvar = opt.value();
     auto callee_name = GetFunctionName(gvar);
-    PrintCallExtern(GetType(ffi::GetRef<PrimExpr>(op)), callee_name, op->args, false, os);
+    PrintCallExtern(GetType(ffi::GetRef<PrimExpr>(op)), callee_name, AsPrimExprArray(op->args),
+                    false, os);
   } else {
     TVM_FFI_THROW(InternalError) << "CodeGenC: Unknown operation " << op->op
                                  << " is neither a recognized built-in, "
@@ -1329,8 +1349,9 @@ void CodeGenC::VisitStmt_(const EvaluateNode* op) {
     } else if (call->op.same_as(builtin::tvm_struct_set())) {
       TVM_FFI_ICHECK_EQ(call->args.size(), 4);
       int kind = call->args[2].as<IntImmNode>()->value;
-      PrimType store_ty = call->args[3].ty();
-      std::string ref = GetStructRef(store_ty, call->args[0], call->args[1], kind);
+      PrimType store_ty = AsPrimExpr(call->args[3]).ty();
+      std::string ref =
+          GetStructRef(store_ty, AsPrimExpr(call->args[0]), AsPrimExpr(call->args[1]), kind);
       std::string value = PrintExpr(call->args[3]);
       std::string cast;
 
@@ -1338,13 +1359,14 @@ void CodeGenC::VisitStmt_(const EvaluateNode* op) {
         this->PrintIndent();
         // when we set any union value, we need to be careful to
         // clear off the union value to zero if the set size is less than 64 bits
-        this->stream << GetStructRef(PrimType::Int(64), call->args[0], call->args[1], kind)
+        this->stream << GetStructRef(PrimType::Int(64), AsPrimExpr(call->args[0]),
+                                     AsPrimExpr(call->args[1]), kind)
                      << " = 0;\n";
       }
 
       if (kind == builtin::kDLTensorStrides) {
         // cast void* to int64_t*
-        cast = call->args[3].ty().IsHandle() ? "(int64_t*)" : "";
+        cast = AsPrimExpr(call->args[3]).ty().IsHandle() ? "(int64_t*)" : "";
       } else if (kind == builtin::kDLTensorDeviceType) {
         // cast int to enum
         cast = "(DLDeviceType)";

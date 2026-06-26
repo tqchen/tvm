@@ -912,12 +912,12 @@ Expr ConvertNewShapeToExpr(const Expr& data,
   // Keep track of which dimensions should be copied from input.
   std::vector<int> zero_dims;
   for (int i = 0; i < static_cast<int>(array->size()); ++i) {
-    const auto* _len = array->at(i).as<PrimExprNode>();
-    TVM_FFI_ICHECK(_len != nullptr)
+    auto prim_len = array->at(i).as<PrimExpr>();
+    TVM_FFI_ICHECK(prim_len)
         << "Reshape only expects the input new shape to be either an Expr or an "
            "Array of PrimExprs. However, the given new shape is "
         << shape;
-    PrimExpr len = ffi::GetRef<PrimExpr>(_len);
+    PrimExpr len = prim_len.value();
     TVM_FFI_ICHECK(len.ty().code() == DLDataTypeCode::kDLInt)
         << "Reshape requires the new shape values to be all "
            "integers. However, the give new shape is "
@@ -3015,13 +3015,13 @@ Type InferTypeSliceScatter(const Call& call, const BlockBuilder& ctx) {
   }
 
   auto get_prim_expr_from_arg = [&ctx, &call](const Expr& arg_expr, std::string key) -> PrimExpr {
-    const auto* prim_value_node = arg_expr.as<PrimExprNode>();
-    if (prim_value_node == nullptr) {
+    auto prim_value = arg_expr.as<PrimExpr>();
+    if (!prim_value) {
       TVM_FFI_VISIT_THROW(TypeError, call)
           << "SliceScatter expects the `" << key << "` argument (" << arg_expr
           << ") to be a PrimExpr, but got " << arg_expr->GetTypeKey();
     }
-    PrimExpr prim_expr = ffi::GetRef<PrimExpr>(prim_value_node);
+    PrimExpr prim_expr = prim_value.value();
     tvm::PrimType prim_ty = prim_expr.ty();
     if (prim_ty.code() != DLDataTypeCode::kDLInt && prim_ty.code() != DLDataTypeCode::kDLUInt) {
       TVM_FFI_VISIT_THROW(TypeError, call)

@@ -1144,8 +1144,8 @@ class TilePrimitiveDispatcher : public StmtExprMutator {
     }
     if (const auto* call = pred.as<CallNode>()) {
       if (IsBitwiseAndCall(call)) {
-        FlattenConjuncts(call->args[0], out);
-        FlattenConjuncts(call->args[1], out);
+        FlattenConjuncts(call->args[0].as_or_throw<PrimExpr>(), out);
+        FlattenConjuncts(call->args[1].as_or_throw<PrimExpr>(), out);
         return;
       }
     }
@@ -1155,14 +1155,15 @@ class TilePrimitiveDispatcher : public StmtExprMutator {
   int PushFilterPredicateCtx(const CallNode* call) {
     TVM_FFI_ICHECK_EQ(call->args.size(), 2)
         << "TIRxError: tirx.filter expects (var, cond); got " << call->args.size() << " args";
-    auto target = ResolveScopeIdTarget(call->args[0]);
-    if (target && ElectSyncFinder::Contains(call->args[1])) {
-      PrimExpr selector =
-          tirx::Call(call->args[0].ty(), tirx::builtin::selector(), {call->args[0], call->args[1]});
+    PrimExpr var = call->args[0].as_or_throw<PrimExpr>();
+    PrimExpr cond = call->args[1].as_or_throw<PrimExpr>();
+    auto target = ResolveScopeIdTarget(var);
+    if (target && ElectSyncFinder::Contains(cond)) {
+      PrimExpr selector = tirx::Call(var.ty(), tirx::builtin::selector(), {var, cond});
       int pushed = TryPushSelectorForTarget(*target, selector) ? 1 : 0;
-      return pushed + PushPredicateCtx(call->args[1]);
+      return pushed + PushPredicateCtx(cond);
     }
-    return PushPredicateCtx(call->args[1]);
+    return PushPredicateCtx(cond);
   }
 
   int PushConjunctivePredicateCtx(const PrimExpr& pred) {
@@ -1374,7 +1375,7 @@ class TilePrimitiveDispatcher : public StmtExprMutator {
   PrimExpr RewriteFilterCall(const CallNode* call) const {
     TVM_FFI_ICHECK_EQ(call->args.size(), 2)
         << "TIRxError: tirx.filter expects (var, cond); got " << call->args.size() << " args";
-    return AsBool(call->args[1]);
+    return AsBool(call->args[1].as_or_throw<PrimExpr>());
   }
 
   PrimExpr RewriteFilterCalls(const PrimExpr& pred) const {
@@ -1393,13 +1394,14 @@ class TilePrimitiveDispatcher : public StmtExprMutator {
       bool changed = false;
       ffi::Array<PrimExpr> args;
       args.reserve(call->args.size());
-      for (const auto& arg : call->args) {
-        PrimExpr new_arg = RewriteFilterCalls(arg);
+      for (const Expr& arg : call->args) {
+        PrimExpr prim_arg = arg.as_or_throw<PrimExpr>();
+        PrimExpr new_arg = RewriteFilterCalls(prim_arg);
         changed = changed || !new_arg.same_as(arg);
         args.push_back(new_arg);
       }
       if (changed) {
-        return tirx::Call(call->ty(), call->op, args, call->attrs, call->span);
+        return tirx::Call(GetPrimType(call), call->op, args, call->attrs, call->span);
       }
     }
     return pred;

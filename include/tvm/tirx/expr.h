@@ -51,8 +51,11 @@ using IntImmNode = tvm::IntImmNode;
 using FloatImmNode = tvm::FloatImmNode;
 
 /*! \brief ffi::String constants, only used in asserts. */
-class StringImmNode : public PrimExprNode {
+class StringImmNode : public ExprNode {
  public:
+  /*! \return the primitive type of this literal. */
+  PrimType ty() const { return GetPrimType(this); }
+
   /*! \brief The constant value content. */
   ffi::String value;
 
@@ -60,7 +63,7 @@ class StringImmNode : public PrimExprNode {
     namespace refl = tvm::ffi::reflection;
     refl::ObjectDef<StringImmNode>().def_ro("value", &StringImmNode::value);
   }
-  TVM_FFI_DECLARE_OBJECT_INFO_FINAL("tirx.StringImm", StringImmNode, PrimExprNode);
+  TVM_FFI_DECLARE_OBJECT_INFO_FINAL("tirx.StringImm", StringImmNode, ExprNode);
 };
 
 /*!
@@ -78,8 +81,11 @@ class StringImm : public PrimExpr {
  * \brief Cast value from one data type to another.
  * \note The lanes of value should keep fixed.
  */
-class CastNode : public PrimExprNode {
+class CastNode : public ExprNode {
  public:
+  /*! \return the primitive type of this expression. */
+  PrimType ty() const { return GetPrimType(this); }
+
   /*! \brief Original data type. */
   PrimExpr value;
 
@@ -87,7 +93,7 @@ class CastNode : public PrimExprNode {
     namespace refl = tvm::ffi::reflection;
     refl::ObjectDef<CastNode>().def_ro("value", &CastNode::value);
   }
-  TVM_FFI_DECLARE_OBJECT_INFO_FINAL("tirx.Cast", CastNode, PrimExprNode);
+  TVM_FFI_DECLARE_OBJECT_INFO_FINAL("tirx.Cast", CastNode, ExprNode);
 };
 
 /*!
@@ -106,8 +112,11 @@ class Cast : public PrimExpr {
  * \tparam T The type of the child class.
  */
 template <typename T>
-class BinaryOpNode : public PrimExprNode {
+class BinaryOpNode : public ExprNode {
  public:
+  /*! \return the primitive type of this expression. */
+  PrimType ty() const { return GetPrimType(this); }
+
   /*! \brief The left operand. */
   PrimExpr a;
   /*! \brief The right operand. */
@@ -120,7 +129,7 @@ class BinaryOpNode : public PrimExprNode {
 
   static const constexpr int _type_child_slots [[maybe_unused]] = 0;
   static const constexpr bool _type_final [[maybe_unused]] = true;
-  TVM_FFI_DECLARE_OBJECT_INFO_PREDEFINED_TYPE_KEY(T, PrimExprNode);
+  TVM_FFI_DECLARE_OBJECT_INFO_PREDEFINED_TYPE_KEY(T, ExprNode);
 };
 
 /*! \brief a + b */
@@ -288,8 +297,11 @@ class Max : public PrimExpr {
  * \tparam T The type of the child class.
  */
 template <typename T>
-class CmpOpNode : public PrimExprNode {
+class CmpOpNode : public ExprNode {
  public:
+  /*! \return the primitive type of this expression. */
+  PrimType ty() const { return GetPrimType(this); }
+
   /*! \brief The left operand. */
   PrimExpr a;
   /*! \brief The right operand. */
@@ -302,7 +314,7 @@ class CmpOpNode : public PrimExprNode {
 
   static const constexpr int _type_child_slots [[maybe_unused]] = 0;
   static const constexpr bool _type_final [[maybe_unused]] = true;
-  TVM_FFI_DECLARE_OBJECT_INFO_PREDEFINED_TYPE_KEY(T, PrimExprNode);
+  TVM_FFI_DECLARE_OBJECT_INFO_PREDEFINED_TYPE_KEY(T, ExprNode);
 };
 
 /*! \brief a == b */
@@ -408,8 +420,11 @@ class GE : public PrimExpr {
 };
 
 /*! \brief a && b */
-class AndNode : public PrimExprNode {
+class AndNode : public ExprNode {
  public:
+  /*! \return the primitive type of this expression. */
+  PrimType ty() const { return GetPrimType(this); }
+
   /*! \brief The left operand. */
   PrimExpr a;
   /*! \brief The right operand. */
@@ -419,7 +434,7 @@ class AndNode : public PrimExprNode {
     namespace refl = tvm::ffi::reflection;
     refl::ObjectDef<AndNode>().def_ro("a", &AndNode::a).def_ro("b", &AndNode::b);
   }
-  TVM_FFI_DECLARE_OBJECT_INFO_FINAL("tirx.And", AndNode, PrimExprNode);
+  TVM_FFI_DECLARE_OBJECT_INFO_FINAL("tirx.And", AndNode, ExprNode);
 };
 
 /*!
@@ -434,8 +449,11 @@ class And : public PrimExpr {
 };
 
 /*! \brief a || b */
-class OrNode : public PrimExprNode {
+class OrNode : public ExprNode {
  public:
+  /*! \return the primitive type of this expression. */
+  PrimType ty() const { return GetPrimType(this); }
+
   /*! \brief The left operand. */
   PrimExpr a;
   /*! \brief The right operand. */
@@ -445,7 +463,7 @@ class OrNode : public PrimExprNode {
     namespace refl = tvm::ffi::reflection;
     refl::ObjectDef<OrNode>().def_ro("a", &OrNode::a).def_ro("b", &OrNode::b);
   }
-  TVM_FFI_DECLARE_OBJECT_INFO_FINAL("tirx.Or", OrNode, PrimExprNode);
+  TVM_FFI_DECLARE_OBJECT_INFO_FINAL("tirx.Or", OrNode, ExprNode);
 };
 
 /*!
@@ -460,8 +478,11 @@ class Or : public PrimExpr {
 };
 
 /*! \brief !a */
-class NotNode : public PrimExprNode {
+class NotNode : public ExprNode {
  public:
+  /*! \return the primitive type of this expression. */
+  PrimType ty() const { return GetPrimType(this); }
+
   /*! \brief The input operand. */
   PrimExpr a;
 
@@ -469,7 +490,7 @@ class NotNode : public PrimExprNode {
     namespace refl = tvm::ffi::reflection;
     refl::ObjectDef<NotNode>().def_ro("a", &NotNode::a);
   }
-  TVM_FFI_DECLARE_OBJECT_INFO_FINAL("tirx.Not", NotNode, PrimExprNode);
+  TVM_FFI_DECLARE_OBJECT_INFO_FINAL("tirx.Not", NotNode, ExprNode);
 };
 
 /*!
@@ -490,8 +511,11 @@ class Not : public PrimExpr {
  *       Do not use it to guard against out of bound access,
  *       please use if_then_else instead.
  */
-class SelectNode : public PrimExprNode {
+class SelectNode : public ExprNode {
  public:
+  /*! \return the primitive type of this expression. */
+  PrimType ty() const { return GetPrimType(this); }
+
   /*! \brief The condition */
   PrimExpr condition;
   /*! \brief value to be returned when condition is true. */
@@ -506,7 +530,7 @@ class SelectNode : public PrimExprNode {
         .def_ro("true_value", &SelectNode::true_value)
         .def_ro("false_value", &SelectNode::false_value);
   }
-  TVM_FFI_DECLARE_OBJECT_INFO_FINAL("tirx.Select", SelectNode, PrimExprNode);
+  TVM_FFI_DECLARE_OBJECT_INFO_FINAL("tirx.Select", SelectNode, ExprNode);
 };
 
 /*!
@@ -531,8 +555,11 @@ class Select : public PrimExpr {
  * \endcode
  * \sa BufferStore
  */
-class BufferLoadNode : public PrimExprNode {
+class BufferLoadNode : public ExprNode {
  public:
+  /*! \return the primitive type of this expression. */
+  PrimType ty() const { return GetPrimType(this); }
+
   /*! \brief The buffer variable. */
   Buffer buffer;
   /*! \brief The indices location to be loaded. */
@@ -547,7 +574,7 @@ class BufferLoadNode : public PrimExprNode {
         .def_ro("indices", &BufferLoadNode::indices)
         .def_ro("predicate", &BufferLoadNode::predicate);
   }
-  TVM_FFI_DECLARE_OBJECT_INFO_FINAL("tirx.BufferLoad", BufferLoadNode, PrimExprNode);
+  TVM_FFI_DECLARE_OBJECT_INFO_FINAL("tirx.BufferLoad", BufferLoadNode, ExprNode);
 
  private:
   /*! \brief Set the dtype based on the buffer/indices
@@ -587,8 +614,11 @@ class BufferLoad : public PrimExpr {
  *
  * \sa ProducerLoad, DataProducerNode
  */
-class ProducerLoadNode : public PrimExprNode {
+class ProducerLoadNode : public ExprNode {
  public:
+  /*! \return the primitive type of this expression. */
+  PrimType ty() const { return GetPrimType(this); }
+
   /*! \brief The buffer producer. */
   DataProducer producer;
   /*! \brief The location arguments. */
@@ -600,7 +630,7 @@ class ProducerLoadNode : public PrimExprNode {
         .def_ro("producer", &ProducerLoadNode::producer)
         .def_ro("indices", &ProducerLoadNode::indices);
   }
-  TVM_FFI_DECLARE_OBJECT_INFO_FINAL("tirx.ProducerLoad", ProducerLoadNode, PrimExprNode);
+  TVM_FFI_DECLARE_OBJECT_INFO_FINAL("tirx.ProducerLoad", ProducerLoadNode, ExprNode);
 };
 
 /*!
@@ -625,8 +655,11 @@ class ProducerLoad : public PrimExpr {
  *  - ramp(0, 1, 3) = [0, 1, 2]
  *  - ramp(1, 2, 4) = [1, 3, 5, 7]
  */
-class RampNode : public PrimExprNode {
+class RampNode : public ExprNode {
  public:
+  /*! \return the primitive type of this expression. */
+  PrimType ty() const { return GetPrimType(this); }
+
   /*! \brief The base value. */
   PrimExpr base;
   /*! \brief The stride of each step. */
@@ -641,7 +674,7 @@ class RampNode : public PrimExprNode {
         .def_ro("stride", &RampNode::stride)
         .def_ro("lanes", &RampNode::lanes);
   }
-  TVM_FFI_DECLARE_OBJECT_INFO_FINAL("tirx.Ramp", RampNode, PrimExprNode);
+  TVM_FFI_DECLARE_OBJECT_INFO_FINAL("tirx.Ramp", RampNode, ExprNode);
 };
 
 /*!
@@ -656,8 +689,11 @@ class Ramp : public PrimExpr {
 };
 
 /*! \brief Create a vector where all the elements are value. */
-class BroadcastNode : public PrimExprNode {
+class BroadcastNode : public ExprNode {
  public:
+  /*! \return the primitive type of this expression. */
+  PrimType ty() const { return GetPrimType(this); }
+
   /*! \brief The base value. */
   PrimExpr value;
   /*! \brief The number of lanes. */
@@ -669,7 +705,7 @@ class BroadcastNode : public PrimExprNode {
         .def_ro("value", &BroadcastNode::value)
         .def_ro("lanes", &BroadcastNode::lanes);
   }
-  TVM_FFI_DECLARE_OBJECT_INFO_FINAL("tirx.Broadcast", BroadcastNode, PrimExprNode);
+  TVM_FFI_DECLARE_OBJECT_INFO_FINAL("tirx.Broadcast", BroadcastNode, ExprNode);
 };
 
 /*!
@@ -686,8 +722,11 @@ class Broadcast : public PrimExpr {
 /*!
  * \brief Let binding. Bind var to value then evaluate body.
  */
-class LetNode : public PrimExprNode {
+class LetNode : public ExprNode {
  public:
+  /*! \return the primitive type of this expression. */
+  PrimType ty() const { return GetPrimType(this); }
+
   /*! \brief The variable. */
   Var var;
   /*! \brief The value to be binded. */
@@ -703,7 +742,7 @@ class LetNode : public PrimExprNode {
         .def_ro("value", &LetNode::value)
         .def_ro("body", &LetNode::body);
   }
-  TVM_FFI_DECLARE_OBJECT_INFO_FINAL("tirx.Let", LetNode, PrimExprNode);
+  TVM_FFI_DECLARE_OBJECT_INFO_FINAL("tirx.Let", LetNode, ExprNode);
 };
 
 /*!
@@ -717,34 +756,7 @@ class Let : public PrimExpr {
   TVM_DEFINE_OBJECT_REF_COW_METHOD(LetNode);
 };
 
-/*!
- * \brief Call node.
- */
-class CallNode : public PrimExprNode {
- public:
-  /*!
-   * \brief The operator(function) being invoked
-   *
-   *  - It can be tvm::Op which corresponds to the primitive operators(intrinsics).
-   *  - It can also be another function in the IRModule (GlobalVar).
-   */
-  tvm::Expr op;
-
-  /*! \brief The arguments. */
-  ffi::Array<PrimExpr> args;
-
-  /*! \brief The additional attributes. */
-  Attrs attrs;
-
-  static void RegisterReflection() {
-    namespace refl = tvm::ffi::reflection;
-    refl::ObjectDef<CallNode>()
-        .def_ro("op", &CallNode::op)
-        .def_ro("args", &CallNode::args)
-        .def_ro("attrs", &CallNode::attrs);
-  }
-  TVM_FFI_DECLARE_OBJECT_INFO_FINAL("tirx.Call", CallNode, PrimExprNode);
-};
+using tvm::CallNode;
 
 /*!
  * \brief Managed reference to CallNode
@@ -764,8 +776,11 @@ class Call : public PrimExpr {
  *  vec = concat(vectors)
  *  result = (vec[indices[0]], vec[indices[1]] ...)
  */
-class ShuffleNode : public PrimExprNode {
+class ShuffleNode : public ExprNode {
  public:
+  /*! \return the primitive type of this expression. */
+  PrimType ty() const { return GetPrimType(this); }
+
   /*! \brief the input vectors. */
   ffi::Array<PrimExpr> vectors;
   /*! \brief The indices of each element. */
@@ -777,7 +792,7 @@ class ShuffleNode : public PrimExprNode {
         .def_ro("vectors", &ShuffleNode::vectors)
         .def_ro("indices", &ShuffleNode::indices);
   }
-  TVM_FFI_DECLARE_OBJECT_INFO_FINAL("tirx.Shuffle", ShuffleNode, PrimExprNode);
+  TVM_FFI_DECLARE_OBJECT_INFO_FINAL("tirx.Shuffle", ShuffleNode, ExprNode);
 };
 
 /*!
@@ -848,8 +863,11 @@ class CommReducer : public ffi::ObjectRef {
 };
 
 /*! \brief Reduction operator */
-class ReduceNode : public PrimExprNode {
+class ReduceNode : public ExprNode {
  public:
+  /*! \return the primitive type of this expression. */
+  PrimType ty() const { return GetPrimType(this); }
+
   /*! \brief The commutative combiner */
   CommReducer combiner;
   /*! \brief The source operand */
@@ -876,7 +894,7 @@ class ReduceNode : public PrimExprNode {
         .def_ro("condition", &ReduceNode::condition)
         .def_ro("value_index", &ReduceNode::value_index);
   }
-  TVM_FFI_DECLARE_OBJECT_INFO_FINAL("tirx.Reduce", ReduceNode, PrimExprNode);
+  TVM_FFI_DECLARE_OBJECT_INFO_FINAL("tirx.Reduce", ReduceNode, ExprNode);
 };
 
 /*!

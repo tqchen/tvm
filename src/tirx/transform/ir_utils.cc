@@ -163,8 +163,8 @@ class IRConvertSSA final : public StmtExprMutator {
 
       for (const auto& [key, old_value] : func->attrs->dict) {
         auto value = old_value;
-        if (auto* expr = value.as<PrimExprNode>()) {
-          value = VisitExpr(ffi::GetRef<PrimExpr>(expr));
+        if (auto expr = value.as<PrimExpr>()) {
+          value = VisitExpr(expr.value());
         } else if (auto* stmt = value.as<StmtNode>()) {
           value = VisitStmt(ffi::GetRef<Stmt>(stmt));
         }
@@ -776,7 +776,7 @@ ffi::Optional<arith::IntConstraints> ConditionalBoundsContext::TrySolveCondition
     } else if (e->IsInstance<CallNode>()) {
       Call op = e.as_or_throw<Call>();
       if (op->op.same_as(builtin::likely())) {
-        fvisit(op->args[0]);
+        fvisit(op->args[0].as_or_throw<PrimExpr>());
       }
     }
   };

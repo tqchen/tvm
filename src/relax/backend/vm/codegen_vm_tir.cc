@@ -303,7 +303,7 @@ class CodeGenVMTIR : public ExprFunctor<ffi::Optional<PrimExpr>(const Expr&)> {
     return ConstListGet(builder_->ConvertConstant(ffi::Shape(shape)).value());
   }
 
-  ffi::Optional<PrimExpr> VisitExpr_(const PrimExprNode* op) final {
+  ffi::Optional<PrimExpr> VisitExpr_(const ::tvm::ExprNode* op) final {
     return ffi::GetRef<PrimExpr>(op);
   }
 
@@ -416,8 +416,8 @@ class CodeGenVMTIR : public ExprFunctor<ffi::Optional<PrimExpr>(const Expr&)> {
       args.push_back(this->VisitExpr(call_node->args[i]).value());
     }
     int64_t vdevice_index = -1;
-    if (auto* prim_value_node = call_node->args[4].as<PrimExprNode>()) {
-      vdevice_index = ffi::GetRef<PrimExpr>(prim_value_node).as<IntImmNode>()->value;
+    if (auto prim_value = call_node->args[4].as<PrimExpr>()) {
+      vdevice_index = prim_value.value().as<IntImmNode>()->value;
     }
     auto vdevice = GetGlobalVDevice(ctx_mod_, vdevice_index);
 
