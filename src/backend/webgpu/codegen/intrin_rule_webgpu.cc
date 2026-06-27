@@ -58,8 +58,7 @@ static PrimExpr DispatchWebGPUShuffle(const PrimExpr& e) {
   PrimExpr lane = call->args[2].as_or_throw<PrimExpr>();
   PrimExpr lane_or_delta = Cast(PrimType::UInt(32, lane.ty().lanes()), lane);
   ffi::Array<PrimExpr> webgpu_args{call->args[1].as_or_throw<PrimExpr>(), lane_or_delta};
-  return tvm::Call(e.ty(), T()(e.ty(), call->op.as_or_throw<Op>()), webgpu_args)
-      .as_or_throw<PrimExpr>();
+  return Call(e.ty(), T()(e.ty(), call->op.as_or_throw<Op>()), webgpu_args).as_or_throw<PrimExpr>();
 }
 
 void RegisterWebGPUIntrinRules() {

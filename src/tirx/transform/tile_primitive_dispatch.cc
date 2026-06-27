@@ -1160,7 +1160,7 @@ class TilePrimitiveDispatcher : public StmtExprMutator {
     auto target = ResolveScopeIdTarget(var);
     if (target && ElectSyncFinder::Contains(cond)) {
       PrimExpr selector =
-          tvm::Call(var.ty(), tirx::builtin::selector(), {var, cond}).as_or_throw<PrimExpr>();
+          Call(var.ty(), tirx::builtin::selector(), {var, cond}).as_or_throw<PrimExpr>();
       int pushed = TryPushSelectorForTarget(*target, selector) ? 1 : 0;
       return pushed + PushPredicateCtx(cond);
     }
@@ -1272,7 +1272,7 @@ class TilePrimitiveDispatcher : public StmtExprMutator {
         if (!lane) return -1;
         ScopeIdTarget target{ScopeBinding::kWarpThread, 0, 1};
         PrimExpr selector =
-            tvm::Call(lane->ty(), tirx::builtin::selector(), {*lane, cond}).as_or_throw<PrimExpr>();
+            Call(lane->ty(), tirx::builtin::selector(), {*lane, cond}).as_or_throw<PrimExpr>();
         return TryPushSelectorForTarget(target, selector) ? 1 : 0;
       }
       return -1;
@@ -1339,9 +1339,8 @@ class TilePrimitiveDispatcher : public StmtExprMutator {
     auto lane = FindLaneScopeVar();
     if (!lane) return false;
     ScopeIdTarget target{ScopeBinding::kWarpThread, 0, 1};
-    PrimExpr selector =
-        tvm::Call(lane->ty(), tirx::builtin::selector(), {*lane, atom.elect_sync_call})
-            .as_or_throw<PrimExpr>();
+    PrimExpr selector = Call(lane->ty(), tirx::builtin::selector(), {*lane, atom.elect_sync_call})
+                            .as_or_throw<PrimExpr>();
     return TryPushSelectorForTarget(target, selector);
   }
 
@@ -1404,7 +1403,7 @@ class TilePrimitiveDispatcher : public StmtExprMutator {
         args.push_back(new_arg);
       }
       if (changed) {
-        return tvm::Call(call->ty.as_or_throw<PrimType>(), call->op, args, call->attrs, call->span)
+        return Call(call->ty.as_or_throw<PrimType>(), call->op, args, call->attrs, call->span)
             .as_or_throw<PrimExpr>();
       }
     }

@@ -44,7 +44,7 @@ class SplitExpr;
  * \brief Base class of all temporary expression introduced
  *        for canonicalization.
  */
-class CanonicalExprNode : public PrimExprNode {
+class CanonicalExprNode : public PrimOnlyExprBase {
  public:
   virtual ~CanonicalExprNode() {}
   /*!
@@ -55,7 +55,7 @@ class CanonicalExprNode : public PrimExprNode {
   virtual PrimExpr Normalize() const = 0;
 
   static constexpr const uint32_t _type_child_slots = 2;
-  TVM_FFI_DECLARE_OBJECT_INFO("arith.CanonicalExpr", CanonicalExprNode, PrimExprNode);
+  TVM_FFI_DECLARE_OBJECT_INFO("arith.CanonicalExpr", CanonicalExprNode, PrimOnlyExprBase);
 };
 
 inline PrimExpr ModImpl(PrimExpr a, PrimExpr b, DivMode mode) {

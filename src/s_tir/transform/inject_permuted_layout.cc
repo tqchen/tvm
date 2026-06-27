@@ -224,7 +224,7 @@ class PermutedLayoutInjector : private IRMutatorWithAnalyzer {
     // smem_offset
     TVM_FFI_ICHECK(access_ptr->IsInstance<CallNode>())
         << "Invalid access ptr for permuted layout: " << access_ptr;
-    auto access_ptr_call = access_ptr.as_or_throw<tvm::Call>();
+    auto access_ptr_call = access_ptr.as_or_throw<Call>();
     TVM_FFI_ICHECK(access_ptr_call->op.same_as(builtin::tvm_access_ptr()))
         << "Invalid access ptr for permuted layout: " << access_ptr;
 
@@ -250,7 +250,7 @@ class PermutedLayoutInjector : private IRMutatorWithAnalyzer {
 
   PrimExpr VisitExpr_(const CallNode* op) final {
     // Rewrite from/to shared or shared.dyn to/from local
-    auto call = IRMutatorWithAnalyzer::VisitExpr_(op).as_or_throw<tvm::Call>();
+    auto call = IRMutatorWithAnalyzer::VisitExpr_(op).as_or_throw<Call>();
 
     if (!permute_) {
       return call.as_or_throw<PrimExpr>();

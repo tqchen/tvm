@@ -82,7 +82,7 @@ inline PrimExpr DispatchPureExtern(const PrimExpr& e) {
     for (const Expr& arg : call->args) {
       new_args.push_back(arg.as_or_throw<PrimExpr>());
     }
-    return tvm::Call(e.ty(), builtin::call_pure_extern(), new_args).as_or_throw<PrimExpr>();
+    return Call(e.ty(), builtin::call_pure_extern(), new_args).as_or_throw<PrimExpr>();
   } else {
     return e;
   }

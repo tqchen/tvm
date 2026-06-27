@@ -274,7 +274,7 @@ class ComputeLegalizer : public StmtExprMutator {
           .as_or_throw<PrimExpr>();
     }
     if (args.same_as(op->args)) {
-      return ffi::GetRef<PrimExpr>(op);
+      return ffi::GetRef<Call>(op).as_or_throw<PrimExpr>();
     } else {
       return Call(op->ty.as_or_throw<PrimType>(), op->op, args, op->attrs, op->span)
           .as_or_throw<PrimExpr>();
@@ -692,7 +692,7 @@ class StorageLegalizer : public StmtExprMutator {
         return reinterpret(GetStorageUIntDType(op_dtype), value);
       }
       if (op->args[0].same_as(value)) {
-        return ffi::GetRef<PrimExpr>(op);
+        return ffi::GetRef<Call>(op).as_or_throw<PrimExpr>();
       } else {
         return reinterpret(op_dtype, value);
       }

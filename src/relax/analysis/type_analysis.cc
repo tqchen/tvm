@@ -238,7 +238,7 @@ class WellDefinedEraser : public TypeMutator, public ExprMutatorBase, public tir
           << "Can only provide i64 expressions in shape";
       return value;
     } else {
-      return ffi::GetRef<PrimExpr>(var);
+      return ffi::GetRef<tirx::Var>(var);
     }
   }
 

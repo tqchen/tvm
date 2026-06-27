@@ -601,8 +601,10 @@ class IntervalSetEvaluator : public ExprFunctor<IntervalSet(const PrimExpr&)> {
   }
 
   IntervalSet VisitExpr_(const CallNode* op) final {
-    if (op->op.same_as(tirx::builtin::vscale()))
-      return IntervalSet(ffi::GetRef<PrimExpr>(op), ffi::GetRef<PrimExpr>(op));
+    if (op->op.same_as(tirx::builtin::vscale())) {
+      PrimExpr call = ffi::GetRef<Call>(op).as_or_throw<PrimExpr>();
+      return IntervalSet(call, call);
+    }
     return IntervalSet::Everything();
   }
 

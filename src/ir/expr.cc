@@ -36,9 +36,14 @@
 
 namespace tvm {
 
+static_assert(ffi::type_subsumes_v<PrimExpr, IntImm>);
+static_assert(ffi::object_ref_contains_v<PrimExpr, IntImmNode>);
+static_assert(ffi::object_ref_contains_v<IntImm, IntImmNode>);
+static_assert(!ffi::object_ref_contains_v<PrimExpr, CallNode>);
+static_assert(!ffi::object_ref_contains_v<PrimExpr, tirx::VarNode>);
+
 TVM_FFI_STATIC_INIT_BLOCK() {
   ExprNode::RegisterReflection();
-  PrimExprNode::RegisterReflection();
   BaseFuncNode::RegisterReflection();
   GlobalVarNode::RegisterReflection();
   CallNode::RegisterReflection();

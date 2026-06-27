@@ -78,16 +78,15 @@ class AsyncDMALowerer : public arith::IRMutatorWithAnalyzer {
     auto dst = BufferLoad(mem_copy->dest->buffer, {dst_min});
     PrimExpr dst_nbytes = dst_extent * static_cast<int>(src.ty().StorageBytes());
     return Evaluate(
-        tvm::Call(PrimType::Int(32), builtin::dma_copy(),
-                  ffi::Array<PrimExpr>{PrimExpr(async_queue_id_.value()),
-                                       tvm::Call(PrimType::Handle(), builtin::address_of(),
-                                                 ffi::Array<PrimExpr>{dst}, Span())
-                                           .as_or_throw<PrimExpr>(),
-                                       tvm::Call(PrimType::Handle(), builtin::address_of(),
-                                                 ffi::Array<PrimExpr>{src}, Span())
-                                           .as_or_throw<PrimExpr>(),
-                                       dst_nbytes, PrimExpr(dma_bypass_cache_)},
-                  Span())
+        Call(PrimType::Int(32), builtin::dma_copy(),
+             ffi::Array<PrimExpr>{
+                 PrimExpr(async_queue_id_.value()),
+                 Call(PrimType::Handle(), builtin::address_of(), ffi::Array<PrimExpr>{dst}, Span())
+                     .as_or_throw<PrimExpr>(),
+                 Call(PrimType::Handle(), builtin::address_of(), ffi::Array<PrimExpr>{src}, Span())
+                     .as_or_throw<PrimExpr>(),
+                 dst_nbytes, PrimExpr(dma_bypass_cache_)},
+             Span())
             .as_or_throw<PrimExpr>());
   }
 
@@ -127,7 +126,7 @@ class AsyncDMALowerer : public arith::IRMutatorWithAnalyzer {
         return previsit;
       }
       auto call_dma_wait = Evaluate(
-          tvm::Call(PrimType::Int(32), builtin::dma_wait(), {PrimExpr(queue_id), async_wait->value})
+          Call(PrimType::Int(32), builtin::dma_wait(), {PrimExpr(queue_id), async_wait->value})
               .as_or_throw<PrimExpr>());
 
       // concatenate the call with the body and return
@@ -155,13 +154,12 @@ class AsyncDMALowerer : public arith::IRMutatorWithAnalyzer {
       async_queue_id_ = queue_id_node->value;
       auto result = arith::IRMutatorWithAnalyzer::VisitStmt_(op);
       if (dmas_in_group_ > 1) {
-        auto call_dma_start_group =
-            Evaluate(tvm::Call(PrimType::Int(32), builtin::dma_start_group(),
-                               {PrimExpr(async_queue_id_.value())})
-                         .as_or_throw<PrimExpr>());
-        auto call_dma_end_group = Evaluate(tvm::Call(PrimType::Int(32), builtin::dma_end_group(),
-                                                     {PrimExpr(async_queue_id_.value())})
-                                               .as_or_throw<PrimExpr>());
+        auto call_dma_start_group = Evaluate(
+            Call(PrimType::Int(32), builtin::dma_start_group(), {PrimExpr(async_queue_id_.value())})
+                .as_or_throw<PrimExpr>());
+        auto call_dma_end_group = Evaluate(
+            Call(PrimType::Int(32), builtin::dma_end_group(), {PrimExpr(async_queue_id_.value())})
+                .as_or_throw<PrimExpr>());
         result = SeqStmt({call_dma_start_group, result, call_dma_end_group});
       }
 

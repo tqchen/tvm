@@ -112,7 +112,7 @@ void ExprVisitor::VisitExpr_(const ShuffleNode* op) {
 
 void ExprVisitor::VisitExpr_(const BroadcastNode* op) { this->VisitExpr(op->value); }
 
-PrimExpr ExprMutator::VisitExpr_(const VarNode* op) { return ffi::GetRef<PrimExpr>(op); }
+PrimExpr ExprMutator::VisitExpr_(const VarNode* op) { return ffi::GetRef<Var>(op); }
 
 PrimExpr ExprMutator::VisitExpr_(const SizeVarNode* op) {
   return this->VisitExpr_(static_cast<const VarNode*>(op));
@@ -156,7 +156,7 @@ PrimExpr ExprMutator::VisitExpr_(const CallNode* op) {
   }
 
   if (args.same_as(op->args)) {
-    return ffi::GetRef<PrimExpr>(op);
+    return ffi::GetRef<Call>(op).as_or_throw<PrimExpr>();
   } else {
     return Call(op->ExprNode::ty.as_or_throw<PrimType>(), op->op, args, op->attrs, op->span)
         .as_or_throw<PrimExpr>();

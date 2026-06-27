@@ -434,7 +434,7 @@ class ConstIntBoundAnalyzer::Impl
     if (it != var_map_.end()) {
       return it->second;
     } else {
-      return Everything(op->ty());
+      return Everything(op->ty.as_or_throw<PrimType>());
     }
   }
 

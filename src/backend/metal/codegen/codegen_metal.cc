@@ -382,7 +382,7 @@ void CodeGenMetal::VisitExpr_(const BroadcastNode* op, std::ostream& os) {  // N
 void CodeGenMetal::VisitExpr_(const CallNode* op, std::ostream& os) {  // NOLINT(*)
   TVM_FFI_ICHECK(!op->op.as<GlobalVarNode>())
       << "CodegenMetal does not support inter-function calls, "
-      << "but expression " << ffi::GetRef<tvm::Call>(op) << " calls PrimFunc " << op->op;
+      << "but expression " << ffi::GetRef<Call>(op) << " calls PrimFunc " << op->op;
   auto f_check_simdgroup_shape = [](PrimExpr col, PrimExpr row) {
     TVM_FFI_ICHECK(col->IsInstance<IntImmNode>() && row->IsInstance<IntImmNode>())
         << "Only constant shape is supported for simdgroup matrix, but got " << col << "x" << row;

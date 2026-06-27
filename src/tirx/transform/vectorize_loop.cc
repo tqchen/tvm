@@ -552,12 +552,12 @@ class Vectorizer : public StmtMutator, public ExprFunctor<PrimExpr(const PrimExp
     PrimExpr cond = this->VisitExpr(op->args[0].as_or_throw<PrimExpr>());
     if (cond.ty().IsScalableVector() || cond.ty().IsFixedLengthVector()) {
       need_scalarize_ = true;
-      return ffi::GetRef<PrimExpr>(op);
+      return ffi::GetRef<Call>(op).as_or_throw<PrimExpr>();
     }
     PrimExpr t = this->VisitExpr(op->args[1].as_or_throw<PrimExpr>());
     PrimExpr f = this->VisitExpr(op->args[2].as_or_throw<PrimExpr>());
     if (cond.same_as(op->args[0]) && t.same_as(op->args[1]) && f.same_as(op->args[2])) {
-      return ffi::GetRef<PrimExpr>(op);
+      return ffi::GetRef<Call>(op).as_or_throw<PrimExpr>();
     } else {
       int t_lanes = GetLanesOrVScaleFactor(t.ty());
       int f_lanes = GetLanesOrVScaleFactor(f.ty());
@@ -582,7 +582,7 @@ class Vectorizer : public StmtMutator, public ExprFunctor<PrimExpr(const PrimExp
     PrimExpr input = op->args[0].as_or_throw<PrimExpr>();
     PrimExpr value = this->VisitExpr(input);
     if (value.same_as(op->args[0])) {
-      return ffi::GetRef<PrimExpr>(op);
+      return ffi::GetRef<Call>(op).as_or_throw<PrimExpr>();
     } else {
       int lanes = GetLanesOrVScaleFactor(value.ty());
       PrimType op_ty = op->ty.as_or_throw<PrimType>();
@@ -654,12 +654,12 @@ class Vectorizer : public StmtMutator, public ExprFunctor<PrimExpr(const PrimExp
         auto new_arg = this->VisitExpr(arg.as_or_throw<PrimExpr>());
         if (new_arg.ty().IsScalableVector() || new_arg.ty().IsFixedLengthVector()) {
           need_scalarize_ = true;
-          return ffi::GetRef<PrimExpr>(op);
+          return ffi::GetRef<Call>(op).as_or_throw<PrimExpr>();
         }
         new_args.push_back(new_arg);
       }
       if (op->args.same_as(new_args)) {
-        return ffi::GetRef<PrimExpr>(op);
+        return ffi::GetRef<Call>(op).as_or_throw<PrimExpr>();
       } else {
         return Call(ret_ty, op->op, new_args, op->attrs, op->span).as_or_throw<PrimExpr>();
       }
@@ -686,7 +686,7 @@ class Vectorizer : public StmtMutator, public ExprFunctor<PrimExpr(const PrimExp
       }
       // normal code path.
       if (op->args.same_as(new_args)) {
-        return ffi::GetRef<PrimExpr>(op);
+        return ffi::GetRef<Call>(op).as_or_throw<PrimExpr>();
       } else {
         return Call(ret_ty.WithLanes(lane), op->op, new_args, op->attrs, op->span)
             .as_or_throw<PrimExpr>();

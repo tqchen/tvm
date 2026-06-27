@@ -104,7 +104,7 @@ class PipelineOpaqueAccessRewriter {
         pipeline_loop_(pipeline_loop),
         fragment_info_(fragment_info) {}
 
-  PrimExpr Rewrite(const tvm::Call& call) {
+  PrimExpr Rewrite(const Call& call) {
     // Intrinsic calls should be handled explicitly here as they are opaque accesses to
     // buffer.
     static const auto& access_ptr = builtin::tvm_access_ptr();
@@ -121,8 +121,7 @@ class PipelineOpaqueAccessRewriter {
         const Buffer& new_buffer = (*it).second;
         new_args.Set(
             4, RewriteWmmaFragmentIndex(buffer, new_buffer, call->args[4].as_or_throw<PrimExpr>()));
-        return tvm::Call(call->ty.as_or_throw<PrimType>(), call->op, new_args, call->attrs,
-                         call->span)
+        return Call(call->ty.as_or_throw<PrimType>(), call->op, new_args, call->attrs, call->span)
             .as_or_throw<PrimExpr>();
       }
     } else if (call->op.same_as(mma_sync)) {
@@ -137,8 +136,7 @@ class PipelineOpaqueAccessRewriter {
           new_args.Set(i * 2 + 1, new_index);
         }
       }
-      return tvm::Call(call->ty.as_or_throw<PrimType>(), call->op, new_args, call->attrs,
-                       call->span)
+      return Call(call->ty.as_or_throw<PrimType>(), call->op, new_args, call->attrs, call->span)
           .as_or_throw<PrimExpr>();
     } else if (call->op.same_as(access_ptr)) {
       return RewriteBufferAccess(call, {1});
@@ -172,7 +170,7 @@ class PipelineOpaqueAccessRewriter {
     return new_buffer_offset;
   }
 
-  PrimExpr RewriteBufferAccess(const tvm::Call& call, const std::vector<int> arg_indices) {
+  PrimExpr RewriteBufferAccess(const Call& call, const std::vector<int> arg_indices) {
     auto product = [](const ffi::Array<PrimExpr>& input) {
       return foldl([](PrimExpr a, PrimExpr b, Span span) { return mul(a, b, span); },
                    IntImm::Int32(1), input);
@@ -202,7 +200,7 @@ class PipelineOpaqueAccessRewriter {
         new_args.Set(i + 1, new_index);
       }
     }
-    return tvm::Call(call->ty.as_or_throw<PrimType>(), call->op, new_args, call->attrs, call->span)
+    return Call(call->ty.as_or_throw<PrimType>(), call->op, new_args, call->attrs, call->span)
         .as_or_throw<PrimExpr>();
   }
 
@@ -309,7 +307,7 @@ class PipelineBodyRewriter : public StmtExprMutator {
   }
 
   PrimExpr VisitExpr_(const CallNode* op) final {
-    tvm::Call call = StmtExprMutator::VisitExpr_(op).as_or_throw<tvm::Call>();
+    Call call = StmtExprMutator::VisitExpr_(op).as_or_throw<Call>();
     return opaque_access_rewriter_.Rewrite(call);
   }
 

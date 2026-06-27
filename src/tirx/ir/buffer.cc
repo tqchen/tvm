@@ -578,7 +578,7 @@ PrimExpr Buffer::access_ptr(int access_mask, PrimType ptr_type, int content_lane
   }
   ffi::Array<PrimExpr> acc_args{e_dtype, self->data, elem_offset, extent,
                                 IntImm::Int32(access_mask)};
-  return tvm::Call(ptr_type, tirx::builtin::tvm_access_ptr(), acc_args).as_or_throw<PrimExpr>();
+  return Call(ptr_type, tirx::builtin::tvm_access_ptr(), acc_args).as_or_throw<PrimExpr>();
 }
 
 Buffer::Buffer(Var data, PrimType dtype, ffi::Array<PrimExpr> shape, ffi::Array<PrimExpr> strides,
@@ -693,7 +693,7 @@ Buffer Buffer::with_data(Var data) const {
 }
 
 PrimExpr Buffer::OffsetOf_p(const Array<PrimExpr>& indices) const {
-  return tvm::Call(PrimType::Int(32), tirx::builtin::buffer_offset(), {BufferLoad(*this, indices)})
+  return Call(PrimType::Int(32), tirx::builtin::buffer_offset(), {BufferLoad(*this, indices)})
       .as_or_throw<PrimExpr>();
 }
 

@@ -342,11 +342,13 @@ bool TensorizeComparator::VisitExpr_(const VarNode* op, const PrimExpr& other) {
   const auto* rhs = other.as<VarNode>();
   auto lhs = ffi::GetRef<Var>(op);
   if (lhs.same_as(other)) return true;
-  if (op->ty().code() != rhs->ty().code()) {
+  PrimType lhs_ty = op->ty.as_or_throw<PrimType>();
+  PrimType rhs_ty = rhs->ty.as_or_throw<PrimType>();
+  if (lhs_ty.code() != rhs_ty.code()) {
     if (assert_mode_) {
       std::ostringstream os;
-      os << "VarNode data type codes do not match: op->dtype.code()=" << op->ty().code()
-         << " vs rhs->dtype.code()=" << rhs->ty().code();
+      os << "VarNode data type codes do not match: op->dtype.code()=" << lhs_ty.code()
+         << " vs rhs->dtype.code()=" << rhs_ty.code();
       EmitError(os.str());
     }
     return false;

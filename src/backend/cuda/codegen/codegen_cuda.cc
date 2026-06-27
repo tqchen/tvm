@@ -955,7 +955,7 @@ void CodeGenCUDA::VisitExpr_(const CallNode* op, std::ostream& os) {
     if (codegen.has_value()) {
       // codegen is registered, it should return a Call to cuda_func_call
       auto func_call = codegen.value()(op->args);
-      auto res = func_call.cast<ffi::Tuple<tvm::Call, ffi::Array<ffi::String>>>();
+      auto res = func_call.cast<ffi::Tuple<Call, ffi::Array<ffi::String>>>();
       print_cuda_func_call(res.get<0>().get(), os);
       for (const auto& tag : res.get<1>()) {
         codegen_tags_.insert(tag.operator std::string());
@@ -1376,30 +1376,29 @@ void CodeGenCUDA::VisitExpr_(const CallNode* op, std::ostream& os) {
       if (IsFloat4(tgt_ty)) {
         // We view the source as an uint16, and then extract bits of two fp4 numbers,
         // and finally reinterpret the result as fp4x2.
-        value = tvm::Call(PrimType::UInt(16), tirx::builtin::reinterpret(), {value})
-                    .as_or_throw<PrimExpr>();
+        value =
+            Call(PrimType::UInt(16), tirx::builtin::reinterpret(), {value}).as_or_throw<PrimExpr>();
         tirx::Var temp_var("temp_var", PrimType::UInt(16));
         value = tirx::Let(temp_var, value,
                           tirx::Cast(PrimType::UInt(8),
                                      (temp_var & IntImm(PrimType::UInt(16), 0xF)) |
                                          ((temp_var >> 4) & IntImm(PrimType::UInt(16), 0xF0))));
       } else {
-        value = tirx::Cast(PrimType::UInt(16),
-                           tvm::Call(PrimType::UInt(8), tirx::builtin::reinterpret(), {value})
-                               .as_or_throw<PrimExpr>());
+        value = tirx::Cast(
+            PrimType::UInt(16),
+            Call(PrimType::UInt(8), tirx::builtin::reinterpret(), {value}).as_or_throw<PrimExpr>());
         tirx::Var temp_var("temp_var", PrimType::UInt(16));
         value = tirx::Let(temp_var, value,
                           (temp_var & IntImm(PrimType::UInt(16), 0xF)) |
                               ((temp_var & IntImm(PrimType::UInt(16), 0xF0)) << 4));
       }
-      os << PrintExpr(
-          tvm::Call(tgt_ty, tirx::builtin::reinterpret(), {value}).as_or_throw<PrimExpr>());
+      os << PrintExpr(Call(tgt_ty, tirx::builtin::reinterpret(), {value}).as_or_throw<PrimExpr>());
     } else if (lanes == 4) {
       if (IsFloat4(tgt_ty)) {
         // We view the source as an uint32, and then extract bits of four fp4 numbers,
         // and finally reinterpret the result as fp4x4.
-        value = tvm::Call(PrimType::UInt(32), tirx::builtin::reinterpret(), {value})
-                    .as_or_throw<PrimExpr>();
+        value =
+            Call(PrimType::UInt(32), tirx::builtin::reinterpret(), {value}).as_or_throw<PrimExpr>();
         tirx::Var temp_var("temp_var", PrimType::UInt(32));
         value = tirx::Let(temp_var, value,
                           tirx::Cast(PrimType::UInt(16),
@@ -1409,7 +1408,7 @@ void CodeGenCUDA::VisitExpr_(const CallNode* op, std::ostream& os) {
                                          ((temp_var >> 12) & IntImm(PrimType::UInt(32), 0xF000))));
       } else {
         value = tirx::Cast(PrimType::UInt(32),
-                           tvm::Call(PrimType::UInt(16), tirx::builtin::reinterpret(), {value})
+                           Call(PrimType::UInt(16), tirx::builtin::reinterpret(), {value})
                                .as_or_throw<PrimExpr>());
         tirx::Var temp_var("temp_var", PrimType::UInt(32));
         value = tirx::Let(temp_var, value,
@@ -1418,8 +1417,7 @@ void CodeGenCUDA::VisitExpr_(const CallNode* op, std::ostream& os) {
                               ((temp_var & IntImm(PrimType::UInt(32), 0xF00)) << 8) |
                               ((temp_var & IntImm(PrimType::UInt(32), 0xF000)) << 12));
       }
-      os << PrintExpr(
-          tvm::Call(tgt_ty, tirx::builtin::reinterpret(), {value}).as_or_throw<PrimExpr>());
+      os << PrintExpr(Call(tgt_ty, tirx::builtin::reinterpret(), {value}).as_or_throw<PrimExpr>());
     } else {
       TVM_FFI_THROW(InternalError)
           << "Invalid number of lanes for float4_e2m1fn reinterpret: " << lanes;
@@ -1592,7 +1590,7 @@ void CodeGenCUDA::VisitStmt_(const AttrStmtNode* op) {
     this->VisitStmt(op->body);
     static const Op& ptx_cp_async_commit_group_op = Op::Get("tirx.ptx.cp_async_commit_group");
     auto commit_group =
-        tvm::Call(PrimType::Void(), ptx_cp_async_commit_group_op, {}).as_or_throw<PrimExpr>();
+        Call(PrimType::Void(), ptx_cp_async_commit_group_op, {}).as_or_throw<PrimExpr>();
     this->PrintIndent();
     this->VisitExpr(commit_group, this->stream);
     this->stream << ";\n";
@@ -1605,7 +1603,7 @@ void CodeGenCUDA::VisitStmt_(const AttrStmtNode* op) {
     auto wait_cnt = wait_attrs.second;
     static const Op& ptx_cp_async_wait_group_op = Op::Get("tirx.ptx.cp_async_wait_group");
     auto wait_group =
-        tvm::Call(PrimType::Void(), ptx_cp_async_wait_group_op, {wait_cnt}).as_or_throw<PrimExpr>();
+        Call(PrimType::Void(), ptx_cp_async_wait_group_op, {wait_cnt}).as_or_throw<PrimExpr>();
     this->PrintIndent();
     this->VisitExpr(wait_group, this->stream);
     this->stream << ";\n";

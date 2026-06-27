@@ -2380,8 +2380,8 @@ PrimExpr RewriteSimplifier::Impl::VisitExpr_(const CallNode* op) {
       // Only check constant cases to avoid recursion
       if (is_const_number(inner_else_expr) && is_const_number(else_expr) &&
           analyzer_->CanProve(inner_else_expr == else_expr)) {
-        return tvm::Call(ret_ty, op->op, {cond && inner_cond, inner_then_expr, else_expr},
-                         op->attrs, op->span)
+        return Call(ret_ty, op->op, {cond && inner_cond, inner_then_expr, else_expr}, op->attrs,
+                    op->span)
             .as_or_throw<PrimExpr>();
       }
     }
@@ -2392,7 +2392,7 @@ PrimExpr RewriteSimplifier::Impl::VisitExpr_(const CallNode* op) {
 
 PrimExpr RewriteSimplifier::Impl::VisitExpr_(const VarNode* op) {
   Var var = ffi::GetRef<Var>(op);
-  PrimType op_ty = op->ty();
+  PrimType op_ty = op->ty.as_or_throw<PrimType>();
   if (op_ty.MatchesElementType(DLDataTypeCode::kDLBool, 8) && !op_ty.IsScalableVector() &&
       !op_ty.IsFixedLengthVector()) {
     if (auto match = TryMatchLiteralConstraint(var)) {
@@ -2404,7 +2404,7 @@ PrimExpr RewriteSimplifier::Impl::VisitExpr_(const VarNode* op) {
   if (it != var_map_.end()) {
     return it->second;
   }
-  return ffi::GetRef<PrimExpr>(op);
+  return ffi::GetRef<Var>(op);
 }
 
 PrimExpr RewriteSimplifier::Impl::VisitExpr_(const CastNode* op) {

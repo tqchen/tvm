@@ -492,7 +492,7 @@ class StoragePlanRewriter : public StmtExprMutator {
       }
       return it->second->alloc_var;
     } else {
-      return ffi::GetRef<PrimExpr>(op);
+      return ffi::GetRef<Var>(op);
     }
   }
   PrimExpr VisitExpr_(const CallNode* op) final {

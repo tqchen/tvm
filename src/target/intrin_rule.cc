@@ -140,8 +140,7 @@ TVM_REGISTER_OP("tirx.tvm_access_ptr")
       Buffer dummy_buf(buffer_var, dtype.WithLanes(1), {offset + 1}, {}, 0, buffer_var->name_hint,
                        0, 0, kDefault);
       BufferLoad buf_load(dummy_buf, {offset});
-      return tvm::Call(PrimType::Handle(), builtin::address_of(), {buf_load})
-          .as_or_throw<PrimExpr>();
+      return Call(PrimType::Handle(), builtin::address_of(), {buf_load}).as_or_throw<PrimExpr>();
     });
 
 PrimExpr DispatchFastErf(const PrimExpr& e) {

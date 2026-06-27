@@ -288,7 +288,7 @@ class CUDAGraphRewritePlanner : public ExprVisitor {
       if (region->shape_expr_inputs_.size()) {
         ffi::Array<PrimExpr> tir_vars;
         for (const auto* var : region->shape_expr_inputs_) {
-          tir_vars.push_back(ffi::GetRef<PrimExpr>(var));
+          tir_vars.push_back(ffi::GetRef<tirx::Var>(var));
         }
         plan->propogated_tir_vars = ShapeExpr(tir_vars);
       }

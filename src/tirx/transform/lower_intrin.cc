@@ -85,7 +85,7 @@ class IntrinInjecter : public tvm::arith::IRMutatorWithAnalyzer {
       for (const auto& f_attr_map : attr_maps_) {
         FLowerGeneral f = f_attr_map.get(ffi::GetRef<Op>(ptr_op), nullptr);
         if (f != nullptr) {
-          PrimExpr e = ffi::GetRef<PrimExpr>(op);
+          PrimExpr e = ffi::GetRef<Call>(op).as_or_throw<PrimExpr>();
           PrimExpr r = f(e);
           TVM_FFI_ICHECK(r.defined()) << "intrinsic rule must always return valid Expr";
           if (!r.same_as(e)) {

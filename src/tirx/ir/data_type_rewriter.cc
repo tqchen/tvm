@@ -660,7 +660,7 @@ PrimExpr IndexDataTypeNormalizer::VisitExpr_(const IntImmNode* op) {
 }
 
 PrimExpr IndexDataTypeNormalizer::VisitExpr_(const VarNode* op) {
-  PrimType dtype = op->ty();
+  PrimType dtype = op->ty.as_or_throw<PrimType>();
   if (is_enabled_ && CanRewriteDType(dtype) && dtype->dtype != target_data_type_->dtype &&
       !var_remap_.count(op)) {
     var_remap_[op] = ffi::GetRef<Var>(op).copy_with_dtype(target_data_type_);

@@ -53,8 +53,7 @@ static PrimExpr DispatchMetalShuffle(const PrimExpr& e) {
   TVM_FFI_ICHECK_EQ(call->args.size(), 5);  // mask, value, warp_id, width, warp_size
   ffi::Array<PrimExpr> metal_args{call->args[1].as_or_throw<PrimExpr>(),
                                   call->args[2].as_or_throw<PrimExpr>()};
-  return tvm::Call(e.ty(), T()(e.ty(), call->op.as_or_throw<Op>()), metal_args)
-      .as_or_throw<PrimExpr>();
+  return Call(e.ty(), T()(e.ty(), call->op.as_or_throw<Op>()), metal_args).as_or_throw<PrimExpr>();
 }
 
 void RegisterMetalIntrinRules() {
@@ -83,7 +82,7 @@ TVM_REGISTER_OP("tirx.round")
       for (const Expr& arg : call->args) {
         new_args.push_back(arg.as_or_throw<PrimExpr>());
       }
-      return tvm::Call(e.ty(), tirx::builtin::call_pure_extern(), new_args).as_or_throw<PrimExpr>();
+      return Call(e.ty(), tirx::builtin::call_pure_extern(), new_args).as_or_throw<PrimExpr>();
     });
 
 TVM_REGISTER_OP("tirx.nearbyint")

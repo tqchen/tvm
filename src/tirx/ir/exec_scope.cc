@@ -388,10 +388,9 @@ ffi::Array<PrimExpr> ResolveCuda(ScopeBinding binding,
       static const Op& ptx_fetch_register_op = Op::Get("tirx.ptx.fetch_register");
       ffi::Array<PrimExpr> ret;
       for (int i = 0; i < out_dim; ++i) {
-        ret.push_back(
-            tvm::Call(PrimType::Int(32), ptx_fetch_register_op,
-                      {IntImm::Int32(32), StringImm("clusterid." + std::string(1, 'x' + i))})
-                .as_or_throw<PrimExpr>());
+        ret.push_back(Call(PrimType::Int(32), ptx_fetch_register_op,
+                           {IntImm::Int32(32), StringImm("clusterid." + std::string(1, 'x' + i))})
+                          .as_or_throw<PrimExpr>());
       }
       return ret;
     }

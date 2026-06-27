@@ -899,7 +899,7 @@ void CodeGenC::VisitExpr_(const BufferLoadNode* op, std::ostream& os) {  // NOLI
         std::ostringstream value_temp;
         if (!HandleTypeMatch(buffer_var.get(), elem_type)) {
           value_temp << "((";
-          if (buffer_var.get()->ty().IsHandle()) {
+          if (buffer_var->ty.as_or_throw<PrimType>().IsHandle()) {
             auto it = alloc_storage_scope_.find(buffer_var.get());
             if (it != alloc_storage_scope_.end()) {
               PrintStorageScope(it->second, value_temp);
@@ -955,7 +955,7 @@ void CodeGenC::VisitStmt_(const BufferStoreNode* op) {
         PrimType elem_type = value_ty.WithLanes(1);
         if (!HandleTypeMatch(buffer_var.get(), elem_type)) {
           stream << "((";
-          if (buffer_var.get()->ty().IsHandle()) {
+          if (buffer_var->ty.as_or_throw<PrimType>().IsHandle()) {
             auto it = alloc_storage_scope_.find(buffer_var.get());
             if (it != alloc_storage_scope_.end()) {
               PrintStorageScope(it->second, stream);

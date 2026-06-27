@@ -317,10 +317,10 @@ PrimExpr IRMutatorWithAnalyzer::VisitExpr_(const CallNode* op) {
     }
     if (cond.same_as(op->args[0]) && true_value.same_as(op->args[1]) &&
         false_value.same_as(op->args[2])) {
-      return ffi::GetRef<PrimExpr>(op);
+      return ffi::GetRef<Expr>(op).as_or_throw<PrimExpr>();
     } else {
-      return tvm::Call(op->ty.as_or_throw<PrimType>(), op->op, {cond, true_value, false_value},
-                       op->attrs, op->span)
+      return Call(op->ty.as_or_throw<PrimType>(), op->op, {cond, true_value, false_value},
+                  op->attrs, op->span)
           .as_or_throw<PrimExpr>();
     }
   }

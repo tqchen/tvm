@@ -211,8 +211,8 @@ TVM_REGISTER_OP("tirx.sigmoid")
       const PrimExpr v2 = tirx::Min(v1, MaxBound);
 
       ffi::Array<tvm::PrimExpr> new_args = {v2};
-      const tvm::Call new_call =
-          tvm::Call(call->ty.as_or_throw<PrimType>(), call->op, new_args);
+      const Call new_call =
+          Call(call->ty.as_or_throw<PrimType>(), call->op, new_args);
 
       // Enable QHL library for FP16 data type
       if (x_ty.MatchesElementType(DLDataTypeCode::kDLFloat, 16) &&

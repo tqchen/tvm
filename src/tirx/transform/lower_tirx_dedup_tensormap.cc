@@ -196,7 +196,7 @@ class CuTensorMapDedupRewriter : public StmtExprMutator {
     if (it != var_remap_.end()) {
       return it->second;
     }
-    return ffi::GetRef<PrimExpr>(op);
+    return v;
   }
 
   Stmt VisitStmt_(const ForNode* op) final {

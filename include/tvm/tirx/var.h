@@ -45,7 +45,7 @@ namespace tirx {
  * - Let
  * - Bind
  */
-class VarNode : public PrimExprNode {
+class VarNode : public ExprNode {
  public:
   /*!
    * \brief The hint to the variable name.
@@ -70,7 +70,7 @@ class VarNode : public PrimExprNode {
 
   static constexpr TVMFFISEqHashKind _type_s_eq_hash_kind = kTVMFFISEqHashKindFreeVar;
   static constexpr const uint32_t _type_child_slots = 1;
-  TVM_FFI_DECLARE_OBJECT_INFO("tirx.Var", VarNode, PrimExprNode);
+  TVM_FFI_DECLARE_OBJECT_INFO("tirx.Var", VarNode, ExprNode);
 };
 
 /*! \brief a named variable in TIR */

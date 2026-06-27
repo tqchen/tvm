@@ -306,6 +306,19 @@ class ExprNode : public ffi::Object {
 };
 
 /*!
+ * \brief C++ base for expression nodes that always have a primitive type.
+ *
+ * This base provides shared primitive-type access without defining a runtime
+ * node category. Expressions such as Call and Var whose primitive status is
+ * determined by their type should inherit directly from ExprNode.
+ */
+class PrimOnlyExprBase : public ExprNode {
+ public:
+  /*! \return The primitive type of this expression node. */
+  PrimType ty() const { return this->ExprNode::ty.as_or_throw<PrimType>(); }
+};
+
+/*!
  * \brief Managed reference to ExprNode.
  * \sa ExprNode
  */

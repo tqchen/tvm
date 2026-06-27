@@ -44,8 +44,7 @@ PrimExpr CallGLSLIntrin(PrimExpr e, const ffi::Array<PrimExpr>& args) {
   for (PrimExpr arg : args) {
     cargs.push_back(arg);
   }
-  return tvm::Call(call->ty(), tirx::builtin::call_spirv_pure_glsl450(), cargs)
-      .as_or_throw<PrimExpr>();
+  return Call(call->ty(), tirx::builtin::call_spirv_pure_glsl450(), cargs).as_or_throw<PrimExpr>();
 }
 
 template <unsigned id>

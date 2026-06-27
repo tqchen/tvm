@@ -750,7 +750,7 @@ ffi::Optional<arith::IntConstraints> ConditionalBoundsContext::TrySolveCondition
         if (obj.same_as(e)) {
           return;
         } else if (const VarNode* var = obj.as<VarNode>()) {
-          PrimType var_ty = var->ty();
+          PrimType var_ty = var->ty.as_or_throw<PrimType>();
           if (var_ty.MatchesCode(DLDataTypeCode::kDLInt, DLDataTypeCode::kDLUInt)) {
             cand_vars.push_back(ffi::GetRef<Var>(var));
           }

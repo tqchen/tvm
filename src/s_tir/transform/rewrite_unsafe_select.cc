@@ -122,8 +122,8 @@ class UnsafeSelectRewriter : public StmtExprMutator {
     bool cond_is_scalar_bool = cond_ty.MatchesCode(DLDataTypeCode::kDLBool) && cond_ty.IsScalar();
     if ((unsafe.VisitExpr(op->true_value) || unsafe.VisitExpr(op->false_value)) &&
         cond_is_scalar_bool) {
-      return tvm::Call(op->ty(), builtin::if_then_else(),
-                       {op->condition, op->true_value, op->false_value})
+      return Call(op->ty(), builtin::if_then_else(),
+                  {op->condition, op->true_value, op->false_value})
           .as_or_throw<PrimExpr>();
     } else {
       return expr;

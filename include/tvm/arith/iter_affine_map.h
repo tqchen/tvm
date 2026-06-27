@@ -64,10 +64,10 @@ namespace arith {
  *  the result of IterMapDetection.
  *  It should not appear in a legal TIR PrimFunc.
  */
-class IterMapExprNode : public PrimExprNode {
+class IterMapExprNode : public PrimOnlyExprBase {
  public:
   static constexpr const uint32_t _type_child_slots = 2;
-  TVM_FFI_DECLARE_OBJECT_INFO("arith.IterMapExpr", IterMapExprNode, PrimExprNode);
+  TVM_FFI_DECLARE_OBJECT_INFO("arith.IterMapExpr", IterMapExprNode, PrimOnlyExprBase);
 };
 
 /*!

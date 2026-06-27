@@ -58,38 +58,7 @@ class VirtualDevice;
  * \sa Type
  */
 /*!
- * \brief Base node of all primitive expressions.
- *
- *  A primitive expression deals with low-level
- *  POD data types and handles without
- *  doing life-cycle management for objects.
- *
- *  PrimExpr is used in the low-level code
- *  optimizations and integer analysis.
- *
- * \sa PrimExpr
- */
-class PrimExprNode : public ExprNode {
- public:
-  /*! \return the primitive type of this expression node. */
-  PrimType ty() const {
-    TVM_FFI_DCHECK(this->ExprNode::ty.defined());
-    TVM_FFI_DCHECK(this->ExprNode::ty->IsInstance<PrimTypeNode>());
-    return ffi::GetRef<PrimType>(static_cast<const PrimTypeNode*>(this->ExprNode::ty.get()));
-  }
-
-  static void RegisterReflection() {
-    namespace refl = tvm::ffi::reflection;
-    refl::ObjectDef<PrimExprNode>();
-  }
-
-  static constexpr const uint32_t _type_child_slots = 40;
-  TVM_FFI_DECLARE_OBJECT_INFO("ir.PrimExpr", PrimExprNode, ExprNode);
-};
-
-/*!
  * \brief Reference to a primitive-typed expression.
- * \sa PrimExprNode
  */
 class PrimExpr : public Expr {
  public:
@@ -108,14 +77,11 @@ class PrimExpr : public Expr {
   PrimType ty() const {
     const auto* node = get();
     TVM_FFI_DCHECK(node != nullptr);
-    TVM_FFI_DCHECK(node->ExprNode::ty.defined());
-    const auto* ty_node = node->ExprNode::ty.as<PrimTypeNode>();
-    TVM_FFI_DCHECK(ty_node != nullptr);
-    return ffi::GetRef<PrimType>(ty_node);
+    return node->ExprNode::ty.as_or_throw<PrimType>();
   }
 
   TVM_FFI_DEFINE_OBJECT_REF_METHODS_NULLABLE(PrimExpr, Expr, ExprNode);
-  static constexpr bool _type_container_is_exact = true;
+  static constexpr bool _type_container_is_exact = false;
 
   /*!
    * \brief construct from string to form a StringImm.
@@ -147,6 +113,13 @@ class PrimExprConvertible : public ffi::ObjectRef {
 };
 
 namespace ffi {
+template <typename RefType, typename ObjectType>
+  requires type_subsumes_v<PrimExpr, RefType>
+inline constexpr bool object_ref_contains_v<RefType, ObjectType> =
+    std::is_base_of_v<std::conditional_t<std::is_same_v<RefType, PrimExpr>, PrimOnlyExprBase,
+                                         typename RefType::ContainerType>,
+                      ObjectType>;
+
 // define automatic conversion from bool, int64_t, double, ffi::String to PrimExpr
 // These functions are declared early to avoid circular dependency
 template <>
@@ -504,7 +477,7 @@ class Call : public Expr {
  * \brief Constant integer literals in the program.
  * \sa IntImm
  */
-class IntImmNode : public PrimExprNode {
+class IntImmNode : public PrimOnlyExprBase {
  public:
   /*! \brief the Internal value. */
   int64_t value;
@@ -513,7 +486,7 @@ class IntImmNode : public PrimExprNode {
     namespace refl = tvm::ffi::reflection;
     refl::ObjectDef<IntImmNode>().def_ro("value", &IntImmNode::value);
   }
-  TVM_FFI_DECLARE_OBJECT_INFO_FINAL("ir.IntImm", IntImmNode, PrimExprNode);
+  TVM_FFI_DECLARE_OBJECT_INFO_FINAL("ir.IntImm", IntImmNode, PrimOnlyExprBase);
 };
 
 /*!
@@ -566,7 +539,7 @@ class IntImm : public PrimExpr {
  * \brief Constant floating point literals in the program.
  * \sa FloatImm
  */
-class FloatImmNode : public PrimExprNode {
+class FloatImmNode : public PrimOnlyExprBase {
  public:
   /*! \brief The constant value content. */
   double value;
@@ -575,7 +548,7 @@ class FloatImmNode : public PrimExprNode {
     namespace refl = tvm::ffi::reflection;
     refl::ObjectDef<FloatImmNode>().def_ro("value", &FloatImmNode::value);
   }
-  TVM_FFI_DECLARE_OBJECT_INFO_FINAL("ir.FloatImm", FloatImmNode, PrimExprNode);
+  TVM_FFI_DECLARE_OBJECT_INFO_FINAL("ir.FloatImm", FloatImmNode, PrimOnlyExprBase);
 };
 
 /*!

@@ -355,7 +355,7 @@ std::string PrintBool(bool b) { return b ? "True" : "False"; }
 void CodeGenTrainium::VisitExpr_(const CallNode* op, std::ostream& os) {  // NOLINT(*)
   TVM_FFI_ICHECK(!op->op.as<GlobalVarNode>())
       << "CodegenTrainium does not support inter-function calls, "
-      << "but expression " << ffi::GetRef<tvm::Call>(op) << " calls PrimFunc " << op->op;
+      << "but expression " << ffi::GetRef<Call>(op) << " calls PrimFunc " << op->op;
   const auto* op_node = op->op.as<OpNode>();
   auto is_op = [&](const Op& compat, const char* canonical_name) {
     return op->op.same_as(compat) || (op_node != nullptr && op_node->name == canonical_name);

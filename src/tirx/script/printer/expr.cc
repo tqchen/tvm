@@ -256,7 +256,7 @@ TVM_STATIC_IR_FUNCTOR(IRDocsifier, vtable)
                                  {"where"}, {where});
     });
 
-Doc PrintTIRCall(tvm::Call call, AccessPath call_p, IRDocsifier d) {
+Doc PrintTIRCall(Call call, AccessPath call_p, IRDocsifier d) {
   DLDataType call_dtype = call->ty.as_or_throw<PrimType>()->dtype;
   if (call->attrs.defined()) {
     ffi::Array<ExprDoc> call_args;
@@ -360,7 +360,7 @@ Doc PrintTIRCall(tvm::Call call, AccessPath call_p, IRDocsifier d) {
   return prefix.value()->Call(args);
 }
 
-TVM_STATIC_IR_FUNCTOR(IRDocsifier, vtable).set_dispatch<tvm::Call>("tirx", PrintTIRCall);
+TVM_STATIC_IR_FUNCTOR(IRDocsifier, vtable).set_dispatch<Call>("tirx", PrintTIRCall);
 
 TVM_STATIC_IR_FUNCTOR(IRDocsifier, vtable)
     .set_dispatch<tirx::Reduce>("", [](tirx::Reduce r, AccessPath p, IRDocsifier d) -> Doc {

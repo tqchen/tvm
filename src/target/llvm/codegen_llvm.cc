@@ -2139,7 +2139,8 @@ void CodeGenLLVM::VisitStmt_(const BindNode* op) {
   EmitDebugLocation(op);
   const VarNode* v = op->var.get();
   TVM_FFI_ICHECK(!var_map_.count(v));
-  if (v->ty().IsHandle()) {
+  PrimType var_ty = v->ty.as_or_throw<PrimType>();
+  if (var_ty.IsHandle()) {
     if (!is_restricted_) {
       alias_var_set_.insert(v);
     }
@@ -2150,7 +2151,7 @@ void CodeGenLLVM::VisitStmt_(const BindNode* op) {
   // Therefore, to have the correct LLVM type for pointers, we may
   // need to introduce a pointer-cast, even though pointer-to-pointer
   // casts are not expressible with the `tirx::CastNode`.
-  if (v->ty().IsHandle() && v->type_annotation.defined()) {
+  if (var_ty.IsHandle() && v->type_annotation.defined()) {
     TVM_FFI_ICHECK(op->value.ty().IsHandle())
         << "Variable " << op->var << " is a pointer with type " << op->value
         << ", but is being bound to expression with type " << op->value.ty();

@@ -310,7 +310,7 @@ class ThreadAllreduceBuilder final : public StmtExprMutator {
     if (IsWarpReduction(dtypes, group_extent, reduce_extent, contiguous_reduce_extent)) {
       std::vector<PrimExpr> reduce_results;
       PrimExpr mask =
-          tvm::Call(PrimType::UInt(32), builtin::tvm_warp_activemask(), {}).as_or_throw<PrimExpr>();
+          Call(PrimType::UInt(32), builtin::tvm_warp_activemask(), {}).as_or_throw<PrimExpr>();
 
       if (reduce_extent <= warp_size_) {
         std::tie(reduce_results, new_alloc_bufs) =
@@ -718,7 +718,7 @@ class ThreadAllreduceBuilder final : public StmtExprMutator {
   }
   // sync thread op.
   static Stmt SyncThread(const std::string& sync) {
-    return Evaluate(tvm::Call(PrimType::Int(32), builtin::tvm_storage_sync(), {StringImm(sync)})
+    return Evaluate(Call(PrimType::Int(32), builtin::tvm_storage_sync(), {StringImm(sync)})
                         .as_or_throw<PrimExpr>());
   }
 
@@ -734,7 +734,7 @@ class ThreadAllreduceBuilder final : public StmtExprMutator {
     }
     PrimExpr width = IntImm::Int32(warp_size_);
     ffi::Array<PrimExpr> args{mask, val, delta_or_lane, width, width};
-    return tvm::Call(val.ty(), op, args).as_or_throw<PrimExpr>();
+    return Call(val.ty(), op, args).as_or_throw<PrimExpr>();
   }
 
   // Check if we can use warp level reduction.
