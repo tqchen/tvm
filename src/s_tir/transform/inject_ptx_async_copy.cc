@@ -91,7 +91,8 @@ class PTXAsyncCopyInjector : public StmtMutator {
             args.push_back(predicate_value);
           }
           static const Op& ptx_cp_async_op = Op::Get("tirx.ptx.cp_async_raw");
-          return Evaluate(tirx::Call(store->buffer->dtype, ptx_cp_async_op, args));
+          return Evaluate(
+              tvm::Call(store->buffer->dtype, ptx_cp_async_op, args).as_or_throw<PrimExpr>());
         }
 
         // Predicated load don't support vectorized indexing.
@@ -120,10 +121,10 @@ class PTXAsyncCopyInjector : public StmtMutator {
           }();
           if (src_offset.defined() && dst_offset.defined()) {
             static const Op& ptx_cp_async_op = Op::Get("tirx.ptx.cp_async_raw");
-            return Evaluate(
-                tirx::Call(store->buffer->dtype, ptx_cp_async_op,
-                           {store->buffer->data, mul(dst_offset, PrimExpr(index_factor)),
-                            load->buffer->data, src_offset, PrimExpr(bytes)}));
+            return Evaluate(tvm::Call(store->buffer->dtype, ptx_cp_async_op,
+                                      {store->buffer->data, mul(dst_offset, PrimExpr(index_factor)),
+                                       load->buffer->data, src_offset, PrimExpr(bytes)})
+                                .as_or_throw<PrimExpr>());
           }
         } else {
           // Only some vectorized indexing patterns are supported for now.
@@ -152,9 +153,10 @@ class PTXAsyncCopyInjector : public StmtMutator {
           if (src_offset.defined() && dst_offset.defined()) {
             static const Op& ptx_cp_async_op = Op::Get("tirx.ptx.cp_async_raw");
             return Evaluate(
-                tirx::Call(store->buffer->dtype, ptx_cp_async_op,
-                           {store->buffer->data, mul(dst_offset, PrimExpr(index_factor)),
-                            load->buffer->data, src_offset, PrimExpr(bytes), predicate_value}));
+                tvm::Call(store->buffer->dtype, ptx_cp_async_op,
+                          {store->buffer->data, mul(dst_offset, PrimExpr(index_factor)),
+                           load->buffer->data, src_offset, PrimExpr(bytes), predicate_value})
+                    .as_or_throw<PrimExpr>());
           }
         }
       }

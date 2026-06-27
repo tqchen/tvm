@@ -717,21 +717,6 @@ class Let : public PrimExpr {
   TVM_DEFINE_OBJECT_REF_COW_METHOD(LetNode);
 };
 
-using tvm::CallNode;
-
-/*!
- * \brief Managed reference to CallNode
- * \sa CallNode
- */
-class Call : public PrimExpr {
- public:
-  TVM_DLL Call(PrimType ret_ty, tvm::Expr op, ffi::Array<PrimExpr> args, Attrs attrs = Attrs(),
-               Span span = Span());
-  TVM_DLL Call(PrimType ret_ty, tvm::Expr op, ffi::Array<PrimExpr> args, Span span);
-  TVM_FFI_DEFINE_OBJECT_REF_METHODS_NULLABLE(Call, PrimExpr, CallNode);
-  TVM_DEFINE_OBJECT_REF_COW_METHOD(CallNode);
-};
-
 /*!
  * \brief Shuffle instruction.
  *  vec = concat(vectors)

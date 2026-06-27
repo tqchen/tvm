@@ -319,8 +319,9 @@ PrimExpr IRMutatorWithAnalyzer::VisitExpr_(const CallNode* op) {
         false_value.same_as(op->args[2])) {
       return ffi::GetRef<PrimExpr>(op);
     } else {
-      return tirx::Call(ffi::GetRef<PrimExpr>(op).ty(), op->op, {cond, true_value, false_value},
-                        op->attrs, op->span);
+      return tvm::Call(op->ty.as_or_throw<PrimType>(), op->op, {cond, true_value, false_value},
+                       op->attrs, op->span)
+          .as_or_throw<PrimExpr>();
     }
   }
   return StmtExprMutator::VisitExpr_(op);

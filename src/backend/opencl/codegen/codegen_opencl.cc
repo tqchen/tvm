@@ -37,19 +37,6 @@
 namespace tvm {
 namespace codegen {
 
-namespace {
-
-ffi::Array<PrimExpr> AsPrimExprArray(const ffi::Array<Expr>& args) {
-  ffi::Array<PrimExpr> result;
-  result.reserve(args.size());
-  for (const Expr& arg : args) {
-    result.push_back(arg.as_or_throw<PrimExpr>());
-  }
-  return result;
-}
-
-}  // namespace
-
 class InferTextureAccess : public StmtExprVisitor {
  public:
   static constexpr const uint8_t kReadAccess = 1;
@@ -485,7 +472,7 @@ void CodeGenOpenCL::VisitExpr_(const CallNode* op, std::ostream& os) {
     enable_compliant_texture_reads_ = true;
     std::stringstream ss;
     const int channel_size = op->args[4].as_or_throw<IntImm>()->value;
-    PrimType op_ty = ffi::GetRef<PrimExpr>(op).ty();
+    PrimType op_ty = op->ty.as_or_throw<PrimType>();
     const int data_lanes = channel_size / op_ty.bits();
     TVM_FFI_ICHECK(channel_size == 64 || channel_size == 128)
         << "Unsupported Channel Size: " << channel_size;
@@ -541,13 +528,15 @@ void CodeGenOpenCL::VisitExpr_(const CallNode* op, std::ostream& os) {
     auto func = op->args[0].as_or_throw<StringImm>();
     // Enable atomics extension if used.
     if (func->value == "atomic_add" &&
-        ffi::GetRef<PrimExpr>(op).ty().code() == DLDataTypeCode::kDLFloat) {
+        op->ty.as_or_throw<PrimType>().code() == DLDataTypeCode::kDLFloat) {
       enable_atomics_ = true;
-      this->PrintCallExtern(GetType(ffi::GetRef<PrimExpr>(op)), "atomic_add_float_emu",
-                            AsPrimExprArray(op->args), true, os);
+      ffi::Array<PrimExpr> args =
+          op->args.Map([](const Expr& arg) { return arg.as_or_throw<PrimExpr>(); });
+      this->PrintCallExtern(op->ty, "atomic_add_float_emu", args, true, os);
     } else if (func->value == "nearbyint") {
-      this->PrintCallExtern(GetType(ffi::GetRef<PrimExpr>(op)), "rint", AsPrimExprArray(op->args),
-                            true, os);
+      ffi::Array<PrimExpr> args =
+          op->args.Map([](const Expr& arg) { return arg.as_or_throw<PrimExpr>(); });
+      this->PrintCallExtern(op->ty, "rint", args, true, os);
     } else {
       if (func->value == "atomic_add") {
         enable_atomics_ = true;

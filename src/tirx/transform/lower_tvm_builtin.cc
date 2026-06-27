@@ -275,16 +275,19 @@ class BuiltinLower : public StmtExprMutator {
     }
     TVM_FFI_ICHECK(device_type_) << "Unknown device type in current IR";
     TVM_FFI_ICHECK(device_id_) << "Unknown device id in current IR";
-    Stmt throw_last_error = Evaluate(Call(PrimType::Int(32), builtin::tvm_throw_last_error(), {}));
+    Stmt throw_last_error = Evaluate(
+        Call(PrimType::Int(32), builtin::tvm_throw_last_error(), {}).as_or_throw<PrimExpr>());
 
     Stmt alloc_nullptr_check = IfThenElse(
-        Call(PrimType::Bool(), builtin::isnullptr(), {op->buffer->data}), throw_last_error);
+        Call(PrimType::Bool(), builtin::isnullptr(), {op->buffer->data}).as_or_throw<PrimExpr>(),
+        throw_last_error);
 
     static const Op& free_workspace_op = Op::Get("tirx.TVMBackendFreeWorkspace");
     static const Op& alloc_workspace_op = Op::Get("tirx.TVMBackendAllocWorkspace");
     PrimExpr free_op = Call(PrimType::Int(32), free_workspace_op,
                             {cast(PrimType::Int(32), device_type_.value()),
-                             cast(PrimType::Int(32), device_id_.value()), op->buffer->data});
+                             cast(PrimType::Int(32), device_id_.value()), op->buffer->data})
+                           .as_or_throw<PrimExpr>();
     Stmt free_stmt = IfThenElse(free_op != IntImm::Int32(0), throw_last_error);
 
     // Push free to enclosing scope's pending_frees (LIFO ordering preserved).
@@ -295,7 +298,8 @@ class BuiltinLower : public StmtExprMutator {
         Call(op->buffer->data.ty(), alloc_workspace_op,
              {cast(PrimType::Int(32), device_type_.value()),
               cast(PrimType::Int(32), device_id_.value()), total_bytes,
-              IntImm::Int32(op->buffer->dtype.code()), IntImm::Int32(op->buffer->dtype.bits())}));
+              IntImm::Int32(op->buffer->dtype.code()), IntImm::Int32(op->buffer->dtype.bits())})
+            .as_or_throw<PrimExpr>());
 
     return SeqStmt({alloc_bind, alloc_nullptr_check});
   }
@@ -382,13 +386,16 @@ class BuiltinLower : public StmtExprMutator {
   PrimExpr VisitExpr_(const CallNode* op) final {
     if (op->op.same_as(builtin::tvm_call_packed())) {
       return MakeCallPackedGeneric(op, 0, builtin::tvm_call_packed_lowered(),
-                                   /* use_last_value_as_traced_value*/ false);
+                                   /* use_last_value_as_traced_value*/ false)
+          .as_or_throw<PrimExpr>();
     } else if (op->op.same_as(builtin::tvm_call_cpacked())) {
       return MakeCallPackedGeneric(op, 0, builtin::tvm_call_cpacked_lowered(),
-                                   /* use_last_value_as_traced_value*/ false);
+                                   /* use_last_value_as_traced_value*/ false)
+          .as_or_throw<PrimExpr>();
     } else if (op->op.same_as(builtin::tvm_call_trace_packed())) {
       return MakeCallPackedGeneric(op, 0, builtin::tvm_call_trace_packed_lowered(),
-                                   /* use_last_value_as_traced_value*/ true);
+                                   /* use_last_value_as_traced_value*/ true)
+          .as_or_throw<PrimExpr>();
     } else if (op->op.same_as(builtin::anylist_setitem_call_packed())) {
       return MakeAnyListSetItemCallPacked(op, builtin::tvm_call_packed_lowered());
     } else if (op->op.same_as(builtin::anylist_setitem_call_cpacked())) {
@@ -398,7 +405,7 @@ class BuiltinLower : public StmtExprMutator {
     } else if (op->op.same_as(builtin::tvm_stack_make_array())) {
       return MakeArray(op);
     } else if (op->op.same_as(builtin::tvm_context_id())) {
-      return IntImm(ffi::GetRef<PrimExpr>(op).ty(), 0);
+      return IntImm(op->ty.as_or_throw<PrimType>(), 0);
     } else if (op->op.same_as(builtin::dma_copy())) {
       return MakeDMACopy(op);
     } else if (op->op.same_as(builtin::dma_wait())) {
@@ -436,7 +443,7 @@ class BuiltinLower : public StmtExprMutator {
     auto method_name = GetDeviceMethodName("dma_copy");
     Call call_packed = Call(PrimType::Int(32), builtin::tvm_call_packed(),
                             {method_name, queue_id, dst, src, size, bypass_cache});
-    return VisitExpr(call_packed);
+    return VisitExpr(call_packed.as_or_throw<PrimExpr>());
   }
 
   PrimExpr MakeDMAWait(const CallNode* op) {
@@ -446,7 +453,7 @@ class BuiltinLower : public StmtExprMutator {
     auto method_name = GetDeviceMethodName("dma_wait");
     Call call_packed =
         Call(PrimType::Int(32), builtin::tvm_call_packed(), {method_name, queue_id, inflight});
-    return VisitExpr(call_packed);
+    return VisitExpr(call_packed.as_or_throw<PrimExpr>());
   }
 
   PrimExpr MakeDMAStartGroup(const CallNode* op) {
@@ -454,7 +461,7 @@ class BuiltinLower : public StmtExprMutator {
 
     auto method_name = GetDeviceMethodName("dma_start_group");
     Call call_packed = Call(PrimType::Int(32), builtin::tvm_call_packed(), {method_name, queue_id});
-    return VisitExpr(call_packed);
+    return VisitExpr(call_packed.as_or_throw<PrimExpr>());
   }
 
   PrimExpr MakeDMAEndGroup(const CallNode* op) {
@@ -462,7 +469,7 @@ class BuiltinLower : public StmtExprMutator {
 
     auto method_name = GetDeviceMethodName("dma_end_group");
     Call call_packed = Call(PrimType::Int(32), builtin::tvm_call_packed(), {method_name, queue_id});
-    return VisitExpr(call_packed);
+    return VisitExpr(call_packed.as_or_throw<PrimExpr>());
   }
 
   // call shape
@@ -541,10 +548,11 @@ class BuiltinLower : public StmtExprMutator {
     if (call_pattern && call_pattern->op.same_as(builtin::anylist_getitem())) {
       // call runtime function to set anylist
       static const Op& anylist_set_packed_arg_op = Op::Get("tirx.TVMBackendAnyListSetPackedArg");
-      prep_seq->emplace_back(Evaluate(Call(
-          PrimType::Int(32), anylist_set_packed_arg_op,
-          {call_pattern->args[0].as_or_throw<PrimExpr>(),
-           call_pattern->args[1].as_or_throw<PrimExpr>(), args_stack, ConstInt32(stack_offset)})));
+      prep_seq->emplace_back(Evaluate(Call(PrimType::Int(32), anylist_set_packed_arg_op,
+                                           {call_pattern->args[0].as_or_throw<PrimExpr>(),
+                                            call_pattern->args[1].as_or_throw<PrimExpr>(),
+                                            args_stack, ConstInt32(stack_offset)})
+                                          .as_or_throw<PrimExpr>()));
     } else {
       PrimType arg_ty = arg.ty();
       PrimType api_ty = APIType(arg_ty);
@@ -572,7 +580,7 @@ class BuiltinLower : public StmtExprMutator {
       // opaque handle need to set the kind properly
       if (arg_type_index == ffi::TypeIndex::kTVMFFIOpaquePtr) {
         prep_seq->emplace_back(
-            IfThenElse(Call(PrimType::Bool(), builtin::isnullptr(), {arg}),
+            IfThenElse(Call(PrimType::Bool(), builtin::isnullptr(), {arg}).as_or_throw<PrimExpr>(),
                        TVMStructSet(args_stack, stack_offset, builtin::kTVMFFIAnyTypeIndex,
                                     ConstInt32(ffi::TypeIndex::kTVMFFINone)),
                        TVMStructSet(args_stack, stack_offset, builtin::kTVMFFIAnyTypeIndex,
@@ -601,11 +609,12 @@ class BuiltinLower : public StmtExprMutator {
     // The stack offset of return value stack_end
     PrimExpr ret_offset = call->args[3].as_or_throw<PrimExpr>();
     auto& prep_seq = prep_seq_stack_.back();
-    prep_seq.emplace_back(Evaluate(call));
+    prep_seq.emplace_back(Evaluate(call.as_or_throw<PrimExpr>()));
     static const Op& anylist_move_from_packed_return_op =
         Op::Get("tirx.TVMBackendAnyListMoveFromPackedReturn");
     return Call(PrimType::Int(32), anylist_move_from_packed_return_op,
-                {list_handle, list_index, args_stack, ret_offset});
+                {list_handle, list_index, args_stack, ret_offset})
+        .as_or_throw<PrimExpr>();
   }
   /*!
    * \brief Generic tool to make low-level
@@ -664,13 +673,14 @@ class BuiltinLower : public StmtExprMutator {
       // used by call_packed_traced
       packed_args.push_back(op->args[op->args.size() - 1].as_or_throw<PrimExpr>());
     }
-    return Call(ffi::GetRef<PrimExpr>(op).ty(), lowered_packed_op, packed_args);
+    return Call(op->ty.as_or_throw<PrimType>(), lowered_packed_op, packed_args);
   }
 
   Stmt MakeNdMemAllocWithScope(const BindNode* let, const CallNode* call) {
     TVM_FFI_ICHECK(device_type_) << "Unknown device type in current IR";
     TVM_FFI_ICHECK(device_id_) << "Unknown device id in current IR";
-    Stmt throw_last_error = Evaluate(Call(PrimType::Int(32), builtin::tvm_throw_last_error(), {}));
+    Stmt throw_last_error = Evaluate(
+        Call(PrimType::Int(32), builtin::tvm_throw_last_error(), {}).as_or_throw<PrimExpr>());
 
     const auto* dtype_node =
         let->var->type_annotation.as<PointerTypeNode>()->element_type.as<PrimTypeNode>();
@@ -688,7 +698,8 @@ class BuiltinLower : public StmtExprMutator {
 
     Call call_packed = Call(let->var.ty(), builtin::tvm_call_packed(), args);
     Stmt null_check =
-        IfThenElse(Call(PrimType::Bool(), builtin::isnullptr(), {let->var}), throw_last_error);
+        IfThenElse(Call(PrimType::Bool(), builtin::isnullptr(), {let->var}).as_or_throw<PrimExpr>(),
+                   throw_last_error);
 
     // Construct free_nd call and register in current scope.
     // The free will be emitted on scope exit, matching the old LetStmt body semantics.
@@ -696,13 +707,15 @@ class BuiltinLower : public StmtExprMutator {
     Call free_op = Call(PrimType::Int(32), builtin::tvm_call_packed(),
                         {GetDeviceMethodName("free_nd"), device_type_.value(), device_id_.value(),
                          storage_scope, let->var});
-    Stmt free_stmt = IfThenElse(free_op != IntImm::Int32(0), throw_last_error);
+    Stmt free_stmt =
+        IfThenElse(free_op.as_or_throw<PrimExpr>() != IntImm::Int32(0), throw_last_error);
     // Visit the free_stmt so tvm_call_packed builtins inside it get lowered.
     free_stmt = StmtExprMutator::VisitStmt(free_stmt);
     scope_.Current().pending_frees.push_back(free_stmt);
 
     // Re-visit so tvm_call_packed in the Bind value and null_check get lowered.
-    return StmtExprMutator::VisitStmt(SeqStmt({Bind(let->var, call_packed), null_check}));
+    return StmtExprMutator::VisitStmt(
+        SeqStmt({Bind(let->var, call_packed.as_or_throw<PrimExpr>()), null_check}));
   }
 
  private:

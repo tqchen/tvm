@@ -22,7 +22,7 @@ from collections.abc import Callable
 
 import tvm_ffi
 
-from tvm.ir import PrimExpr
+from tvm.ir import Call, PrimExpr
 from tvm.ir.utils import derived_object
 
 from . import _ffi_api
@@ -37,7 +37,6 @@ from .expr import (
     And,
     Broadcast,
     BufferLoad,
-    Call,
     Cast,
     Div,
     FloatImm,

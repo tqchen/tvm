@@ -28,7 +28,7 @@ namespace tvm {
 namespace {
 // File-local helper: true if `expr` is a call to tirx::builtin::vscale().
 bool IsVScaleCall(const PrimExpr& expr) {
-  if (const auto* call = expr.as<tirx::CallNode>()) {
+  if (const auto* call = expr.as<CallNode>()) {
     return call->op.same_as(tirx::builtin::vscale());
   }
   return false;
@@ -109,12 +109,12 @@ bool TensorizeComparator::VisitExpr(const PrimExpr& n, const PrimExpr& other) {
 bool TensorizeComparator::VisitExpr_(const CallNode* op, const PrimExpr& other) {
   const auto* rhs = other.as<CallNode>();
   if (!rhs->op.same_as(op->op)) return false;
-  if (ffi::GetRef<PrimExpr>(op).ty().code() != ffi::GetRef<PrimExpr>(rhs).ty().code()) {
+  if (op->ty.as_or_throw<PrimType>().code() != rhs->ty.as_or_throw<PrimType>().code()) {
     if (assert_mode_) {
       std::ostringstream os;
       os << "CallNode data type codes do not match: op->dtype.code()="
-         << ffi::GetRef<PrimExpr>(op).ty().code()
-         << " vs rhs->dtype.code()=" << ffi::GetRef<PrimExpr>(rhs).ty().code();
+         << op->ty.as_or_throw<PrimType>().code()
+         << " vs rhs->dtype.code()=" << rhs->ty.as_or_throw<PrimType>().code();
       EmitError(os.str());
     }
     return false;

@@ -44,7 +44,7 @@ static PrimExpr DispatchIntelShuffle(const PrimExpr& e) {
   ffi::Array<PrimExpr> opencl_args{StringImm("intel_sub_group_shuffle"),
                                    call->args[1].as_or_throw<PrimExpr>(),
                                    call->args[2].as_or_throw<PrimExpr>()};
-  return tirx::Call(e.ty(), builtin::call_pure_extern(), opencl_args);
+  return tvm::Call(e.ty(), builtin::call_pure_extern(), opencl_args).as_or_throw<PrimExpr>();
 }
 
 void RegisterOpenCLIntrinRules() {
@@ -71,13 +71,13 @@ TVM_REGISTER_OP("tirx.fabs")
 TVM_REGISTER_OP("tirx.round")
     .set_attr<FLowerIntrinsic>("opencl.FLowerIntrinsic", [](const PrimExpr& e) -> PrimExpr {
       // OpenCL's rint() uses ties-to-even, matching constant-folding semantics.
-      const tirx::CallNode* call = e.as<tirx::CallNode>();
+      const CallNode* call = e.as<CallNode>();
       TVM_FFI_ICHECK(call != nullptr);
       ffi::Array<PrimExpr> new_args = {tirx::StringImm("rint")};
       for (const Expr& arg : call->args) {
         new_args.push_back(arg.as_or_throw<PrimExpr>());
       }
-      return tirx::Call(e.ty(), tirx::builtin::call_pure_extern(), new_args);
+      return tvm::Call(e.ty(), tirx::builtin::call_pure_extern(), new_args).as_or_throw<PrimExpr>();
     });
 
 TVM_REGISTER_OP("tirx.nearbyint")

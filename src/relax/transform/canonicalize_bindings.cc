@@ -115,7 +115,7 @@ class SymbolicVarCanonicalizer : public ExprMutator {
     return If(guard, true_b, false_b, op->span);
   }
 
-  PrimExpr VisitPrimExpr(const PrimExpr& expr) override {
+  PrimExpr VisitPrimExprField(const PrimExpr& expr) override {
     if (known_values_.empty()) {
       return expr;
     }

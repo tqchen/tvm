@@ -716,10 +716,10 @@ struct PCallExprInitMatchFunctor {
 };
 
 struct PCallExprMatchFunctor {
-  const tirx::CallNode* call_;
+  const CallNode* call_;
   bool matched_{true};
 
-  explicit PCallExprMatchFunctor(const tirx::CallNode* call) : call_(call) {}
+  explicit PCallExprMatchFunctor(const CallNode* call) : call_(call) {}
 
   template <typename T>
   void operator()(size_t i, const T& pattern) {
@@ -755,7 +755,7 @@ class PCallExpr : public Pattern<PCallExpr<Op, TArgs...>> {
   }
 
   bool Match_(const ffi::ObjectRef& node) const {
-    if (const tirx::CallNode* ptr = node.as<tirx::CallNode>()) {
+    if (const CallNode* ptr = node.as<CallNode>()) {
       if (ptr->args.size() != sizeof...(TArgs)) return false;
       if (!ptr->op.same_as(Op::GetOp())) return false;
       detail::PCallExprMatchFunctor fmatch(ptr);
@@ -780,7 +780,7 @@ class PCallExpr : public Pattern<PCallExpr<Op, TArgs...>> {
 #define TVM_PATTERN_BINARY_INTRIN(FuncName, OpName, IntrinOpName)                         \
   struct OpName {                                                                         \
     static PrimExpr Eval(ffi::Array<PrimExpr> args) {                                     \
-      return tirx::Call(args[0].ty(), GetOp(), args);                                     \
+      return tvm::Call(args[0].ty(), GetOp(), args).as_or_throw<PrimExpr>();              \
     }                                                                                     \
     static const Op& GetOp() { return tirx::builtin::IntrinOpName(); }                    \
   };                                                                                      \
@@ -796,16 +796,16 @@ TVM_PATTERN_BINARY_INTRIN(operator|, PBitwiseOrOp, bitwise_or);
 TVM_PATTERN_BINARY_INTRIN(operator^, PBitwiseXorOp, bitwise_xor);
 
 // unary intrinsics
-#define TVM_PATTERN_UNARY_INTRIN(FuncName, OpName, IntrinOpName)       \
-  struct OpName {                                                      \
-    static PrimExpr Eval(ffi::Array<PrimExpr> args) {                  \
-      return tirx::Call(args[0].ty(), GetOp(), args);                  \
-    }                                                                  \
-    static const Op& GetOp() { return tirx::builtin::IntrinOpName(); } \
-  };                                                                   \
-  template <typename TA>                                               \
-  inline PCallExpr<OpName, TA> FuncName(const Pattern<TA>& a) {        \
-    return PCallExpr<OpName, TA>(a.derived());                         \
+#define TVM_PATTERN_UNARY_INTRIN(FuncName, OpName, IntrinOpName)             \
+  struct OpName {                                                            \
+    static PrimExpr Eval(ffi::Array<PrimExpr> args) {                        \
+      return tvm::Call(args[0].ty(), GetOp(), args).as_or_throw<PrimExpr>(); \
+    }                                                                        \
+    static const Op& GetOp() { return tirx::builtin::IntrinOpName(); }       \
+  };                                                                         \
+  template <typename TA>                                                     \
+  inline PCallExpr<OpName, TA> FuncName(const Pattern<TA>& a) {              \
+    return PCallExpr<OpName, TA>(a.derived());                               \
   }
 
 TVM_PATTERN_UNARY_INTRIN(operator~, PBitwiseNotOp, bitwise_not);
@@ -813,7 +813,7 @@ TVM_PATTERN_UNARY_INTRIN(operator~, PBitwiseNotOp, bitwise_not);
 // if_then_else
 struct PIfThenElseOp {
   static PrimExpr Eval(ffi::Array<PrimExpr> args) {
-    return tirx::Call(args[1].ty(), GetOp(), args);
+    return tvm::Call(args[1].ty(), GetOp(), args).as_or_throw<PrimExpr>();
   }
   static const Op& GetOp() { return tirx::builtin::if_then_else(); }
 };
@@ -841,7 +841,9 @@ inline PCallExpr<PIfThenElseOp, TCond, TA, TB> if_then_else(const Pattern<TCond>
 
 // vscale
 struct PVscaleOp {
-  static PrimExpr Eval() { return tirx::Call(PrimType::Int(32), GetOp(), {}); }
+  static PrimExpr Eval() {
+    return tvm::Call(PrimType::Int(32), GetOp(), {}).as_or_throw<PrimExpr>();
+  }
   static const Op& GetOp() { return tirx::builtin::vscale(); }
 };
 

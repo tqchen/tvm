@@ -135,7 +135,7 @@ class WellDefinedEraser : public TypeMutator, public ExprMutatorBase, public tir
 
     if (op->values.defined()) {
       std::swap(has_undefined_, has_undefined);
-      values = op->values.value().Map([&](PrimExpr val) { return this->VisitPrimExpr(val); });
+      values = op->values.value().Map([&](PrimExpr val) { return this->VisitPrimExprField(val); });
       std::swap(has_undefined_, has_undefined);
     }
     // erase symbolic shape if we have undefined.
@@ -190,7 +190,7 @@ class WellDefinedEraser : public TypeMutator, public ExprMutatorBase, public tir
   using tirx::ExprMutator::VisitExpr_;
 
   // connect things up
-  PrimExpr VisitPrimExpr(const PrimExpr& expr) {
+  PrimExpr VisitPrimExprField(const PrimExpr& expr) {
     // apply eager simplification
     PrimExpr val = tirx::ExprMutator::VisitExpr(expr);
     if (!val.same_as(expr)) {
@@ -1180,7 +1180,7 @@ class TIRVarsDetector : public TypeVisitor {
   ffi::Array<tirx::Var> GetTIRVars() const { return tir_vars_; }
 
  private:
-  void VisitPrimExpr(PrimExpr expr) {
+  void VisitPrimExprField(PrimExpr expr) {
     if (collection_type == VarType::Definition) {
       if (auto opt = expr.as<tirx::Var>()) {
         RecordTIRVar(opt.value());
@@ -1197,7 +1197,7 @@ class TIRVarsDetector : public TypeVisitor {
 
   void VisitShape(ffi::Array<PrimExpr> shape) {
     for (const PrimExpr& expr : shape) {
-      VisitPrimExpr(expr);
+      VisitPrimExprField(expr);
     }
   }
 

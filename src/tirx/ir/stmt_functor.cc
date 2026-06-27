@@ -758,9 +758,6 @@ Stmt IRTransform(Stmt ir_node, const ffi::Function& f_preorder, const ffi::Funct
   std::unordered_set<uint32_t> only_type_index;
   if (only_enable.defined()) {
     for (auto s : only_enable.value()) {
-      if (s == "tirx.Call") {
-        s = "ir.Call";
-      }
       only_type_index.insert(ffi::TypeKeyToIndex(s.c_str()));
     }
   }

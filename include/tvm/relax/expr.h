@@ -93,17 +93,6 @@ class Call : public tvm::Call {
   TVM_DEFINE_OBJECT_REF_COW_METHOD(CallNode);
 };
 
-/*!
- * \brief Returns \p call with the given properties. A null property denotes 'no change'.
- * Returns \p call if all properties are unchanged. Otherwise, returns a copy with the new
- * fields.
- */
-Call WithFields(Call call, ffi::Optional<Expr> opt_op = ffi::Optional<Expr>(),
-                ffi::Optional<ffi::Array<Expr>> opt_args = ffi::Optional<ffi::Array<Expr>>(),
-                ffi::Optional<Attrs> opt_attrs = ffi::Optional<Attrs>(),
-                ffi::Optional<ffi::Array<Type>> opt_ty_args = ffi::Optional<ffi::Array<Type>>(),
-                ffi::Optional<Span> opt_span = ffi::Optional<Span>());
-
 /*! \brief Tuple container */
 class TupleNode : public ExprNode {
  public:
@@ -148,15 +137,6 @@ class Tuple : public Expr {
   TVM_DEFINE_OBJECT_REF_COW_METHOD(TupleNode);
 };
 
-/*!
- * \brief Returns \p tuple with the given properties. A null property denotes 'no change'.
- * Returns \p tuple if all properties are unchanged. Otherwise, returns a copy with the new
- * fields.
- */
-Tuple WithFields(Tuple tuple,
-                 ffi::Optional<ffi::Array<Expr>> opt_fields = ffi::Optional<ffi::Array<Expr>>(),
-                 ffi::Optional<Span> opt_span = ffi::Optional<Span>());
-
 /*! \brief Get index-th field out of a tuple. */
 class TupleGetItemNode : public ExprNode {
  public:
@@ -187,16 +167,6 @@ class TupleGetItem : public Expr {
   TVM_FFI_DEFINE_OBJECT_REF_METHODS_NULLABLE(TupleGetItem, Expr, TupleGetItemNode);
   TVM_DEFINE_OBJECT_REF_COW_METHOD(TupleGetItemNode);
 };
-
-/*!
- * \brief Returns \p tuple_get_item with the given properties. A null property denotes 'no change'.
- * Returns \p tuple_get_item if all properties are unchanged. Otherwise, returns a copy with the new
- * fields.
- */
-TupleGetItem WithFields(TupleGetItem tuple_get_item,
-                        ffi::Optional<Expr> opt_tuple = ffi::Optional<Expr>(),
-                        ffi::Optional<int64_t> opt_index = ffi::Optional<int64_t>(),
-                        ffi::Optional<Span> opt_span = ffi::Optional<Span>());
 
 /*! \brief A shape expression which allows users to construct a shape containing PrimExpr.
  */
@@ -630,16 +600,6 @@ class If : public Expr {
   TVM_FFI_DEFINE_OBJECT_REF_METHODS_NULLABLE(If, Expr, IfNode);
   TVM_DEFINE_OBJECT_REF_COW_METHOD(IfNode);
 };
-
-/*!
- * \brief Returns \p if_expr with the given properties. A null property denotes 'no change'.
- * Returns \p if_expr if all properties are unchanged. Otherwise, returns a copy with the new
- * fields.
- */
-If WithFields(If if_expr, ffi::Optional<Expr> opt_cond = ffi::Optional<Expr>(),
-              ffi::Optional<Expr> opt_true_branch = ffi::Optional<Expr>(),
-              ffi::Optional<Expr> opt_false_branch = ffi::Optional<Expr>(),
-              ffi::Optional<Span> opt_span = ffi::Optional<Span>());
 
 /*! \brief A Relax function. */
 class FunctionNode : public BaseFuncNode {

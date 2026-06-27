@@ -91,7 +91,15 @@ class PrimExprSlotCollector : public ExprVisitor, public TypeVisitor {
   }
 
  private:
-  void VisitPrimExpr(const PrimExpr& expr) final {
+  void VisitExpr(const Expr& expr) final {
+    if (auto prim_expr = expr.as<PrimExpr>()) {
+      CollectPrimExprSlot(prim_expr.value());
+      return;
+    }
+    ExprVisitor::VisitExpr(expr);
+  }
+
+  void CollectPrimExprSlot(const PrimExpr& expr) {
     if (expr->IsInstance<IntImmNode>()) return;
     if (slot_map_->count(expr) == 0) {
       auto slot = std::make_unique<PrimExprSlot>();
@@ -99,6 +107,11 @@ class PrimExprSlotCollector : public ExprVisitor, public TypeVisitor {
       slot->index = static_cast<int>(slot_vec_->size());
       slot_map_->emplace(expr, slot.get());
       slot_vec_->emplace_back(std::move(slot));
+    }
+    for (tirx::Var var : tirx::UndefinedVars(expr)) {
+      if (!var.same_as(expr)) {
+        CollectPrimExprSlot(var);
+      }
     }
   }
 
@@ -116,7 +129,9 @@ class PrimExprSlotCollector : public ExprVisitor, public TypeVisitor {
     // Do not recurse into function type as it is self-contained
   }
 
-  void VisitTypeExprField(const PrimExpr& expr) final { VisitPrimExpr(expr); }
+  void VisitPrimExprField(const PrimExpr& expr) final { CollectPrimExprSlot(expr); }
+
+  void VisitTypeExprField(const PrimExpr& expr) final { CollectPrimExprSlot(expr); }
 
   void VisitTypeExprField(const Expr& expr) final { ExprVisitor::VisitExpr(expr); }
 
@@ -221,6 +236,13 @@ class VMShapeLowerMutator
       : ExprMutator(mod), emit_err_ctx_(emit_err_ctx) {}
 
   using ExprMutator::VisitExpr_;
+
+  Expr VisitExpr(const Expr& expr) final {
+    if (auto prim_expr = expr.as<PrimExpr>()) {
+      return RewritePrimValue(prim_expr.value());
+    }
+    return ExprMutator::VisitExpr(expr);
+  }
 
   // Unit rewrite function per function.
   Function Rewrite(GlobalVar gvar, Function func) {
@@ -370,13 +392,12 @@ class VMShapeLowerMutator
     }
   }
 
-  Expr VisitExpr_(const ::tvm::ExprNode* op) final {
+  Expr RewritePrimValue(const PrimExpr& value) {
     using runtime::vm::MakeShapeCode;
-    PrimExpr value = ffi::GetRef<PrimExpr>(op);
     // Constant shape can be preserved.
     bool is_const_value = value->IsInstance<IntImmNode>() || value->IsInstance<FloatImmNode>();
     if (is_const_value) {
-      return ffi::GetRef<Expr>(op);
+      return value;
     }
 
     ffi::Array<Expr> args = {shape_heap_};
@@ -385,7 +406,7 @@ class VMShapeLowerMutator
     args.push_back(value_or_index);
 
     // make_shape(heap, n, c[0], r[0], c[1], r[1] ..., c[n], r[n])
-    Call call(builtin_make_prim_value_, args, Attrs(), {ffi::GetRef<PrimExpr>(op).ty()});
+    Call call(builtin_make_prim_value_, args, Attrs(), {value.ty()});
     return call;
   }
 
@@ -412,7 +433,7 @@ class VMShapeLowerMutator
   }
 
   void VisitBinding_(const MatchCastNode* binding) final {
-    Expr value = ExprMutator::VisitExpr(binding->value);
+    Expr value = this->VisitExpr(binding->value);
     std::vector<MatchShapeTodoItem> match_todos;
     std::ostringstream err_ctx;
     err_ctx << "ErrorContext(match_cast, ty=" << binding->ty << ") ";

@@ -32,7 +32,7 @@ import tvm_ffi
 
 import tvm.ir._ffi_api
 from tvm import ir
-from tvm.ir import Op, PrimExpr
+from tvm.ir import PrimExpr
 from tvm.ir.base import Span
 from tvm.runtime import DataTypeCode, Object, ObjectConvertible, Scriptable, const
 
@@ -1309,76 +1309,6 @@ class CallEffectKind:
     ReadState = IntImmEnum(2)
     UpdateState = IntImmEnum(3)
     Opaque = UpdateState
-
-
-def _is_core_call(value: object) -> bool:
-    type_info = getattr(type(value), "__tvm_ffi_type_info__", None)
-    return type_info is not None and type_info.type_key == "ir.Call"
-
-
-class _TIRCallMeta(type(PrimExprWithOp)):
-    def __instancecheck__(cls, instance: object) -> bool:
-        return _is_core_call(instance) and isinstance(getattr(instance, "ty", None), ir.PrimType)
-
-
-@tvm_ffi.register_object("ir.Call")
-class Call(PrimExprWithOp, metaclass=_TIRCallMeta):
-    """Call node.
-
-    Parameters
-    ----------
-    dtype : str
-        The return data type
-
-    op : Union[Op, str]
-        The function to be called, or the name
-        to the global tvm.Op
-
-    args : list of Expr
-        The input arguments to the call
-
-    span : Optional[Span]
-        The location of this expression in the source code.
-
-    attrs : Optional[tvm.ir.Attrs or dict]
-        Attributes attached to the call.
-    """
-
-    op: Op
-    args: list[PrimExpr]
-    attrs: ir.Attrs | None
-
-    def __init__(
-        self,
-        dtype: str | ir.PrimType | None,
-        op: Op | str,
-        args: list[PrimExpr],
-        attrs: ir.Attrs | dict | None = None,
-        span: Span | None = None,
-    ) -> None:
-        if isinstance(op, str):
-            if not op.startswith("tirx."):
-                raise ValueError(
-                    (
-                        "Cannot handle str op argument %s. This function only handles str "
-                        + "argument with the tirx namespace. If you are "
-                        + "certain about the intrinsic name, pass in Op.get(name) instead"
-                    )
-                    % op
-                )
-            op = Op.get(op)
-        if isinstance(attrs, dict):
-            attrs = ir.make_node("ir.DictAttrs", **attrs)
-        if dtype is None:
-            dtype = ir.PrimType("void")
-        elif not isinstance(dtype, ir.PrimType):
-            dtype = ir.PrimType(dtype)
-        if attrs:
-            self.__init_handle_by_constructor__(  # type: ignore
-                _ffi_api.CallWithAttrs, dtype, op, args, attrs, span
-            )
-        else:
-            self.__init_handle_by_constructor__(_ffi_api.Call, dtype, op, args, span)  # type: ignore
 
 
 @tvm_ffi.register_object("tirx.Let")

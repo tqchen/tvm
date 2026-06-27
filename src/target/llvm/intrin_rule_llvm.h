@@ -39,7 +39,7 @@ namespace codegen {
 // num_signature means number of arguments used to query signature
 template <unsigned id, int num_signature>
 inline PrimExpr DispatchLLVMPureIntrin(const PrimExpr& e) {
-  const tirx::CallNode* call = e.as<tirx::CallNode>();
+  const CallNode* call = e.as<CallNode>();
   TVM_FFI_ICHECK(call != nullptr);
   ffi::Array<PrimExpr> cargs;
   // intrin id.
@@ -51,12 +51,13 @@ inline PrimExpr DispatchLLVMPureIntrin(const PrimExpr& e) {
   for (PrimExpr arg : call->args) {
     cargs.push_back(arg);
   }
-  return tirx::Call(call->ty(), tirx::builtin::call_llvm_pure_intrin(), cargs);
+  return tvm::Call(call->ty(), tirx::builtin::call_llvm_pure_intrin(), cargs)
+      .as_or_throw<PrimExpr>();
 }
 
 template <unsigned id, int num_signature>
 inline PrimExpr DispatchLLVMIntrin(const PrimExpr& e) {
-  const tirx::CallNode* call = e.as<tirx::CallNode>();
+  const CallNode* call = e.as<CallNode>();
   TVM_FFI_ICHECK(call != nullptr);
   ffi::Array<PrimExpr> cargs;
   // intrin id.
@@ -67,7 +68,7 @@ inline PrimExpr DispatchLLVMIntrin(const PrimExpr& e) {
   for (PrimExpr arg : call->args) {
     cargs.push_back(arg);
   }
-  return tirx::Call(call->ty(), tirx::builtin::call_llvm_intrin(), cargs);
+  return tvm::Call(call->ty(), tirx::builtin::call_llvm_intrin(), cargs).as_or_throw<PrimExpr>();
 }
 
 }  // namespace codegen

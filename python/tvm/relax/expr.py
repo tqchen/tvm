@@ -529,20 +529,14 @@ class _DLTensorStrideProxy(tvm.runtime.ObjectConvertible):
         return tvm.relax.Call(op, [self.tensor, axis])
 
 
-def _is_core_call(value: object) -> bool:
-    type_info = getattr(type(value), "__tvm_ffi_type_info__", None)
-    return type_info is not None and type_info.type_key == "ir.Call"
-
-
-class _RelaxCallMeta(type(ExprWithOp)):
+class _RelaxCallMeta(type(tvm.ir.Call)):
     def __instancecheck__(cls, instance: object) -> bool:
-        if not _is_core_call(instance):
+        if not isinstance(instance, tvm.ir.Call):
             return False
         return not isinstance(getattr(instance, "ty", None), tvm.ir.PrimType)
 
 
-@tvm_ffi.register_object("ir.Call")
-class Call(ExprWithOp, metaclass=_RelaxCallMeta):
+class Call(tvm.ir.Call, ExprWithOp, metaclass=_RelaxCallMeta):
     """Function call node in Relax.
 
     Call node corresponds the operator application node

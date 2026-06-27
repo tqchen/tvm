@@ -64,7 +64,7 @@ class TMACounter(StmtExprVisitor):
         self.loop_extents.pop()
 
     def visit_evaluate_(self, op):
-        if isinstance(op.value, tvm.tirx.Call):
+        if isinstance(op.value, tvm.ir.Call) and isinstance(op.value, tvm.ir.PrimExpr):
             if op.value.op.name in (
                 "tirx.ptx.cp_async_bulk_tensor_global_to_cluster",
                 "tirx.ptx.cp_async_bulk_tensor_shared_to_global",
@@ -143,7 +143,7 @@ def _build_expected_host_init(dtype, encode_args):
     where ndim = encode_args[0] and the rest are the tensor map parameters.
     """
     A_tensormap = Var("A_tensormap", PointerType(TensorMapType(), "global"))
-    stack_alloca = tvm.tirx.Call(
+    stack_alloca = tvm.ir.Call(
         "handle",
         tvm.ir.Op.get("tirx.tvm_stack_alloca"),
         [StringImm("tensormap"), IntImm("int32", 1)],
@@ -159,7 +159,7 @@ def _build_expected_host_init(dtype, encode_args):
         ]
         + [IntImm("int32", v) for v in encode_args[1:]]
     )
-    encode_call = tvm.tirx.Call("int32", tvm.ir.Op.get("tirx.tvm_call_packed"), call_args)
+    encode_call = tvm.ir.Call("int32", tvm.ir.Op.get("tirx.tvm_call_packed"), call_args)
     replace_point = tvm.tirx.Evaluate(tvm.tirx.op.tvm_kernel_replace_point())
     return tvm.tirx.SeqStmt(
         [tvm.tirx.Bind(A_tensormap, stack_alloca), tvm.tirx.Evaluate(encode_call), replace_point]
@@ -224,13 +224,13 @@ def _build_expected_impl(direction, dtype, s_shape, s_layout, impl_spec):
         buf_indices = [IntImm("int32", v) for v in s_start]
     else:
         buf_indices = [IntImm("int32", 0)] * len(s_shape)
-    addr_of = tvm.tirx.Call(
+    addr_of = tvm.ir.Call(
         "handle", tvm.ir.Op.get("tirx.address_of"), [tvm.tirx.BufferLoad(s_buf, buf_indices)]
     )
 
     # Coordinate args (must have exactly `dim` entries)
     coords = coord_fn(loop_vars)
-    tensormap_addr = tvm.tirx.Call("uint64", tvm.ir.Op.get("tirx.address_of"), [A_tensormap])
+    tensormap_addr = tvm.ir.Call("uint64", tvm.ir.Op.get("tirx.address_of"), [A_tensormap])
 
     # Build PTX call based on direction
     if direction == "g2s":
@@ -260,7 +260,7 @@ def _build_expected_impl(direction, dtype, s_shape, s_layout, impl_spec):
             *coords,
         ]
 
-    eval_stmt = tvm.tirx.Evaluate(tvm.tirx.Call("", ptx_op, ptx_args))
+    eval_stmt = tvm.tirx.Evaluate(tvm.ir.Call(None, ptx_op, ptx_args))
 
     # Wrap: DeclBuffer -> nested For loops (skipped when total extent is 1,
     # matching the implementation's always-unroll single-loop emission).

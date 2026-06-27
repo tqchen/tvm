@@ -136,7 +136,7 @@ def _odd_even_sort(
                             [tid + n],
                         )
 
-        T.evaluate(tvm.tirx.Call(None, "tirx.tvm_storage_sync", tvm.runtime.convert(["shared"])))
+        T.evaluate(tvm.ir.Call(None, "tirx.tvm_storage_sync", [tvm.tirx.StringImm("shared")]))
 
         idxm = tvm.tirx.indexmod
         # OddEvenTransposeSort
@@ -164,9 +164,7 @@ def _odd_even_sort(
                                     [tid + n],
                                 )
                                 T.buffer_store(tmp_values_swap, temp_values[0], [tid + n + 1])
-            T.evaluate(
-                tvm.tirx.Call(None, "tirx.tvm_storage_sync", tvm.runtime.convert(["shared"]))
-            )
+            T.evaluate(tvm.ir.Call(None, "tirx.tvm_storage_sync", [tvm.tirx.StringImm("shared")]))
 
         ## Copy sorted data to output
         with T.serial(0, 2) as n:

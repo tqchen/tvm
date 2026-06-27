@@ -129,7 +129,7 @@ class ASTPrinter(ExprFunctor):
 
     def visit_shape_expr_(self, op: relax.ShapeExpr) -> str:
         return self.build_expr(
-            op, "ShapeExpr", values=self.build_list(map(self.visit_prim_expr_, op.values))
+            op, "ShapeExpr", values=self.build_list(map(self.visit_prim_expr_field_, op.values))
         )
 
     def visit_extern_func_(self, op: relax.ExternFunc) -> str:
@@ -219,7 +219,7 @@ class ASTPrinter(ExprFunctor):
         # ty fields, so we don't use build_expr here
         return self.build_ast_node("Op", name=wrap_quotes(op.name))
 
-    def visit_prim_expr_(self, prim_expr: PrimExpr) -> str:
+    def visit_prim_expr_field_(self, prim_expr: PrimExpr) -> str:
         # TODO: We may want to print PrimExpr ASTs, but this is a simplification for now
         return self.build_ast_node("PrimExpr", value=f"`{prim_expr!s}`")
 
@@ -274,7 +274,7 @@ class ASTPrinter(ExprFunctor):
             fields = {}
             fields["ndim"] = str(ty_node.ndim)
             if ty_node.values is not None:
-                fields["values"] = self.build_list(map(self.visit_prim_expr_, ty_node.values))
+                fields["values"] = self.build_list(map(self.visit_prim_expr_field_, ty_node.values))
             return self.build_ast_node("ShapeType", **fields)
         elif isinstance(ty_node, relax.AnyType):
             return self.build_ast_node("AnyType")

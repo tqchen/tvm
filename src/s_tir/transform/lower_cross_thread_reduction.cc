@@ -424,9 +424,10 @@ Stmt TransformReductionBlock(const SBlockRealizeNode* realize,                  
                         /*attr_key=*/s_tir::attr::reduce_scope,
                         /*value=*/ConstHandle(0),
                         /*body=*/
-                        Evaluate(tirx::Call(/*dtype=*/PrimType::Handle(),
-                                            /*op=*/tirx::builtin::tvm_thread_allreduce(),
-                                            /*args=*/std::move(parameters)))))));
+                        Evaluate(tvm::Call(/*dtype=*/PrimType::Handle(),
+                                           /*op=*/tirx::builtin::tvm_thread_allreduce(),
+                                           /*args=*/std::move(parameters))
+                                     .as_or_throw<PrimExpr>())))));
   }
   // Stmt 4: write cross-thread reduction result to the original buffer
   {

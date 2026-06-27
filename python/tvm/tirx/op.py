@@ -24,14 +24,14 @@ from tvm_ffi import Array
 
 import tvm
 from tvm import tirx
-from tvm.ir import Op, PointerType, PrimExpr
+from tvm.ir import Call, Op, PointerType, PrimExpr
 from tvm.ir.base import Span
 from tvm.ir.type import TensorMapType
 from tvm.runtime import const
 
 from . import _ffi_api
 from .buffer import Buffer
-from .expr import BufferLoad, Call, CommReducer, ExprOp, IntImm, PrimExprWithOp, Var
+from .expr import BufferLoad, CommReducer, ExprOp, IntImm, PrimExprWithOp, Var
 
 tir = tirx  # alias for backward compat with upstream tir.convert() calls
 
@@ -73,6 +73,16 @@ def _primexpr_dtype(expr):
     if not isinstance(ty, tvm.ir.PrimType):
         raise TypeError(f"Expected PrimType for {type(expr).__name__}, but got {ty}")
     return ty.dtype
+
+
+def _canonical_call_arg(arg):
+    if isinstance(arg, tvm.ir.Expr):
+        return arg
+    return tir.convert(arg)
+
+
+def _canonical_call_args(args):
+    return [_canonical_call_arg(arg) for arg in args]
 
 
 def _pack_buffer(buf, span=None):
@@ -235,7 +245,7 @@ def call_intrin(dtype: str | tvm.ir.PrimType, func_name, *args, attrs=None, span
     """
     if isinstance(func_name, str):
         func_name = _canonical_device_intrin_name(func_name)
-    return Call(dtype, func_name, args, attrs=attrs, span=span)
+    return Call(dtype, func_name, _canonical_call_args(args), attrs=attrs, span=span)
 
 
 def call_pure_extern(dtype, func_name, *args, span=None):
@@ -260,7 +270,12 @@ def call_pure_extern(dtype, func_name, *args, span=None):
     call : PrimExpr
         The call expression.
     """
-    return Call(dtype, Op.get("tirx.call_pure_extern"), [func_name, *args], span=span)
+    return Call(
+        dtype,
+        Op.get("tirx.call_pure_extern"),
+        _canonical_call_args([func_name, *args]),
+        span=span,
+    )
 
 
 def call_extern(dtype, func_name, *args, span=None):
@@ -285,7 +300,12 @@ def call_extern(dtype, func_name, *args, span=None):
     call : PrimExpr
         The call expression.
     """
-    return Call(dtype, Op.get("tirx.call_extern"), [func_name, *args], span=span)
+    return Call(
+        dtype,
+        Op.get("tirx.call_extern"),
+        _canonical_call_args([func_name, *args]),
+        span=span,
+    )
 
 
 def _require_float_arg(op_name, x):
@@ -498,7 +518,7 @@ def call_tir(global_var: tvm.ir.GlobalVar, *args):
         if isinstance(ret_ty, tvm.ir.PrimType):
             dtype = ret_ty
 
-    return Call(dtype=dtype, op=global_var, args=args)
+    return Call(dtype=dtype, op=global_var, args=_canonical_call_args(args))
 
 
 def start_profile_intrinsic(id):
@@ -1233,9 +1253,9 @@ def trace(args, trace_action="tvm.default_trace_action"):
     if not isinstance(args, list):
         raise Exception("tvm.tirx.trace consumes the args as list type")
     call_args = [_pack_buffer(x) if isinstance(x, Buffer) else x for x in args]
-    call_args.insert(0, trace_action)
+    call_args.insert(0, tvm.tirx.StringImm(trace_action))
     dtype = _primexpr_ty(args[-1]) if isinstance(args[-1], PrimExpr) else args[-1].dtype
-    return tvm.tirx.Call(dtype, Op.get("tirx.tvm_call_trace_packed"), call_args)
+    return tvm.ir.Call(dtype, Op.get("tirx.tvm_call_trace_packed"), call_args)
 
 
 def min_value(dtype, span=None):

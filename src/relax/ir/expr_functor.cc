@@ -54,7 +54,6 @@
     RELAX_VISIT_BINDING_DISPATCH(IfNode);                                               \
     RELAX_VISIT_BINDING_DISPATCH(OpNode);                                               \
     RELAX_VISIT_BINDING_DISPATCH(TupleGetItemNode);                                     \
-    RELAX_PRIM_EXPR_NODE_DISPATCH_LIST(RELAX_VISIT_BINDING_DISPATCH);                   \
     RELAX_VISIT_BINDING_DISPATCH(StringImmNode);                                        \
     RELAX_VISIT_BINDING_DISPATCH(DataTypeImmNode);                                      \
     return vtable;                                                                      \
@@ -63,9 +62,11 @@
     static VisitBindingVTable vtable = InitVisitBindingVTable();                        \
     const Expr& value = binding->value;                                                 \
     TVM_FFI_ICHECK(value.defined()) << "Found null pointer node while traversing AST."; \
-    TVM_FFI_ICHECK(vtable.can_dispatch(value))                                          \
-        << "VisitVarBinding do not allow binding value type" << value->GetTypeKey();    \
-    vtable(value, this, binding);                                                       \
+    if (vtable.can_dispatch(value)) {                                                   \
+      vtable(value, this, binding);                                                     \
+    } else {                                                                            \
+      VisitBinding_(binding, value.get());                                              \
+    }                                                                                   \
   }
 
 // functions to be overriden.
@@ -102,7 +103,7 @@ void ExprVisitor::DefaultTypeFieldVisitor::VisitTypeExprField(const Expr& expr) 
 }
 
 void ExprVisitor::DefaultTypeFieldVisitor::VisitTypeExprField(const PrimExpr& expr) {
-  parent_->VisitPrimExpr(expr);
+  parent_->VisitPrimExprField(expr);
 }
 
 void ExprVisitor::DefaultTypeFieldVisitor::VisitType_(const FuncTypeNode* op) {
@@ -192,7 +193,7 @@ void ExprVisitor::VisitExpr_(const TupleGetItemNode* op) {
 
 void ExprVisitor::VisitExpr_(const ShapeExprNode* op) {
   for (PrimExpr val : op->values) {
-    this->VisitPrimExpr(val);
+    this->VisitPrimExprField(val);
   }
   this->VisitSpan(op->span);
 
@@ -214,8 +215,12 @@ void ExprVisitor::VisitExpr_(const SeqExprNode* op) {
   VisitExprDepTypeFieldIfNeeded(this, op->ty);
 }
 
-void ExprVisitor::VisitExpr_(const ::tvm::ExprNode* op) {
-  this->VisitPrimExpr(ffi::GetRef<PrimExpr>(op));
+void ExprVisitor::VisitExprFallback_(const ::tvm::ExprNode* op) {
+  if (!op->ty.defined() || !op->ty.as<PrimTypeNode>()) {
+    this->VisitExprDefault_(op);
+    return;
+  }
+
   VisitExprDepTypeFieldIfNeeded(this, op->ty);
   this->VisitSpan(op->span);
 }
@@ -226,7 +231,7 @@ void ExprVisitor::VisitExpr_(const DataTypeImmNode* op) { this->VisitSpan(op->sp
 
 void ExprVisitor::VisitSpan(const Span& span) {}
 
-void ExprVisitor::VisitPrimExpr(const PrimExpr& expr) {}
+void ExprVisitor::VisitPrimExprField(const PrimExpr& expr) {}
 
 // implementations of binding visitor dispatch
 RELAX_VAR_BINDING_DISPATCH_IMPL(ExprVisitor);
@@ -342,7 +347,7 @@ Expr ExprMutatorBase::DefaultTypeFieldMutator::VisitTypeExprField(const Expr& ex
 }
 
 PrimExpr ExprMutatorBase::DefaultTypeFieldMutator::VisitTypeExprField(const PrimExpr& expr) {
-  return parent_->VisitPrimExpr(expr);
+  return parent_->VisitPrimExprField(expr);
 }
 
 Type ExprMutatorBase::DefaultTypeFieldMutator::VisitType_(const FuncTypeNode* op) {
@@ -457,15 +462,12 @@ Expr ExprMutatorBase::VisitExpr_(const TupleGetItemNode* op) {
   }
 }
 
-Expr ExprMutatorBase::VisitExpr_(const ::tvm::ExprNode* op) {
-  PrimExpr prim_expr = ffi::GetRef<PrimExpr>(op);
-  auto value = this->VisitPrimExpr(prim_expr);
-  if (prim_expr.same_as(value)) {
-    // type can be deterministically derived by value
-    // if value does not change, then type won't change.
-    return ffi::GetRef<Expr>(op);
+Expr ExprMutatorBase::VisitExprFallback_(const ::tvm::ExprNode* op) {
+  if (!op->ty.defined() || !op->ty.as<PrimTypeNode>()) {
+    return this->VisitExprDefault_(op);
   }
-  return value;
+
+  return ffi::GetRef<Expr>(op);
 }
 
 Expr ExprMutatorBase::VisitExpr_(const StringImmNode* op) { return ffi::GetRef<Expr>(op); }
@@ -473,7 +475,7 @@ Expr ExprMutatorBase::VisitExpr_(const StringImmNode* op) { return ffi::GetRef<E
 Expr ExprMutatorBase::VisitExpr_(const DataTypeImmNode* op) { return ffi::GetRef<Expr>(op); }
 
 Expr ExprMutatorBase::VisitExpr_(const ShapeExprNode* op) {
-  auto values = op->values.Map([this](const PrimExpr& e) { return this->VisitPrimExpr(e); });
+  auto values = op->values.Map([this](const PrimExpr& e) { return this->VisitPrimExprField(e); });
 
   if (values.same_as(op->values)) {
     // If values does not change, type won't change.
@@ -532,7 +534,7 @@ BindingBlock ExprMutatorBase::VisitBindingBlock(const BindingBlock& block) {
   }
 }
 
-PrimExpr ExprMutatorBase::VisitPrimExpr(const PrimExpr& expr) { return expr; }
+PrimExpr ExprMutatorBase::VisitPrimExprField(const PrimExpr& expr) { return expr; }
 
 // ==================
 // ExprMutator

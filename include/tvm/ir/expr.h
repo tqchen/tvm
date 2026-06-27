@@ -88,39 +88,10 @@ class PrimExprNode : public ExprNode {
 };
 
 /*!
- * \brief Typed expression reference.
- *
- * A typed expression is an Expr whose ExprNode::ty is present and is an
- * instance of TypeRef.  This is a reference-level refinement; the underlying
- * node remains an ExprNode subclass.
- *
- * \tparam TypeRef The required expression type.
- */
-template <typename TypeRef>
-class TypedExpr : public Expr {
- public:
-  /*! \return the refined type of this expression. */
-  TypeRef ty() const {
-    const auto* node = get();
-    TVM_FFI_DCHECK(node != nullptr);
-    TVM_FFI_DCHECK(node->ExprNode::ty.defined());
-    using TypeNode = typename TypeRef::ContainerType;
-    const auto* ty_node = node->ExprNode::ty.template as<TypeNode>();
-    TVM_FFI_DCHECK(ty_node != nullptr);
-    return ffi::GetRef<TypeRef>(ty_node);
-  }
-
-  TVM_FFI_DEFINE_OBJECT_REF_METHODS_NULLABLE(TypedExpr, Expr, ExprNode);
-  static constexpr bool _type_container_is_exact = false;
-};
-
-using PrimExprBase = TypedExpr<PrimType>;
-
-/*!
  * \brief Reference to a primitive-typed expression.
  * \sa PrimExprNode
  */
-class PrimExpr : public PrimExprBase {
+class PrimExpr : public Expr {
  public:
   /*!
    * \brief construct from integer.
@@ -134,7 +105,16 @@ class PrimExpr : public PrimExprBase {
   TVM_DLL PrimExpr(float value);  // NOLINT(*)
 
   /*! \return the primitive type of this expression. */
-  TVM_FFI_DEFINE_OBJECT_REF_METHODS_NULLABLE(PrimExpr, PrimExprBase, ExprNode);
+  PrimType ty() const {
+    const auto* node = get();
+    TVM_FFI_DCHECK(node != nullptr);
+    TVM_FFI_DCHECK(node->ExprNode::ty.defined());
+    const auto* ty_node = node->ExprNode::ty.as<PrimTypeNode>();
+    TVM_FFI_DCHECK(ty_node != nullptr);
+    return ffi::GetRef<PrimType>(ty_node);
+  }
+
+  TVM_FFI_DEFINE_OBJECT_REF_METHODS_NULLABLE(PrimExpr, Expr, ExprNode);
   static constexpr bool _type_container_is_exact = true;
 
   /*!
@@ -511,21 +491,13 @@ class Call : public Expr {
  public:
   TVM_DLL Call(Type ret_ty, Expr op, ffi::Array<Expr> args, Attrs attrs = Attrs(),
                ffi::Array<Type> ty_args = ffi::Array<Type>(), Span span = Span());
+  TVM_DLL Call(PrimType ret_ty, Expr op, ffi::Array<PrimExpr> args, Attrs attrs = Attrs(),
+               Span span = Span());
+  TVM_DLL Call(PrimType ret_ty, Expr op, ffi::Array<PrimExpr> args, Span span);
 
   TVM_FFI_DEFINE_OBJECT_REF_METHODS_NULLABLE(Call, Expr, CallNode);
   TVM_DEFINE_OBJECT_REF_COW_METHOD(CallNode);
 };
-
-/*!
- * \brief Return \p call with the given properties.
- */
-TVM_DLL Call
-WithFields(Call call, ffi::Optional<Type> opt_ret_ty = ffi::Optional<Type>(),
-           ffi::Optional<Expr> opt_op = ffi::Optional<Expr>(),
-           ffi::Optional<ffi::Array<Expr>> opt_args = ffi::Optional<ffi::Array<Expr>>(),
-           ffi::Optional<Attrs> opt_attrs = ffi::Optional<Attrs>(),
-           ffi::Optional<ffi::Array<Type>> opt_ty_args = ffi::Optional<ffi::Array<Type>>(),
-           ffi::Optional<Span> opt_span = ffi::Optional<Span>());
 
 /*!
  * \brief Constant integer literals in the program.

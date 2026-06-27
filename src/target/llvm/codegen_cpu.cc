@@ -792,7 +792,7 @@ CodeGenCPU::PackedCall CodeGenCPU::MakeCallPackedLowered(const ffi::Array<PrimEx
                                                          bool use_env_lookup) {
   std::string func_name = [&]() {
     auto ptr = args[0].as<StringImmNode>();
-    TVM_FFI_ICHECK(ptr) << "Expected first argument of tirx::Call to be "
+    TVM_FFI_ICHECK(ptr) << "Expected first argument of Call to be "
                         << "a string containing the callee's name, "
                         << "but instead contained " << args[0];
     return ptr->value;

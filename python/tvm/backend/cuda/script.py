@@ -144,8 +144,8 @@ class CpAsyncNamespace:
             import tvm
 
             elem_dtype, dst, dst_off, src, src_off, cp_size = args
-            return tvm.tirx.Call(
-                tvm.DataType(elem_dtype),
+            return tvm.ir.Call(
+                tvm.ir.PrimType(elem_dtype),
                 tvm.ir.Op.get("tirx.ptx.cp_async_raw"),
                 [dst, dst_off, src, src_off, cp_size],
             )

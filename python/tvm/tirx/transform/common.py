@@ -16,13 +16,12 @@
 # under the License.
 
 
-from tvm.ir import Op
+from tvm.ir import Call, Op
 from tvm.tirx import (
     AllocBuffer,
     BufferLoad,
     BufferRegion,
     BufferStore,
-    Call,
     DeclBuffer,
     Evaluate,
     PrimExpr,

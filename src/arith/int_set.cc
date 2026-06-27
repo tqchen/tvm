@@ -350,7 +350,7 @@ inline IntervalSet Combine<tirx::FloorMod>(AnalyzerObj* analyzer, IntervalSet a,
             int64_t max_mod_result = max_quotient * gcd + (dividend_mod->base % gcd);
 
             if (max_mod_result >= 0 && max_mod_result < div_val) {
-              PrimType result_ty = ffi::GetRef<PrimExpr>(op).ty();
+              PrimType result_ty = op->ty();
               return IntervalSet(IntImm(result_ty, 0), IntImm(result_ty, max_mod_result));
             }
           }

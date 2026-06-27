@@ -1868,12 +1868,10 @@ llvm::Value* CodeGenLLVM::VisitExpr_(const CallNode* op) {
       // call extern intrinsic
       TVM_FFI_ICHECK_GE(op->args.size(), 1U);
       auto global_symbol = op->args[0].as_or_throw<StringImm>();
-      return this->CreateCallExtern(GetType(ffi::GetRef<PrimExpr>(op)), global_symbol->value,
-                                    op->args, true);
+      return this->CreateCallExtern(op->ty, global_symbol->value, op->args, true);
     } else if (op_attr_global_symbol_.count(call_op)) {
       // call extern if the op itself have a global symbol.
-      return this->CreateCallExtern(GetType(ffi::GetRef<PrimExpr>(op)),
-                                    op_attr_global_symbol_[call_op], op->args, false);
+      return this->CreateCallExtern(op->ty, op_attr_global_symbol_[call_op], op->args, false);
     } else {
       VLOG(2) << "CreateIntrinsic: " << ffi::GetRef<Call>(op);
       auto x = CreateIntrinsic(op);

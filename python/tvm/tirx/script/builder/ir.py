@@ -34,7 +34,7 @@ from tvm_ffi.core import String
 
 from tvm import DataType, ir
 from tvm import tirx as tir
-from tvm.ir import Type
+from tvm.ir import Call, Type
 from tvm.ir import register_op_attr as _register_op_attr
 from tvm.ir.base import deprecated
 from tvm.runtime import convert
@@ -59,7 +59,6 @@ from tvm.tirx.expr import (
     And,
     Broadcast,
     BufferLoad,
-    Call,
     CallEffectKind,
     Cast,
     CommReducer,

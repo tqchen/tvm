@@ -79,11 +79,13 @@ class TextureAllocInjector : public arith::IRMutatorWithAnalyzer {
       ffi::Array<PrimExpr> args;
       args.push_back(StringImm(storage_scope));
       args.push_back(IntImm::Int64(3));
-      args.push_back(tirx::Call(PrimType::Handle(), builtin::tvm_stack_make_shape(),
-                                {texture.width, texture.height, texture.depth}));
+      args.push_back(tvm::Call(PrimType::Handle(), builtin::tvm_stack_make_shape(),
+                               {texture.width, texture.height, texture.depth})
+                         .as_or_throw<PrimExpr>());
       args.push_back(IntImm::Int64(channel_size));
       stmt = Bind(op->buffer->data,
-                  tirx::Call(op->buffer->data.ty(), builtin::nd_mem_alloc_with_scope(), args));
+                  tvm::Call(op->buffer->data.ty(), builtin::nd_mem_alloc_with_scope(), args)
+                      .as_or_throw<PrimExpr>());
     }
     return stmt;
   }

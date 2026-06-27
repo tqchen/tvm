@@ -233,7 +233,7 @@ class ForMatcher : public TensorizeComparator {
     return false;
   }
 
-  bool VisitExpr_(const tirx::CallNode* call, const PrimExpr& other) final {
+  bool VisitExpr_(const CallNode* call, const PrimExpr& other) final {
     const auto* rhs = other.as<CallNode>();
     if (rhs == nullptr) return false;
     const auto* lhs_op = call->op.as<OpNode>();

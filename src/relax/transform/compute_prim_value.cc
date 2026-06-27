@@ -36,16 +36,23 @@ class PrimExprComputeInjector : public ExprMutator {
 
   using ExprMutator::VisitExpr_;
 
-  Expr VisitExpr_(const ::tvm::ExprNode* op) override {
-    auto node = ExprMutator::VisitExpr_(op).as_or_throw<PrimExpr>();
+  Expr VisitExpr(const Expr& expr) final {
+    if (auto prim_expr = expr.as<PrimExpr>()) {
+      return VisitPrimValue(prim_expr.value());
+    }
+    return ExprMutator::VisitExpr(expr);
+  }
 
+ private:
+  Expr VisitPrimValue(const PrimExpr& node) {
     if (node->IsInstance<tirx::IntImmNode>() || node->IsInstance<tirx::VarNode>()) {
       return node;
     }
 
     tvm::PrimType ret_ty = node.ty();
     auto param_vars = tirx::UndefinedVars(node);
-    tirx::Stmt body = tirx::Evaluate(tirx::Call(node.ty(), tirx::builtin::ret(), {node}));
+    tirx::Stmt body =
+        tirx::Evaluate(tvm::Call(node.ty(), tirx::builtin::ret(), {node}).as_or_throw<PrimExpr>());
 
     tirx::PrimFunc func(param_vars, body, ret_ty, {},
                         DictAttrs({{tirx::attr::kIsHostFunc, true}, {tvm::attr::kSTir, true}}));

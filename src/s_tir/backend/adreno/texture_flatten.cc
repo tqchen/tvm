@@ -100,7 +100,8 @@ class TextureFlattener : public TextureLoweringBase {
     if (IsTextureStorage(storage_scope)) {
       ffi::Array<PrimExpr> args = GetTextureAccessArgs(op, op->buffer);
       args.push_back(op->value);
-      stmt = Evaluate(tirx::Call(args[0].ty(), builtin::texture2d_store(), args));
+      stmt = Evaluate(
+          tvm::Call(args[0].ty(), builtin::texture2d_store(), args).as_or_throw<PrimExpr>());
     }
 
     return stmt;
@@ -114,7 +115,7 @@ class TextureFlattener : public TextureLoweringBase {
     if (IsTextureStorage(storage_scope)) {
       ffi::Array<PrimExpr> args = GetTextureAccessArgs(op, op->buffer);
       args.push_back(op->indices.back());
-      expr = tirx::Call(op->buffer->dtype, builtin::texture2d_load(), args);
+      expr = tvm::Call(op->buffer->dtype, builtin::texture2d_load(), args).as_or_throw<PrimExpr>();
     }
 
     return expr;

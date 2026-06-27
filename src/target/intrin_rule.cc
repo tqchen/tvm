@@ -131,7 +131,7 @@ TVM_REGISTER_OP("tirx.tvm_access_ptr")
       PrimType dtype = call->args[0].as_or_throw<PrimExpr>().ty();
       Var buffer_var = call->args[1].as_or_throw<Var>();
       PrimExpr offset = call->args[2].as_or_throw<PrimExpr>();
-      TVM_FFI_ICHECK(ffi::GetRef<PrimExpr>(call).ty().IsHandle());
+      TVM_FFI_ICHECK(call->ty.as_or_throw<PrimType>().IsHandle());
       if (dtype.lanes() != 1) {
         PrimType offset_ty = offset.ty();
         offset = offset * MakeConst(offset_ty, dtype.lanes());
@@ -140,7 +140,8 @@ TVM_REGISTER_OP("tirx.tvm_access_ptr")
       Buffer dummy_buf(buffer_var, dtype.WithLanes(1), {offset + 1}, {}, 0, buffer_var->name_hint,
                        0, 0, kDefault);
       BufferLoad buf_load(dummy_buf, {offset});
-      return tirx::Call(PrimType::Handle(), builtin::address_of(), {buf_load});
+      return tvm::Call(PrimType::Handle(), builtin::address_of(), {buf_load})
+          .as_or_throw<PrimExpr>();
     });
 
 PrimExpr DispatchFastErf(const PrimExpr& e) {
@@ -162,7 +163,7 @@ PrimExpr DispatchFastErf(const PrimExpr& e) {
 
 PrimExpr DispatchNumericalStableTanh(const PrimExpr& e) {
   using tirx::MakeConst;
-  const tirx::CallNode* call = e.as<tirx::CallNode>();
+  const CallNode* call = e.as<CallNode>();
   TVM_FFI_ICHECK(call != nullptr);
   PrimExpr x = call->args[0].as_or_throw<PrimExpr>();
   PrimType x_ty = x.ty();
@@ -270,7 +271,7 @@ TVM_REGISTER_OP("tirx.q_multiply_shift")
     .set_attr<FLegalize>("default.FLegalize", [](const PrimExpr& e) -> PrimExpr {
       using tirx::MakeConst;
 
-      const tirx::CallNode* call = e.as<tirx::CallNode>();
+      const CallNode* call = e.as<CallNode>();
       TVM_FFI_ICHECK(call != nullptr);
 
       PrimExpr x = call->args[0].as_or_throw<PrimExpr>();
@@ -328,7 +329,7 @@ TVM_REGISTER_OP("tirx.q_multiply_shift")
 
 TVM_REGISTER_OP("tirx.q_multiply_shift_per_axis")
     .set_attr<FLegalize>("default.FLegalize", [](const PrimExpr& e) -> PrimExpr {
-      const tirx::CallNode* call = e.as<tirx::CallNode>();
+      const CallNode* call = e.as<CallNode>();
       TVM_FFI_ICHECK(call != nullptr);
 
       PrimExpr x = call->args[0].as_or_throw<PrimExpr>();

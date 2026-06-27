@@ -251,7 +251,7 @@ TVM_STATIC_IR_FUNCTOR(IRDocsifier, vtable)
     .set_dispatch<tvm::Call>(  //
         "", [](tvm::Call call, AccessPath n_p, IRDocsifier d) -> Doc {
           if (call->ty.as<PrimTypeNode>()) {
-            return PrintTIRCall(call.as_or_throw<tirx::Call>(), n_p, d);
+            return PrintTIRCall(call, n_p, d);
           }
           relax::Call n = call.as_or_throw<relax::Call>();
           // Special case: call_tir, call_dps_packed, call_tir_with_grad

@@ -35,7 +35,7 @@ namespace spirv {
 // num_signature means number of arguments used to query signature
 template <unsigned id>
 PrimExpr CallGLSLIntrin(PrimExpr e, const ffi::Array<PrimExpr>& args) {
-  const tirx::CallNode* call = e.as<tirx::CallNode>();
+  const CallNode* call = e.as<CallNode>();
   TVM_FFI_ICHECK(call != nullptr);
   ffi::Array<PrimExpr> cargs;
   // intrin id.
@@ -44,12 +44,13 @@ PrimExpr CallGLSLIntrin(PrimExpr e, const ffi::Array<PrimExpr>& args) {
   for (PrimExpr arg : args) {
     cargs.push_back(arg);
   }
-  return tirx::Call(call->ty(), tirx::builtin::call_spirv_pure_glsl450(), cargs);
+  return tvm::Call(call->ty(), tirx::builtin::call_spirv_pure_glsl450(), cargs)
+      .as_or_throw<PrimExpr>();
 }
 
 template <unsigned id>
 PrimExpr CallGLSLIntrin(PrimExpr e) {
-  const tirx::CallNode* call = e.as<tirx::CallNode>();
+  const CallNode* call = e.as<CallNode>();
   TVM_FFI_ICHECK(call != nullptr);
   return CallGLSLIntrin<id>(e, call->args);
 }
@@ -162,7 +163,7 @@ void RegisterVulkanLegalizeRules() {
   // clang-format off
 TVM_REGISTER_OP("tirx.clz")
     .set_attr<FLegalize>("vulkan.FLegalize", [](const PrimExpr& e) -> PrimExpr {
-      const tirx::CallNode* call = e.as<tirx::CallNode>();
+      const CallNode* call = e.as<CallNode>();
       TVM_FFI_ICHECK(call != nullptr);
       TVM_FFI_ICHECK_EQ(call->args.size(), 1);
       PrimExpr arg = call->args[0];

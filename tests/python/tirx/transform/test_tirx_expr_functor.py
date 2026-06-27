@@ -18,7 +18,7 @@
 import tvm
 import tvm.testing
 from tvm import tirx as tir
-from tvm.ir import Op
+from tvm.ir import Call, Op
 from tvm.ir.base import assert_structural_equal
 from tvm.tirx.expr import (
     EQ,
@@ -31,7 +31,6 @@ from tvm.tirx.expr import (
     And,
     Broadcast,
     BufferLoad,
-    Call,
     Cast,
     Div,
     FloatImm,

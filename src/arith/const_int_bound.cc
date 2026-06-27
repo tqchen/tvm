@@ -203,7 +203,7 @@ class ConstIntBoundAnalyzer::Impl
       a = VisitExpr(op->value);
     }
 
-    Entry b = Everything(ffi::GetRef<PrimExpr>(op).ty());
+    Entry b = Everything(op->ty());
     return Intersect(a, b);
   }
 
@@ -263,7 +263,7 @@ class ConstIntBoundAnalyzer::Impl
   Entry VisitExpr_(const DivNode* op) final {
     Entry a = VisitExpr(op->a);
     Entry b = AssumeNoZeroDivisor(VisitExpr(op->b));
-    return HandleDivision(a, b, ffi::GetRef<PrimExpr>(op).ty(), InfAwareDiv);
+    return HandleDivision(a, b, op->ty(), InfAwareDiv);
   }
 
   Entry VisitExpr_(const ModNode* op) final {
@@ -312,14 +312,14 @@ class ConstIntBoundAnalyzer::Impl
       TVM_FFI_ICHECK(!b.is_const(0)) << "mod by zero";
       // mod by negative value is rare,
       // and we just use the simpliest rule.
-      return Everything(ffi::GetRef<PrimExpr>(op).ty());
+      return Everything(op->ty());
     }
   }
 
   Entry VisitExpr_(const FloorDivNode* op) final {
     Entry a = VisitExpr(op->a);
     Entry b = AssumeNoZeroDivisor(VisitExpr(op->b));
-    return HandleDivision(a, b, ffi::GetRef<PrimExpr>(op).ty(), InfAwareFloorDiv);
+    return HandleDivision(a, b, op->ty(), InfAwareFloorDiv);
   }
 
   Entry VisitExpr_(const FloorModNode* op) final {
@@ -385,7 +385,7 @@ class ConstIntBoundAnalyzer::Impl
       int64_t b_max_cap = InfAwareAdd(b.max_value, -1);
       return Intersect(MakeBound(std::min(static_cast<int64_t>(0), b_min_cap),
                                  std::max(static_cast<int64_t>(0), b_max_cap)),
-                       Everything(ffi::GetRef<PrimExpr>(op).ty()));
+                       Everything(op->ty()));
     }
   }
 
@@ -424,7 +424,7 @@ class ConstIntBoundAnalyzer::Impl
     } else if (op->op.same_as(tirx::builtin::bitwise_and())) {
       return VisitBitwiseAnd(op);
     } else {
-      return Everything(ffi::GetRef<PrimExpr>(op).ty());
+      return Everything(op->ty.as_or_throw<PrimType>());
     }
   }
 
@@ -434,7 +434,7 @@ class ConstIntBoundAnalyzer::Impl
     if (it != var_map_.end()) {
       return it->second;
     } else {
-      return Everything(ffi::GetRef<PrimExpr>(op).ty());
+      return Everything(op->ty());
     }
   }
 
@@ -456,7 +456,7 @@ class ConstIntBoundAnalyzer::Impl
       // If either operand can negative, we may run into undefined
       // behavior for some targets.  In these cases, avoid making any
       // assumptions about the result.
-      return Everything(ffi::GetRef<PrimExpr>(op).ty());
+      return Everything(op->ty.as_or_throw<PrimType>());
     }
 
     return BinaryOpBoundary(a, b, InfAwareLeftShift);
@@ -481,7 +481,7 @@ class ConstIntBoundAnalyzer::Impl
       if (a.min_value >= 0) {
         return MakeBound(0, a.max_value);
       }
-      return Everything(ffi::GetRef<PrimExpr>(op).ty());
+      return Everything(op->ty.as_or_throw<PrimType>());
     }
   }
 
@@ -801,7 +801,7 @@ class ConstIntBoundAnalyzer::Impl
   static ffi::Optional<PrimExpr> FindCeilLog2Arg(const CastNode* op) {
     static const Op& ceil_op = Op::Get("tirx.ceil");
     static const Op& log2_op = Op::Get("tirx.log2");
-    if (ffi::GetRef<PrimExpr>(op).ty().code() == DLDataTypeCode::kDLInt) {
+    if (op->ty().code() == DLDataTypeCode::kDLInt) {
       if (auto as_call = op->value.as<CallNode>()) {
         if (as_call->op.same_as(ceil_op)) {
           PrimExpr ceil_arg = as_call->args[0].as_or_throw<PrimExpr>();

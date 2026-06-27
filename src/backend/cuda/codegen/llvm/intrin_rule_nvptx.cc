@@ -55,7 +55,7 @@ inline PrimExpr DispatchPureExternLibDevice(const PrimExpr& e) {
   for (auto arg : call->args) {
     new_args.push_back(arg);
   }
-  return Call(call->ty(), builtin::call_pure_extern(), new_args);
+  return Call(call->ty(), builtin::call_pure_extern(), new_args).as_or_throw<PrimExpr>();
 }
 
 namespace llvm {
@@ -74,7 +74,7 @@ TVM_REGISTER_OP("tirx.round")
       const CallNode* call = e.as<CallNode>();
       TVM_FFI_ICHECK(call != nullptr);
       static const Op& nearbyint_op = Op::Get("tirx.nearbyint");
-      auto new_call = Call(call->ty(), nearbyint_op, call->args);
+      auto new_call = Call(call->ty(), nearbyint_op, call->args).as_or_throw<PrimExpr>();
       return DispatchPureExternLibDevice(new_call);
     });
 

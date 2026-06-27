@@ -575,9 +575,10 @@ class Normalizer : public BlockBuilderImpl, private ExprFunctor<Expr(const Expr&
   RELAX_EXPR_NORMALIZER_LEAF(OpNode);
   RELAX_EXPR_NORMALIZER_LEAF(ConstantNode);
   RELAX_EXPR_NORMALIZER_LEAF(ShapeExprNode);
-  RELAX_EXPR_NORMALIZER_LEAF(::tvm::ExprNode);
   RELAX_EXPR_NORMALIZER_LEAF(StringImmNode);
   RELAX_EXPR_NORMALIZER_LEAF(DataTypeImmNode);
+
+  Expr VisitExprFallback_(const ::tvm::ExprNode* op) final { return ffi::GetRef<Expr>(op); }
 
   template <typename T>
   Expr VisitVar_(const typename T::ContainerType* var) {

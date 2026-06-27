@@ -164,7 +164,9 @@ class FuncBuilder : public ExprMutator {
     return func;
   }
 
-  PrimExpr VisitPrimExpr(const PrimExpr& expr) { return tirx::Substitute(expr, tir_var_remap_); }
+  PrimExpr VisitPrimExprField(const PrimExpr& expr) {
+    return tirx::Substitute(expr, tir_var_remap_);
+  }
 
   support::OrderedSet<const VarNode*> inputs_;
   support::OrderedSet<const VarNode*> outputs_;

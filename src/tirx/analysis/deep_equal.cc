@@ -131,7 +131,7 @@ class ExprDeepEqualChecker : private ExprFunctor<bool(const PrimExpr&, const Pri
 
   bool VisitExpr_(const CallNode* plhs, const PrimExpr& rhs) final {
     const auto* prhs = rhs.as<CallNode>();
-    return ffi::GetRef<PrimExpr>(plhs).ty() == ffi::GetRef<PrimExpr>(prhs).ty() &&
+    return plhs->ty.as_or_throw<PrimType>() == prhs->ty.as_or_throw<PrimType>() &&
            plhs->op.same_as(prhs->op) && ArrayDeepEqual(plhs->args, prhs->args) &&
            ffi::StructuralEqual()(plhs->attrs, prhs->attrs);
   }

@@ -699,7 +699,7 @@ class CanonicalSimplifier::Impl : public RewriteSimplifier::Impl {
 };
 
 PrimExpr CanonicalSimplifier::Impl::VisitExpr_(const AddNode* op) {
-  if (!IsIndexTypedExpr(ffi::GetRef<PrimExpr>(op))) {
+  if (!IsIndexTypeExpr(op)) {
     return Rewriter::VisitExpr_(op);
   }
   // normalize
@@ -723,7 +723,7 @@ PrimExpr CanonicalSimplifier::Impl::VisitExpr_(const AddNode* op) {
 }
 
 PrimExpr CanonicalSimplifier::Impl::VisitExpr_(const SubNode* op) {
-  if (!IsIndexTypedExpr(ffi::GetRef<PrimExpr>(op))) {
+  if (!IsIndexTypeExpr(op)) {
     return Rewriter::VisitExpr_(op);
   }
   // normalize
@@ -747,7 +747,7 @@ PrimExpr CanonicalSimplifier::Impl::VisitExpr_(const SubNode* op) {
 }
 
 PrimExpr CanonicalSimplifier::Impl::VisitExpr_(const MulNode* op) {
-  if (!IsIndexTypedExpr(ffi::GetRef<PrimExpr>(op))) {
+  if (!IsIndexTypeExpr(op)) {
     return Rewriter::VisitExpr_(op);
   }
   // normalize
@@ -917,7 +917,7 @@ bool CanonicalSimplifier::Impl::ProdDivSimplify(PrimExpr* plhs, PrimExpr* prhs,
 }
 
 PrimExpr CanonicalSimplifier::Impl::VisitExpr_(const DivNode* op) {
-  if (!IsIndexTypedExpr(ffi::GetRef<PrimExpr>(op))) {
+  if (!IsIndexTypeExpr(op)) {
     return Rewriter::VisitExpr_(op);
   }
 
@@ -981,7 +981,7 @@ PrimExpr CanonicalSimplifier::Impl::VisitExpr_(const DivNode* op) {
 }
 
 PrimExpr CanonicalSimplifier::Impl::VisitExpr_(const FloorDivNode* op) {
-  if (!IsIndexTypedExpr(ffi::GetRef<PrimExpr>(op))) {
+  if (!IsIndexTypeExpr(op)) {
     return Rewriter::VisitExpr_(op);
   }
   PrimExpr a = this->CanonicalMutate(op->a);
@@ -1127,7 +1127,7 @@ SplitExpr CanonicalSimplifier::Impl::SplitModConst(SplitExpr lhs, int64_t cval, 
 }
 
 PrimExpr CanonicalSimplifier::Impl::VisitExpr_(const ModNode* op) {
-  if (!IsIndexTypedExpr(ffi::GetRef<PrimExpr>(op))) {
+  if (!IsIndexTypeExpr(op)) {
     return Rewriter::VisitExpr_(op);
   }
   // normalize
@@ -1201,7 +1201,7 @@ PrimExpr CanonicalSimplifier::Impl::VisitExpr_(const ModNode* op) {
 }
 
 PrimExpr CanonicalSimplifier::Impl::VisitExpr_(const FloorModNode* op) {
-  if (!IsIndexTypedExpr(ffi::GetRef<PrimExpr>(op))) {
+  if (!IsIndexTypeExpr(op)) {
     return Rewriter::VisitExpr_(op);
   }
   // normalize
@@ -1363,7 +1363,7 @@ PrimExpr CanonicalSimplifier::Impl::VisitExpr_(const ReduceNode* op) {
 }
 
 PrimExpr CanonicalSimplifier::Impl::VisitExpr_(const CastNode* op) {
-  if (!IsIndexTypedExpr(ffi::GetRef<PrimExpr>(op))) {
+  if (!IsIndexTypeExpr(op)) {
     return Rewriter::VisitExpr_(op);
   }
   // normalize

@@ -158,7 +158,8 @@ PrimExpr ExprMutator::VisitExpr_(const CallNode* op) {
   if (args.same_as(op->args)) {
     return ffi::GetRef<PrimExpr>(op);
   } else {
-    return Call(op->ExprNode::ty.as_or_throw<PrimType>(), op->op, args, op->attrs, op->span);
+    return Call(op->ExprNode::ty.as_or_throw<PrimType>(), op->op, args, op->attrs, op->span)
+        .as_or_throw<PrimExpr>();
   }
 }
 

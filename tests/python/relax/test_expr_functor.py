@@ -141,7 +141,7 @@ class ASTPrinter(PyExprVisitor):
         self.visit_expr(op.tuple_value)
         self.log.pop_scope()
 
-    def visit_prim_expr_(self, op: PrimExpr) -> None:
+    def visit_prim_expr_field_(self, op: PrimExpr) -> None:
         self.log.add("PrimExpr")
 
     def visit_string_imm_(self, op: StringImm) -> None:
@@ -262,7 +262,7 @@ class ASTPostPrinterMutator(PyExprMutator):
         self.log.add("TupleGetItem")
         return op
 
-    def visit_prim_expr_(self, op: PrimExpr) -> Expr:
+    def visit_prim_expr_field_(self, op: PrimExpr) -> Expr:
         op = self.visit_expr_post_order(op)
         self.log.add("PrimExpr")
         return op
@@ -425,13 +425,13 @@ def test_seq_expr():
 
 def test_shape_expr():
     x = relax.ShapeExpr([m, n])
-    basic_check(x, "ShapeExpr", "ShapeExpr")
+    basic_check(x, "ShapeExpr", "\n".join(["PrimExpr", "PrimExpr", "ShapeExpr"]))
 
 
 def test_prim_expr():
-    basic_check(tvm.tirx.IntImm("int64", 1), "PrimExpr", "PrimExpr")
-    basic_check(tvm.tirx.FloatImm("float32", 1.0), "PrimExpr", "PrimExpr")
-    basic_check(m + n, "PrimExpr", "PrimExpr")
+    basic_check(tvm.tirx.IntImm("int64", 1), "", "")
+    basic_check(tvm.tirx.FloatImm("float32", 1.0), "", "")
+    basic_check(m + n, "", "")
 
 
 def test_call():
@@ -439,7 +439,7 @@ def test_call():
     basic_check(
         call_node,
         "\n".join(["Call", "\tOp", "\tVar", "\tVar"]),
-        "\n".join(["Op", "Var", "Var", "ShapeExpr", "Call"]),
+        "\n".join(["Op", "Var", "Var", "PrimExpr", "PrimExpr", "ShapeExpr", "Call"]),
     )
 
 

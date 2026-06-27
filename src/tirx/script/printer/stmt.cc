@@ -70,7 +70,7 @@ ffi::Optional<PrimExpr> FindReturnValue(const tirx::Stmt& node) {
   auto eval = node.as<tirx::EvaluateNode>();
   if (!eval) return std::nullopt;
 
-  auto call = eval->value.as<tirx::CallNode>();
+  auto call = eval->value.as<CallNode>();
   if (!call) return std::nullopt;
 
   if (!call->op.same_as(tirx::builtin::ret())) return std::nullopt;
@@ -198,7 +198,7 @@ TVM_STATIC_IR_FUNCTOR(IRDocsifier, vtable)
       }
 
       ExprDoc value = d->AsDoc<ExprDoc>(eval->value, p->Attr("value"));
-      if (eval->value->IsInstance<tirx::CallNode>()) {
+      if (eval->value->IsInstance<CallNode>()) {
         return ExprStmtDoc(value);
       }
       return ExprStmtDoc(TIR(d, "evaluate")->Call({value}));

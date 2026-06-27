@@ -20,9 +20,8 @@
 from __future__ import annotations
 
 from tvm import tirx
-from tvm.ir import Op, PrimExpr
+from tvm.ir import Call, Op, PrimExpr
 from tvm.runtime import const
-from tvm.tirx.expr import Call
 from tvm.tirx.op import bitwise_and, call_intrin, tvm_access_ptr
 from tvm.tirx.operator.intrinsics._common import CLUSTER_BARRIER_SEM as _CLUSTER_BARRIER_SEM
 from tvm.tirx.operator.intrinsics._common import (

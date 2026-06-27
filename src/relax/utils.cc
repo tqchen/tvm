@@ -76,7 +76,7 @@ class ExprBinder : public ExprMutator {
     }
   }
 
-  PrimExpr VisitPrimExpr(const PrimExpr& expr) final {
+  PrimExpr VisitPrimExprField(const PrimExpr& expr) final {
     auto new_expr = tirx::Substitute(expr, symbolic_var_map_);
     if (!expr.same_as(new_expr)) {
       arith::Analyzer analyzer;

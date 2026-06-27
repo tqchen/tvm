@@ -224,7 +224,7 @@ class PermutedLayoutInjector : private IRMutatorWithAnalyzer {
     // smem_offset
     TVM_FFI_ICHECK(access_ptr->IsInstance<CallNode>())
         << "Invalid access ptr for permuted layout: " << access_ptr;
-    auto access_ptr_call = access_ptr.as_or_throw<tirx::Call>();
+    auto access_ptr_call = access_ptr.as_or_throw<tvm::Call>();
     TVM_FFI_ICHECK(access_ptr_call->op.same_as(builtin::tvm_access_ptr()))
         << "Invalid access ptr for permuted layout: " << access_ptr;
 
@@ -245,21 +245,21 @@ class PermutedLayoutInjector : private IRMutatorWithAnalyzer {
 
     auto new_access_ptr = access_ptr_call.CopyOnWrite();
     new_access_ptr->args.Set(2, new_offset);
-    return access_ptr_call;
+    return access_ptr_call.as_or_throw<PrimExpr>();
   }
 
   PrimExpr VisitExpr_(const CallNode* op) final {
     // Rewrite from/to shared or shared.dyn to/from local
-    auto call = IRMutatorWithAnalyzer::VisitExpr_(op).as_or_throw<tirx::Call>();
+    auto call = IRMutatorWithAnalyzer::VisitExpr_(op).as_or_throw<tvm::Call>();
 
     if (!permute_) {
-      return call;
+      return call.as_or_throw<PrimExpr>();
     }
 
     static const Op& ptx_ldmatrix_op = Op::Get("tirx.ptx.ldmatrix_legacy");
     static const Op& mma_store_op = Op::Get("tirx.mma_store_legacy");
     if (!call->op.same_as(ptx_ldmatrix_op) && !call->op.same_as(mma_store_op)) {
-      return call;
+      return call.as_or_throw<PrimExpr>();
     }
 
     if (call->op.same_as(ptx_ldmatrix_op)) {
@@ -271,7 +271,7 @@ class PermutedLayoutInjector : private IRMutatorWithAnalyzer {
       auto new_call = call.CopyOnWrite();
       new_call->args.Set(5, new_access_ptr);
       new_call->args.Set(6, IntImm(smem_offset.ty(), 0));
-      return call;
+      return call.as_or_throw<PrimExpr>();
     } else if (call->op.same_as(mma_store_op)) {
       // TODO(yixin): mma_store is not fully tested yet
       // because we will directly store result to Buffer instead of calling mma_store now
@@ -279,7 +279,7 @@ class PermutedLayoutInjector : private IRMutatorWithAnalyzer {
       auto new_access_ptr = HandleAccessPtrAndOffset(access_ptr);
       auto new_call = call.CopyOnWrite();
       new_call->args.Set(2, new_access_ptr);
-      return call;
+      return call.as_or_throw<PrimExpr>();
     } else {
       TVM_FFI_THROW(InternalError) << "Invalid call node: " << call;
     }

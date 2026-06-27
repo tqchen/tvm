@@ -70,7 +70,7 @@ std::tuple<TensorType, ffi::Optional<int64_t>> GetTensorArgInfoWithIndex(const C
 
   ffi::Optional<int64_t> int_imm_axis = std::nullopt;
   if (auto prim_value = axis.as<PrimExpr>()) {
-    if (const auto* int_imm = prim_value.value().as<IntImmNode>()) {
+    if (const auto* int_imm = prim_value->as<IntImmNode>()) {
       int_imm_axis = int_imm->value;
     }
   }
@@ -94,8 +94,9 @@ tirx::PrimFunc GetDLTensorField(tirx::builtin::TVMStructFieldKind field, PrimTyp
   tirx::Var value("value", field_ty);
 
   tirx::Stmt body = tirx::SeqStmt(
-      {tirx::Bind(value, tirx::Call(field_ty, tirx::builtin::tvm_struct_get(),
-                                    {dlpack_handle, IntImm::Int32(0), IntImm::Int32(field)})),
+      {tirx::Bind(value, tvm::Call(field_ty, tirx::builtin::tvm_struct_get(),
+                                   {dlpack_handle, IntImm::Int32(0), IntImm::Int32(field)})
+                             .as_or_throw<PrimExpr>()),
        tirx::Evaluate(tvm::ret(value))});
 
   DictAttrs attrs({{"tirx.is_scheduled", true}, {"tirx.is_host_func", true}});
@@ -264,17 +265,19 @@ Expr LegalizeTensorShape(const BlockBuilder& bb, const Call& call) {
         {tirx::AssertStmt(0 <= axis, tirx::StringImm("RuntimeError"),
                           {tirx::StringImm("Specified axis may not be negative")}),
          tirx::Bind(ndim,
-                    tirx::Call(ndim.ty(), tirx::builtin::tvm_struct_get(),
-                               {dlpack_handle, IntImm::Int32(0),
-                                IntImm::Int32(tirx::builtin::TVMStructFieldKind::kDLTensorNDim)})),
+                    tvm::Call(ndim.ty(), tirx::builtin::tvm_struct_get(),
+                              {dlpack_handle, IntImm::Int32(0),
+                               IntImm::Int32(tirx::builtin::TVMStructFieldKind::kDLTensorNDim)})
+                        .as_or_throw<PrimExpr>()),
          tirx::AssertStmt(
              axis < tvm::cast(axis.ty(), ndim), tirx::StringImm("RuntimeError"),
              {tirx::StringImm(
                  "Specified axis may not be larger than the tensor's dimensionality")}),
          tirx::Bind(shape_buffer->data,
-                    tirx::Call(tvm::PrimType::Handle(), tirx::builtin::tvm_struct_get(),
-                               {dlpack_handle, IntImm::Int32(0),
-                                IntImm::Int32(tirx::builtin::TVMStructFieldKind::kDLTensorShape)})),
+                    tvm::Call(tvm::PrimType::Handle(), tirx::builtin::tvm_struct_get(),
+                              {dlpack_handle, IntImm::Int32(0),
+                               IntImm::Int32(tirx::builtin::TVMStructFieldKind::kDLTensorShape)})
+                        .as_or_throw<PrimExpr>()),
          tirx::DeclBuffer(shape_buffer), tirx::Bind(extent, tirx::BufferLoad(shape_buffer, {axis})),
          tirx::Evaluate(tvm::ret(extent))});
 

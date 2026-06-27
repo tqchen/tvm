@@ -46,7 +46,7 @@ namespace arith {
 namespace {
 // File-local helper: true if `expr` is a call to tirx::builtin::vscale().
 bool IsVScaleCall(const PrimExpr& expr) {
-  if (const auto* call = expr.as<tirx::CallNode>()) {
+  if (const auto* call = expr.as<CallNode>()) {
     return call->op.same_as(tirx::builtin::vscale());
   }
   return false;
@@ -438,7 +438,7 @@ PrimExpr RewriteSimplifier::Impl::VisitExpr_(const AddNode* op) {
     TVM_TRY_REWRITE_IF(x + broadcast(c4, lanes), x, c4.Eval()->value == 0.0f);
   }
 
-  if (IsIndexTypedExpr(ffi::GetRef<PrimExpr>(op))) {
+  if (IsIndexTypeExpr(op)) {
     // Index rules
     // cancelation rules
     TVM_TRY_REWRITE((x - y) + y, x);
@@ -587,7 +587,7 @@ PrimExpr RewriteSimplifier::Impl::VisitExpr_(const SubNode* op) {
     TVM_TRY_REWRITE(broadcast(x, lanes) - broadcast(y, lanes), broadcast(x - y, lanes));
   }
 
-  if (IsIndexTypedExpr(ffi::GetRef<PrimExpr>(op))) {
+  if (IsIndexTypeExpr(op)) {
     // Index rules
     // cancelation rules
     TVM_TRY_REWRITE(matches_one_of((x + y) - y, (y + x) - y), x);
@@ -778,7 +778,7 @@ PrimExpr RewriteSimplifier::Impl::VisitExpr_(const MulNode* op) {
     TVM_TRY_REWRITE_IF(broadcast(c3, lanes) * x, broadcast(c3, lanes), c3.Eval()->value == 0.0f);
   }
 
-  if (IsIndexTypedExpr(ffi::GetRef<PrimExpr>(op))) {
+  if (IsIndexTypeExpr(op)) {
     // constant simplification rule
     TVM_TRY_REWRITE((x + c1) * c2, x * c2 + c1 * c2);
     TVM_TRY_REWRITE((x * c1) * c2, x * (c1 * c2));
@@ -832,7 +832,7 @@ PrimExpr RewriteSimplifier::Impl::VisitExpr_(const DivNode* op) {
     }
   }
 
-  if (IsIndexTypedExpr(ffi::GetRef<PrimExpr>(op))) {
+  if (IsIndexTypeExpr(op)) {
     // Be-aware of the division rules:
     // We adopt the default C division uses truncation instead of floordiv.
     // This means most rules need to check non-negativeness of the operands.
@@ -844,7 +844,7 @@ PrimExpr RewriteSimplifier::Impl::VisitExpr_(const DivNode* op) {
     if (truncdiv(c1, c2).Match(ret)) {
       int64_t c1val = c1.Eval()->value;
       int64_t c2val = c2.Eval()->value;
-      return MakeConst(ffi::GetRef<PrimExpr>(op).ty(), truncdiv(c1val, c2val));
+      return MakeConst(op->ty(), truncdiv(c1val, c2val));
     }
 
     // while it is always true for trunc div
@@ -999,7 +999,7 @@ PrimExpr RewriteSimplifier::Impl::VisitExpr_(const ModNode* op) {
     }
   }
 
-  if (IsIndexTypedExpr(ffi::GetRef<PrimExpr>(op))) {
+  if (IsIndexTypeExpr(op)) {
     // Be-aware of the division rules:
     // We adopt the default C division uses truncation instead of floordiv.
     // This means most rules need to check non-negativeness of the operands.
@@ -1024,8 +1024,7 @@ PrimExpr RewriteSimplifier::Impl::VisitExpr_(const ModNode* op) {
     // canonicalization: x % c == x % (-c) for truncated division
     // NOTE: trunc div required
     TVM_TRY_RECURSIVE_REWRITE_IF(
-        truncmod(x, c1),
-        truncmod(x, PConst<PrimExpr>(MakeConst(ffi::GetRef<PrimExpr>(op).ty(), -c1.Eval()->value))),
+        truncmod(x, c1), truncmod(x, PConst<PrimExpr>(MakeConst(op->ty(), -c1.Eval()->value))),
         c1.Eval()->value < 0);
 
     // try modular analysis
@@ -1083,7 +1082,7 @@ PrimExpr RewriteSimplifier::Impl::VisitExpr_(const FloorDivNode* op) {
     }
   }
 
-  if (IsIndexTypedExpr(ffi::GetRef<PrimExpr>(op))) {
+  if (IsIndexTypeExpr(op)) {
     // Be-aware of the division rules: this is floor division.
     TVM_TRY_REWRITE_IF(floordiv(floordiv(x, c1), c2), floordiv(x, c1 * c2),
                        c1.Eval()->value > 0 && c2.Eval()->value > 0);
@@ -1244,7 +1243,7 @@ PrimExpr RewriteSimplifier::Impl::VisitExpr_(const FloorModNode* op) {
     }
   }
 
-  if (IsIndexTypedExpr(ffi::GetRef<PrimExpr>(op))) {
+  if (IsIndexTypeExpr(op)) {
     // Be-aware of the division rules: we use floordiv/floormod here
     TVM_TRY_REWRITE_IF(floormod(x * c1, c2), floormod(x * floormod(c1, c2), c2),
                        c2.Eval()->value != 0);
@@ -1325,7 +1324,7 @@ PrimExpr RewriteSimplifier::Impl::VisitExpr_(const MinNode* op) {
     TVM_TRY_REWRITE(min(min(x, broadcast(y, lanes)), broadcast(z, lanes)),
                     min(x, broadcast(min(y, z), lanes)));
   }
-  if (IsIndexTypedExpr(ffi::GetRef<PrimExpr>(op))) {
+  if (IsIndexTypeExpr(op)) {
     TVM_TRY_REWRITE(min(x, x), x);
 
     // constant int bound
@@ -1509,7 +1508,7 @@ PrimExpr RewriteSimplifier::Impl::VisitExpr_(const MaxNode* op) {
     TVM_TRY_REWRITE(max(max(x, broadcast(y, lanes)), broadcast(z, lanes)),
                     max(x, broadcast(max(y, z), lanes)));
   }
-  if (IsIndexTypedExpr(ffi::GetRef<PrimExpr>(op))) {
+  if (IsIndexTypeExpr(op)) {
     TVM_TRY_REWRITE(max(x, x), x);
 
     // constant int bound
@@ -1728,7 +1727,7 @@ PrimExpr RewriteSimplifier::Impl::ApplyRewriteRules(EQ ret) {
     TVM_TRY_REWRITE(broadcast(x, lanes) == broadcast(y, lanes), broadcast(x == y, lanes));
   }
 
-  if (IsIndexTypedExpr(ret->a)) {
+  if (IsIndexTypeExpr(ret->a)) {
     CompareResult result = TryCompare(ret->a, ret->b);
     if (result == CompareResult::kEQ) {
       return MakeConst(ret->ty(), true);
@@ -1764,13 +1763,13 @@ PrimExpr RewriteSimplifier::Impl::VisitExpr_(const NENode* op) {
   if (auto const_res = TryConstFold<NE>(op->a, op->b)) return const_res.value();
   if (auto match = TryMatchLiteralConstraint(ret)) return match.value();
 
-  if (IsIndexTypedExpr(op->a)) {
+  if (IsIndexTypeExpr(op->a)) {
     CompareResult result = TryCompare(op->a, op->b);
     if (result == CompareResult::kNE || result == CompareResult::kGT ||
         result == CompareResult::kLT) {
-      return MakeConst(ffi::GetRef<PrimExpr>(op).ty(), true);
+      return MakeConst(op->ty(), true);
     } else if (result == CompareResult::kEQ) {
-      return MakeConst(ffi::GetRef<PrimExpr>(op).ty(), false);
+      return MakeConst(op->ty(), false);
     } else if (result == CompareResult::kGE) {
       // Known: a >= b
       //
@@ -1808,13 +1807,13 @@ PrimExpr RewriteSimplifier::Impl::VisitExpr_(const LENode* op) {
   // (floordiv(A,B)<x) in these cases instead.
   ret = ApplyRewriteRules(Not(ApplyRewriteRules(LT(op->b, op->a))));
 
-  if (auto op = ret.as<LENode>(); op && IsIndexTypedExpr(op->a)) {
+  if (auto op = ret.as<LENode>(); op && IsIndexTypeExpr(op->a)) {
     CompareResult result = TryCompare(op->a, op->b);
     if (result == CompareResult::kLE || result == CompareResult::kLT ||
         result == CompareResult::kEQ) {
-      return MakeConst(ffi::GetRef<PrimExpr>(op).ty(), true);
+      return MakeConst(op->ty(), true);
     } else if (result == CompareResult::kGT) {
-      return MakeConst(ffi::GetRef<PrimExpr>(op).ty(), false);
+      return MakeConst(op->ty(), false);
     } else if (result == CompareResult::kNE) {
       // Known: a != b
       //
@@ -1868,7 +1867,7 @@ PrimExpr RewriteSimplifier::Impl::ApplyRewriteRules(LT ret) {
     TVM_TRY_REWRITE(ramp(x, s1, lanes) < ramp(y, s1, lanes), broadcast(x < y, lanes));
   }
 
-  if (IsIndexTypedExpr(ret->a)) {
+  if (IsIndexTypeExpr(ret->a)) {
     CompareResult result = TryCompare(ret->a, ret->b);
     if (result == CompareResult::kLT) {
       return MakeConst(ret->ty(), true);
@@ -2110,7 +2109,7 @@ PrimExpr RewriteSimplifier::Impl::VisitExpr_(const AndNode* op) {
     TVM_TRY_REWRITE(broadcast(x, lanes) && broadcast(y, lanes), broadcast(x && y, lanes));
   }
 
-  auto cfalse = PConst<PrimExpr>(MakeConst(ffi::GetRef<PrimExpr>(op).ty(), false));
+  auto cfalse = PConst<PrimExpr>(MakeConst(op->ty(), false));
   TVM_TRY_REWRITE(x == y && x != y, cfalse);
   TVM_TRY_REWRITE(x != y && x == y, cfalse);
   TVM_TRY_REWRITE(x && !x, cfalse);
@@ -2258,7 +2257,7 @@ PrimExpr RewriteSimplifier::Impl::VisitExpr_(const OrNode* op) {
     TVM_TRY_REWRITE(broadcast(x, lanes) || broadcast(y, lanes), broadcast(x || y, lanes));
   }
 
-  auto ctrue = PConst<PrimExpr>(MakeConst(ffi::GetRef<PrimExpr>(op).ty(), true));
+  auto ctrue = PConst<PrimExpr>(MakeConst(op->ty(), true));
 
   TVM_TRY_REWRITE(x == y || x != y, ctrue);
   TVM_TRY_REWRITE(x != y || x == y, ctrue);
@@ -2326,14 +2325,13 @@ PrimExpr RewriteSimplifier::Impl::VisitExpr_(const CallNode* op) {
   static const Op& ceil_op = Op::Get("tirx.ceil");
   static const Op& log2_op = Op::Get("tirx.log2");
   static const Op& clz_op = Op::Get("tirx.clz");
-  PrimType ret_ty = ffi::GetRef<PrimExpr>(op).ty();
+  PrimType ret_ty = op->ty.as_or_throw<PrimType>();
   if (op->op.same_as(ceil_op)) {
     PrimExpr ceil_arg = op->args[0].as_or_throw<PrimExpr>();
     if (auto arg_int = op->args[0].as<IntImmNode>()) {
-      return cast(ret_ty, IntImm(ffi::GetRef<PrimExpr>(arg_int).ty(), arg_int->value));
+      return cast(ret_ty, IntImm(arg_int->ty(), arg_int->value));
     } else if (auto arg_float = ceil_arg.as<FloatImmNode>()) {
-      return cast(ret_ty,
-                  FloatImm(ffi::GetRef<PrimExpr>(arg_float).ty(), std::ceil(arg_float->value)));
+      return cast(ret_ty, FloatImm(arg_float->ty(), std::ceil(arg_float->value)));
     } else if (auto arg_call = ceil_arg.as<CallNode>()) {
       // ceil(log2(cast(n,"float64"))) is used as the implementation of
       // topi.math.ceil_log2, and appears in iteration bounds.
@@ -2382,8 +2380,9 @@ PrimExpr RewriteSimplifier::Impl::VisitExpr_(const CallNode* op) {
       // Only check constant cases to avoid recursion
       if (is_const_number(inner_else_expr) && is_const_number(else_expr) &&
           analyzer_->CanProve(inner_else_expr == else_expr)) {
-        return tirx::Call(ret_ty, op->op, {cond && inner_cond, inner_then_expr, else_expr},
-                          op->attrs, op->span);
+        return tvm::Call(ret_ty, op->op, {cond && inner_cond, inner_then_expr, else_expr},
+                         op->attrs, op->span)
+            .as_or_throw<PrimExpr>();
       }
     }
   }
@@ -2393,7 +2392,7 @@ PrimExpr RewriteSimplifier::Impl::VisitExpr_(const CallNode* op) {
 
 PrimExpr RewriteSimplifier::Impl::VisitExpr_(const VarNode* op) {
   Var var = ffi::GetRef<Var>(op);
-  PrimType op_ty = ffi::GetRef<PrimExpr>(op).ty();
+  PrimType op_ty = op->ty();
   if (op_ty.MatchesElementType(DLDataTypeCode::kDLBool, 8) && !op_ty.IsScalableVector() &&
       !op_ty.IsFixedLengthVector()) {
     if (auto match = TryMatchLiteralConstraint(var)) {

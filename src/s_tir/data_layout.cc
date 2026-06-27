@@ -358,8 +358,7 @@ inline bool GetStoreRule(ffi::Array<PrimExpr>* index_rule, ffi::Array<PrimExpr>*
             if (axis == sub_axis) {
               const auto* sub_extent = inter_unpacked_axes[l]->dom->extent.as<IntImmNode>();
               TVM_FFI_ICHECK(sub_extent) << "Expected Integer Extents for Offset Calculation";
-              factor_ij =
-                  factor_ij * IntImm(ffi::GetRef<PrimExpr>(sub_extent).ty(), sub_extent->value);
+              factor_ij = factor_ij * IntImm(sub_extent->ty(), sub_extent->value);
             }
           }
         }
