@@ -147,8 +147,7 @@ struct CUDAWarpIntrinsic {
 static PrimExpr DispatchCUDAWarpActiveMask(const PrimExpr& e) {
   const CallNode* call = e.as<CallNode>();
   static const Op& cuda_active_mask_op = Op::Get("tirx.cuda.__activemask");
-  ffi::Array<PrimExpr> args =
-      call->args.Map([](const Expr& arg) { return arg.as_or_throw<PrimExpr>(); });
+  ffi::Array<PrimExpr> args = call->args.as_or_throw<ffi::Array<PrimExpr>>();
   return tvm::Call(e.ty(), cuda_active_mask_op, args).as_or_throw<PrimExpr>();
 }
 

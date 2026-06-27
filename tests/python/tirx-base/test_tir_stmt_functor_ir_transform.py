@@ -48,7 +48,7 @@ def test_ir_transform():
 
     def postorder(op):
         assert isinstance(op, tvm.ir.Call)
-        assert isinstance(op, tvm.ir.PrimExpr)
+        assert isinstance(op, tvm.ir.Expr)
         if op.op.same_as(builtin_call_extern) and op.args[0].value == "TestA":
             return tvm.tirx.call_extern("int32", "TestB", op.args[1] + 1)
         return op

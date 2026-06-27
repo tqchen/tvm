@@ -282,7 +282,7 @@ _convert_map = {
 @visitor
 class CallNodeInfoCollector(PyExprVisitor):
     """
-    Collect PrimExpr, Constant and attributes in the inner function
+    Collect Expr, Constant and attributes in the inner function
     """
 
     def __init__(self, op_name):
@@ -294,7 +294,7 @@ class CallNodeInfoCollector(PyExprVisitor):
     def visit_call_(self, call: Call) -> None:
         self.attrs.append(call.attrs)
         for arg in call.args:
-            if isinstance(arg, tvm.tirx.PrimExpr):
+            if tvm.ir.is_prim_expr(arg):
                 self.primvals.append(arg)
             if isinstance(arg, Constant):
                 self.consts.append(arg)

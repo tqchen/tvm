@@ -54,22 +54,6 @@ Id::Id(ffi::String name_hint) {
   data_ = std::move(n);
 }
 
-Call::Call(Expr op, ffi::Array<Expr> args, Attrs attrs, ffi::Array<Type> ty_args, Span span)
-    : tvm::Call(Type(), op, args, attrs, ty_args, span) {
-  TVM_FFI_CHECK(op.defined(), ValueError) << "Call expects a defined operator";
-  TVM_FFI_CHECK(!op->ty.defined() || op->ty->IsInstance<FuncTypeNode>(), ValueError)
-      << "Call expects its operator to have FuncType, "
-      << "but operator " << op << ", which was called with arguments " << args << ", has type "
-      << op->ty;
-}
-
-TVM_FFI_STATIC_INIT_BLOCK() {
-  namespace refl = tvm::ffi::reflection;
-  refl::GlobalDef().def("relax.Call",
-                        [](Expr op, ffi::Array<Expr> args, Attrs attrs, ffi::Array<Type> ty_args,
-                           Span span) { return Call(op, args, attrs, ty_args, span); });
-}
-
 If::If(Expr cond, Expr true_branch, Expr false_branch, Span span) {
   ffi::ObjectPtr<IfNode> n = ffi::make_object<IfNode>();
   n->cond = std::move(cond);

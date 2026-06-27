@@ -130,9 +130,9 @@ def test_expr_constructor():
     assert x.vectors[0] == a
     assert x.indices[0].value == 0
 
-    x = tvm.ir.Call("float32", "tirx.call_extern", [tvm.tirx.StringImm("xyz"), a])
+    x = tvm.ir.Call("tirx.call_extern", [tvm.tirx.StringImm("xyz"), a], ret_ty="float32")
     assert isinstance(x, tvm.ir.Call)
-    assert isinstance(x, tvm.ir.PrimExpr)
+    assert isinstance(x, tvm.ir.Expr)
     assert x.ty == tvm.ir.PrimType("float32")
     assert x.op.name == "tirx.call_extern"
     assert x.args[1] == a
@@ -140,10 +140,10 @@ def test_expr_constructor():
 
     attr_arg = tvm.tirx.Var("attr_arg", "float32")
     x_with_attrs = tvm.ir.Call(
-        "float32",
         "tirx.call_extern",
         [tvm.tirx.StringImm("xyz"), attr_arg],
         attrs={"disable_tma": True},
+        ret_ty="float32",
     )
     assert x_with_attrs.attrs["disable_tma"] is True
     assert not tvm_ffi.structural_equal(x, x_with_attrs)
@@ -163,25 +163,25 @@ def test_expr_constructor():
     )
     assert x_from_intrin.attrs["disable_tma"] is True
     x_with_other_attrs = tvm.ir.Call(
-        "float32",
         "tirx.call_extern",
         [tvm.tirx.StringImm("xyz"), attr_arg],
         attrs={"disable_tma": False},
+        ret_ty="float32",
     )
     assert not expr_deep_equal(x_with_attrs, x_with_other_attrs)
 
     cond0 = tvm.tirx.Var("cond0", "bool")
     cond1 = tvm.tirx.Var("cond1", "bool")
     inner_if = tvm.ir.Call(
-        "int32",
         "tirx.if_then_else",
         [cond1, tvm.tirx.IntImm("int32", 1), tvm.tirx.IntImm("int32", 0)],
+        ret_ty="int32",
     )
     outer_if = tvm.ir.Call(
-        "int32",
         "tirx.if_then_else",
         [cond0, inner_if, tvm.tirx.IntImm("int32", 0)],
         attrs={"keep": True},
+        ret_ty="int32",
     )
     simplified = tvm.tirx.transform.StmtSimplify()(
         tvm.IRModule({"main": tvm.tirx.PrimFunc([], tvm.tirx.Evaluate(outer_if))})

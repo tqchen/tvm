@@ -1565,7 +1565,7 @@ PrimExpr IterMapRewriter::VisitExpr_(const VarNode* op) {
 }
 
 PrimExpr IterMapRewriter::VisitExpr_(const AddNode* op) {
-  if (!IsIndexTypeExpr(op)) {
+  if (!IsIndexTypedExpr(op)) {
     return Parent::VisitExpr_(op);
   }
   PrimExpr a = this->DirectMutate(op->a);
@@ -1598,7 +1598,7 @@ PrimExpr IterMapRewriter::VisitExpr_(const AddNode* op) {
 }
 
 PrimExpr IterMapRewriter::VisitExpr_(const SubNode* op) {
-  if (!IsIndexTypeExpr(op)) {
+  if (!IsIndexTypedExpr(op)) {
     return Parent::VisitExpr_(op);
   }
 
@@ -1633,7 +1633,7 @@ PrimExpr IterMapRewriter::VisitExpr_(const SubNode* op) {
 }
 
 PrimExpr IterMapRewriter::VisitExpr_(const MulNode* op) {
-  if (!IsIndexTypeExpr(op)) {
+  if (!IsIndexTypedExpr(op)) {
     return Parent::VisitExpr_(op);
   }
   // normalize
@@ -1946,7 +1946,7 @@ PrimExpr IterMapRewriter::SplitFloorDivConst(IterSplitExpr lhs, PrimExpr base, P
 }
 
 PrimExpr IterMapRewriter::VisitExpr_(const FloorDivNode* op) {
-  if (!IsIndexTypeExpr(op)) {
+  if (!IsIndexTypedExpr(op)) {
     return Parent::VisitExpr_(op);
   }
 
@@ -2030,7 +2030,7 @@ PrimExpr IterMapRewriter::SplitFloorModConst(IterSplitExpr lhs, PrimExpr base, P
 }
 
 PrimExpr IterMapRewriter::VisitExpr_(const FloorModNode* op) {
-  if (!IsIndexTypeExpr(op)) {
+  if (!IsIndexTypedExpr(op)) {
     return Parent::VisitExpr_(op);
   }
 

@@ -23,7 +23,7 @@ import tvm.script
 tvm.script.register_dialect("tirx", "tvm.tirx.script")
 
 
-from tvm.ir import PrimExpr
+from tvm.ir import Expr
 from tvm.runtime import const
 
 from .buffer import Buffer, decl_buffer, DataProducer

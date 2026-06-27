@@ -117,8 +117,7 @@ class PipelineOpaqueAccessRewriter {
       const Buffer& buffer = buffer_data_to_buffer_.at(call->args[0].as_or_throw<Var>());
       auto it = buffer_remap_.find(buffer);
       if (it != buffer_remap_.end()) {
-        ffi::Array<PrimExpr> new_args =
-            call->args.Map([](const Expr& arg) { return arg.as_or_throw<PrimExpr>(); });
+        ffi::Array<PrimExpr> new_args = call->args.as_or_throw<ffi::Array<PrimExpr>>();
         const Buffer& new_buffer = (*it).second;
         new_args.Set(
             4, RewriteWmmaFragmentIndex(buffer, new_buffer, call->args[4].as_or_throw<PrimExpr>()));
@@ -127,8 +126,7 @@ class PipelineOpaqueAccessRewriter {
             .as_or_throw<PrimExpr>();
       }
     } else if (call->op.same_as(mma_sync)) {
-      ffi::Array<PrimExpr> new_args =
-          call->args.Map([](const Expr& arg) { return arg.as_or_throw<PrimExpr>(); });
+      ffi::Array<PrimExpr> new_args = call->args.as_or_throw<ffi::Array<PrimExpr>>();
       for (int i = 0; i < 4; i++) {
         const Var& buffer_var = call->args[i * 2].as_or_throw<Var>();
         PrimExpr index = call->args[i * 2 + 1].as_or_throw<PrimExpr>();
@@ -179,8 +177,7 @@ class PipelineOpaqueAccessRewriter {
       return foldl([](PrimExpr a, PrimExpr b, Span span) { return mul(a, b, span); },
                    IntImm::Int32(1), input);
     };
-    ffi::Array<PrimExpr> new_args =
-        call->args.Map([](const Expr& arg) { return arg.as_or_throw<PrimExpr>(); });
+    ffi::Array<PrimExpr> new_args = call->args.as_or_throw<ffi::Array<PrimExpr>>();
     for (int i : arg_indices) {
       const Buffer& buffer = buffer_data_to_buffer_.at(call->args[i].as_or_throw<Var>());
       auto it = buffer_remap_.find(buffer);
@@ -776,9 +773,10 @@ class PipelineRewriter : public StmtExprMutator {
           // If the async operation that this wait_queue is waiting on is predicated, and we cannot
           // prove that the predicate is always true, the precise wait count is only valid
           // at iterations where the predicate is true;
-          auto wait_count = tvm::Call(PrimType::Int(32), builtin::if_then_else(),
-                                      {state.predicate.value(), state.pending_wait.wait_count, 0})
-                                .as_or_throw<PrimExpr>();
+          auto wait_count =
+              Call(PrimType::Int(32), builtin::if_then_else(),
+                   ffi::Array<PrimExpr>{state.predicate.value(), state.pending_wait.wait_count, 0})
+                  .as_or_throw<PrimExpr>();
           attach_wait_scope(state.pending_wait.insert_before, stage_id, wait_count);
         } else {
           attach_wait_scope(state.pending_wait.insert_before, stage_id,

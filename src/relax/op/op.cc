@@ -420,9 +420,24 @@ static ffi::Optional<Type> InferCallTIROutputTypeFromArguments(
     return dummy_args;
   }();
 
-  auto derived_ret_ty =
+  Type derived_ret_ty =
       DeriveCallRetType(dummy_callee_ty, Call(Var("dummy_callee", dummy_callee_ty), dummy_args),
                         BlockBuilder::Create(std::nullopt));
+
+  std::unordered_set<const tirx::VarNode*> known_vars;
+  for (const tirx::Var& var : TIRVarsInType(arg_ty)) {
+    known_vars.insert(var.get());
+  }
+  if (packed_ints_ty) {
+    for (const tirx::Var& var : TIRVarsInType(packed_ints_ty.value())) {
+      known_vars.insert(var.get());
+    }
+  }
+  for (const tirx::Var& var : TIRVarsInType(derived_ret_ty)) {
+    if (!known_vars.count(var.get())) {
+      return std::nullopt;
+    }
+  }
 
   return derived_ret_ty;
 }

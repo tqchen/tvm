@@ -1346,17 +1346,18 @@ void CodeGenLLVM::EmitFloat16ConversionBuiltins(bool use_float16_abi) {
 }
 
 llvm::Value* CodeGenLLVM::CreateIntrinsic(const CallNode* op) {
+  ffi::Array<PrimExpr> args = op->args.as_or_throw<ffi::Array<PrimExpr>>();
+  PrimType ret_ty = op->ty.as_or_throw<PrimType>();
   if (op->op.same_as(builtin_call_llvm_intrin_) || op->op.same_as(builtin_call_llvm_pure_intrin_)) {
-    TVM_FFI_ICHECK_GE(op->args.size(), 1U);
-    llvm::Intrinsic::ID id =
-        static_cast<llvm::Intrinsic::ID>(op->args[0].as_or_throw<IntImm>()->value);
+    TVM_FFI_ICHECK_GE(args.size(), 1U);
+    llvm::Intrinsic::ID id = static_cast<llvm::Intrinsic::ID>(args[0].as_or_throw<IntImm>()->value);
     std::vector<llvm::Value*> arg_value;
     std::vector<llvm::Type*> arg_type;
-    for (size_t i = 1; i < op->args.size(); ++i) {
-      arg_value.push_back(MakeValue(op->args[i]));
+    for (size_t i = 1; i < args.size(); ++i) {
+      arg_value.push_back(MakeValue(args[i]));
       arg_type.push_back(arg_value.back()->getType());
     }
-    llvm::Type* return_type = GetLLVMType(ffi::GetRef<PrimExpr>(op));
+    llvm::Type* return_type = GetLLVMType(ret_ty);
     llvm::Function* f = GetIntrinsicDecl(id, return_type, arg_type);
     TVM_FFI_ICHECK(f) << "Cannot find intrinsic declaration, possible type mismatch: "
                       << llvmGetIntrinName(id);
@@ -1374,26 +1375,26 @@ llvm::Value* CodeGenLLVM::CreateIntrinsic(const CallNode* op) {
     }
     return builder_->CreateCall(f, arg_value);
   } else if (op->op.same_as(builtin::bitwise_and())) {
-    return builder_->CreateAnd(MakeValue(op->args[0]), MakeValue(op->args[1]));
+    return builder_->CreateAnd(MakeValue(args[0]), MakeValue(args[1]));
   } else if (op->op.same_as(builtin::bitwise_or())) {
-    return builder_->CreateOr(MakeValue(op->args[0]), MakeValue(op->args[1]));
+    return builder_->CreateOr(MakeValue(args[0]), MakeValue(args[1]));
   } else if (op->op.same_as(builtin::bitwise_not())) {
-    return builder_->CreateNot(MakeValue(op->args[0]));
+    return builder_->CreateNot(MakeValue(args[0]));
   } else if (op->op.same_as(builtin::bitwise_xor())) {
-    return builder_->CreateXor(MakeValue(op->args[0]), MakeValue(op->args[1]));
+    return builder_->CreateXor(MakeValue(args[0]), MakeValue(args[1]));
   } else if (op->op.same_as(builtin::shift_left())) {
-    return builder_->CreateShl(MakeValue(op->args[0]), MakeValue(op->args[1]));
+    return builder_->CreateShl(MakeValue(args[0]), MakeValue(args[1]));
   } else if (op->op.same_as(builtin::shift_right())) {
-    if (PrimType(op->args[0].ty()->dtype).MatchesCode(DLDataTypeCode::kDLInt)) {
-      return builder_->CreateAShr(MakeValue(op->args[0]), MakeValue(op->args[1]));
+    if (args[0].ty().MatchesCode(DLDataTypeCode::kDLInt)) {
+      return builder_->CreateAShr(MakeValue(args[0]), MakeValue(args[1]));
     } else {
-      return builder_->CreateLShr(MakeValue(op->args[0]), MakeValue(op->args[1]));
+      return builder_->CreateLShr(MakeValue(args[0]), MakeValue(args[1]));
     }
   } else if (op->op.same_as(builtin::tvm_storage_sync())) {
     return CreateStorageSync(op);
   } else if (op->op.same_as(builtin::address_of())) {
-    const BufferLoadNode* load = op->args[0].as<BufferLoadNode>();
-    TVM_FFI_ICHECK(op->args.size() == 1 && load);
+    const BufferLoadNode* load = args[0].as<BufferLoadNode>();
+    TVM_FFI_ICHECK(args.size() == 1 && load);
 
     ffi::Array<PrimExpr> indices = load->indices;
     if (const RampNode* r = indices[indices.size() - 1].as<RampNode>()) {
@@ -1408,34 +1409,33 @@ llvm::Value* CodeGenLLVM::CreateIntrinsic(const CallNode* op) {
     TypedPointer buffer_ptr = CreateBufferPtr(MakeValue(load->buffer->data), load->buffer->dtype,
                                               indices_val, PrimType(load->ty()->dtype));
     return buffer_ptr.addr;
-  } else if (op->op.same_as(builtin::reinterpret()) && is_zero(op->args[0])) {
+  } else if (op->op.same_as(builtin::reinterpret()) && is_zero(args[0])) {
     return llvm::Constant::getNullValue(t_void_p_);
   } else if (op->op.same_as(builtin::isnullptr())) {
-    return builder_->CreateIsNull(MakeValue(op->args[0]));
+    return builder_->CreateIsNull(MakeValue(args[0]));
   } else if (op->op.same_as(builtin::handle_add_byte_offset())) {
-    llvm::Value* ptr = MakeValue(op->args[0]);
-    llvm::Value* offset = MakeValue(op->args[1]);
+    llvm::Value* ptr = MakeValue(args[0]);
+    llvm::Value* offset = MakeValue(args[1]);
     return builder_->CreateInBoundsGEP(t_int8_, ptr, offset);
   } else if (op->op.same_as(builtin::large_uint_imm())) {
-    TVM_FFI_ICHECK_EQ(op->args.size(), 2U);
-    uint64_t low = static_cast<uint64_t>(op->args[0].as_or_throw<IntImm>()->value);
-    uint64_t high = static_cast<uint64_t>(op->args[1].as_or_throw<IntImm>()->value);
+    TVM_FFI_ICHECK_EQ(args.size(), 2U);
+    uint64_t low = static_cast<uint64_t>(args[0].as_or_throw<IntImm>()->value);
+    uint64_t high = static_cast<uint64_t>(args[1].as_or_throw<IntImm>()->value);
     uint64_t val = (high << 32U) | low;
-    return llvm::ConstantInt::get(DTypeToLLVMType(PrimType(op->ty()->dtype)), val);
+    return llvm::ConstantInt::get(DTypeToLLVMType(ret_ty), val);
   } else if (op->op.same_as(builtin::if_then_else())) {
-    TVM_FFI_ICHECK_EQ(PrimType(op->args[0].ty()->dtype).lanes(), 1)
-        << "if_then_else can only take scalar condition";
+    TVM_FFI_ICHECK_EQ(args[0].ty().lanes(), 1) << "if_then_else can only take scalar condition";
     llvm::LLVMContext* ctx = llvm_target_->GetContext();
     auto* then_block = llvm::BasicBlock::Create(*ctx, "if_then", function_);
     auto* else_block = llvm::BasicBlock::Create(*ctx, "if_else", function_);
     auto* end_block = llvm::BasicBlock::Create(*ctx, "if_end", function_);
-    builder_->CreateCondBr(MakeValue(op->args[0]), then_block, else_block);
+    builder_->CreateCondBr(MakeValue(args[0]), then_block, else_block);
     builder_->SetInsertPoint(then_block);
-    llvm::Value* then_value = MakeValue(op->args[1]);
+    llvm::Value* then_value = MakeValue(args[1]);
     llvm::BasicBlock* then_value_block = builder_->GetInsertBlock();
     builder_->CreateBr(end_block);
     builder_->SetInsertPoint(else_block);
-    llvm::Value* else_value = MakeValue(op->args[2]);
+    llvm::Value* else_value = MakeValue(args[2]);
     llvm::BasicBlock* else_value_block = builder_->GetInsertBlock();
     builder_->CreateBr(end_block);
     builder_->SetInsertPoint(end_block);
@@ -1444,7 +1444,7 @@ llvm::Value* CodeGenLLVM::CreateIntrinsic(const CallNode* op) {
     value->addIncoming(else_value, else_value_block);
     return value;
   } else if (op->op.same_as(builtin::ret())) {
-    auto const* val = op->args[0].as<IntImmNode>();
+    auto const* val = args[0].as<IntImmNode>();
     TVM_FFI_ICHECK(val) << "the tirx.ret should be transformed to return zero "
                         << "before the llvm code generation.";
     TVM_FFI_ICHECK_EQ(val->value, 0) << "the tirx.ret should be transformed to "
@@ -1477,8 +1477,8 @@ llvm::Value* CodeGenLLVM::CreateIntrinsic(const CallNode* op) {
     builder_->SetInsertPoint(post_dummy);
     return post_dummy;
   } else if (op->op.same_as(builtin::reinterpret())) {
-    llvm::Type* target = DTypeToLLVMType(PrimType(op->ty()->dtype));
-    llvm::Value* value = MakeValue(op->args[0]);
+    llvm::Type* target = DTypeToLLVMType(ret_ty);
+    llvm::Value* value = MakeValue(args[0]);
     if (value->getType()->isPointerTy() && target->isIntegerTy()) {
       return builder_->CreatePtrToInt(value, target);
     } else if (value->getType()->isIntegerTy() && target->isPointerTy()) {
@@ -1487,19 +1487,19 @@ llvm::Value* CodeGenLLVM::CreateIntrinsic(const CallNode* op) {
     return builder_->CreateBitCast(value, target);
   } else if (op->op.same_as(builtin::isnan())) {
     // TODO(hgt312): set fast math flag
-    llvm::Value* a = MakeValue(op->args[0]);
+    llvm::Value* a = MakeValue(args[0]);
     return builder_->CreateFCmpUNO(a, a);
   } else if (op->op.same_as(builtin::vectorlow())) {
-    llvm::Value* v = MakeValue(op->args[0]);
+    llvm::Value* v = MakeValue(args[0]);
     int l = GetVectorNumElements(v);
     return CreateVecSlice(v, 0, l / 2);
   } else if (op->op.same_as(builtin::vectorhigh())) {
-    llvm::Value* v = MakeValue(op->args[0]);
+    llvm::Value* v = MakeValue(args[0]);
     int l = GetVectorNumElements(v);
     return CreateVecSlice(v, l / 2, l / 2);
   } else if (op->op.same_as(builtin::vectorcombine())) {
-    llvm::Value* v0 = MakeValue(op->args[0]);
-    llvm::Value* v1 = MakeValue(op->args[1]);
+    llvm::Value* v0 = MakeValue(args[0]);
+    llvm::Value* v1 = MakeValue(args[1]);
     int num_elems = GetVectorNumElements(v0) * 2;
     std::vector<int> indices;
     for (int i = 0; i < num_elems; ++i) {
@@ -1514,19 +1514,19 @@ llvm::Value* CodeGenLLVM::CreateIntrinsic(const CallNode* op) {
     LOG(INFO) << "Ignoring profile_intrinsic ... " << op->op;
     return nullptr;
   } else if (op->op.same_as(builtin::assume())) {
-    llvm::Value* cond = MakeValue(op->args[0]);
+    llvm::Value* cond = MakeValue(args[0]);
     return builder_->CreateAssumption(cond);
   } else if (op->op.same_as(builtin::tvm_thread_invariant())) {
-    return MakeValue(op->args[0]);
+    return MakeValue(args[0]);
   } else if (op->op.same_as(builtin::vscale())) {
     llvm::Intrinsic::ID id = llvm::Intrinsic::vscale;
     llvm::Function* f = GetIntrinsicDecl(id, builder_->getInt32Ty(), {});
     return builder_->CreateCall(f);
   } else if (op->op.same_as(builtin::get_active_lane_mask())) {
     llvm::Intrinsic::ID id = llvm::Intrinsic::get_active_lane_mask;
-    llvm::Function* f = GetIntrinsicDecl(id, DTypeToLLVMType(PrimType(op->ty()->dtype)),
+    llvm::Function* f = GetIntrinsicDecl(id, DTypeToLLVMType(ret_ty),
                                          {builder_->getInt32Ty(), builder_->getInt32Ty()});
-    return builder_->CreateCall(f, {MakeValue(op->args[0]), MakeValue(op->args[1])});
+    return builder_->CreateCall(f, {MakeValue(args[0]), MakeValue(args[1])});
   } else {
     TVM_FFI_THROW(InternalError) << "unknown intrinsic " << op->op;
   }
@@ -1862,16 +1862,17 @@ llvm::Value* CodeGenLLVM::VisitExpr_(const BufferLoadNode* op) {
 }
 
 llvm::Value* CodeGenLLVM::VisitExpr_(const CallNode* op) {
+  ffi::Array<PrimExpr> args = op->args.as_or_throw<ffi::Array<PrimExpr>>();
   if (auto opt_call_op = op->op.as<Op>()) {
     auto call_op = opt_call_op.value();
     if (op->op.same_as(builtin_call_extern_) || op->op.same_as(builtin_call_pure_extern_)) {
       // call extern intrinsic
-      TVM_FFI_ICHECK_GE(op->args.size(), 1U);
-      auto global_symbol = op->args[0].as_or_throw<StringImm>();
-      return this->CreateCallExtern(op->ty, global_symbol->value, op->args, true);
+      TVM_FFI_ICHECK_GE(args.size(), 1U);
+      auto global_symbol = args[0].as_or_throw<StringImm>();
+      return this->CreateCallExtern(op->ty, global_symbol->value, args, true);
     } else if (op_attr_global_symbol_.count(call_op)) {
       // call extern if the op itself have a global symbol.
-      return this->CreateCallExtern(op->ty, op_attr_global_symbol_[call_op], op->args, false);
+      return this->CreateCallExtern(op->ty, op_attr_global_symbol_[call_op], args, false);
     } else {
       VLOG(2) << "CreateIntrinsic: " << ffi::GetRef<Call>(op);
       auto x = CreateIntrinsic(op);
@@ -1884,7 +1885,7 @@ llvm::Value* CodeGenLLVM::VisitExpr_(const CallNode* op) {
     TVM_FFI_ICHECK(it != functions_.end()) << "Call to undefined GlobalVar \"" << gvar << "\"";
     llvm::Function* callee = it->second;
     std::vector<llvm::Value*> arg_value;
-    for (const auto& arg : op->args) {
+    for (const PrimExpr& arg : args) {
       arg_value.push_back(MakeValue(arg));
     }
     return builder_->CreateCall(callee, arg_value);

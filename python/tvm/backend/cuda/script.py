@@ -145,9 +145,9 @@ class CpAsyncNamespace:
 
             elem_dtype, dst, dst_off, src, src_off, cp_size = args
             return tvm.ir.Call(
-                tvm.ir.PrimType(elem_dtype),
                 tvm.ir.Op.get("tirx.ptx.cp_async_raw"),
                 [dst, dst_off, src, src_off, cp_size],
+                ret_ty=tvm.ir.PrimType(elem_dtype),
             )
         return _dtype_forward(_cuda_op.ptx_cp_async)(*args, **kwds)
 

@@ -48,10 +48,10 @@ inline PrimExpr DispatchLLVMPureIntrin(const PrimExpr& e) {
       << "llvm.call_llvm_intrin" << llvmGetIntrinName(id) << "expects " << num_signature
       << " arguments, but got " << call->args.size();
 
-  for (PrimExpr arg : call->args) {
+  for (PrimExpr arg : call->args.as_or_throw<ffi::Array<PrimExpr>>()) {
     cargs.push_back(arg);
   }
-  return tvm::Call(call->ty(), tirx::builtin::call_llvm_pure_intrin(), cargs)
+  return Call(call->ty.as_or_throw<PrimType>(), tirx::builtin::call_llvm_pure_intrin(), cargs)
       .as_or_throw<PrimExpr>();
 }
 
@@ -65,10 +65,11 @@ inline PrimExpr DispatchLLVMIntrin(const PrimExpr& e) {
   TVM_FFI_ICHECK_EQ(call->args.size(), num_signature)
       << "llvm.call_llvm_intrin" << llvmGetIntrinName(id) << "expects " << num_signature
       << " arguments, but got " << call->args.size();
-  for (PrimExpr arg : call->args) {
+  for (PrimExpr arg : call->args.as_or_throw<ffi::Array<PrimExpr>>()) {
     cargs.push_back(arg);
   }
-  return tvm::Call(call->ty(), tirx::builtin::call_llvm_intrin(), cargs).as_or_throw<PrimExpr>();
+  return Call(call->ty.as_or_throw<PrimType>(), tirx::builtin::call_llvm_intrin(), cargs)
+      .as_or_throw<PrimExpr>();
 }
 
 }  // namespace codegen

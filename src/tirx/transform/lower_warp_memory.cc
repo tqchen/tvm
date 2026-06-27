@@ -397,7 +397,8 @@ class WarpAccessRewriter : protected StmtExprMutator {
 
     PrimExpr mask =
         Call(PrimType::UInt(32), builtin::tvm_warp_activemask(), {}).as_or_throw<PrimExpr>();
-    return Call(load.ty(), builtin::tvm_warp_shuffle(), {mask, load, group, width_, warp_size_})
+    return Call(load.ty(), builtin::tvm_warp_shuffle(),
+                ffi::Array<PrimExpr>{mask, load, group, width_, warp_size_})
         .as_or_throw<PrimExpr>();
   }
 

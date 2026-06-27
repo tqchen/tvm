@@ -129,7 +129,7 @@ class PrimExprSlotCollector : public ExprVisitor, public TypeVisitor {
     // Do not recurse into function type as it is self-contained
   }
 
-  void VisitPrimExprField(const PrimExpr& expr) final { CollectPrimExprSlot(expr); }
+  void VisitTypePrimExprField(const PrimExpr& expr) final { CollectPrimExprSlot(expr); }
 
   void VisitTypeExprField(const PrimExpr& expr) final { CollectPrimExprSlot(expr); }
 

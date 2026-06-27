@@ -438,7 +438,7 @@ PrimExpr RewriteSimplifier::Impl::VisitExpr_(const AddNode* op) {
     TVM_TRY_REWRITE_IF(x + broadcast(c4, lanes), x, c4.Eval()->value == 0.0f);
   }
 
-  if (IsIndexTypeExpr(op)) {
+  if (IsIndexTypedExpr(op)) {
     // Index rules
     // cancelation rules
     TVM_TRY_REWRITE((x - y) + y, x);
@@ -587,7 +587,7 @@ PrimExpr RewriteSimplifier::Impl::VisitExpr_(const SubNode* op) {
     TVM_TRY_REWRITE(broadcast(x, lanes) - broadcast(y, lanes), broadcast(x - y, lanes));
   }
 
-  if (IsIndexTypeExpr(op)) {
+  if (IsIndexTypedExpr(op)) {
     // Index rules
     // cancelation rules
     TVM_TRY_REWRITE(matches_one_of((x + y) - y, (y + x) - y), x);
@@ -778,7 +778,7 @@ PrimExpr RewriteSimplifier::Impl::VisitExpr_(const MulNode* op) {
     TVM_TRY_REWRITE_IF(broadcast(c3, lanes) * x, broadcast(c3, lanes), c3.Eval()->value == 0.0f);
   }
 
-  if (IsIndexTypeExpr(op)) {
+  if (IsIndexTypedExpr(op)) {
     // constant simplification rule
     TVM_TRY_REWRITE((x + c1) * c2, x * c2 + c1 * c2);
     TVM_TRY_REWRITE((x * c1) * c2, x * (c1 * c2));
@@ -832,7 +832,7 @@ PrimExpr RewriteSimplifier::Impl::VisitExpr_(const DivNode* op) {
     }
   }
 
-  if (IsIndexTypeExpr(op)) {
+  if (IsIndexTypedExpr(op)) {
     // Be-aware of the division rules:
     // We adopt the default C division uses truncation instead of floordiv.
     // This means most rules need to check non-negativeness of the operands.
@@ -999,7 +999,7 @@ PrimExpr RewriteSimplifier::Impl::VisitExpr_(const ModNode* op) {
     }
   }
 
-  if (IsIndexTypeExpr(op)) {
+  if (IsIndexTypedExpr(op)) {
     // Be-aware of the division rules:
     // We adopt the default C division uses truncation instead of floordiv.
     // This means most rules need to check non-negativeness of the operands.
@@ -1082,7 +1082,7 @@ PrimExpr RewriteSimplifier::Impl::VisitExpr_(const FloorDivNode* op) {
     }
   }
 
-  if (IsIndexTypeExpr(op)) {
+  if (IsIndexTypedExpr(op)) {
     // Be-aware of the division rules: this is floor division.
     TVM_TRY_REWRITE_IF(floordiv(floordiv(x, c1), c2), floordiv(x, c1 * c2),
                        c1.Eval()->value > 0 && c2.Eval()->value > 0);
@@ -1243,7 +1243,7 @@ PrimExpr RewriteSimplifier::Impl::VisitExpr_(const FloorModNode* op) {
     }
   }
 
-  if (IsIndexTypeExpr(op)) {
+  if (IsIndexTypedExpr(op)) {
     // Be-aware of the division rules: we use floordiv/floormod here
     TVM_TRY_REWRITE_IF(floormod(x * c1, c2), floormod(x * floormod(c1, c2), c2),
                        c2.Eval()->value != 0);
@@ -1324,7 +1324,7 @@ PrimExpr RewriteSimplifier::Impl::VisitExpr_(const MinNode* op) {
     TVM_TRY_REWRITE(min(min(x, broadcast(y, lanes)), broadcast(z, lanes)),
                     min(x, broadcast(min(y, z), lanes)));
   }
-  if (IsIndexTypeExpr(op)) {
+  if (IsIndexTypedExpr(op)) {
     TVM_TRY_REWRITE(min(x, x), x);
 
     // constant int bound
@@ -1508,7 +1508,7 @@ PrimExpr RewriteSimplifier::Impl::VisitExpr_(const MaxNode* op) {
     TVM_TRY_REWRITE(max(max(x, broadcast(y, lanes)), broadcast(z, lanes)),
                     max(x, broadcast(max(y, z), lanes)));
   }
-  if (IsIndexTypeExpr(op)) {
+  if (IsIndexTypedExpr(op)) {
     TVM_TRY_REWRITE(max(x, x), x);
 
     // constant int bound
@@ -1727,7 +1727,7 @@ PrimExpr RewriteSimplifier::Impl::ApplyRewriteRules(EQ ret) {
     TVM_TRY_REWRITE(broadcast(x, lanes) == broadcast(y, lanes), broadcast(x == y, lanes));
   }
 
-  if (IsIndexTypeExpr(ret->a)) {
+  if (IsIndexTypedExpr(ret->a)) {
     CompareResult result = TryCompare(ret->a, ret->b);
     if (result == CompareResult::kEQ) {
       return MakeConst(ret->ty(), true);
@@ -1763,7 +1763,7 @@ PrimExpr RewriteSimplifier::Impl::VisitExpr_(const NENode* op) {
   if (auto const_res = TryConstFold<NE>(op->a, op->b)) return const_res.value();
   if (auto match = TryMatchLiteralConstraint(ret)) return match.value();
 
-  if (IsIndexTypeExpr(op->a)) {
+  if (IsIndexTypedExpr(op->a)) {
     CompareResult result = TryCompare(op->a, op->b);
     if (result == CompareResult::kNE || result == CompareResult::kGT ||
         result == CompareResult::kLT) {
@@ -1807,7 +1807,7 @@ PrimExpr RewriteSimplifier::Impl::VisitExpr_(const LENode* op) {
   // (floordiv(A,B)<x) in these cases instead.
   ret = ApplyRewriteRules(Not(ApplyRewriteRules(LT(op->b, op->a))));
 
-  if (auto op = ret.as<LENode>(); op && IsIndexTypeExpr(op->a)) {
+  if (auto op = ret.as<LENode>(); op && IsIndexTypedExpr(op->a)) {
     CompareResult result = TryCompare(op->a, op->b);
     if (result == CompareResult::kLE || result == CompareResult::kLT ||
         result == CompareResult::kEQ) {
@@ -1867,7 +1867,7 @@ PrimExpr RewriteSimplifier::Impl::ApplyRewriteRules(LT ret) {
     TVM_TRY_REWRITE(ramp(x, s1, lanes) < ramp(y, s1, lanes), broadcast(x < y, lanes));
   }
 
-  if (IsIndexTypeExpr(ret->a)) {
+  if (IsIndexTypedExpr(ret->a)) {
     CompareResult result = TryCompare(ret->a, ret->b);
     if (result == CompareResult::kLT) {
       return MakeConst(ret->ty(), true);

@@ -210,7 +210,7 @@ llvm::Value* CodeGenHexagon::VisitExpr_(const BufferLoadNode* op) {
 llvm::Value* CodeGenHexagon::CreateIntrinsic(const CallNode* op) {
   if (op->op.same_as(builtin::start_profile_intrinsic()) ||
       op->op.same_as(builtin::end_profile_intrinsic())) {
-    llvm::Value* id = MakeValue(op->args[0]);
+    llvm::Value* id = MakeValue(op->args[0].as_or_throw<PrimExpr>());
     auto instrprof_id = llvm::Intrinsic::hexagon_instrprof_custom;
 #if TVM_LLVM_VERSION >= 200
     llvm::Function* func = llvm::cast<llvm::Function>(

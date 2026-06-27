@@ -42,7 +42,7 @@ using Expr = tvm::Expr;
 using ExprNode = tvm::ExprNode;
 
 class BlockBuilder;
-class Call;
+using ::tvm::Call;
 
 /*! \brief Indicates the number of dimensions of a tensor is unknown at compile time. */
 static constexpr int kUnknownNDim = -1;

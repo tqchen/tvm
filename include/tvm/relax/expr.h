@@ -74,24 +74,8 @@ class Id : public ffi::ObjectRef {
   TVM_FFI_DEFINE_OBJECT_REF_METHODS_NULLABLE(Id, ffi::ObjectRef, IdNode);
 };
 
-using tvm::CallNode;
-
-class Call : public tvm::Call {
- public:
-  /*!
-   * \brief The constructor
-   * \param op The operator to be invoked.
-   * \param args The arguments of the call.
-   * \param attrs The attributes of the call node.
-   * \param ty_args The type information arguments passed to a function.
-   * \param span The source span of the expression.
-   */
-  TVM_DLL Call(Expr op, ffi::Array<Expr> args, Attrs attrs = Attrs(),
-               ffi::Array<Type> ty_args = ffi::Array<Type>(), Span span = Span());
-
-  TVM_FFI_DEFINE_OBJECT_REF_METHODS_NULLABLE(Call, tvm::Call, CallNode);
-  TVM_DEFINE_OBJECT_REF_COW_METHOD(CallNode);
-};
+using ::tvm::Call;
+using ::tvm::CallNode;
 
 /*! \brief Tuple container */
 class TupleNode : public ExprNode {

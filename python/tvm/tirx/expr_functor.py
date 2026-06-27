@@ -24,7 +24,7 @@ from collections.abc import Callable
 from typing import TypeVar
 
 import tvm
-from tvm.ir import PrimExpr, Range
+from tvm.ir import Expr, Range
 from tvm.tirx import IterVar
 
 T = TypeVar("T")
@@ -48,50 +48,48 @@ class ExprFunctor:
     """An abstract visitor over Expr, with visiting function defined for each Expr type."""
 
     def __init__(self):
-        self._dispatch_map = {
-            "tirx.Var": self.visit_var_,
-            "tirx.SizeVar": self.visit_size_var_,
-            "tirx.BufferLoad": self.visit_buffer_load_,
-            "tirx.ProducerLoad": self.visit_producer_load_,
-            "tirx.Let": self.visit_let_,
-            "ir.Call": self.visit_call_,
-            "tirx.Add": self.visit_add_,
-            "tirx.Sub": self.visit_sub_,
-            "tirx.Mul": self.visit_mul_,
-            "tirx.Div": self.visit_div_,
-            "tirx.Mod": self.visit_mod_,
-            "tirx.FloorDiv": self.visit_floordiv_,
-            "tirx.FloorMod": self.visit_floormod_,
-            "tirx.Min": self.visit_min_,
-            "tirx.Max": self.visit_max_,
-            "tirx.EQ": self.visit_eq_,
-            "tirx.NE": self.visit_ne_,
-            "tirx.LT": self.visit_lt_,
-            "tirx.LE": self.visit_le_,
-            "tirx.GT": self.visit_gt_,
-            "tirx.GE": self.visit_ge_,
-            "tirx.And": self.visit_and_,
-            "tirx.Or": self.visit_or_,
-            "tirx.Reduce": self.visit_reduce_,
-            "tirx.Cast": self.visit_cast_,
-            "tirx.Not": self.visit_not_,
-            "tirx.Select": self.visit_select_,
-            "tirx.Ramp": self.visit_ramp_,
-            "tirx.Broadcast": self.visit_broadcast_,
-            "tirx.Shuffle": self.visit_shuffle_,
-            "ir.IntImm": self.visit_int_imm_,
-            "ir.FloatImm": self.visit_float_imm_,
-            "tirx.IntImm": self.visit_int_imm_,
-            "tirx.FloatImm": self.visit_float_imm_,
-            "tirx.StringImm": self.visit_string_imm_,
-        }
+        self._expr_dispatch_map = [
+            (tvm.tirx.SizeVar, self.visit_size_var_),
+            (tvm.tirx.Var, self.visit_var_),
+            (tvm.tirx.BufferLoad, self.visit_buffer_load_),
+            (tvm.tirx.ProducerLoad, self.visit_producer_load_),
+            (tvm.tirx.Let, self.visit_let_),
+            (tvm.ir.Call, self.visit_call_),
+            (tvm.tirx.Add, self.visit_add_),
+            (tvm.tirx.Sub, self.visit_sub_),
+            (tvm.tirx.Mul, self.visit_mul_),
+            (tvm.tirx.Div, self.visit_div_),
+            (tvm.tirx.Mod, self.visit_mod_),
+            (tvm.tirx.FloorDiv, self.visit_floordiv_),
+            (tvm.tirx.FloorMod, self.visit_floormod_),
+            (tvm.tirx.Min, self.visit_min_),
+            (tvm.tirx.Max, self.visit_max_),
+            (tvm.tirx.EQ, self.visit_eq_),
+            (tvm.tirx.NE, self.visit_ne_),
+            (tvm.tirx.LT, self.visit_lt_),
+            (tvm.tirx.LE, self.visit_le_),
+            (tvm.tirx.GT, self.visit_gt_),
+            (tvm.tirx.GE, self.visit_ge_),
+            (tvm.tirx.And, self.visit_and_),
+            (tvm.tirx.Or, self.visit_or_),
+            (tvm.tirx.Reduce, self.visit_reduce_),
+            (tvm.tirx.Cast, self.visit_cast_),
+            (tvm.tirx.Not, self.visit_not_),
+            (tvm.tirx.Select, self.visit_select_),
+            (tvm.tirx.Ramp, self.visit_ramp_),
+            (tvm.tirx.Broadcast, self.visit_broadcast_),
+            (tvm.tirx.Shuffle, self.visit_shuffle_),
+            (tvm.tirx.IntImm, self.visit_int_imm_),
+            (tvm.tirx.FloatImm, self.visit_float_imm_),
+            (tvm.tirx.StringImm, self.visit_string_imm_),
+        ]
 
-    def visit_expr(self, expr: PrimExpr):
+    def visit_expr(self, expr: Expr):
         """Apply the visitor to an expression.
 
         Parameters
         ----------
-        expr : PrimExpr
+        expr : Expr
             The expression to be visited.
 
         Returns
@@ -102,17 +100,9 @@ class ExprFunctor:
         if expr is None:
             return None
 
-        type_info = getattr(type(expr), "__tvm_ffi_type_info__", None)
-        if type_info is not None:
-            key = type_info.type_key
-        else:
-            key = expr.__class__.__name__
-            if key.endswith("Node"):
-                key = key[:-4]  # Remove the "Node" suffix
-            key = "tirx." + key
-
-        if key in self._dispatch_map:
-            return self._dispatch_map[key](expr)
+        for expr_type, visitor in self._expr_dispatch_map:
+            if isinstance(expr, expr_type):
+                return visitor(expr)
 
         return self.visit_expr_default_(expr)
 
@@ -257,7 +247,7 @@ class ExprFunctor:
 
         Parameters
         ----------
-        expr : PrimExpr
+        expr : Expr
             The expression.
 
         Returns
@@ -501,7 +491,7 @@ class ExprMutator(ExprFunctor):
         if all(old_arg is new_arg for old_arg, new_arg in zip(op.args, args)):
             return op
         else:
-            return tvm.ir.Call(op.ty, op.op, args, attrs=op.attrs, span=op.span)
+            return tvm.ir.Call(op.op, args, attrs=op.attrs, span=op.span, ret_ty=op.ty)
 
     def _mutate_binary_op(self, op_cls, op):
         """Helper to mutate binary operators."""

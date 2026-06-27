@@ -164,8 +164,15 @@ class FuncBuilder : public ExprMutator {
     return func;
   }
 
-  PrimExpr VisitPrimExprField(const PrimExpr& expr) {
+  PrimExpr VisitTypePrimExprField(const PrimExpr& expr) {
     return tirx::Substitute(expr, tir_var_remap_);
+  }
+
+  Expr VisitExprFallback_(const ExprNode* op) final {
+    if (op->ty.as<PrimTypeNode>()) {
+      return VisitTypePrimExprField(ffi::GetRef<Expr>(op).as_or_throw<PrimExpr>());
+    }
+    return ExprMutator::VisitExprFallback_(op);
   }
 
   support::OrderedSet<const VarNode*> inputs_;

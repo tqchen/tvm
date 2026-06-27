@@ -530,12 +530,10 @@ void CodeGenOpenCL::VisitExpr_(const CallNode* op, std::ostream& os) {
     if (func->value == "atomic_add" &&
         op->ty.as_or_throw<PrimType>().code() == DLDataTypeCode::kDLFloat) {
       enable_atomics_ = true;
-      ffi::Array<PrimExpr> args =
-          op->args.Map([](const Expr& arg) { return arg.as_or_throw<PrimExpr>(); });
+      ffi::Array<PrimExpr> args = op->args.as_or_throw<ffi::Array<PrimExpr>>();
       this->PrintCallExtern(op->ty, "atomic_add_float_emu", args, true, os);
     } else if (func->value == "nearbyint") {
-      ffi::Array<PrimExpr> args =
-          op->args.Map([](const Expr& arg) { return arg.as_or_throw<PrimExpr>(); });
+      ffi::Array<PrimExpr> args = op->args.as_or_throw<ffi::Array<PrimExpr>>();
       this->PrintCallExtern(op->ty, "rint", args, true, os);
     } else {
       if (func->value == "atomic_add") {

@@ -73,7 +73,7 @@ def _statistical(
     return statistical_call_te
 
 
-def _compute_shape_prod(x: te.Tensor, axis: list[int]) -> tirx.PrimExpr:
+def _compute_shape_prod(x: te.Tensor, axis: list[int]) -> tirx.Expr:
     shape_prod = tirx.const(1, "int32")
     axes = list(axis) if axis is not None else range(0, len(x.shape))
     for dim in axes:

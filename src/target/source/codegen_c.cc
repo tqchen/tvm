@@ -655,8 +655,7 @@ void CodeGenC::VisitExpr_(const CallNode* op, std::ostream& os) {  // NOLINT(*)
     } else if (op->op.same_as(builtin_call_extern_) || op->op.same_as(builtin_call_pure_extern_)) {
       TVM_FFI_ICHECK_GE(op->args.size(), 1U);
       auto func = op->args[0].as_or_throw<StringImm>();
-      ffi::Array<PrimExpr> args =
-          op->args.Map([](const Expr& arg) { return arg.as_or_throw<PrimExpr>(); });
+      ffi::Array<PrimExpr> args = op->args.as_or_throw<ffi::Array<PrimExpr>>();
       this->PrintCallExtern(op->ty, func->value, args, true, os);
 
       // If the call_extern refers to an function within the IRModule, then
@@ -671,8 +670,7 @@ void CodeGenC::VisitExpr_(const CallNode* op, std::ostream& os) {  // NOLINT(*)
       }
     } else if (op_attr_global_symbol_.count(call_op)) {
       // call extern if the op itself have a global symbol.
-      ffi::Array<PrimExpr> args =
-          op->args.Map([](const Expr& arg) { return arg.as_or_throw<PrimExpr>(); });
+      ffi::Array<PrimExpr> args = op->args.as_or_throw<ffi::Array<PrimExpr>>();
       this->PrintCallExtern(op->ty, op_attr_global_symbol_[call_op], args, false, os);
     } else if (op->op.same_as(builtin::bitwise_and())) {
       PrintBinaryIntrinsic(op, " & ", os, this);
@@ -817,8 +815,7 @@ void CodeGenC::VisitExpr_(const CallNode* op, std::ostream& os) {  // NOLINT(*)
   } else if (auto opt = op->op.as<GlobalVar>()) {
     auto gvar = opt.value();
     auto callee_name = GetFunctionName(gvar);
-    ffi::Array<PrimExpr> args =
-        op->args.Map([](const Expr& arg) { return arg.as_or_throw<PrimExpr>(); });
+    ffi::Array<PrimExpr> args = op->args.as_or_throw<ffi::Array<PrimExpr>>();
     PrintCallExtern(op->ty, callee_name, args, false, os);
   } else {
     TVM_FFI_THROW(InternalError) << "CodeGenC: Unknown operation " << op->op

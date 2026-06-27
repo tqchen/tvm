@@ -36,24 +36,6 @@
 
 namespace tvm {
 
-namespace {
-
-bool IsCallOperatorType(const Type& ty) {
-  return !ty.defined() || ty->IsInstance<FuncTypeNode>() || ty->GetTypeKey() == "relax.FuncType";
-}
-
-ffi::Array<Expr> ToExprArray(ffi::Array<PrimExpr> args) {
-  ffi::Array<Expr> expr_args;
-  expr_args.reserve(args.size());
-  for (size_t i = 0; i < args.size(); ++i) {
-    TVM_FFI_ICHECK(args[i].defined()) << "arg " << i << " is not defined()";
-    expr_args.push_back(args[i]);
-  }
-  return expr_args;
-}
-
-}  // namespace
-
 TVM_FFI_STATIC_INIT_BLOCK() {
   ExprNode::RegisterReflection();
   PrimExprNode::RegisterReflection();
@@ -261,10 +243,6 @@ GlobalVar::GlobalVar(ffi::String name_hint, Span span) {
 Call::Call(Type ret_ty, Expr op, ffi::Array<Expr> args, Attrs attrs, ffi::Array<Type> ty_args,
            Span span) {
   TVM_FFI_CHECK(op.defined(), ValueError) << "Call expects a defined operator";
-  TVM_FFI_CHECK(IsCallOperatorType(op->ty), ValueError)
-      << "Call expects its operator to have FuncType, "
-      << "but operator " << op << ", which was called with arguments " << args << ", has type "
-      << op->ty;
 
   ffi::ObjectPtr<CallNode> n = ffi::make_object<CallNode>();
   n->ExprNode::ty = std::move(ret_ty);
@@ -276,12 +254,16 @@ Call::Call(Type ret_ty, Expr op, ffi::Array<Expr> args, Attrs attrs, ffi::Array<
   data_ = std::move(n);
 }
 
-Call::Call(PrimType ret_ty, Expr op, ffi::Array<PrimExpr> args, Attrs attrs, Span span)
-    : Call(std::move(ret_ty), std::move(op), ToExprArray(std::move(args)), std::move(attrs), {},
+Call::Call(Expr op, ffi::Array<Expr> args, Attrs attrs, ffi::Array<Type> ty_args, Span span)
+    : Call(Type(), std::move(op), std::move(args), std::move(attrs), std::move(ty_args),
            std::move(span)) {}
 
-Call::Call(PrimType ret_ty, Expr op, ffi::Array<PrimExpr> args, Span span)
-    : Call(std::move(ret_ty), std::move(op), std::move(args), Attrs(), std::move(span)) {}
+Call::Call(Type ret_ty, Expr op, ffi::Array<Expr> args, Attrs attrs, Span span)
+    : Call(std::move(ret_ty), std::move(op), std::move(args), std::move(attrs), {},
+           std::move(span)) {}
+
+Call::Call(Type ret_ty, Expr op, ffi::Array<Expr> args, Span span)
+    : Call(std::move(ret_ty), std::move(op), std::move(args), Attrs(), {}, std::move(span)) {}
 
 TVM_FFI_STATIC_INIT_BLOCK() {
   namespace refl = tvm::ffi::reflection;

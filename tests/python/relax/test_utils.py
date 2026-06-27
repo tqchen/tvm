@@ -206,7 +206,7 @@ def test_structural_equal_with_recursive_lambda_function():
     func_1 = define_function()
     func_2 = define_function()
 
-    tvm.ir.assert_structural_equal(func_1, func_2)
+    assert tvm.ir.structural_equal(func_1, func_2)
 
 
 def test_structural_equal_with_distinct_recursive_lambda_function():

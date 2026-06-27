@@ -19,12 +19,12 @@
 from typing import cast
 
 from tvm import DataType
-from tvm.ir.expr import PrimExpr
+from tvm.ir import is_prim_expr
 
 from ...expr import Expr, ShapeExpr
 from . import _ffi_api
 
-PrimExprLike = int | PrimExpr
+PrimExprLike = int | Expr
 SizeLike = PrimExprLike | tuple[PrimExprLike, ...]
 
 
@@ -110,7 +110,7 @@ def resize2d(
     else:
         raise NotImplementedError(f"Unsupported roi type {type(roi)}")
 
-    if isinstance(size, int | PrimExpr):
+    if isinstance(size, int) or is_prim_expr(size):
         size = (size, size)
     if isinstance(size, tuple | list):
         if len(size) == 1:
@@ -162,7 +162,7 @@ def resize3d(
     else:
         raise NotImplementedError(f"Unsupported roi type {type(roi)}")
 
-    if isinstance(size, int | PrimExpr):
+    if isinstance(size, int) or is_prim_expr(size):
         size = (size, size, size)
     if isinstance(size, tuple | list):
         if len(size) == 1:
@@ -251,7 +251,7 @@ def affine_grid(
         The input affine matrix tensor with shape [batch, 2, 3].
 
     size : Union[Expr, PrimExprLike, Tuple[PrimExprLike, PrimExprLike]]
-        The target output spatial shape (H, W). If a single integer or PrimExpr
+        The target output spatial shape (H, W). If a single integer or Expr
         is provided, it is interpreted as a square output shape (size, size).
 
     align_corners : bool
@@ -263,7 +263,7 @@ def affine_grid(
     result : relax.Expr
         The output grid tensor with shape [batch, 2, H, W].
     """
-    if isinstance(size, int | PrimExpr):
+    if isinstance(size, int) or is_prim_expr(size):
         size = (size, size)
     if isinstance(size, tuple | list):
         size = ShapeExpr(size)

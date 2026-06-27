@@ -35,29 +35,9 @@ class Expr(Node):
     ty: "tvm.ir.Type | None"
 
 
-class _PrimExprMeta(type(Expr)):
-    def __instancecheck__(cls, instance: object) -> bool:
-        if cls is not PrimExpr:
-            return super().__instancecheck__(instance)
-        return super().__instancecheck__(instance) or (
-            isinstance(instance, Expr)
-            and isinstance(getattr(instance, "ty", None), tvm.ir.PrimType)
-        )
-
-
-@tvm_ffi.register_object("ir.PrimExpr")
-class PrimExpr(Expr, metaclass=_PrimExprMeta):
-    """Base class of all primitive expressions.
-
-    PrimExpr is used in the low-level code
-    optimizations and integer analysis.
-    """
-
-
-def _is_prim_expr(value: object) -> bool:
-    return isinstance(value, PrimExpr) or (
-        isinstance(value, Expr) and isinstance(value.ty, tvm.ir.PrimType)
-    )
+def is_prim_expr(value: object) -> bool:
+    """Return whether an expression has a primitive result type."""
+    return isinstance(value, Expr) and isinstance(value.ty, tvm.ir.PrimType)
 
 
 @tvm_ffi.register_object("ir.GlobalVar")
@@ -93,7 +73,7 @@ class GlobalVar(Expr):
         """
         # pylint: disable=import-outside-toplevel
 
-        if args and all(isinstance(x, Number) or _is_prim_expr(x) for x in args):
+        if args and all(isinstance(x, Number) or is_prim_expr(x) for x in args):
             return tvm.tirx.call_tir(self, *args)
 
         if all(isinstance(x, Expr) for x in args):
@@ -119,12 +99,12 @@ class Call(Expr, Scriptable):
 
     def __init__(
         self,
-        ret_ty: "tvm.ir.Type | str | None",
         op: Expr | str,
         args: list[Expr] | tuple[Expr, ...],
         attrs: "tvm.ir.Attrs | dict | None" = None,
         ty_args: list["tvm.ir.Type"] | tuple["tvm.ir.Type", ...] | None = None,
         span: Span | None = None,
+        ret_ty: "tvm.ir.Type | str | None" = None,
     ) -> None:
         # pylint: disable=import-outside-toplevel
         from .attrs import make_node
@@ -135,9 +115,7 @@ class Call(Expr, Scriptable):
             op = Op.get(op)
         if attrs is not None and isinstance(attrs, dict):
             attrs = make_node("ir.DictAttrs", **attrs)
-        if ret_ty is None:
-            ret_ty = PrimType("void")
-        elif not isinstance(ret_ty, Type):
+        if ret_ty is not None and not isinstance(ret_ty, Type):
             ret_ty = PrimType(ret_ty)
         if isinstance(ret_ty, PrimType):
             from tvm import tirx
@@ -203,37 +181,37 @@ class Call(Expr, Scriptable):
             raise TypeError(f"Please convert {other} with `const` first")
         raise TypeError(f"type {type(other)} not supported")
 
-    def __add__(self, other: PrimExpr) -> PrimExpr:
+    def __add__(self, other: Expr) -> Expr:
         if not isinstance(self.ty, tvm.ir.PrimType):
             return self._relax_binary_op(other, "add")
         return self._tirx_generic().add(self, other)
 
-    def __radd__(self, other: PrimExpr) -> PrimExpr:
+    def __radd__(self, other: Expr) -> Expr:
         if not isinstance(self.ty, tvm.ir.PrimType):
             return self.__add__(other)
         return self._tirx_generic().add(other, self)
 
-    def __sub__(self, other: PrimExpr) -> PrimExpr:
+    def __sub__(self, other: Expr) -> Expr:
         if not isinstance(self.ty, tvm.ir.PrimType):
             return self._relax_binary_op(other, "subtract")
         return self._tirx_generic().subtract(self, other)
 
-    def __rsub__(self, other: PrimExpr) -> PrimExpr:
+    def __rsub__(self, other: Expr) -> Expr:
         if not isinstance(self.ty, tvm.ir.PrimType):
             return self._relax_rhs_op(other)
         return self._tirx_generic().subtract(other, self)
 
-    def __mul__(self, other: PrimExpr) -> PrimExpr:
+    def __mul__(self, other: Expr) -> Expr:
         if not isinstance(self.ty, tvm.ir.PrimType):
             return self._relax_binary_op(other, "multiply")
         return self._tirx_generic().multiply(self, other)
 
-    def __rmul__(self, other: PrimExpr) -> PrimExpr:
+    def __rmul__(self, other: Expr) -> Expr:
         if not isinstance(self.ty, tvm.ir.PrimType):
             return self.__mul__(other)
         return self._tirx_generic().multiply(other, self)
 
-    def __div__(self, other: PrimExpr) -> PrimExpr:
+    def __div__(self, other: Expr) -> Expr:
         if not isinstance(self.ty, tvm.ir.PrimType):
             return self._relax_binary_op(other, "divide")
         if self._dtype_matches(self, DataTypeCode.INT) and self._dtype_matches(
@@ -242,7 +220,7 @@ class Call(Expr, Scriptable):
             raise tvm.tirx.expr.div_ambiguity_error()
         return self._tirx_generic().divide(self, other)
 
-    def __rdiv__(self, other: PrimExpr) -> PrimExpr:
+    def __rdiv__(self, other: Expr) -> Expr:
         if not isinstance(self.ty, tvm.ir.PrimType):
             return self._relax_rhs_op(other)
         if self._dtype_matches(self, DataTypeCode.INT) and self._dtype_matches(
@@ -251,102 +229,102 @@ class Call(Expr, Scriptable):
             raise tvm.tirx.expr.div_ambiguity_error()
         return self._tirx_generic().divide(other, self)
 
-    def __truediv__(self, other: PrimExpr) -> PrimExpr:
+    def __truediv__(self, other: Expr) -> Expr:
         return self.__div__(other)
 
-    def __rtruediv__(self, other: PrimExpr) -> PrimExpr:
+    def __rtruediv__(self, other: Expr) -> Expr:
         return self.__rdiv__(other)
 
-    def __floordiv__(self, other: PrimExpr) -> PrimExpr:
+    def __floordiv__(self, other: Expr) -> Expr:
         if not isinstance(self.ty, tvm.ir.PrimType):
             return self._relax_binary_op(other, "floor_divide")
         return self._tirx_generic().floordiv(self, other)
 
-    def __rfloordiv__(self, other: PrimExpr) -> PrimExpr:
+    def __rfloordiv__(self, other: Expr) -> Expr:
         if not isinstance(self.ty, tvm.ir.PrimType):
             return self._relax_rhs_op(other)
         return self._tirx_generic().floordiv(other, self, None)
 
-    def __mod__(self, other: PrimExpr) -> PrimExpr:
+    def __mod__(self, other: Expr) -> Expr:
         if not isinstance(self.ty, tvm.ir.PrimType):
             return self._relax_binary_op(other, "mod")
         return self._tirx_ffi_api()._OpFloorMod(self, other, None)  # type: ignore
 
-    def __rmod__(self, other: PrimExpr) -> PrimExpr:
+    def __rmod__(self, other: Expr) -> Expr:
         if not isinstance(self.ty, tvm.ir.PrimType):
             return self._relax_rhs_op(other)
         return self._tirx_ffi_api()._OpFloorMod(other, self, None)  # type: ignore
 
-    def __neg__(self) -> PrimExpr:
+    def __neg__(self) -> Expr:
         if not isinstance(self.ty, tvm.ir.PrimType):
             return self._relax_op("negative")(self)
         return self.__mul__(const(-1, self.expr_ty().dtype))
 
-    def __lshift__(self, other: PrimExpr) -> PrimExpr:
+    def __lshift__(self, other: Expr) -> Expr:
         return self._tirx_ffi_api().left_shift(self, other, None)  # type: ignore
 
-    def __rlshift__(self, other: PrimExpr) -> PrimExpr:
+    def __rlshift__(self, other: Expr) -> Expr:
         return self._tirx_ffi_api().left_shift(other, self, None)  # type: ignore
 
-    def __rshift__(self, other: PrimExpr) -> PrimExpr:
+    def __rshift__(self, other: Expr) -> Expr:
         return self._tirx_ffi_api().right_shift(self, other, None)  # type: ignore
 
-    def __rrshift__(self, other: PrimExpr) -> PrimExpr:
+    def __rrshift__(self, other: Expr) -> Expr:
         return self._tirx_ffi_api().right_shift(other, self, None)  # type: ignore
 
-    def __and__(self, other: PrimExpr) -> PrimExpr:
+    def __and__(self, other: Expr) -> Expr:
         return self._tirx_ffi_api().bitwise_and(self, other, None)  # type: ignore
 
-    def __rand__(self, other: PrimExpr) -> PrimExpr:
+    def __rand__(self, other: Expr) -> Expr:
         return self._tirx_ffi_api().bitwise_and(other, self, None)  # type: ignore
 
-    def __or__(self, other: PrimExpr) -> PrimExpr:
+    def __or__(self, other: Expr) -> Expr:
         return self._tirx_ffi_api().bitwise_or(self, other, None)  # type: ignore
 
-    def __ror__(self, other: PrimExpr) -> PrimExpr:
+    def __ror__(self, other: Expr) -> Expr:
         return self._tirx_ffi_api().bitwise_or(other, self, None)  # type: ignore
 
-    def __xor__(self, other: PrimExpr) -> PrimExpr:
+    def __xor__(self, other: Expr) -> Expr:
         return self._tirx_ffi_api().bitwise_xor(self, other, None)  # type: ignore
 
-    def __rxor__(self, other: PrimExpr) -> PrimExpr:
+    def __rxor__(self, other: Expr) -> Expr:
         return self._tirx_ffi_api().bitwise_xor(other, self, None)  # type: ignore
 
-    def __invert__(self) -> PrimExpr:
+    def __invert__(self) -> Expr:
         if self._dtype_matches(self, DataTypeCode.FLOAT):
             raise RuntimeError("Cannot use ~ operator on float type Expr.")
         return self._tirx_ffi_api().bitwise_not(self, None)  # type: ignore
 
-    def __lt__(self, other: PrimExpr) -> PrimExpr:
+    def __lt__(self, other: Expr) -> Expr:
         if not isinstance(self.ty, tvm.ir.PrimType):
             return self._relax_binary_op(other, "less")
         return self._tirx_ffi_api()._OpLT(self, other, None)  # type: ignore
 
-    def __le__(self, other: PrimExpr) -> PrimExpr:
+    def __le__(self, other: Expr) -> Expr:
         if not isinstance(self.ty, tvm.ir.PrimType):
             return self._relax_binary_op(other, "less_equal")
         return self._tirx_ffi_api()._OpLE(self, other, None)  # type: ignore
 
-    def __eq__(self, other: PrimExpr) -> PrimExpr:
+    def __eq__(self, other: Expr) -> Expr:
         if isinstance(self.ty, tvm.ir.PrimType):
             from tvm.tirx.expr import EqualOp
 
             return EqualOp(self, other)
         return Object.__eq__(self, other)
 
-    def __ne__(self, other: PrimExpr) -> PrimExpr:
+    def __ne__(self, other: Expr) -> Expr:
         if isinstance(self.ty, tvm.ir.PrimType):
             from tvm.tirx.expr import NotEqualOp
 
             return NotEqualOp(self, other)
         return Object.__ne__(self, other)
 
-    def __gt__(self, other: PrimExpr) -> PrimExpr:
+    def __gt__(self, other: Expr) -> Expr:
         if not isinstance(self.ty, tvm.ir.PrimType):
             return self._relax_binary_op(other, "greater")
         return self._tirx_ffi_api()._OpGT(self, other, None)  # type: ignore
 
-    def __ge__(self, other: PrimExpr) -> PrimExpr:
+    def __ge__(self, other: Expr) -> Expr:
         if not isinstance(self.ty, tvm.ir.PrimType):
             return self._relax_binary_op(other, "greater_equal")
         return self._tirx_ffi_api()._OpGE(self, other, None)  # type: ignore
@@ -360,10 +338,10 @@ class Call(Expr, Scriptable):
     def __bool__(self) -> bool:
         return self.__nonzero__()
 
-    def equal(self, other: PrimExpr, span: Span | None = None) -> bool:
+    def equal(self, other: Expr, span: Span | None = None) -> bool:
         return self._tirx_ffi_api()._OpEQ(self, other, span)  # type: ignore
 
-    def astype(self, dtype: "str | tvm.ir.PrimType", span: Span | None = None) -> PrimExpr:
+    def astype(self, dtype: "str | tvm.ir.PrimType", span: Span | None = None) -> Expr:
         if not isinstance(self.ty, tvm.ir.PrimType):
             return self._relax_op("astype")(self, dtype)
         return self._tirx_generic().cast(self, dtype, span)
@@ -378,11 +356,11 @@ class Range(Node, Scriptable):
 
     Parameters
     ----------
-    begin : PrimExpr
+    begin : Expr
         The begin value of the range when end is None.
         Otherwise it is the length of the range.
 
-    end : Optional[PrimExpr]
+    end : Optional[Expr]
         The end value of the range.
 
     span : Optional[Span]
@@ -394,27 +372,25 @@ class Range(Node, Scriptable):
     if the end argument is not None. Otherwise, it creates `[0, begin)`.
     """
 
-    min: PrimExpr
-    extent: PrimExpr
+    min: Expr
+    extent: Expr
     span: Span | None
 
-    def __init__(
-        self, begin: PrimExpr, end: PrimExpr | None = None, span: Span | None = None
-    ) -> None:
+    def __init__(self, begin: Expr, end: Expr | None = None, span: Span | None = None) -> None:
         self.__init_handle_by_constructor__(_ffi_api.Range, begin, end, span)
 
     @staticmethod
-    def from_min_extent(min_value: PrimExpr, extent: PrimExpr, span: Span | None = None) -> "Range":
+    def from_min_extent(min_value: Expr, extent: Expr, span: Span | None = None) -> "Range":
         """Construct a Range by min and extent.
 
         This constructs a range in [min_value, min_value + extent)
 
         Parameters
         ----------
-        min_value : PrimExpr
+        min_value : Expr
             The minimum value of the range.
 
-        extent : PrimExpr
+        extent : Expr
             The extent of the range.
 
         span : Optional[Span]

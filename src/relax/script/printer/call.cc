@@ -247,10 +247,24 @@ ffi::Optional<ExprDoc> PrintRelaxPrint(const relax::Call& n, const AccessPath& n
   return Relax(d, "print")->Call(args, {"format"}, {first_arg});
 }
 
+bool ShouldPrintAsTIR(const tvm::Call& call) {
+  if (!call->ty.as<PrimTypeNode>()) {
+    return false;
+  }
+  if (call->op->ty.as<relax::FuncTypeNode>() || call->op.as<relax::VarNode>() ||
+      call->op.as<relax::FunctionNode>() || call->op.as<relax::ExternFuncNode>()) {
+    return false;
+  }
+  if (auto op = call->op.as<Op>()) {
+    return op.value()->name.find("relax.") != 0;
+  }
+  return true;
+}
+
 TVM_STATIC_IR_FUNCTOR(IRDocsifier, vtable)
     .set_dispatch<tvm::Call>(  //
         "", [](tvm::Call call, AccessPath n_p, IRDocsifier d) -> Doc {
-          if (call->ty.as<PrimTypeNode>()) {
+          if (ShouldPrintAsTIR(call)) {
             return PrintTIRCall(call, n_p, d);
           }
           relax::Call n = call.as_or_throw<relax::Call>();
@@ -340,7 +354,7 @@ TVM_STATIC_IR_FUNCTOR(IRDocsifier, vtable)
 
 std::string ReprPrintCall(const ffi::ObjectRef& obj, const PrinterConfig& cfg) {
   tvm::Call call = obj.as_or_throw<tvm::Call>();
-  if (call->ty.as<PrimTypeNode>()) {
+  if (ShouldPrintAsTIR(call)) {
     return ReprPrintTIR(obj, cfg);
   }
   return ReprPrintRelax(obj, cfg);

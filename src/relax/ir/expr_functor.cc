@@ -103,7 +103,7 @@ void ExprVisitor::DefaultTypeFieldVisitor::VisitTypeExprField(const Expr& expr) 
 }
 
 void ExprVisitor::DefaultTypeFieldVisitor::VisitTypeExprField(const PrimExpr& expr) {
-  parent_->VisitPrimExprField(expr);
+  parent_->VisitTypePrimExprField(expr);
 }
 
 void ExprVisitor::DefaultTypeFieldVisitor::VisitType_(const FuncTypeNode* op) {
@@ -193,7 +193,7 @@ void ExprVisitor::VisitExpr_(const TupleGetItemNode* op) {
 
 void ExprVisitor::VisitExpr_(const ShapeExprNode* op) {
   for (PrimExpr val : op->values) {
-    this->VisitPrimExprField(val);
+    this->VisitExpr(val);
   }
   this->VisitSpan(op->span);
 
@@ -231,7 +231,7 @@ void ExprVisitor::VisitExpr_(const DataTypeImmNode* op) { this->VisitSpan(op->sp
 
 void ExprVisitor::VisitSpan(const Span& span) {}
 
-void ExprVisitor::VisitPrimExprField(const PrimExpr& expr) {}
+void ExprVisitor::VisitTypePrimExprField(const PrimExpr& expr) { this->VisitExpr(expr); }
 
 // implementations of binding visitor dispatch
 RELAX_VAR_BINDING_DISPATCH_IMPL(ExprVisitor);
@@ -347,7 +347,7 @@ Expr ExprMutatorBase::DefaultTypeFieldMutator::VisitTypeExprField(const Expr& ex
 }
 
 PrimExpr ExprMutatorBase::DefaultTypeFieldMutator::VisitTypeExprField(const PrimExpr& expr) {
-  return parent_->VisitPrimExprField(expr);
+  return parent_->VisitTypePrimExprField(expr);
 }
 
 Type ExprMutatorBase::DefaultTypeFieldMutator::VisitType_(const FuncTypeNode* op) {
@@ -475,7 +475,8 @@ Expr ExprMutatorBase::VisitExpr_(const StringImmNode* op) { return ffi::GetRef<E
 Expr ExprMutatorBase::VisitExpr_(const DataTypeImmNode* op) { return ffi::GetRef<Expr>(op); }
 
 Expr ExprMutatorBase::VisitExpr_(const ShapeExprNode* op) {
-  auto values = op->values.Map([this](const PrimExpr& e) { return this->VisitPrimExprField(e); });
+  auto values = op->values.Map(
+      [this](const PrimExpr& e) { return this->VisitExpr(e).as_or_throw<PrimExpr>(); });
 
   if (values.same_as(op->values)) {
     // If values does not change, type won't change.
@@ -534,7 +535,9 @@ BindingBlock ExprMutatorBase::VisitBindingBlock(const BindingBlock& block) {
   }
 }
 
-PrimExpr ExprMutatorBase::VisitPrimExprField(const PrimExpr& expr) { return expr; }
+PrimExpr ExprMutatorBase::VisitTypePrimExprField(const PrimExpr& expr) {
+  return this->VisitExpr(expr).as_or_throw<PrimExpr>();
+}
 
 // ==================
 // ExprMutator

@@ -49,7 +49,7 @@ def count_cp_async(stmt):
     def verify(n):
         if (
             isinstance(n, tvm.ir.Call)
-            and isinstance(n, tvm.ir.PrimExpr)
+            and isinstance(n, tvm.ir.Expr)
             and n.op.name == "tirx.ptx.cp_async_raw"
         ):
             num_alloc[0] += 1

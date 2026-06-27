@@ -36,7 +36,6 @@ from tvm.relax.expr import (
     GlobalVar,
     If,
     MatchCast,
-    PrimExpr,
     SeqExpr,
     ShapeExpr,
     StringImm,
@@ -141,8 +140,8 @@ class ASTPrinter(PyExprVisitor):
         self.visit_expr(op.tuple_value)
         self.log.pop_scope()
 
-    def visit_prim_expr_field_(self, op: PrimExpr) -> None:
-        self.log.add("PrimExpr")
+    def visit_expr_fallback_(self, op: Expr) -> None:
+        self.log.add("ExprFallback")
 
     def visit_string_imm_(self, op: StringImm) -> None:
         self.log.add("StringImm")
@@ -262,9 +261,9 @@ class ASTPostPrinterMutator(PyExprMutator):
         self.log.add("TupleGetItem")
         return op
 
-    def visit_prim_expr_field_(self, op: PrimExpr) -> Expr:
+    def visit_expr_fallback_(self, op: Expr) -> Expr:
         op = self.visit_expr_post_order(op)
-        self.log.add("PrimExpr")
+        self.log.add("ExprFallback")
         return op
 
     def visit_string_imm_(self, op: StringImm) -> Expr:
@@ -425,13 +424,18 @@ def test_seq_expr():
 
 def test_shape_expr():
     x = relax.ShapeExpr([m, n])
-    basic_check(x, "ShapeExpr", "\n".join(["PrimExpr", "PrimExpr", "ShapeExpr"]))
+    basic_check(x, "ShapeExpr", "\n".join(["ExprFallback", "ExprFallback", "ShapeExpr"]))
 
 
 def test_prim_expr():
-    basic_check(tvm.tirx.IntImm("int64", 1), "", "")
-    basic_check(tvm.tirx.FloatImm("float32", 1.0), "", "")
-    basic_check(m + n, "", "")
+    basic_check(tvm.tirx.IntImm("int64", 1), "ExprFallback", "ExprFallback")
+    basic_check(tvm.tirx.FloatImm("float32", 1.0), "ExprFallback", "ExprFallback")
+    basic_check(m + n, "ExprFallback", "ExprFallback")
+    basic_check(
+        tvm.tirx.call_extern("int32", "test"),
+        "\n".join(["Call", "\tOp", "\tExprFallback"]),
+        "\n".join(["Op", "ExprFallback", "Call"]),
+    )
 
 
 def test_call():
@@ -439,7 +443,7 @@ def test_call():
     basic_check(
         call_node,
         "\n".join(["Call", "\tOp", "\tVar", "\tVar"]),
-        "\n".join(["Op", "Var", "Var", "PrimExpr", "PrimExpr", "ShapeExpr", "Call"]),
+        "\n".join(["Op", "Var", "Var", "ExprFallback", "ExprFallback", "ShapeExpr", "Call"]),
     )
 
 

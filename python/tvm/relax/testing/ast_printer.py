@@ -26,7 +26,7 @@ from collections.abc import Iterable
 
 import tvm
 from tvm import relax
-from tvm.ir.expr import PrimExpr
+from tvm.ir.expr import Expr
 from tvm.relax import ExprFunctor
 
 
@@ -219,9 +219,9 @@ class ASTPrinter(ExprFunctor):
         # ty fields, so we don't use build_expr here
         return self.build_ast_node("Op", name=wrap_quotes(op.name))
 
-    def visit_prim_expr_field_(self, prim_expr: PrimExpr) -> str:
-        # TODO: We may want to print PrimExpr ASTs, but this is a simplification for now
-        return self.build_ast_node("PrimExpr", value=f"`{prim_expr!s}`")
+    def visit_prim_expr_field_(self, prim_expr: Expr) -> str:
+        # TODO: We may want to print Expr ASTs, but this is a simplification for now
+        return self.build_ast_node("Expr", value=f"`{prim_expr!s}`")
 
     def visit_tuple_getitem_(self, op: relax.TupleGetItem) -> str:
         return self.build_expr(

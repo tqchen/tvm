@@ -39,7 +39,7 @@ def _count_ptx_ldg32(stmt):
     def visit(n):
         if (
             isinstance(n, tvm.ir.Call)
-            and isinstance(n, tvm.ir.PrimExpr)
+            and isinstance(n, tvm.ir.Expr)
             and n.op.name == "tirx.ptx.ldg32"
         ):
             num_call[0] += 1

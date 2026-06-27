@@ -489,11 +489,12 @@ class CallNode : public ExprNode {
  */
 class Call : public Expr {
  public:
+  TVM_DLL Call(Expr op, ffi::Array<Expr> args, Attrs attrs = Attrs(),
+               ffi::Array<Type> ty_args = ffi::Array<Type>(), Span span = Span());
   TVM_DLL Call(Type ret_ty, Expr op, ffi::Array<Expr> args, Attrs attrs = Attrs(),
                ffi::Array<Type> ty_args = ffi::Array<Type>(), Span span = Span());
-  TVM_DLL Call(PrimType ret_ty, Expr op, ffi::Array<PrimExpr> args, Attrs attrs = Attrs(),
-               Span span = Span());
-  TVM_DLL Call(PrimType ret_ty, Expr op, ffi::Array<PrimExpr> args, Span span);
+  TVM_DLL Call(Type ret_ty, Expr op, ffi::Array<Expr> args, Attrs attrs, Span span);
+  TVM_DLL Call(Type ret_ty, Expr op, ffi::Array<Expr> args, Span span);
 
   TVM_FFI_DEFINE_OBJECT_REF_METHODS_NULLABLE(Call, Expr, CallNode);
   TVM_DEFINE_OBJECT_REF_COW_METHOD(CallNode);

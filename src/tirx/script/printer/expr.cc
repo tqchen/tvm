@@ -268,9 +268,9 @@ Doc PrintTIRCall(tvm::Call call, AccessPath call_p, IRDocsifier d) {
     ExprDoc op_doc = call->op.as<Op>()
                          ? LiteralDoc::Str(call->op.as<Op>().value()->name, call_p->Attr("op"))
                          : d->AsDoc<ExprDoc>(call->op, call_p->Attr("op"));
-    return TIR(d, "Call")->Call(
-        {LiteralDoc::DataType(call_dtype, call_p->Attr("dtype")), op_doc, ListDoc(call_args)},
-        {"attrs"}, {d->AsDoc<ExprDoc>(call->attrs, call_p->Attr("attrs"))});
+    return TIR(d, "Call")->Call({op_doc, ListDoc(call_args)}, {"attrs", "ret_ty"},
+                                {d->AsDoc<ExprDoc>(call->attrs, call_p->Attr("attrs")),
+                                 LiteralDoc::DataType(call_dtype, call_p->Attr("ty"))});
   }
   static const OpAttrMap<tirx::TScriptPrinterName>& op_names =
       Op::GetAttrMap<tirx::TScriptPrinterName>("TScriptPrinterName");
