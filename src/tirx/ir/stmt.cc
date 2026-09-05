@@ -22,6 +22,8 @@
  */
 #include <tvm/arith/analyzer.h>
 #include <tvm/ffi/dtype.h>
+#include <tvm/ffi/extra/structural_mutate.h>
+#include <tvm/ffi/extra/structural_visit.h>
 #include <tvm/ffi/function.h>
 #include <tvm/ffi/reflection/registry.h>
 #include <tvm/ir/op.h>
@@ -29,12 +31,23 @@
 #include <tvm/tirx/op_attr_types.h>
 #include <tvm/tirx/stmt.h>
 
+#include <utility>
+
 #include "buffer_common.h"
 
 namespace tvm {
 namespace tirx {
 
+namespace refl = tvm::ffi::reflection;
+
 namespace {
+
+// Structural hooks follow the established visitor/mutator field set.  Source spans and constant
+// metadata stay reflected for StructuralEqual/StructuralHash but are skipped by traversal; block
+// annotations remain traversable because they carry buffer variables.  Every variable or buffer
+// definition is entered under a non-recursive definition region, independently of Substitute's
+// decision not to replace binders.  A node without a hook falls back to wider reflected-field
+// traversal, so every new node needs a hook written to this rule.
 
 using SubscriptSlice = ffi::Array<ffi::Variant<
     ffi::Tuple<ffi::Optional<PrimExpr>, ffi::Optional<PrimExpr>, ffi::Optional<PrimExpr>>,
@@ -92,33 +105,12 @@ ffi::ObjectRef RealizeBufferRegionSubscript(Expr value, SubscriptSlice slice, Sp
 
 }  // namespace
 
-TVM_FFI_STATIC_INIT_BLOCK() {
-  namespace refl = tvm::ffi::reflection;
-  StmtNode::RegisterReflection();
-  BindNode::RegisterReflection();
-
-  AttrStmtNode::RegisterReflection();
-  AssertStmtNode::RegisterReflection();
-  BufferStoreNode::RegisterReflection();
-  DeclBufferNode::RegisterReflection();
-  AllocBufferNode::RegisterReflection();
-  SeqStmtNode::RegisterReflection();
-  EvaluateNode::RegisterReflection();
-  IfThenElseNode::RegisterReflection();
-  ForNode::RegisterReflection();
-  WhileNode::RegisterReflection();
-  ReturnNode::RegisterReflection();
-  BreakNode::RegisterReflection();
-  ContinueNode::RegisterReflection();
-  BufferRegionTypeNode::RegisterReflection();
-  refl::TypeAttrDef<BufferRegionTypeNode>().def("__subscript_expr_realize__",
-                                                RealizeBufferRegionSubscript);
-  BufferRegionNode::RegisterReflection();
-  MatchBufferRegionNode::RegisterReflection();
-  SBlockNode::RegisterReflection();
-  SBlockRealizeNode::RegisterReflection();
-  ScopeIdDefStmtNode::RegisterReflection();
-}
+// Structural hooks traverse child Stmt/Expr and definition-site fields, matching the established
+// visitor/mutator contract.  They deliberately skip constant annotations, strings, dtypes, source
+// spans, and leaves that stay reflected for StructuralEqual/StructuralHash.  A node with no hook
+// falls back to wider full reflected-field traversal, so every new node needs a hook written to
+// this rule.
+TVM_FFI_STATIC_INIT_BLOCK() { StmtNode::RegisterReflection(); }
 
 // Bind
 Bind::Bind(Var var, Expr value, Span span) {
@@ -132,10 +124,61 @@ Bind::Bind(Var var, Expr value, Span span) {
   data_ = std::move(node);
 }
 
+static TVMFFIAny BindVisit(ffi::StructuralVisitorObj* visitor, ffi::AnyView value) noexcept {
+  const BindNode* self =
+      ffi::details::AnyUnsafe::RawObjectPtrFromAnyViewAfterCheck<const BindNode>(value);
+  auto var_result = visitor->WithDefRegionKind(kTVMFFIDefRegionKindNonRecursive,
+                                               [&]() { return visitor->VisitExpected(self->var); });
+  TVM_FFI_S_VISIT_MAYBE_EARLY_RETURN(var_result);
+  auto value_result = visitor->VisitExpected(self->value);
+  TVM_FFI_S_VISIT_MAYBE_EARLY_RETURN(value_result);
+  return ffi::details::ExpectedUnsafe::MoveToTVMFFIAny(std::move(value_result));
+}
+
+static TVMFFIAny BindMutate(ffi::StructuralMutatorObj* mutator, ffi::AnyView value) noexcept {
+  const BindNode* self =
+      ffi::details::AnyUnsafe::RawObjectPtrFromAnyViewAfterCheck<const BindNode>(value);
+  TVM_FFI_S_MUTATE_ASSIGN_OR_RETURN(
+      Var, mapped_var, mutator->WithDefRegionKind(kTVMFFIDefRegionKindNonRecursive, [&]() {
+        return mutator->MutateExpected(self->var);
+      }));
+  TVM_FFI_S_MUTATE_ASSIGN_OR_RETURN(Expr, mapped_value, mutator->MutateExpected(self->value));
+  if (mapped_var.same_as(self->var) && mapped_value.same_as(self->value)) {
+    return ffi::details::AnyUnsafe::MoveAnyToTVMFFIAny(ffi::Any(value));
+  }
+  ffi::ObjectPtr<BindNode> copy = ffi::make_object<BindNode>(*self);
+  copy->var = std::move(mapped_var);
+  copy->value = std::move(mapped_value);
+  return ffi::details::AnyUnsafe::MoveAnyToTVMFFIAny(ffi::Any(ffi::ObjectRef(std::move(copy))));
+}
+
+static TVMFFIAny BindMaybeInplaceMutate(ffi::StructuralMutatorObj* mutator,
+                                        ffi::AnyView value) noexcept {
+  BindNode* self = const_cast<BindNode*>(
+      ffi::details::AnyUnsafe::RawObjectPtrFromAnyViewAfterCheck<const BindNode>(value));
+  TVM_FFI_S_MUTATE_ASSIGN_OR_RETURN(
+      Var, mapped_var, mutator->WithDefRegionKind(kTVMFFIDefRegionKindNonRecursive, [&]() {
+        return mutator->MaybeInplaceMutateIfUniqueExpected(self->var);
+      }));
+  TVM_FFI_S_MUTATE_ASSIGN_OR_RETURN(Expr, mapped_value,
+                                    mutator->MaybeInplaceMutateIfUniqueExpected(self->value));
+  if (mapped_var.same_as(self->var) && mapped_value.same_as(self->value)) {
+    return ffi::details::AnyUnsafe::MoveAnyToTVMFFIAny(ffi::Any(value));
+  }
+  self->var = std::move(mapped_var);
+  self->value = std::move(mapped_value);
+  return ffi::details::AnyUnsafe::MoveAnyToTVMFFIAny(ffi::Any(value));
+}
+
 TVM_FFI_STATIC_INIT_BLOCK() {
-  namespace refl = tvm::ffi::reflection;
+  BindNode::RegisterReflection();
   refl::GlobalDef().def("tirx.Bind",
                         [](Var var, Expr value, Span span) { return Bind(var, value, span); });
+  refl::TypeAttrDef<BindNode>()
+      .attr(refl::type_attr::kStructuralVisit, reinterpret_cast<void*>(&BindVisit))
+      .attr(refl::type_attr::kStructuralMutate, reinterpret_cast<void*>(&BindMutate))
+      .attr(refl::type_attr::kStructuralMaybeInplaceMutate,
+            reinterpret_cast<void*>(&BindMaybeInplaceMutate));
 }
 
 // AttrStmt
@@ -149,12 +192,69 @@ AttrStmt::AttrStmt(ffi::Any node, ffi::String attr_key, PrimExpr value, Stmt bod
   data_ = std::move(n);
 }
 
+static TVMFFIAny AttrStmtVisit(ffi::StructuralVisitorObj* visitor, ffi::AnyView value) noexcept {
+  // skips: attr_key
+  const AttrStmtNode* self =
+      ffi::details::AnyUnsafe::RawObjectPtrFromAnyViewAfterCheck<const AttrStmtNode>(value);
+  auto node_result = visitor->VisitExpected(self->node);
+  TVM_FFI_S_VISIT_MAYBE_EARLY_RETURN(node_result);
+  auto value_result = visitor->VisitExpected(self->value);
+  TVM_FFI_S_VISIT_MAYBE_EARLY_RETURN(value_result);
+  auto body_result = visitor->VisitExpected(self->body);
+  TVM_FFI_S_VISIT_MAYBE_EARLY_RETURN(body_result);
+  return ffi::details::ExpectedUnsafe::MoveToTVMFFIAny(std::move(body_result));
+}
+
+static TVMFFIAny AttrStmtMutate(ffi::StructuralMutatorObj* mutator, ffi::AnyView value) noexcept {
+  // skips: attr_key
+  const AttrStmtNode* self =
+      ffi::details::AnyUnsafe::RawObjectPtrFromAnyViewAfterCheck<const AttrStmtNode>(value);
+  TVM_FFI_S_MUTATE_ASSIGN_OR_RETURN(ffi::Any, mapped_node, mutator->MutateExpected(self->node));
+  TVM_FFI_S_MUTATE_ASSIGN_OR_RETURN(PrimExpr, mapped_value, mutator->MutateExpected(self->value));
+  TVM_FFI_S_MUTATE_ASSIGN_OR_RETURN(Stmt, mapped_body, mutator->MutateExpected(self->body));
+  if (mapped_node.same_as(self->node) && mapped_value.same_as(self->value) &&
+      mapped_body.same_as(self->body)) {
+    return ffi::details::AnyUnsafe::MoveAnyToTVMFFIAny(ffi::Any(value));
+  }
+  ffi::ObjectPtr<AttrStmtNode> copy = ffi::make_object<AttrStmtNode>(*self);
+  copy->node = std::move(mapped_node);
+  copy->value = std::move(mapped_value);
+  copy->body = std::move(mapped_body);
+  return ffi::details::AnyUnsafe::MoveAnyToTVMFFIAny(ffi::Any(ffi::ObjectRef(std::move(copy))));
+}
+
+static TVMFFIAny AttrStmtMaybeInplaceMutate(ffi::StructuralMutatorObj* mutator,
+                                            ffi::AnyView value) noexcept {
+  // skips: attr_key
+  AttrStmtNode* self = const_cast<AttrStmtNode*>(
+      ffi::details::AnyUnsafe::RawObjectPtrFromAnyViewAfterCheck<const AttrStmtNode>(value));
+  TVM_FFI_S_MUTATE_ASSIGN_OR_RETURN(ffi::Any, mapped_node,
+                                    mutator->MaybeInplaceMutateIfUniqueExpected(self->node));
+  TVM_FFI_S_MUTATE_ASSIGN_OR_RETURN(PrimExpr, mapped_value,
+                                    mutator->MaybeInplaceMutateIfUniqueExpected(self->value));
+  TVM_FFI_S_MUTATE_ASSIGN_OR_RETURN(Stmt, mapped_body,
+                                    mutator->MaybeInplaceMutateIfUniqueExpected(self->body));
+  if (mapped_node.same_as(self->node) && mapped_value.same_as(self->value) &&
+      mapped_body.same_as(self->body)) {
+    return ffi::details::AnyUnsafe::MoveAnyToTVMFFIAny(ffi::Any(value));
+  }
+  self->node = std::move(mapped_node);
+  self->value = std::move(mapped_value);
+  self->body = std::move(mapped_body);
+  return ffi::details::AnyUnsafe::MoveAnyToTVMFFIAny(ffi::Any(value));
+}
+
 TVM_FFI_STATIC_INIT_BLOCK() {
-  namespace refl = tvm::ffi::reflection;
+  AttrStmtNode::RegisterReflection();
   refl::GlobalDef().def("tirx.AttrStmt",
                         [](Any node, ffi::String attr_key, PrimExpr value, Stmt body, Span span) {
                           return AttrStmt(node, attr_key, value, body, span);
                         });
+  refl::TypeAttrDef<AttrStmtNode>()
+      .attr(refl::type_attr::kStructuralVisit, reinterpret_cast<void*>(&AttrStmtVisit))
+      .attr(refl::type_attr::kStructuralMutate, reinterpret_cast<void*>(&AttrStmtMutate))
+      .attr(refl::type_attr::kStructuralMaybeInplaceMutate,
+            reinterpret_cast<void*>(&AttrStmtMaybeInplaceMutate));
 }
 
 // AssertStmt
@@ -175,12 +275,41 @@ AssertStmt::AssertStmt(PrimExpr condition, prim::StringImm error_kind,
   data_ = std::move(node);
 }
 
-TVM_FFI_STATIC_INIT_BLOCK() {
-  namespace refl = tvm::ffi::reflection;
-  refl::GlobalDef().def(
-      "tirx.AssertStmt",
-      [](PrimExpr condition, prim::StringImm error_kind, ffi::Array<prim::StringImm> message_parts,
-         Span span) { return AssertStmt(condition, error_kind, message_parts, span); });
+static TVMFFIAny AssertStmtVisit(ffi::StructuralVisitorObj* visitor, ffi::AnyView value) noexcept {
+  // skips: error_kind, message_parts
+  const AssertStmtNode* self =
+      ffi::details::AnyUnsafe::RawObjectPtrFromAnyViewAfterCheck<const AssertStmtNode>(value);
+  auto condition_result = visitor->VisitExpected(self->condition);
+  TVM_FFI_S_VISIT_MAYBE_EARLY_RETURN(condition_result);
+  return ffi::details::ExpectedUnsafe::MoveToTVMFFIAny(std::move(condition_result));
+}
+
+static TVMFFIAny AssertStmtMutate(ffi::StructuralMutatorObj* mutator, ffi::AnyView value) noexcept {
+  // skips: error_kind, message_parts
+  const AssertStmtNode* self =
+      ffi::details::AnyUnsafe::RawObjectPtrFromAnyViewAfterCheck<const AssertStmtNode>(value);
+  TVM_FFI_S_MUTATE_ASSIGN_OR_RETURN(PrimExpr, mapped_condition,
+                                    mutator->MutateExpected(self->condition));
+  if (mapped_condition.same_as(self->condition)) {
+    return ffi::details::AnyUnsafe::MoveAnyToTVMFFIAny(ffi::Any(value));
+  }
+  ffi::ObjectPtr<AssertStmtNode> copy = ffi::make_object<AssertStmtNode>(*self);
+  copy->condition = std::move(mapped_condition);
+  return ffi::details::AnyUnsafe::MoveAnyToTVMFFIAny(ffi::Any(ffi::ObjectRef(std::move(copy))));
+}
+
+static TVMFFIAny AssertStmtMaybeInplaceMutate(ffi::StructuralMutatorObj* mutator,
+                                              ffi::AnyView value) noexcept {
+  // skips: error_kind, message_parts
+  AssertStmtNode* self = const_cast<AssertStmtNode*>(
+      ffi::details::AnyUnsafe::RawObjectPtrFromAnyViewAfterCheck<const AssertStmtNode>(value));
+  TVM_FFI_S_MUTATE_ASSIGN_OR_RETURN(PrimExpr, mapped_condition,
+                                    mutator->MaybeInplaceMutateIfUniqueExpected(self->condition));
+  if (mapped_condition.same_as(self->condition)) {
+    return ffi::details::AnyUnsafe::MoveAnyToTVMFFIAny(ffi::Any(value));
+  }
+  self->condition = std::move(mapped_condition);
+  return ffi::details::AnyUnsafe::MoveAnyToTVMFFIAny(ffi::Any(value));
 }
 
 namespace {
@@ -196,7 +325,21 @@ bool IntImmValueFits(int64_t value, const PrimType& ty) {
   if (bits >= 64) return true;
   return value >= -(int64_t{1} << (bits - 1)) && value < (int64_t{1} << (bits - 1));
 }
+
 }  // namespace
+
+TVM_FFI_STATIC_INIT_BLOCK() {
+  AssertStmtNode::RegisterReflection();
+  refl::GlobalDef().def(
+      "tirx.AssertStmt",
+      [](PrimExpr condition, prim::StringImm error_kind, ffi::Array<prim::StringImm> message_parts,
+         Span span) { return AssertStmt(condition, error_kind, message_parts, span); });
+  refl::TypeAttrDef<AssertStmtNode>()
+      .attr(refl::type_attr::kStructuralVisit, reinterpret_cast<void*>(&AssertStmtVisit))
+      .attr(refl::type_attr::kStructuralMutate, reinterpret_cast<void*>(&AssertStmtMutate))
+      .attr(refl::type_attr::kStructuralMaybeInplaceMutate,
+            reinterpret_cast<void*>(&AssertStmtMaybeInplaceMutate));
+}
 
 // For
 For::For(PrimVar loop_var, PrimExpr min, PrimExpr extent, ForKind kind, Stmt body,
@@ -265,17 +408,6 @@ For::For(PrimVar loop_var, PrimExpr min, PrimExpr extent, ForKind kind, Stmt bod
 
 bool ForNode::HasTrivialStep() const { return !step.has_value() || is_one(*step); }
 
-TVM_FFI_STATIC_INIT_BLOCK() {
-  namespace refl = tvm::ffi::reflection;
-  refl::GlobalDef().def("tirx.For", [](PrimVar loop_var, PrimExpr min, PrimExpr extent, int kind,
-                                       Stmt body, ffi::Optional<IterVar> thread_binding,
-                                       ffi::Optional<ffi::Map<ffi::String, Any>> annotations,
-                                       ffi::Optional<PrimExpr> step, Span span) {
-    return For(loop_var, min, extent, static_cast<ForKind>(kind), body, thread_binding,
-               annotations.value_or(ffi::Map<ffi::String, Any>()), step, span);
-  });
-}
-
 std::ostream& operator<<(std::ostream& out, ForKind type) {  // NOLINT(*)
   switch (type) {
     case ForKind::kSerial:
@@ -297,6 +429,106 @@ std::ostream& operator<<(std::ostream& out, ForKind type) {  // NOLINT(*)
   return out;
 }
 
+static TVMFFIAny ForVisit(ffi::StructuralVisitorObj* visitor, ffi::AnyView value) noexcept {
+  // skips: annotations, kind
+  const ForNode* self =
+      ffi::details::AnyUnsafe::RawObjectPtrFromAnyViewAfterCheck<const ForNode>(value);
+  auto loop_var_result = visitor->WithDefRegionKind(
+      kTVMFFIDefRegionKindNonRecursive, [&]() { return visitor->VisitExpected(self->loop_var); });
+  TVM_FFI_S_VISIT_MAYBE_EARLY_RETURN(loop_var_result);
+  auto min_result = visitor->VisitExpected(self->min);
+  TVM_FFI_S_VISIT_MAYBE_EARLY_RETURN(min_result);
+  auto extent_result = visitor->VisitExpected(self->extent);
+  TVM_FFI_S_VISIT_MAYBE_EARLY_RETURN(extent_result);
+  auto body_result = visitor->VisitExpected(self->body);
+  TVM_FFI_S_VISIT_MAYBE_EARLY_RETURN(body_result);
+  auto thread_binding_result = visitor->VisitExpected(self->thread_binding);
+  TVM_FFI_S_VISIT_MAYBE_EARLY_RETURN(thread_binding_result);
+  auto step_result = visitor->VisitExpected(self->step);
+  TVM_FFI_S_VISIT_MAYBE_EARLY_RETURN(step_result);
+  return ffi::details::ExpectedUnsafe::MoveToTVMFFIAny(std::move(step_result));
+}
+
+static TVMFFIAny ForMutate(ffi::StructuralMutatorObj* mutator, ffi::AnyView value) noexcept {
+  // skips: annotations, kind
+  const ForNode* self =
+      ffi::details::AnyUnsafe::RawObjectPtrFromAnyViewAfterCheck<const ForNode>(value);
+  TVM_FFI_S_MUTATE_ASSIGN_OR_RETURN(
+      PrimVar, mapped_loop_var, mutator->WithDefRegionKind(kTVMFFIDefRegionKindNonRecursive, [&]() {
+        return mutator->MutateExpected(self->loop_var);
+      }));
+  TVM_FFI_S_MUTATE_ASSIGN_OR_RETURN(PrimExpr, mapped_min, mutator->MutateExpected(self->min));
+  TVM_FFI_S_MUTATE_ASSIGN_OR_RETURN(PrimExpr, mapped_extent, mutator->MutateExpected(self->extent));
+  TVM_FFI_S_MUTATE_ASSIGN_OR_RETURN(Stmt, mapped_body, mutator->MutateExpected(self->body));
+  TVM_FFI_S_MUTATE_ASSIGN_OR_RETURN(ffi::Optional<IterVar>, mapped_thread_binding,
+                                    mutator->MutateExpected(self->thread_binding));
+  TVM_FFI_S_MUTATE_ASSIGN_OR_RETURN(ffi::Optional<PrimExpr>, mapped_step,
+                                    mutator->MutateExpected(self->step));
+  if (mapped_loop_var.same_as(self->loop_var) && mapped_min.same_as(self->min) &&
+      mapped_extent.same_as(self->extent) && mapped_body.same_as(self->body) &&
+      mapped_thread_binding.same_as(self->thread_binding) && mapped_step.same_as(self->step)) {
+    return ffi::details::AnyUnsafe::MoveAnyToTVMFFIAny(ffi::Any(value));
+  }
+  ffi::ObjectPtr<ForNode> copy = ffi::make_object<ForNode>(*self);
+  copy->loop_var = std::move(mapped_loop_var);
+  copy->min = std::move(mapped_min);
+  copy->extent = std::move(mapped_extent);
+  copy->body = std::move(mapped_body);
+  copy->thread_binding = std::move(mapped_thread_binding);
+  copy->step = std::move(mapped_step);
+  return ffi::details::AnyUnsafe::MoveAnyToTVMFFIAny(ffi::Any(ffi::ObjectRef(std::move(copy))));
+}
+
+static TVMFFIAny ForMaybeInplaceMutate(ffi::StructuralMutatorObj* mutator,
+                                       ffi::AnyView value) noexcept {
+  // skips: annotations, kind
+  ForNode* self = const_cast<ForNode*>(
+      ffi::details::AnyUnsafe::RawObjectPtrFromAnyViewAfterCheck<const ForNode>(value));
+  TVM_FFI_S_MUTATE_ASSIGN_OR_RETURN(
+      PrimVar, mapped_loop_var, mutator->WithDefRegionKind(kTVMFFIDefRegionKindNonRecursive, [&]() {
+        return mutator->MaybeInplaceMutateIfUniqueExpected(self->loop_var);
+      }));
+  TVM_FFI_S_MUTATE_ASSIGN_OR_RETURN(PrimExpr, mapped_min,
+                                    mutator->MaybeInplaceMutateIfUniqueExpected(self->min));
+  TVM_FFI_S_MUTATE_ASSIGN_OR_RETURN(PrimExpr, mapped_extent,
+                                    mutator->MaybeInplaceMutateIfUniqueExpected(self->extent));
+  TVM_FFI_S_MUTATE_ASSIGN_OR_RETURN(Stmt, mapped_body,
+                                    mutator->MaybeInplaceMutateIfUniqueExpected(self->body));
+  TVM_FFI_S_MUTATE_ASSIGN_OR_RETURN(
+      ffi::Optional<IterVar>, mapped_thread_binding,
+      mutator->MaybeInplaceMutateIfUniqueExpected(self->thread_binding));
+  TVM_FFI_S_MUTATE_ASSIGN_OR_RETURN(ffi::Optional<PrimExpr>, mapped_step,
+                                    mutator->MaybeInplaceMutateIfUniqueExpected(self->step));
+  if (mapped_loop_var.same_as(self->loop_var) && mapped_min.same_as(self->min) &&
+      mapped_extent.same_as(self->extent) && mapped_body.same_as(self->body) &&
+      mapped_thread_binding.same_as(self->thread_binding) && mapped_step.same_as(self->step)) {
+    return ffi::details::AnyUnsafe::MoveAnyToTVMFFIAny(ffi::Any(value));
+  }
+  self->loop_var = std::move(mapped_loop_var);
+  self->min = std::move(mapped_min);
+  self->extent = std::move(mapped_extent);
+  self->body = std::move(mapped_body);
+  self->thread_binding = std::move(mapped_thread_binding);
+  self->step = std::move(mapped_step);
+  return ffi::details::AnyUnsafe::MoveAnyToTVMFFIAny(ffi::Any(value));
+}
+
+TVM_FFI_STATIC_INIT_BLOCK() {
+  ForNode::RegisterReflection();
+  refl::GlobalDef().def("tirx.For", [](PrimVar loop_var, PrimExpr min, PrimExpr extent, int kind,
+                                       Stmt body, ffi::Optional<IterVar> thread_binding,
+                                       ffi::Optional<ffi::Map<ffi::String, Any>> annotations,
+                                       ffi::Optional<PrimExpr> step, Span span) {
+    return For(loop_var, min, extent, static_cast<ForKind>(kind), body, thread_binding,
+               annotations.value_or(ffi::Map<ffi::String, Any>()), step, span);
+  });
+  refl::TypeAttrDef<ForNode>()
+      .attr(refl::type_attr::kStructuralVisit, reinterpret_cast<void*>(&ForVisit))
+      .attr(refl::type_attr::kStructuralMutate, reinterpret_cast<void*>(&ForMutate))
+      .attr(refl::type_attr::kStructuralMaybeInplaceMutate,
+            reinterpret_cast<void*>(&ForMaybeInplaceMutate));
+}
+
 // While
 While::While(PrimExpr condition, Stmt body, Span span) {
   TVM_FFI_ICHECK(condition.defined());
@@ -310,11 +542,57 @@ While::While(PrimExpr condition, Stmt body, Span span) {
   data_ = std::move(node);
 }
 
+static TVMFFIAny WhileVisit(ffi::StructuralVisitorObj* visitor, ffi::AnyView value) noexcept {
+  const WhileNode* self =
+      ffi::details::AnyUnsafe::RawObjectPtrFromAnyViewAfterCheck<const WhileNode>(value);
+  auto condition_result = visitor->VisitExpected(self->condition);
+  TVM_FFI_S_VISIT_MAYBE_EARLY_RETURN(condition_result);
+  auto body_result = visitor->VisitExpected(self->body);
+  TVM_FFI_S_VISIT_MAYBE_EARLY_RETURN(body_result);
+  return ffi::details::ExpectedUnsafe::MoveToTVMFFIAny(std::move(body_result));
+}
+
+static TVMFFIAny WhileMutate(ffi::StructuralMutatorObj* mutator, ffi::AnyView value) noexcept {
+  const WhileNode* self =
+      ffi::details::AnyUnsafe::RawObjectPtrFromAnyViewAfterCheck<const WhileNode>(value);
+  TVM_FFI_S_MUTATE_ASSIGN_OR_RETURN(PrimExpr, mapped_condition,
+                                    mutator->MutateExpected(self->condition));
+  TVM_FFI_S_MUTATE_ASSIGN_OR_RETURN(Stmt, mapped_body, mutator->MutateExpected(self->body));
+  if (mapped_condition.same_as(self->condition) && mapped_body.same_as(self->body)) {
+    return ffi::details::AnyUnsafe::MoveAnyToTVMFFIAny(ffi::Any(value));
+  }
+  ffi::ObjectPtr<WhileNode> copy = ffi::make_object<WhileNode>(*self);
+  copy->condition = std::move(mapped_condition);
+  copy->body = std::move(mapped_body);
+  return ffi::details::AnyUnsafe::MoveAnyToTVMFFIAny(ffi::Any(ffi::ObjectRef(std::move(copy))));
+}
+
+static TVMFFIAny WhileMaybeInplaceMutate(ffi::StructuralMutatorObj* mutator,
+                                         ffi::AnyView value) noexcept {
+  WhileNode* self = const_cast<WhileNode*>(
+      ffi::details::AnyUnsafe::RawObjectPtrFromAnyViewAfterCheck<const WhileNode>(value));
+  TVM_FFI_S_MUTATE_ASSIGN_OR_RETURN(PrimExpr, mapped_condition,
+                                    mutator->MaybeInplaceMutateIfUniqueExpected(self->condition));
+  TVM_FFI_S_MUTATE_ASSIGN_OR_RETURN(Stmt, mapped_body,
+                                    mutator->MaybeInplaceMutateIfUniqueExpected(self->body));
+  if (mapped_condition.same_as(self->condition) && mapped_body.same_as(self->body)) {
+    return ffi::details::AnyUnsafe::MoveAnyToTVMFFIAny(ffi::Any(value));
+  }
+  self->condition = std::move(mapped_condition);
+  self->body = std::move(mapped_body);
+  return ffi::details::AnyUnsafe::MoveAnyToTVMFFIAny(ffi::Any(value));
+}
+
 TVM_FFI_STATIC_INIT_BLOCK() {
-  namespace refl = tvm::ffi::reflection;
+  WhileNode::RegisterReflection();
   refl::GlobalDef().def("tirx.While", [](PrimExpr condition, Stmt body, Span span) {
     return While(condition, body, span);
   });
+  refl::TypeAttrDef<WhileNode>()
+      .attr(refl::type_attr::kStructuralVisit, reinterpret_cast<void*>(&WhileVisit))
+      .attr(refl::type_attr::kStructuralMutate, reinterpret_cast<void*>(&WhileMutate))
+      .attr(refl::type_attr::kStructuralMaybeInplaceMutate,
+            reinterpret_cast<void*>(&WhileMaybeInplaceMutate));
 }
 
 // Return
@@ -327,9 +605,47 @@ Return::Return(Expr value, Span span) {
   data_ = std::move(node);
 }
 
+static TVMFFIAny ReturnVisit(ffi::StructuralVisitorObj* visitor, ffi::AnyView value) noexcept {
+  const ReturnNode* self =
+      ffi::details::AnyUnsafe::RawObjectPtrFromAnyViewAfterCheck<const ReturnNode>(value);
+  auto value_result = visitor->VisitExpected(self->value);
+  TVM_FFI_S_VISIT_MAYBE_EARLY_RETURN(value_result);
+  return ffi::details::ExpectedUnsafe::MoveToTVMFFIAny(std::move(value_result));
+}
+
+static TVMFFIAny ReturnMutate(ffi::StructuralMutatorObj* mutator, ffi::AnyView value) noexcept {
+  const ReturnNode* self =
+      ffi::details::AnyUnsafe::RawObjectPtrFromAnyViewAfterCheck<const ReturnNode>(value);
+  TVM_FFI_S_MUTATE_ASSIGN_OR_RETURN(Expr, mapped_value, mutator->MutateExpected(self->value));
+  if (mapped_value.same_as(self->value)) {
+    return ffi::details::AnyUnsafe::MoveAnyToTVMFFIAny(ffi::Any(value));
+  }
+  ffi::ObjectPtr<ReturnNode> copy = ffi::make_object<ReturnNode>(*self);
+  copy->value = std::move(mapped_value);
+  return ffi::details::AnyUnsafe::MoveAnyToTVMFFIAny(ffi::Any(ffi::ObjectRef(std::move(copy))));
+}
+
+static TVMFFIAny ReturnMaybeInplaceMutate(ffi::StructuralMutatorObj* mutator,
+                                          ffi::AnyView value) noexcept {
+  ReturnNode* self = const_cast<ReturnNode*>(
+      ffi::details::AnyUnsafe::RawObjectPtrFromAnyViewAfterCheck<const ReturnNode>(value));
+  TVM_FFI_S_MUTATE_ASSIGN_OR_RETURN(Expr, mapped_value,
+                                    mutator->MaybeInplaceMutateIfUniqueExpected(self->value));
+  if (mapped_value.same_as(self->value)) {
+    return ffi::details::AnyUnsafe::MoveAnyToTVMFFIAny(ffi::Any(value));
+  }
+  self->value = std::move(mapped_value);
+  return ffi::details::AnyUnsafe::MoveAnyToTVMFFIAny(ffi::Any(value));
+}
+
 TVM_FFI_STATIC_INIT_BLOCK() {
-  namespace refl = tvm::ffi::reflection;
+  ReturnNode::RegisterReflection();
   refl::GlobalDef().def("tirx.Return", [](Expr value, Span span) { return Return(value, span); });
+  refl::TypeAttrDef<ReturnNode>()
+      .attr(refl::type_attr::kStructuralVisit, reinterpret_cast<void*>(&ReturnVisit))
+      .attr(refl::type_attr::kStructuralMutate, reinterpret_cast<void*>(&ReturnMutate))
+      .attr(refl::type_attr::kStructuralMaybeInplaceMutate,
+            reinterpret_cast<void*>(&ReturnMaybeInplaceMutate));
 }
 
 // Break
@@ -339,9 +655,27 @@ Break::Break(Span span) {
   data_ = std::move(node);
 }
 
+static TVMFFIAny BreakVisit(ffi::StructuralVisitorObj*, ffi::AnyView) noexcept {
+  return ffi::details::ExpectedUnsafe::MoveToTVMFFIAny(
+      ffi::Expected<ffi::Optional<ffi::VisitInterrupt>>(std::nullopt));
+}
+
+static TVMFFIAny BreakMutate(ffi::StructuralMutatorObj*, ffi::AnyView value) noexcept {
+  return ffi::details::AnyUnsafe::MoveAnyToTVMFFIAny(ffi::Any(value));
+}
+
+static TVMFFIAny BreakMaybeInplaceMutate(ffi::StructuralMutatorObj*, ffi::AnyView value) noexcept {
+  return ffi::details::AnyUnsafe::MoveAnyToTVMFFIAny(ffi::Any(value));
+}
+
 TVM_FFI_STATIC_INIT_BLOCK() {
-  namespace refl = tvm::ffi::reflection;
+  BreakNode::RegisterReflection();
   refl::GlobalDef().def("tirx.Break", [](Span span) { return Break(span); });
+  refl::TypeAttrDef<BreakNode>()
+      .attr(refl::type_attr::kStructuralVisit, reinterpret_cast<void*>(&BreakVisit))
+      .attr(refl::type_attr::kStructuralMutate, reinterpret_cast<void*>(&BreakMutate))
+      .attr(refl::type_attr::kStructuralMaybeInplaceMutate,
+            reinterpret_cast<void*>(&BreakMaybeInplaceMutate));
 }
 
 // Continue
@@ -351,9 +685,28 @@ Continue::Continue(Span span) {
   data_ = std::move(node);
 }
 
+static TVMFFIAny ContinueVisit(ffi::StructuralVisitorObj*, ffi::AnyView) noexcept {
+  return ffi::details::ExpectedUnsafe::MoveToTVMFFIAny(
+      ffi::Expected<ffi::Optional<ffi::VisitInterrupt>>(std::nullopt));
+}
+
+static TVMFFIAny ContinueMutate(ffi::StructuralMutatorObj*, ffi::AnyView value) noexcept {
+  return ffi::details::AnyUnsafe::MoveAnyToTVMFFIAny(ffi::Any(value));
+}
+
+static TVMFFIAny ContinueMaybeInplaceMutate(ffi::StructuralMutatorObj*,
+                                            ffi::AnyView value) noexcept {
+  return ffi::details::AnyUnsafe::MoveAnyToTVMFFIAny(ffi::Any(value));
+}
+
 TVM_FFI_STATIC_INIT_BLOCK() {
-  namespace refl = tvm::ffi::reflection;
+  ContinueNode::RegisterReflection();
   refl::GlobalDef().def("tirx.Continue", [](Span span) { return Continue(span); });
+  refl::TypeAttrDef<ContinueNode>()
+      .attr(refl::type_attr::kStructuralVisit, reinterpret_cast<void*>(&ContinueVisit))
+      .attr(refl::type_attr::kStructuralMutate, reinterpret_cast<void*>(&ContinueMutate))
+      .attr(refl::type_attr::kStructuralMaybeInplaceMutate,
+            reinterpret_cast<void*>(&ContinueMaybeInplaceMutate));
 }
 
 // DeclBuffer
@@ -378,11 +731,62 @@ DeclBuffer::DeclBuffer(BufferVar buffer, Expr data, Span span) {
   data_ = std::move(node);
 }
 
+static TVMFFIAny DeclBufferVisit(ffi::StructuralVisitorObj* visitor, ffi::AnyView value) noexcept {
+  const DeclBufferNode* self =
+      ffi::details::AnyUnsafe::RawObjectPtrFromAnyViewAfterCheck<const DeclBufferNode>(value);
+  auto buffer_result = visitor->WithDefRegionKind(
+      kTVMFFIDefRegionKindNonRecursive, [&]() { return visitor->VisitExpected(self->buffer); });
+  TVM_FFI_S_VISIT_MAYBE_EARLY_RETURN(buffer_result);
+  auto data_result = visitor->VisitExpected(self->data);
+  TVM_FFI_S_VISIT_MAYBE_EARLY_RETURN(data_result);
+  return ffi::details::ExpectedUnsafe::MoveToTVMFFIAny(std::move(data_result));
+}
+
+static TVMFFIAny DeclBufferMutate(ffi::StructuralMutatorObj* mutator, ffi::AnyView value) noexcept {
+  const DeclBufferNode* self =
+      ffi::details::AnyUnsafe::RawObjectPtrFromAnyViewAfterCheck<const DeclBufferNode>(value);
+  TVM_FFI_S_MUTATE_ASSIGN_OR_RETURN(
+      BufferVar, mapped_buffer, mutator->WithDefRegionKind(kTVMFFIDefRegionKindNonRecursive, [&]() {
+        return mutator->MutateExpected(self->buffer);
+      }));
+  TVM_FFI_S_MUTATE_ASSIGN_OR_RETURN(Expr, mapped_data, mutator->MutateExpected(self->data));
+  if (mapped_buffer.same_as(self->buffer) && mapped_data.same_as(self->data)) {
+    return ffi::details::AnyUnsafe::MoveAnyToTVMFFIAny(ffi::Any(value));
+  }
+  ffi::ObjectPtr<DeclBufferNode> copy = ffi::make_object<DeclBufferNode>(*self);
+  copy->buffer = std::move(mapped_buffer);
+  copy->data = std::move(mapped_data);
+  return ffi::details::AnyUnsafe::MoveAnyToTVMFFIAny(ffi::Any(ffi::ObjectRef(std::move(copy))));
+}
+
+static TVMFFIAny DeclBufferMaybeInplaceMutate(ffi::StructuralMutatorObj* mutator,
+                                              ffi::AnyView value) noexcept {
+  DeclBufferNode* self = const_cast<DeclBufferNode*>(
+      ffi::details::AnyUnsafe::RawObjectPtrFromAnyViewAfterCheck<const DeclBufferNode>(value));
+  TVM_FFI_S_MUTATE_ASSIGN_OR_RETURN(
+      BufferVar, mapped_buffer, mutator->WithDefRegionKind(kTVMFFIDefRegionKindNonRecursive, [&]() {
+        return mutator->MaybeInplaceMutateIfUniqueExpected(self->buffer);
+      }));
+  TVM_FFI_S_MUTATE_ASSIGN_OR_RETURN(Expr, mapped_data,
+                                    mutator->MaybeInplaceMutateIfUniqueExpected(self->data));
+  if (mapped_buffer.same_as(self->buffer) && mapped_data.same_as(self->data)) {
+    return ffi::details::AnyUnsafe::MoveAnyToTVMFFIAny(ffi::Any(value));
+  }
+  self->buffer = std::move(mapped_buffer);
+  self->data = std::move(mapped_data);
+  return ffi::details::AnyUnsafe::MoveAnyToTVMFFIAny(ffi::Any(value));
+}
+
 TVM_FFI_STATIC_INIT_BLOCK() {
-  namespace refl = tvm::ffi::reflection;
+  DeclBufferNode::RegisterReflection();
   refl::GlobalDef().def("tirx.DeclBuffer", [](BufferVar buffer, Expr data, Span span) {
     return DeclBuffer(buffer, data, span);
   });
+  refl::TypeAttrDef<DeclBufferNode>()
+      .attr(refl::type_attr::kStructuralVisit, reinterpret_cast<void*>(&DeclBufferVisit))
+      .attr(refl::type_attr::kStructuralMutate, reinterpret_cast<void*>(&DeclBufferMutate))
+      .attr(refl::type_attr::kStructuralMaybeInplaceMutate,
+            reinterpret_cast<void*>(&DeclBufferMaybeInplaceMutate));
 }
 
 // AllocBuffer
@@ -394,13 +798,61 @@ AllocBuffer::AllocBuffer(BufferVar buffer, ffi::Map<ffi::String, Any> annotation
   data_ = std::move(node);
 }
 
+static TVMFFIAny AllocBufferVisit(ffi::StructuralVisitorObj* visitor, ffi::AnyView value) noexcept {
+  // skips: annotations
+  const AllocBufferNode* self =
+      ffi::details::AnyUnsafe::RawObjectPtrFromAnyViewAfterCheck<const AllocBufferNode>(value);
+  auto buffer_result = visitor->WithDefRegionKind(
+      kTVMFFIDefRegionKindNonRecursive, [&]() { return visitor->VisitExpected(self->buffer); });
+  TVM_FFI_S_VISIT_MAYBE_EARLY_RETURN(buffer_result);
+  return ffi::details::ExpectedUnsafe::MoveToTVMFFIAny(std::move(buffer_result));
+}
+
+static TVMFFIAny AllocBufferMutate(ffi::StructuralMutatorObj* mutator,
+                                   ffi::AnyView value) noexcept {
+  // skips: annotations
+  const AllocBufferNode* self =
+      ffi::details::AnyUnsafe::RawObjectPtrFromAnyViewAfterCheck<const AllocBufferNode>(value);
+  TVM_FFI_S_MUTATE_ASSIGN_OR_RETURN(
+      BufferVar, mapped_buffer, mutator->WithDefRegionKind(kTVMFFIDefRegionKindNonRecursive, [&]() {
+        return mutator->MutateExpected(self->buffer);
+      }));
+  if (mapped_buffer.same_as(self->buffer)) {
+    return ffi::details::AnyUnsafe::MoveAnyToTVMFFIAny(ffi::Any(value));
+  }
+  ffi::ObjectPtr<AllocBufferNode> copy = ffi::make_object<AllocBufferNode>(*self);
+  copy->buffer = std::move(mapped_buffer);
+  return ffi::details::AnyUnsafe::MoveAnyToTVMFFIAny(ffi::Any(ffi::ObjectRef(std::move(copy))));
+}
+
+static TVMFFIAny AllocBufferMaybeInplaceMutate(ffi::StructuralMutatorObj* mutator,
+                                               ffi::AnyView value) noexcept {
+  // skips: annotations
+  AllocBufferNode* self = const_cast<AllocBufferNode*>(
+      ffi::details::AnyUnsafe::RawObjectPtrFromAnyViewAfterCheck<const AllocBufferNode>(value));
+  TVM_FFI_S_MUTATE_ASSIGN_OR_RETURN(
+      BufferVar, mapped_buffer, mutator->WithDefRegionKind(kTVMFFIDefRegionKindNonRecursive, [&]() {
+        return mutator->MaybeInplaceMutateIfUniqueExpected(self->buffer);
+      }));
+  if (mapped_buffer.same_as(self->buffer)) {
+    return ffi::details::AnyUnsafe::MoveAnyToTVMFFIAny(ffi::Any(value));
+  }
+  self->buffer = std::move(mapped_buffer);
+  return ffi::details::AnyUnsafe::MoveAnyToTVMFFIAny(ffi::Any(value));
+}
+
 TVM_FFI_STATIC_INIT_BLOCK() {
-  namespace refl = tvm::ffi::reflection;
+  AllocBufferNode::RegisterReflection();
   refl::GlobalDef().def(
       "tirx.AllocBuffer",
       [](BufferVar buffer, ffi::Optional<ffi::Map<ffi::String, Any>> annotations, Span span) {
         return AllocBuffer(buffer, annotations.value_or(ffi::Map<ffi::String, Any>()), span);
       });
+  refl::TypeAttrDef<AllocBufferNode>()
+      .attr(refl::type_attr::kStructuralVisit, reinterpret_cast<void*>(&AllocBufferVisit))
+      .attr(refl::type_attr::kStructuralMutate, reinterpret_cast<void*>(&AllocBufferMutate))
+      .attr(refl::type_attr::kStructuralMaybeInplaceMutate,
+            reinterpret_cast<void*>(&AllocBufferMaybeInplaceMutate));
 }
 
 // SeqStmt
@@ -430,11 +882,50 @@ SeqStmt::SeqStmt(ffi::Array<Stmt> seq, Span span) {
   data_ = std::move(node);
 }
 
+static TVMFFIAny SeqStmtVisit(ffi::StructuralVisitorObj* visitor, ffi::AnyView value) noexcept {
+  const SeqStmtNode* self =
+      ffi::details::AnyUnsafe::RawObjectPtrFromAnyViewAfterCheck<const SeqStmtNode>(value);
+  auto seq_result = visitor->VisitExpected(self->seq);
+  TVM_FFI_S_VISIT_MAYBE_EARLY_RETURN(seq_result);
+  return ffi::details::ExpectedUnsafe::MoveToTVMFFIAny(std::move(seq_result));
+}
+
+static TVMFFIAny SeqStmtMutate(ffi::StructuralMutatorObj* mutator, ffi::AnyView value) noexcept {
+  const SeqStmtNode* self =
+      ffi::details::AnyUnsafe::RawObjectPtrFromAnyViewAfterCheck<const SeqStmtNode>(value);
+  TVM_FFI_S_MUTATE_ASSIGN_OR_RETURN(ffi::Array<Stmt>, mapped_seq,
+                                    mutator->MutateExpected(self->seq));
+  if (mapped_seq.same_as(self->seq)) {
+    return ffi::details::AnyUnsafe::MoveAnyToTVMFFIAny(ffi::Any(value));
+  }
+  ffi::ObjectPtr<SeqStmtNode> copy = ffi::make_object<SeqStmtNode>(*self);
+  copy->seq = std::move(mapped_seq);
+  return ffi::details::AnyUnsafe::MoveAnyToTVMFFIAny(ffi::Any(ffi::ObjectRef(std::move(copy))));
+}
+
+static TVMFFIAny SeqStmtMaybeInplaceMutate(ffi::StructuralMutatorObj* mutator,
+                                           ffi::AnyView value) noexcept {
+  SeqStmtNode* self = const_cast<SeqStmtNode*>(
+      ffi::details::AnyUnsafe::RawObjectPtrFromAnyViewAfterCheck<const SeqStmtNode>(value));
+  TVM_FFI_S_MUTATE_ASSIGN_OR_RETURN(ffi::Array<Stmt>, mapped_seq,
+                                    mutator->MaybeInplaceMutateIfUniqueExpected(self->seq));
+  if (mapped_seq.same_as(self->seq)) {
+    return ffi::details::AnyUnsafe::MoveAnyToTVMFFIAny(ffi::Any(value));
+  }
+  self->seq = std::move(mapped_seq);
+  return ffi::details::AnyUnsafe::MoveAnyToTVMFFIAny(ffi::Any(value));
+}
+
 TVM_FFI_STATIC_INIT_BLOCK() {
-  namespace refl = tvm::ffi::reflection;
+  SeqStmtNode::RegisterReflection();
   refl::GlobalDef().def("tirx.SeqStmt", [](ffi::Array<Stmt> seq, Span span) {
     return SeqStmt(std::move(seq), span);
   });
+  refl::TypeAttrDef<SeqStmtNode>()
+      .attr(refl::type_attr::kStructuralVisit, reinterpret_cast<void*>(&SeqStmtVisit))
+      .attr(refl::type_attr::kStructuralMutate, reinterpret_cast<void*>(&SeqStmtMutate))
+      .attr(refl::type_attr::kStructuralMaybeInplaceMutate,
+            reinterpret_cast<void*>(&SeqStmtMaybeInplaceMutate));
 }
 
 // IfThenElse
@@ -451,12 +942,69 @@ IfThenElse::IfThenElse(PrimExpr condition, Stmt then_case, ffi::Optional<Stmt> e
   data_ = std::move(node);
 }
 
+static TVMFFIAny IfThenElseVisit(ffi::StructuralVisitorObj* visitor, ffi::AnyView value) noexcept {
+  const IfThenElseNode* self =
+      ffi::details::AnyUnsafe::RawObjectPtrFromAnyViewAfterCheck<const IfThenElseNode>(value);
+  auto condition_result = visitor->VisitExpected(self->condition);
+  TVM_FFI_S_VISIT_MAYBE_EARLY_RETURN(condition_result);
+  auto then_case_result = visitor->VisitExpected(self->then_case);
+  TVM_FFI_S_VISIT_MAYBE_EARLY_RETURN(then_case_result);
+  auto else_case_result = visitor->VisitExpected(self->else_case);
+  TVM_FFI_S_VISIT_MAYBE_EARLY_RETURN(else_case_result);
+  return ffi::details::ExpectedUnsafe::MoveToTVMFFIAny(std::move(else_case_result));
+}
+
+static TVMFFIAny IfThenElseMutate(ffi::StructuralMutatorObj* mutator, ffi::AnyView value) noexcept {
+  const IfThenElseNode* self =
+      ffi::details::AnyUnsafe::RawObjectPtrFromAnyViewAfterCheck<const IfThenElseNode>(value);
+  TVM_FFI_S_MUTATE_ASSIGN_OR_RETURN(PrimExpr, mapped_condition,
+                                    mutator->MutateExpected(self->condition));
+  TVM_FFI_S_MUTATE_ASSIGN_OR_RETURN(Stmt, mapped_then_case,
+                                    mutator->MutateExpected(self->then_case));
+  TVM_FFI_S_MUTATE_ASSIGN_OR_RETURN(ffi::Optional<Stmt>, mapped_else_case,
+                                    mutator->MutateExpected(self->else_case));
+  if (mapped_condition.same_as(self->condition) && mapped_then_case.same_as(self->then_case) &&
+      mapped_else_case.same_as(self->else_case)) {
+    return ffi::details::AnyUnsafe::MoveAnyToTVMFFIAny(ffi::Any(value));
+  }
+  ffi::ObjectPtr<IfThenElseNode> copy = ffi::make_object<IfThenElseNode>(*self);
+  copy->condition = std::move(mapped_condition);
+  copy->then_case = std::move(mapped_then_case);
+  copy->else_case = std::move(mapped_else_case);
+  return ffi::details::AnyUnsafe::MoveAnyToTVMFFIAny(ffi::Any(ffi::ObjectRef(std::move(copy))));
+}
+
+static TVMFFIAny IfThenElseMaybeInplaceMutate(ffi::StructuralMutatorObj* mutator,
+                                              ffi::AnyView value) noexcept {
+  IfThenElseNode* self = const_cast<IfThenElseNode*>(
+      ffi::details::AnyUnsafe::RawObjectPtrFromAnyViewAfterCheck<const IfThenElseNode>(value));
+  TVM_FFI_S_MUTATE_ASSIGN_OR_RETURN(PrimExpr, mapped_condition,
+                                    mutator->MaybeInplaceMutateIfUniqueExpected(self->condition));
+  TVM_FFI_S_MUTATE_ASSIGN_OR_RETURN(Stmt, mapped_then_case,
+                                    mutator->MaybeInplaceMutateIfUniqueExpected(self->then_case));
+  TVM_FFI_S_MUTATE_ASSIGN_OR_RETURN(ffi::Optional<Stmt>, mapped_else_case,
+                                    mutator->MaybeInplaceMutateIfUniqueExpected(self->else_case));
+  if (mapped_condition.same_as(self->condition) && mapped_then_case.same_as(self->then_case) &&
+      mapped_else_case.same_as(self->else_case)) {
+    return ffi::details::AnyUnsafe::MoveAnyToTVMFFIAny(ffi::Any(value));
+  }
+  self->condition = std::move(mapped_condition);
+  self->then_case = std::move(mapped_then_case);
+  self->else_case = std::move(mapped_else_case);
+  return ffi::details::AnyUnsafe::MoveAnyToTVMFFIAny(ffi::Any(value));
+}
+
 TVM_FFI_STATIC_INIT_BLOCK() {
-  namespace refl = tvm::ffi::reflection;
+  IfThenElseNode::RegisterReflection();
   refl::GlobalDef().def("tirx.IfThenElse",
                         [](PrimExpr condition, Stmt then_case, Stmt else_case, Span span) {
                           return IfThenElse(condition, then_case, else_case, span);
                         });
+  refl::TypeAttrDef<IfThenElseNode>()
+      .attr(refl::type_attr::kStructuralVisit, reinterpret_cast<void*>(&IfThenElseVisit))
+      .attr(refl::type_attr::kStructuralMutate, reinterpret_cast<void*>(&IfThenElseMutate))
+      .attr(refl::type_attr::kStructuralMaybeInplaceMutate,
+            reinterpret_cast<void*>(&IfThenElseMaybeInplaceMutate));
 }
 
 // Evaluate
@@ -472,10 +1020,48 @@ Evaluate::Evaluate(Expr value, Span span) {
   data_ = std::move(node);
 }
 
+static TVMFFIAny EvaluateVisit(ffi::StructuralVisitorObj* visitor, ffi::AnyView value) noexcept {
+  const EvaluateNode* self =
+      ffi::details::AnyUnsafe::RawObjectPtrFromAnyViewAfterCheck<const EvaluateNode>(value);
+  auto value_result = visitor->VisitExpected(self->value);
+  TVM_FFI_S_VISIT_MAYBE_EARLY_RETURN(value_result);
+  return ffi::details::ExpectedUnsafe::MoveToTVMFFIAny(std::move(value_result));
+}
+
+static TVMFFIAny EvaluateMutate(ffi::StructuralMutatorObj* mutator, ffi::AnyView value) noexcept {
+  const EvaluateNode* self =
+      ffi::details::AnyUnsafe::RawObjectPtrFromAnyViewAfterCheck<const EvaluateNode>(value);
+  TVM_FFI_S_MUTATE_ASSIGN_OR_RETURN(Expr, mapped_value, mutator->MutateExpected(self->value));
+  if (mapped_value.same_as(self->value)) {
+    return ffi::details::AnyUnsafe::MoveAnyToTVMFFIAny(ffi::Any(value));
+  }
+  ffi::ObjectPtr<EvaluateNode> copy = ffi::make_object<EvaluateNode>(*self);
+  copy->value = std::move(mapped_value);
+  return ffi::details::AnyUnsafe::MoveAnyToTVMFFIAny(ffi::Any(ffi::ObjectRef(std::move(copy))));
+}
+
+static TVMFFIAny EvaluateMaybeInplaceMutate(ffi::StructuralMutatorObj* mutator,
+                                            ffi::AnyView value) noexcept {
+  EvaluateNode* self = const_cast<EvaluateNode*>(
+      ffi::details::AnyUnsafe::RawObjectPtrFromAnyViewAfterCheck<const EvaluateNode>(value));
+  TVM_FFI_S_MUTATE_ASSIGN_OR_RETURN(Expr, mapped_value,
+                                    mutator->MaybeInplaceMutateIfUniqueExpected(self->value));
+  if (mapped_value.same_as(self->value)) {
+    return ffi::details::AnyUnsafe::MoveAnyToTVMFFIAny(ffi::Any(value));
+  }
+  self->value = std::move(mapped_value);
+  return ffi::details::AnyUnsafe::MoveAnyToTVMFFIAny(ffi::Any(value));
+}
+
 TVM_FFI_STATIC_INIT_BLOCK() {
-  namespace refl = tvm::ffi::reflection;
+  EvaluateNode::RegisterReflection();
   refl::GlobalDef().def("tirx.Evaluate",
                         [](Expr value, Span span) { return Evaluate(value, span); });
+  refl::TypeAttrDef<EvaluateNode>()
+      .attr(refl::type_attr::kStructuralVisit, reinterpret_cast<void*>(&EvaluateVisit))
+      .attr(refl::type_attr::kStructuralMutate, reinterpret_cast<void*>(&EvaluateMutate))
+      .attr(refl::type_attr::kStructuralMaybeInplaceMutate,
+            reinterpret_cast<void*>(&EvaluateMaybeInplaceMutate));
 }
 
 // BufferStore
@@ -540,17 +1126,80 @@ BufferStore::BufferStore(BufferVar buffer, PrimExpr value, ffi::Array<PrimExpr> 
   data_ = std::move(node);
 }
 
+static TVMFFIAny BufferStoreVisit(ffi::StructuralVisitorObj* visitor, ffi::AnyView value) noexcept {
+  const BufferStoreNode* self =
+      ffi::details::AnyUnsafe::RawObjectPtrFromAnyViewAfterCheck<const BufferStoreNode>(value);
+  auto buffer_result = visitor->VisitExpected(self->buffer);
+  TVM_FFI_S_VISIT_MAYBE_EARLY_RETURN(buffer_result);
+  auto value_result = visitor->VisitExpected(self->value);
+  TVM_FFI_S_VISIT_MAYBE_EARLY_RETURN(value_result);
+  auto indices_result = visitor->VisitExpected(self->indices);
+  TVM_FFI_S_VISIT_MAYBE_EARLY_RETURN(indices_result);
+  return ffi::details::ExpectedUnsafe::MoveToTVMFFIAny(std::move(indices_result));
+}
+
+static TVMFFIAny BufferStoreMutate(ffi::StructuralMutatorObj* mutator,
+                                   ffi::AnyView value) noexcept {
+  const BufferStoreNode* self =
+      ffi::details::AnyUnsafe::RawObjectPtrFromAnyViewAfterCheck<const BufferStoreNode>(value);
+  TVM_FFI_S_MUTATE_ASSIGN_OR_RETURN(BufferVar, mapped_buffer,
+                                    mutator->MutateExpected(self->buffer));
+  TVM_FFI_S_MUTATE_ASSIGN_OR_RETURN(PrimExpr, mapped_value, mutator->MutateExpected(self->value));
+  TVM_FFI_S_MUTATE_ASSIGN_OR_RETURN(ffi::Array<PrimExpr>, mapped_indices,
+                                    mutator->MutateExpected(self->indices));
+  if (mapped_buffer.same_as(self->buffer) && mapped_value.same_as(self->value) &&
+      mapped_indices.same_as(self->indices)) {
+    return ffi::details::AnyUnsafe::MoveAnyToTVMFFIAny(ffi::Any(value));
+  }
+  ffi::ObjectPtr<BufferStoreNode> copy = ffi::make_object<BufferStoreNode>(*self);
+  copy->buffer = std::move(mapped_buffer);
+  copy->value = std::move(mapped_value);
+  copy->indices = std::move(mapped_indices);
+  return ffi::details::AnyUnsafe::MoveAnyToTVMFFIAny(ffi::Any(ffi::ObjectRef(std::move(copy))));
+}
+
+static TVMFFIAny BufferStoreMaybeInplaceMutate(ffi::StructuralMutatorObj* mutator,
+                                               ffi::AnyView value) noexcept {
+  BufferStoreNode* self = const_cast<BufferStoreNode*>(
+      ffi::details::AnyUnsafe::RawObjectPtrFromAnyViewAfterCheck<const BufferStoreNode>(value));
+  TVM_FFI_S_MUTATE_ASSIGN_OR_RETURN(BufferVar, mapped_buffer,
+                                    mutator->MaybeInplaceMutateIfUniqueExpected(self->buffer));
+  TVM_FFI_S_MUTATE_ASSIGN_OR_RETURN(PrimExpr, mapped_value,
+                                    mutator->MaybeInplaceMutateIfUniqueExpected(self->value));
+  TVM_FFI_S_MUTATE_ASSIGN_OR_RETURN(ffi::Array<PrimExpr>, mapped_indices,
+                                    mutator->MaybeInplaceMutateIfUniqueExpected(self->indices));
+  if (mapped_buffer.same_as(self->buffer) && mapped_value.same_as(self->value) &&
+      mapped_indices.same_as(self->indices)) {
+    return ffi::details::AnyUnsafe::MoveAnyToTVMFFIAny(ffi::Any(value));
+  }
+  self->buffer = std::move(mapped_buffer);
+  self->value = std::move(mapped_value);
+  self->indices = std::move(mapped_indices);
+  return ffi::details::AnyUnsafe::MoveAnyToTVMFFIAny(ffi::Any(value));
+}
+
 TVM_FFI_STATIC_INIT_BLOCK() {
-  namespace refl = tvm::ffi::reflection;
+  BufferStoreNode::RegisterReflection();
   refl::GlobalDef().def("tirx.BufferStore",
                         [](BufferVar buffer, PrimExpr value, ffi::Array<PrimExpr> indices,
                            Span span) { return BufferStore(buffer, value, indices, span); });
+  refl::TypeAttrDef<BufferStoreNode>()
+      .attr(refl::type_attr::kStructuralVisit, reinterpret_cast<void*>(&BufferStoreVisit))
+      .attr(refl::type_attr::kStructuralMutate, reinterpret_cast<void*>(&BufferStoreMutate))
+      .attr(refl::type_attr::kStructuralMaybeInplaceMutate,
+            reinterpret_cast<void*>(&BufferStoreMaybeInplaceMutate));
 }
 
 // BufferRegion
 BufferRegionType::BufferRegionType() : Type(ffi::UnsafeInit{}) {
   static ffi::ObjectPtr<BufferRegionTypeNode> singleton = ffi::make_object<BufferRegionTypeNode>();
   data_ = singleton;
+}
+
+TVM_FFI_STATIC_INIT_BLOCK() {
+  BufferRegionTypeNode::RegisterReflection();
+  refl::TypeAttrDef<BufferRegionTypeNode>().def("__subscript_expr_realize__",
+                                                RealizeBufferRegionSubscript);
 }
 
 BufferRegion::BufferRegion(BufferVar buffer, ffi::Array<Range> region, Span span) {
@@ -586,12 +1235,61 @@ BufferRegion BufferRegion::FromPoint(BufferVar buffer, ffi::Array<PrimExpr> indi
   return BufferRegion(buffer, region);
 }
 
+static TVMFFIAny BufferRegionVisit(ffi::StructuralVisitorObj* visitor,
+                                   ffi::AnyView value) noexcept {
+  const BufferRegionNode* self =
+      ffi::details::AnyUnsafe::RawObjectPtrFromAnyViewAfterCheck<const BufferRegionNode>(value);
+  auto buffer_result = visitor->VisitExpected(self->buffer);
+  TVM_FFI_S_VISIT_MAYBE_EARLY_RETURN(buffer_result);
+  auto region_result = visitor->VisitExpected(self->region);
+  TVM_FFI_S_VISIT_MAYBE_EARLY_RETURN(region_result);
+  return ffi::details::ExpectedUnsafe::MoveToTVMFFIAny(std::move(region_result));
+}
+
+static TVMFFIAny BufferRegionMutate(ffi::StructuralMutatorObj* mutator,
+                                    ffi::AnyView value) noexcept {
+  const BufferRegionNode* self =
+      ffi::details::AnyUnsafe::RawObjectPtrFromAnyViewAfterCheck<const BufferRegionNode>(value);
+  TVM_FFI_S_MUTATE_ASSIGN_OR_RETURN(BufferVar, mapped_buffer,
+                                    mutator->MutateExpected(self->buffer));
+  TVM_FFI_S_MUTATE_ASSIGN_OR_RETURN(ffi::Array<Range>, mapped_region,
+                                    mutator->MutateExpected(self->region));
+  if (mapped_buffer.same_as(self->buffer) && mapped_region.same_as(self->region)) {
+    return ffi::details::AnyUnsafe::MoveAnyToTVMFFIAny(ffi::Any(value));
+  }
+  ffi::ObjectPtr<BufferRegionNode> copy = ffi::make_object<BufferRegionNode>(*self);
+  copy->buffer = std::move(mapped_buffer);
+  copy->region = std::move(mapped_region);
+  return ffi::details::AnyUnsafe::MoveAnyToTVMFFIAny(ffi::Any(ffi::ObjectRef(std::move(copy))));
+}
+
+static TVMFFIAny BufferRegionMaybeInplaceMutate(ffi::StructuralMutatorObj* mutator,
+                                                ffi::AnyView value) noexcept {
+  BufferRegionNode* self = const_cast<BufferRegionNode*>(
+      ffi::details::AnyUnsafe::RawObjectPtrFromAnyViewAfterCheck<const BufferRegionNode>(value));
+  TVM_FFI_S_MUTATE_ASSIGN_OR_RETURN(BufferVar, mapped_buffer,
+                                    mutator->MaybeInplaceMutateIfUniqueExpected(self->buffer));
+  TVM_FFI_S_MUTATE_ASSIGN_OR_RETURN(ffi::Array<Range>, mapped_region,
+                                    mutator->MaybeInplaceMutateIfUniqueExpected(self->region));
+  if (mapped_buffer.same_as(self->buffer) && mapped_region.same_as(self->region)) {
+    return ffi::details::AnyUnsafe::MoveAnyToTVMFFIAny(ffi::Any(value));
+  }
+  self->buffer = std::move(mapped_buffer);
+  self->region = std::move(mapped_region);
+  return ffi::details::AnyUnsafe::MoveAnyToTVMFFIAny(ffi::Any(value));
+}
+
 TVM_FFI_STATIC_INIT_BLOCK() {
-  namespace refl = tvm::ffi::reflection;
+  BufferRegionNode::RegisterReflection();
   refl::GlobalDef()
       .def("tirx.BufferRegionType", []() { return BufferRegionType(); })
       .def("tirx.BufferRegion",
            [](BufferVar buffer, ffi::Array<Range> region) { return BufferRegion(buffer, region); });
+  refl::TypeAttrDef<BufferRegionNode>()
+      .attr(refl::type_attr::kStructuralVisit, reinterpret_cast<void*>(&BufferRegionVisit))
+      .attr(refl::type_attr::kStructuralMutate, reinterpret_cast<void*>(&BufferRegionMutate))
+      .attr(refl::type_attr::kStructuralMaybeInplaceMutate,
+            reinterpret_cast<void*>(&BufferRegionMaybeInplaceMutate));
 }
 
 // MatchBufferRegion
@@ -641,11 +1339,68 @@ MatchBufferRegion::MatchBufferRegion(BufferVar buffer, BufferRegion source) {
   data_ = std::move(node);
 }
 
+static TVMFFIAny MatchBufferRegionVisit(ffi::StructuralVisitorObj* visitor,
+                                        ffi::AnyView value) noexcept {
+  const MatchBufferRegionNode* self =
+      ffi::details::AnyUnsafe::RawObjectPtrFromAnyViewAfterCheck<const MatchBufferRegionNode>(
+          value);
+  auto buffer_result = visitor->WithDefRegionKind(
+      kTVMFFIDefRegionKindNonRecursive, [&]() { return visitor->VisitExpected(self->buffer); });
+  TVM_FFI_S_VISIT_MAYBE_EARLY_RETURN(buffer_result);
+  auto source_result = visitor->VisitExpected(self->source);
+  TVM_FFI_S_VISIT_MAYBE_EARLY_RETURN(source_result);
+  return ffi::details::ExpectedUnsafe::MoveToTVMFFIAny(std::move(source_result));
+}
+
+static TVMFFIAny MatchBufferRegionMutate(ffi::StructuralMutatorObj* mutator,
+                                         ffi::AnyView value) noexcept {
+  const MatchBufferRegionNode* self =
+      ffi::details::AnyUnsafe::RawObjectPtrFromAnyViewAfterCheck<const MatchBufferRegionNode>(
+          value);
+  TVM_FFI_S_MUTATE_ASSIGN_OR_RETURN(
+      BufferVar, mapped_buffer, mutator->WithDefRegionKind(kTVMFFIDefRegionKindNonRecursive, [&]() {
+        return mutator->MutateExpected(self->buffer);
+      }));
+  TVM_FFI_S_MUTATE_ASSIGN_OR_RETURN(BufferRegion, mapped_source,
+                                    mutator->MutateExpected(self->source));
+  if (mapped_buffer.same_as(self->buffer) && mapped_source.same_as(self->source)) {
+    return ffi::details::AnyUnsafe::MoveAnyToTVMFFIAny(ffi::Any(value));
+  }
+  ffi::ObjectPtr<MatchBufferRegionNode> copy = ffi::make_object<MatchBufferRegionNode>(*self);
+  copy->buffer = std::move(mapped_buffer);
+  copy->source = std::move(mapped_source);
+  return ffi::details::AnyUnsafe::MoveAnyToTVMFFIAny(ffi::Any(ffi::ObjectRef(std::move(copy))));
+}
+
+static TVMFFIAny MatchBufferRegionMaybeInplaceMutate(ffi::StructuralMutatorObj* mutator,
+                                                     ffi::AnyView value) noexcept {
+  MatchBufferRegionNode* self = const_cast<MatchBufferRegionNode*>(
+      ffi::details::AnyUnsafe::RawObjectPtrFromAnyViewAfterCheck<const MatchBufferRegionNode>(
+          value));
+  TVM_FFI_S_MUTATE_ASSIGN_OR_RETURN(
+      BufferVar, mapped_buffer, mutator->WithDefRegionKind(kTVMFFIDefRegionKindNonRecursive, [&]() {
+        return mutator->MaybeInplaceMutateIfUniqueExpected(self->buffer);
+      }));
+  TVM_FFI_S_MUTATE_ASSIGN_OR_RETURN(BufferRegion, mapped_source,
+                                    mutator->MaybeInplaceMutateIfUniqueExpected(self->source));
+  if (mapped_buffer.same_as(self->buffer) && mapped_source.same_as(self->source)) {
+    return ffi::details::AnyUnsafe::MoveAnyToTVMFFIAny(ffi::Any(value));
+  }
+  self->buffer = std::move(mapped_buffer);
+  self->source = std::move(mapped_source);
+  return ffi::details::AnyUnsafe::MoveAnyToTVMFFIAny(ffi::Any(value));
+}
+
 TVM_FFI_STATIC_INIT_BLOCK() {
-  namespace refl = tvm::ffi::reflection;
+  MatchBufferRegionNode::RegisterReflection();
   refl::GlobalDef().def("tirx.MatchBufferRegion", [](BufferVar buffer, BufferRegion source) {
     return MatchBufferRegion(buffer, source);
   });
+  refl::TypeAttrDef<MatchBufferRegionNode>()
+      .attr(refl::type_attr::kStructuralVisit, reinterpret_cast<void*>(&MatchBufferRegionVisit))
+      .attr(refl::type_attr::kStructuralMutate, reinterpret_cast<void*>(&MatchBufferRegionMutate))
+      .attr(refl::type_attr::kStructuralMaybeInplaceMutate,
+            reinterpret_cast<void*>(&MatchBufferRegionMaybeInplaceMutate));
 }
 
 // Block
@@ -683,8 +1438,134 @@ SBlock::SBlock(ffi::String name_hint, Stmt body, ffi::Array<BufferVar> alloc_buf
   data_ = std::move(node);
 }
 
+static TVMFFIAny SBlockVisit(ffi::StructuralVisitorObj* visitor, ffi::AnyView value) noexcept {
+  // skips: name_hint
+  const SBlockNode* self =
+      ffi::details::AnyUnsafe::RawObjectPtrFromAnyViewAfterCheck<const SBlockNode>(value);
+  auto iter_vars_result = visitor->VisitExpected(self->iter_vars);
+  TVM_FFI_S_VISIT_MAYBE_EARLY_RETURN(iter_vars_result);
+  auto reads_result = visitor->VisitExpected(self->reads);
+  TVM_FFI_S_VISIT_MAYBE_EARLY_RETURN(reads_result);
+  auto writes_result = visitor->VisitExpected(self->writes);
+  TVM_FFI_S_VISIT_MAYBE_EARLY_RETURN(writes_result);
+  auto alloc_buffers_result = visitor->WithDefRegionKind(kTVMFFIDefRegionKindNonRecursive, [&]() {
+    return visitor->VisitExpected(self->alloc_buffers);
+  });
+  TVM_FFI_S_VISIT_MAYBE_EARLY_RETURN(alloc_buffers_result);
+  auto match_buffers_result = visitor->VisitExpected(self->match_buffers);
+  TVM_FFI_S_VISIT_MAYBE_EARLY_RETURN(match_buffers_result);
+  auto annotations_result = visitor->VisitExpected(self->annotations);
+  TVM_FFI_S_VISIT_MAYBE_EARLY_RETURN(annotations_result);
+  auto init_result = visitor->VisitExpected(self->init);
+  TVM_FFI_S_VISIT_MAYBE_EARLY_RETURN(init_result);
+  auto body_result = visitor->VisitExpected(self->body);
+  TVM_FFI_S_VISIT_MAYBE_EARLY_RETURN(body_result);
+  return ffi::details::ExpectedUnsafe::MoveToTVMFFIAny(std::move(body_result));
+}
+
+static TVMFFIAny SBlockMutate(ffi::StructuralMutatorObj* mutator, ffi::AnyView value) noexcept {
+  // skips: name_hint
+  const SBlockNode* self =
+      ffi::details::AnyUnsafe::RawObjectPtrFromAnyViewAfterCheck<const SBlockNode>(value);
+  TVM_FFI_S_MUTATE_ASSIGN_OR_RETURN(ffi::Array<IterVar>, mapped_iter_vars,
+                                    mutator->MutateExpected(self->iter_vars));
+  TVM_FFI_S_MUTATE_ASSIGN_OR_RETURN(ffi::Array<BufferRegion>, mapped_reads,
+                                    mutator->MutateExpected(self->reads));
+  TVM_FFI_S_MUTATE_ASSIGN_OR_RETURN(ffi::Array<BufferRegion>, mapped_writes,
+                                    mutator->MutateExpected(self->writes));
+  TVM_FFI_S_MUTATE_ASSIGN_OR_RETURN(
+      ffi::Array<BufferVar>, mapped_alloc_buffers,
+      mutator->WithDefRegionKind(kTVMFFIDefRegionKindNonRecursive,
+                                 [&]() { return mutator->MutateExpected(self->alloc_buffers); }));
+  TVM_FFI_S_MUTATE_ASSIGN_OR_RETURN(ffi::Array<MatchBufferRegion>, mapped_match_buffers,
+                                    mutator->MutateExpected(self->match_buffers));
+  auto mapped_annotations_result = mutator->MutateExpected(self->annotations);
+  TVM_FFI_S_MUTATE_MAYBE_EARLY_RETURN(mapped_annotations_result);
+  bool mapped_annotations_type_ok =
+      ffi::details::AnyUnsafe::CheckAnyStrict<ffi::Map<ffi::String, ffi::Any>>(
+          ffi::details::ExpectedUnsafe::GetData(mapped_annotations_result));
+  if (TVM_FFI_PREDICT_FALSE(!mapped_annotations_type_ok)) {
+    return ffi::details::SMutateDeclaredTypeErrorRaw();
+  }
+  ffi::Map<ffi::String, ffi::Any> mapped_annotations =
+      ffi::details::AnyUnsafe::MoveFromAnyAfterCheck<ffi::Map<ffi::String, ffi::Any>>(
+          std::move(ffi::details::ExpectedUnsafe::GetData(mapped_annotations_result)));
+  TVM_FFI_S_MUTATE_ASSIGN_OR_RETURN(ffi::Optional<Stmt>, mapped_init,
+                                    mutator->MutateExpected(self->init));
+  TVM_FFI_S_MUTATE_ASSIGN_OR_RETURN(Stmt, mapped_body, mutator->MutateExpected(self->body));
+  if (mapped_iter_vars.same_as(self->iter_vars) && mapped_reads.same_as(self->reads) &&
+      mapped_writes.same_as(self->writes) && mapped_alloc_buffers.same_as(self->alloc_buffers) &&
+      mapped_match_buffers.same_as(self->match_buffers) &&
+      mapped_annotations.same_as(self->annotations) && mapped_init.same_as(self->init) &&
+      mapped_body.same_as(self->body)) {
+    return ffi::details::AnyUnsafe::MoveAnyToTVMFFIAny(ffi::Any(value));
+  }
+  ffi::ObjectPtr<SBlockNode> copy = ffi::make_object<SBlockNode>(*self);
+  copy->iter_vars = std::move(mapped_iter_vars);
+  copy->reads = std::move(mapped_reads);
+  copy->writes = std::move(mapped_writes);
+  copy->alloc_buffers = std::move(mapped_alloc_buffers);
+  copy->match_buffers = std::move(mapped_match_buffers);
+  copy->annotations = std::move(mapped_annotations);
+  copy->init = std::move(mapped_init);
+  copy->body = std::move(mapped_body);
+  return ffi::details::AnyUnsafe::MoveAnyToTVMFFIAny(ffi::Any(ffi::ObjectRef(std::move(copy))));
+}
+
+static TVMFFIAny SBlockMaybeInplaceMutate(ffi::StructuralMutatorObj* mutator,
+                                          ffi::AnyView value) noexcept {
+  // skips: name_hint
+  SBlockNode* self = const_cast<SBlockNode*>(
+      ffi::details::AnyUnsafe::RawObjectPtrFromAnyViewAfterCheck<const SBlockNode>(value));
+  TVM_FFI_S_MUTATE_ASSIGN_OR_RETURN(ffi::Array<IterVar>, mapped_iter_vars,
+                                    mutator->MaybeInplaceMutateIfUniqueExpected(self->iter_vars));
+  TVM_FFI_S_MUTATE_ASSIGN_OR_RETURN(ffi::Array<BufferRegion>, mapped_reads,
+                                    mutator->MaybeInplaceMutateIfUniqueExpected(self->reads));
+  TVM_FFI_S_MUTATE_ASSIGN_OR_RETURN(ffi::Array<BufferRegion>, mapped_writes,
+                                    mutator->MaybeInplaceMutateIfUniqueExpected(self->writes));
+  TVM_FFI_S_MUTATE_ASSIGN_OR_RETURN(
+      ffi::Array<BufferVar>, mapped_alloc_buffers,
+      mutator->WithDefRegionKind(kTVMFFIDefRegionKindNonRecursive, [&]() {
+        return mutator->MaybeInplaceMutateIfUniqueExpected(self->alloc_buffers);
+      }));
+  TVM_FFI_S_MUTATE_ASSIGN_OR_RETURN(
+      ffi::Array<MatchBufferRegion>, mapped_match_buffers,
+      mutator->MaybeInplaceMutateIfUniqueExpected(self->match_buffers));
+  auto mapped_annotations_result = mutator->MaybeInplaceMutateIfUniqueExpected(self->annotations);
+  TVM_FFI_S_MUTATE_MAYBE_EARLY_RETURN(mapped_annotations_result);
+  bool mapped_annotations_type_ok =
+      ffi::details::AnyUnsafe::CheckAnyStrict<ffi::Map<ffi::String, ffi::Any>>(
+          ffi::details::ExpectedUnsafe::GetData(mapped_annotations_result));
+  if (TVM_FFI_PREDICT_FALSE(!mapped_annotations_type_ok)) {
+    return ffi::details::SMutateDeclaredTypeErrorRaw();
+  }
+  ffi::Map<ffi::String, ffi::Any> mapped_annotations =
+      ffi::details::AnyUnsafe::MoveFromAnyAfterCheck<ffi::Map<ffi::String, ffi::Any>>(
+          std::move(ffi::details::ExpectedUnsafe::GetData(mapped_annotations_result)));
+  TVM_FFI_S_MUTATE_ASSIGN_OR_RETURN(ffi::Optional<Stmt>, mapped_init,
+                                    mutator->MaybeInplaceMutateIfUniqueExpected(self->init));
+  TVM_FFI_S_MUTATE_ASSIGN_OR_RETURN(Stmt, mapped_body,
+                                    mutator->MaybeInplaceMutateIfUniqueExpected(self->body));
+  if (mapped_iter_vars.same_as(self->iter_vars) && mapped_reads.same_as(self->reads) &&
+      mapped_writes.same_as(self->writes) && mapped_alloc_buffers.same_as(self->alloc_buffers) &&
+      mapped_match_buffers.same_as(self->match_buffers) &&
+      mapped_annotations.same_as(self->annotations) && mapped_init.same_as(self->init) &&
+      mapped_body.same_as(self->body)) {
+    return ffi::details::AnyUnsafe::MoveAnyToTVMFFIAny(ffi::Any(value));
+  }
+  self->iter_vars = std::move(mapped_iter_vars);
+  self->reads = std::move(mapped_reads);
+  self->writes = std::move(mapped_writes);
+  self->alloc_buffers = std::move(mapped_alloc_buffers);
+  self->match_buffers = std::move(mapped_match_buffers);
+  self->annotations = std::move(mapped_annotations);
+  self->init = std::move(mapped_init);
+  self->body = std::move(mapped_body);
+  return ffi::details::AnyUnsafe::MoveAnyToTVMFFIAny(ffi::Any(value));
+}
+
 TVM_FFI_STATIC_INIT_BLOCK() {
-  namespace refl = tvm::ffi::reflection;
+  SBlockNode::RegisterReflection();
   refl::GlobalDef().def("tirx.SBlock",
                         [](ffi::Array<IterVar> iter_vars, ffi::Array<BufferRegion> reads,
                            ffi::Array<BufferRegion> writes, ffi::String name_hint, Stmt body,
@@ -694,6 +1575,11 @@ TVM_FFI_STATIC_INIT_BLOCK() {
                           return SBlock(iter_vars, reads, writes, name_hint, body, init,
                                         alloc_buffers, match_buffers, annotations, span);
                         });
+  refl::TypeAttrDef<SBlockNode>()
+      .attr(refl::type_attr::kStructuralVisit, reinterpret_cast<void*>(&SBlockVisit))
+      .attr(refl::type_attr::kStructuralMutate, reinterpret_cast<void*>(&SBlockMutate))
+      .attr(refl::type_attr::kStructuralMaybeInplaceMutate,
+            reinterpret_cast<void*>(&SBlockMaybeInplaceMutate));
 }
 
 // ScopeIdDefStmt
@@ -705,10 +1591,56 @@ ScopeIdDefStmt::ScopeIdDefStmt(ScopeIdDef def, Span span) {
   data_ = std::move(node);
 }
 
+static TVMFFIAny ScopeIdDefStmtVisit(ffi::StructuralVisitorObj* visitor,
+                                     ffi::AnyView value) noexcept {
+  const ScopeIdDefStmtNode* self =
+      ffi::details::AnyUnsafe::RawObjectPtrFromAnyViewAfterCheck<const ScopeIdDefStmtNode>(value);
+  auto def_result = visitor->WithDefRegionKind(kTVMFFIDefRegionKindNonRecursive,
+                                               [&]() { return visitor->VisitExpected(self->def); });
+  TVM_FFI_S_VISIT_MAYBE_EARLY_RETURN(def_result);
+  return ffi::details::ExpectedUnsafe::MoveToTVMFFIAny(std::move(def_result));
+}
+
+static TVMFFIAny ScopeIdDefStmtMutate(ffi::StructuralMutatorObj* mutator,
+                                      ffi::AnyView value) noexcept {
+  const ScopeIdDefStmtNode* self =
+      ffi::details::AnyUnsafe::RawObjectPtrFromAnyViewAfterCheck<const ScopeIdDefStmtNode>(value);
+  TVM_FFI_S_MUTATE_ASSIGN_OR_RETURN(
+      ScopeIdDef, mapped_def, mutator->WithDefRegionKind(kTVMFFIDefRegionKindNonRecursive, [&]() {
+        return mutator->MutateExpected(self->def);
+      }));
+  if (mapped_def.same_as(self->def)) {
+    return ffi::details::AnyUnsafe::MoveAnyToTVMFFIAny(ffi::Any(value));
+  }
+  ffi::ObjectPtr<ScopeIdDefStmtNode> copy = ffi::make_object<ScopeIdDefStmtNode>(*self);
+  copy->def = std::move(mapped_def);
+  return ffi::details::AnyUnsafe::MoveAnyToTVMFFIAny(ffi::Any(ffi::ObjectRef(std::move(copy))));
+}
+
+static TVMFFIAny ScopeIdDefStmtMaybeInplaceMutate(ffi::StructuralMutatorObj* mutator,
+                                                  ffi::AnyView value) noexcept {
+  ScopeIdDefStmtNode* self = const_cast<ScopeIdDefStmtNode*>(
+      ffi::details::AnyUnsafe::RawObjectPtrFromAnyViewAfterCheck<const ScopeIdDefStmtNode>(value));
+  TVM_FFI_S_MUTATE_ASSIGN_OR_RETURN(
+      ScopeIdDef, mapped_def, mutator->WithDefRegionKind(kTVMFFIDefRegionKindNonRecursive, [&]() {
+        return mutator->MaybeInplaceMutateIfUniqueExpected(self->def);
+      }));
+  if (mapped_def.same_as(self->def)) {
+    return ffi::details::AnyUnsafe::MoveAnyToTVMFFIAny(ffi::Any(value));
+  }
+  self->def = std::move(mapped_def);
+  return ffi::details::AnyUnsafe::MoveAnyToTVMFFIAny(ffi::Any(value));
+}
+
 TVM_FFI_STATIC_INIT_BLOCK() {
-  namespace refl = tvm::ffi::reflection;
+  ScopeIdDefStmtNode::RegisterReflection();
   refl::GlobalDef().def("tirx.ScopeIdDefStmt",
                         [](ScopeIdDef def, Span span) { return ScopeIdDefStmt(def, span); });
+  refl::TypeAttrDef<ScopeIdDefStmtNode>()
+      .attr(refl::type_attr::kStructuralVisit, reinterpret_cast<void*>(&ScopeIdDefStmtVisit))
+      .attr(refl::type_attr::kStructuralMutate, reinterpret_cast<void*>(&ScopeIdDefStmtMutate))
+      .attr(refl::type_attr::kStructuralMaybeInplaceMutate,
+            reinterpret_cast<void*>(&ScopeIdDefStmtMaybeInplaceMutate));
 }
 
 // BlockRealize
@@ -727,12 +1659,70 @@ SBlockRealize::SBlockRealize(ffi::Array<PrimExpr> values, PrimExpr predicate, SB
   data_ = std::move(node);
 }
 
+static TVMFFIAny SBlockRealizeVisit(ffi::StructuralVisitorObj* visitor,
+                                    ffi::AnyView value) noexcept {
+  const SBlockRealizeNode* self =
+      ffi::details::AnyUnsafe::RawObjectPtrFromAnyViewAfterCheck<const SBlockRealizeNode>(value);
+  auto iter_values_result = visitor->VisitExpected(self->iter_values);
+  TVM_FFI_S_VISIT_MAYBE_EARLY_RETURN(iter_values_result);
+  auto predicate_result = visitor->VisitExpected(self->predicate);
+  TVM_FFI_S_VISIT_MAYBE_EARLY_RETURN(predicate_result);
+  auto block_result = visitor->VisitExpected(self->block);
+  TVM_FFI_S_VISIT_MAYBE_EARLY_RETURN(block_result);
+  return ffi::details::ExpectedUnsafe::MoveToTVMFFIAny(std::move(block_result));
+}
+
+static TVMFFIAny SBlockRealizeMutate(ffi::StructuralMutatorObj* mutator,
+                                     ffi::AnyView value) noexcept {
+  const SBlockRealizeNode* self =
+      ffi::details::AnyUnsafe::RawObjectPtrFromAnyViewAfterCheck<const SBlockRealizeNode>(value);
+  TVM_FFI_S_MUTATE_ASSIGN_OR_RETURN(ffi::Array<PrimExpr>, mapped_iter_values,
+                                    mutator->MutateExpected(self->iter_values));
+  TVM_FFI_S_MUTATE_ASSIGN_OR_RETURN(PrimExpr, mapped_predicate,
+                                    mutator->MutateExpected(self->predicate));
+  TVM_FFI_S_MUTATE_ASSIGN_OR_RETURN(SBlock, mapped_block, mutator->MutateExpected(self->block));
+  if (mapped_iter_values.same_as(self->iter_values) && mapped_predicate.same_as(self->predicate) &&
+      mapped_block.same_as(self->block)) {
+    return ffi::details::AnyUnsafe::MoveAnyToTVMFFIAny(ffi::Any(value));
+  }
+  ffi::ObjectPtr<SBlockRealizeNode> copy = ffi::make_object<SBlockRealizeNode>(*self);
+  copy->iter_values = std::move(mapped_iter_values);
+  copy->predicate = std::move(mapped_predicate);
+  copy->block = std::move(mapped_block);
+  return ffi::details::AnyUnsafe::MoveAnyToTVMFFIAny(ffi::Any(ffi::ObjectRef(std::move(copy))));
+}
+
+static TVMFFIAny SBlockRealizeMaybeInplaceMutate(ffi::StructuralMutatorObj* mutator,
+                                                 ffi::AnyView value) noexcept {
+  SBlockRealizeNode* self = const_cast<SBlockRealizeNode*>(
+      ffi::details::AnyUnsafe::RawObjectPtrFromAnyViewAfterCheck<const SBlockRealizeNode>(value));
+  TVM_FFI_S_MUTATE_ASSIGN_OR_RETURN(ffi::Array<PrimExpr>, mapped_iter_values,
+                                    mutator->MaybeInplaceMutateIfUniqueExpected(self->iter_values));
+  TVM_FFI_S_MUTATE_ASSIGN_OR_RETURN(PrimExpr, mapped_predicate,
+                                    mutator->MaybeInplaceMutateIfUniqueExpected(self->predicate));
+  TVM_FFI_S_MUTATE_ASSIGN_OR_RETURN(SBlock, mapped_block,
+                                    mutator->MaybeInplaceMutateIfUniqueExpected(self->block));
+  if (mapped_iter_values.same_as(self->iter_values) && mapped_predicate.same_as(self->predicate) &&
+      mapped_block.same_as(self->block)) {
+    return ffi::details::AnyUnsafe::MoveAnyToTVMFFIAny(ffi::Any(value));
+  }
+  self->iter_values = std::move(mapped_iter_values);
+  self->predicate = std::move(mapped_predicate);
+  self->block = std::move(mapped_block);
+  return ffi::details::AnyUnsafe::MoveAnyToTVMFFIAny(ffi::Any(value));
+}
+
 TVM_FFI_STATIC_INIT_BLOCK() {
-  namespace refl = tvm::ffi::reflection;
+  SBlockRealizeNode::RegisterReflection();
   refl::GlobalDef().def("tirx.SBlockRealize", [](ffi::Array<PrimExpr> iter_values,
                                                  PrimExpr predicate, SBlock block, Span span) {
     return SBlockRealize(iter_values, predicate, block, span);
   });
+  refl::TypeAttrDef<SBlockRealizeNode>()
+      .attr(refl::type_attr::kStructuralVisit, reinterpret_cast<void*>(&SBlockRealizeVisit))
+      .attr(refl::type_attr::kStructuralMutate, reinterpret_cast<void*>(&SBlockRealizeMutate))
+      .attr(refl::type_attr::kStructuralMaybeInplaceMutate,
+            reinterpret_cast<void*>(&SBlockRealizeMaybeInplaceMutate));
 }
 
 PrimExpr TypeAnnotation(PrimType dtype, Span span) {

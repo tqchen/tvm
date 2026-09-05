@@ -22,14 +22,24 @@
  * TIRX statement nodes.
  */
 
+#include <tvm/ffi/extra/structural_mutate.h>
+#include <tvm/ffi/extra/structural_visit.h>
+#include <tvm/ffi/reflection/registry.h>
 #include <tvm/tirx/op.h>
 #include <tvm/tirx/op_attr_types.h>
 #include <tvm/tirx/tile_primitive.h>
 
+#include <utility>
+
 namespace tvm {
 namespace tirx {
 
-TVM_FFI_STATIC_INIT_BLOCK() { TilePrimitiveCallNode::RegisterReflection(); }
+namespace refl = tvm::ffi::reflection;
+
+// Structural hooks follow the established visitor/mutator field set.  Source spans and constant
+// metadata stay reflected for StructuralEqual/StructuralHash but are skipped by traversal.  A
+// node without a hook falls back to wider reflected-field traversal, so every new node needs a
+// hook written to this rule.
 
 // TilePrimitiveCall
 TilePrimitiveCall::TilePrimitiveCall(tvm::Op op, ffi::Array<ffi::Any> args,
@@ -46,8 +56,110 @@ TilePrimitiveCall::TilePrimitiveCall(tvm::Op op, ffi::Array<ffi::Any> args,
   data_ = std::move(n);
 }
 
+static TVMFFIAny TilePrimitiveCallVisit(ffi::StructuralVisitorObj* visitor,
+                                        ffi::AnyView value) noexcept {
+  // skips: op, dispatch, scope
+  const TilePrimitiveCallNode* self =
+      ffi::details::AnyUnsafe::RawObjectPtrFromAnyViewAfterCheck<const TilePrimitiveCallNode>(
+          value);
+  auto args_result = visitor->VisitExpected(self->args);
+  TVM_FFI_S_VISIT_MAYBE_EARLY_RETURN(args_result);
+  auto workspace_result = visitor->VisitExpected(self->workspace);
+  TVM_FFI_S_VISIT_MAYBE_EARLY_RETURN(workspace_result);
+  auto config_result = visitor->VisitExpected(self->config);
+  TVM_FFI_S_VISIT_MAYBE_EARLY_RETURN(config_result);
+  return ffi::details::ExpectedUnsafe::MoveToTVMFFIAny(std::move(config_result));
+}
+
+static TVMFFIAny TilePrimitiveCallMutate(ffi::StructuralMutatorObj* mutator,
+                                         ffi::AnyView value) noexcept {
+  // skips: op, dispatch, scope
+  const TilePrimitiveCallNode* self =
+      ffi::details::AnyUnsafe::RawObjectPtrFromAnyViewAfterCheck<const TilePrimitiveCallNode>(
+          value);
+  TVM_FFI_S_MUTATE_ASSIGN_OR_RETURN(ffi::Array<ffi::Any>, mapped_args,
+                                    mutator->MutateExpected(self->args));
+
+  auto mapped_workspace_result = mutator->MutateExpected(self->workspace);
+  TVM_FFI_S_MUTATE_MAYBE_EARLY_RETURN(mapped_workspace_result);
+  bool mapped_workspace_type_ok =
+      ffi::details::AnyUnsafe::CheckAnyStrict<ffi::Map<ffi::String, BufferVar>>(
+          ffi::details::ExpectedUnsafe::GetData(mapped_workspace_result));
+  if (TVM_FFI_PREDICT_FALSE(!mapped_workspace_type_ok)) {
+    return ffi::details::SMutateDeclaredTypeErrorRaw();
+  }
+  ffi::Map<ffi::String, BufferVar> mapped_workspace =
+      ffi::details::AnyUnsafe::MoveFromAnyAfterCheck<ffi::Map<ffi::String, BufferVar>>(
+          std::move(ffi::details::ExpectedUnsafe::GetData(mapped_workspace_result)));
+
+  auto mapped_config_result = mutator->MutateExpected(self->config);
+  TVM_FFI_S_MUTATE_MAYBE_EARLY_RETURN(mapped_config_result);
+  bool mapped_config_type_ok =
+      ffi::details::AnyUnsafe::CheckAnyStrict<ffi::Map<ffi::String, ffi::Any>>(
+          ffi::details::ExpectedUnsafe::GetData(mapped_config_result));
+  if (TVM_FFI_PREDICT_FALSE(!mapped_config_type_ok)) {
+    return ffi::details::SMutateDeclaredTypeErrorRaw();
+  }
+  ffi::Map<ffi::String, ffi::Any> mapped_config =
+      ffi::details::AnyUnsafe::MoveFromAnyAfterCheck<ffi::Map<ffi::String, ffi::Any>>(
+          std::move(ffi::details::ExpectedUnsafe::GetData(mapped_config_result)));
+
+  if (mapped_args.same_as(self->args) && mapped_workspace.same_as(self->workspace) &&
+      mapped_config.same_as(self->config)) {
+    return ffi::details::AnyUnsafe::MoveAnyToTVMFFIAny(ffi::Any(value));
+  }
+  ffi::ObjectPtr<TilePrimitiveCallNode> copy = ffi::make_object<TilePrimitiveCallNode>(*self);
+  copy->args = std::move(mapped_args);
+  copy->workspace = std::move(mapped_workspace);
+  copy->config = std::move(mapped_config);
+  return ffi::details::AnyUnsafe::MoveAnyToTVMFFIAny(ffi::Any(ffi::ObjectRef(std::move(copy))));
+}
+
+static TVMFFIAny TilePrimitiveCallMaybeInplaceMutate(ffi::StructuralMutatorObj* mutator,
+                                                     ffi::AnyView value) noexcept {
+  // skips: op, dispatch, scope
+  TilePrimitiveCallNode* self = const_cast<TilePrimitiveCallNode*>(
+      ffi::details::AnyUnsafe::RawObjectPtrFromAnyViewAfterCheck<const TilePrimitiveCallNode>(
+          value));
+  TVM_FFI_S_MUTATE_ASSIGN_OR_RETURN(ffi::Array<ffi::Any>, mapped_args,
+                                    mutator->MaybeInplaceMutateIfUniqueExpected(self->args));
+
+  auto mapped_workspace_result = mutator->MaybeInplaceMutateIfUniqueExpected(self->workspace);
+  TVM_FFI_S_MUTATE_MAYBE_EARLY_RETURN(mapped_workspace_result);
+  bool mapped_workspace_type_ok =
+      ffi::details::AnyUnsafe::CheckAnyStrict<ffi::Map<ffi::String, BufferVar>>(
+          ffi::details::ExpectedUnsafe::GetData(mapped_workspace_result));
+  if (TVM_FFI_PREDICT_FALSE(!mapped_workspace_type_ok)) {
+    return ffi::details::SMutateDeclaredTypeErrorRaw();
+  }
+  ffi::Map<ffi::String, BufferVar> mapped_workspace =
+      ffi::details::AnyUnsafe::MoveFromAnyAfterCheck<ffi::Map<ffi::String, BufferVar>>(
+          std::move(ffi::details::ExpectedUnsafe::GetData(mapped_workspace_result)));
+
+  auto mapped_config_result = mutator->MaybeInplaceMutateIfUniqueExpected(self->config);
+  TVM_FFI_S_MUTATE_MAYBE_EARLY_RETURN(mapped_config_result);
+  bool mapped_config_type_ok =
+      ffi::details::AnyUnsafe::CheckAnyStrict<ffi::Map<ffi::String, ffi::Any>>(
+          ffi::details::ExpectedUnsafe::GetData(mapped_config_result));
+  if (TVM_FFI_PREDICT_FALSE(!mapped_config_type_ok)) {
+    return ffi::details::SMutateDeclaredTypeErrorRaw();
+  }
+  ffi::Map<ffi::String, ffi::Any> mapped_config =
+      ffi::details::AnyUnsafe::MoveFromAnyAfterCheck<ffi::Map<ffi::String, ffi::Any>>(
+          std::move(ffi::details::ExpectedUnsafe::GetData(mapped_config_result)));
+
+  if (mapped_args.same_as(self->args) && mapped_workspace.same_as(self->workspace) &&
+      mapped_config.same_as(self->config)) {
+    return ffi::details::AnyUnsafe::MoveAnyToTVMFFIAny(ffi::Any(value));
+  }
+  self->args = std::move(mapped_args);
+  self->workspace = std::move(mapped_workspace);
+  self->config = std::move(mapped_config);
+  return ffi::details::AnyUnsafe::MoveAnyToTVMFFIAny(ffi::Any(value));
+}
+
 TVM_FFI_STATIC_INIT_BLOCK() {
-  namespace refl = tvm::ffi::reflection;
+  TilePrimitiveCallNode::RegisterReflection();
   refl::GlobalDef().def(
       "tirx.TilePrimitiveCall",
       [](tvm::Op op, ffi::Array<ffi::Any> args, ffi::Map<ffi::String, BufferVar> workspace,
@@ -55,10 +167,14 @@ TVM_FFI_STATIC_INIT_BLOCK() {
          ExecScope scope) {
         return TilePrimitiveCall(op, args, workspace, config, dispatch, scope);
       });
+  refl::TypeAttrDef<TilePrimitiveCallNode>()
+      .attr(refl::type_attr::kStructuralVisit, reinterpret_cast<void*>(&TilePrimitiveCallVisit))
+      .attr(refl::type_attr::kStructuralMutate, reinterpret_cast<void*>(&TilePrimitiveCallMutate))
+      .attr(refl::type_attr::kStructuralMaybeInplaceMutate,
+            reinterpret_cast<void*>(&TilePrimitiveCallMaybeInplaceMutate));
 }
 
 TVM_FFI_STATIC_INIT_BLOCK() {
-  namespace refl = tvm::ffi::reflection;
   refl::GlobalDef().def("tirx.TilePrimitiveCallCopyHandle",
                         [](const TilePrimitiveCall& op) { return TilePrimitiveCall(op); });
 }

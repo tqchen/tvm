@@ -86,8 +86,7 @@ class BindNode : public StmtNode {
   static void RegisterReflection() {
     namespace refl = tvm::ffi::reflection;
     refl::ObjectDef<BindNode>()
-        // TODO(tqchen): use SEqHashDefNonRecursive after the next pypi tvm-ffi release
-        .def_ro("var", &BindNode::var, refl::AttachFieldFlag::SEqHashDefRecursive())
+        .def_ro("var", &BindNode::var, refl::AttachFieldFlag::SEqHashDefNonRecursive())
         .def_ro("value", &BindNode::value);
   }
   TVM_FFI_DECLARE_OBJECT_INFO_FINAL("tirx.Bind", BindNode, StmtNode);
@@ -244,7 +243,7 @@ class DeclBufferNode : public StmtNode {
   static void RegisterReflection() {
     namespace refl = tvm::ffi::reflection;
     refl::ObjectDef<DeclBufferNode>()
-        .def_ro("buffer", &DeclBufferNode::buffer, refl::AttachFieldFlag::SEqHashDefRecursive())
+        .def_ro("buffer", &DeclBufferNode::buffer, refl::AttachFieldFlag::SEqHashDefNonRecursive())
         .def_ro("data", &DeclBufferNode::data);
   }
   TVM_FFI_DECLARE_OBJECT_INFO_FINAL("tirx.DeclBuffer", DeclBufferNode, StmtNode);
@@ -274,8 +273,7 @@ class AllocBufferNode : public StmtNode {
   static void RegisterReflection() {
     namespace refl = tvm::ffi::reflection;
     refl::ObjectDef<AllocBufferNode>()
-        // TODO(tqchen): use SEqHashDefNonRecursive after the next pypi tvm-ffi release
-        .def_ro("buffer", &AllocBufferNode::buffer, refl::AttachFieldFlag::SEqHashDefRecursive())
+        .def_ro("buffer", &AllocBufferNode::buffer, refl::AttachFieldFlag::SEqHashDefNonRecursive())
         .def_ro("annotations", &AllocBufferNode::annotations);
   }
   TVM_FFI_DECLARE_OBJECT_INFO_FINAL("tirx.AllocBuffer", AllocBufferNode, StmtNode);
@@ -621,7 +619,7 @@ class ForNode : public StmtNode {
   static void RegisterReflection() {
     namespace refl = tvm::ffi::reflection;
     refl::ObjectDef<ForNode>()
-        .def_ro("loop_var", &ForNode::loop_var, refl::AttachFieldFlag::SEqHashDefRecursive())
+        .def_ro("loop_var", &ForNode::loop_var, refl::AttachFieldFlag::SEqHashDefNonRecursive())
         .def_ro("min", &ForNode::min)
         .def_ro("extent", &ForNode::extent)
         .def_ro("kind", &ForNode::kind)
@@ -788,7 +786,7 @@ class MatchBufferRegionNode : public ffi::Object {
     namespace refl = tvm::ffi::reflection;
     refl::ObjectDef<MatchBufferRegionNode>()
         .def_ro("buffer", &MatchBufferRegionNode::buffer,
-                refl::AttachFieldFlag::SEqHashDefRecursive())
+                refl::AttachFieldFlag::SEqHashDefNonRecursive())
         .def_ro("source", &MatchBufferRegionNode::source);
   }
 
@@ -860,12 +858,12 @@ class SBlockNode : public StmtNode {
   static void RegisterReflection() {
     namespace refl = tvm::ffi::reflection;
     refl::ObjectDef<SBlockNode>()
-        .def_ro("iter_vars", &SBlockNode::iter_vars, refl::AttachFieldFlag::SEqHashDefRecursive())
+        .def_ro("iter_vars", &SBlockNode::iter_vars)
         .def_ro("reads", &SBlockNode::reads)
         .def_ro("writes", &SBlockNode::writes)
         .def_ro("name_hint", &SBlockNode::name_hint, refl::AttachFieldFlag::SEqHashIgnore())
         .def_ro("alloc_buffers", &SBlockNode::alloc_buffers,
-                refl::AttachFieldFlag::SEqHashDefRecursive())
+                refl::AttachFieldFlag::SEqHashDefNonRecursive())
         .def_ro("match_buffers", &SBlockNode::match_buffers)
         .def_ro("annotations", &SBlockNode::annotations)
         .def_ro("init", &SBlockNode::init)

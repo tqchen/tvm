@@ -484,8 +484,9 @@ struct TypeTraits<TypedExpr<ExpectedType>>
         !details::IsObjectInstance<ExprNode>(src->type_index)) {
       return false;
     }
-    const auto* expr = static_cast<const ExprNode*>(
-        details::ObjectUnsafe::ObjectPtrFromUnowned<Object>(src->v_obj).get());
+    // Non-owning: this only reads `ty`, and the owning form's incref/decref pair costs two
+    // atomics per check on a path every typed field assignment takes.
+    const auto* expr = details::ObjectUnsafe::RawObjectPtrFromUnowned<ExprNode>(src->v_obj);
     return details::AnyUnsafe::CheckAnyStrict<ExpectedType>(expr->ty);
   }
 
