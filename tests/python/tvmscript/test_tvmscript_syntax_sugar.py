@@ -455,18 +455,27 @@ def test_preserve_parameter_name():
     assert param_name == "i"
 
 
-def test_preserve_variable_name():
+@pytest.mark.parametrize("mutable", [False, True])
+def test_preserve_variable_name(mutable):
     """Use variable name when generating tirx::Bind / AllocBuffer"""
 
-    @T.prim_func(s_tir=True)
-    def func():
-        for i in T.serial(16):
-            j = i // 4
-            T.evaluate(j)
-
-    # In fork, bare `j = i // 4` lowers to AllocBuffer (local_scalar) in the for-body
-    # SeqStmt; the variable name lives on the underlying buffer.
-    var_name = func.body.body.seq[0].buffer.name
+    # Bare bindings name the immutable Var; explicit declarations name scalar storage.
+    annotation = ": T.int32" if mutable else ""
+    func = from_source(
+        f"""@T.prim_func(s_tir=True)
+def func():
+    for i in T.serial(16):
+        j{annotation} = i // 4
+        T.evaluate(j)
+"""
+    )
+    binding = func.body.body.seq[0]
+    if mutable:
+        assert isinstance(binding, tvm.tirx.AllocBuffer)
+        var_name = binding.buffer.name
+    else:
+        assert isinstance(binding, tvm.tirx.Bind)
+        var_name = binding.var.name
     assert var_name == "j"
 
 

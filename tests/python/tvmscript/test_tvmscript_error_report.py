@@ -14,7 +14,7 @@
 # KIND, either express or implied.  See the License for the
 # specific language governing permissions and limitations
 # under the License.
-# ruff: noqa: E741, F401, F821, F841, RUF005
+# ruff: noqa: E741, F821, F841, RUF005
 import inspect
 import re
 
@@ -224,12 +224,22 @@ def test_invalid_match_buffer_region():
     check_error(invalid_match_buffer_region, 5)
 
 
-def test_duplicate_buffer():
-    def duplicate_buffer() -> None:
+def test_buffer_rebinding_preserves_distinct_allocations():
+    @T.prim_func(s_tir=True)
+    def rebound_buffer() -> None:
         A = T.sblock_alloc_buffer((128, 128), "float32")
-        A = T.sblock_alloc_buffer((128, 128), "float32")  # error
+        A = T.sblock_alloc_buffer((128, 128), "float32")
+        A[0, 0] = A[0, 1] + T.float32(1)
 
-    check_error(duplicate_buffer, 3)
+    # Python rebinding selects the second buffer and retains both native allocations.
+    block = rebound_buffer.body.block
+    assert len(block.alloc_buffers) == 2
+    first, second = block.alloc_buffers
+    assert not first.same_as(second)
+    store = block.body
+    assert isinstance(store, tirx.BufferStore)
+    assert store.buffer.same_as(second)
+    assert store.value.a.source.same_as(second)
 
 
 def test_duplicate_block_signature():
