@@ -24,6 +24,7 @@ from numbers import Integral
 from typing import TYPE_CHECKING
 
 import tvm
+from tvm.script.parser.protocol_registry import direct_call as _direct_call
 
 if TYPE_CHECKING:
     from .buffer import Buffer
@@ -502,6 +503,7 @@ class SubIndexer:
     def __init__(self, buffer: Buffer):
         self._buffer = buffer
 
+    @_direct_call
     def __getitem__(self, indices) -> Buffer:
         if not isinstance(indices, tuple):
             indices = (indices,)
@@ -554,6 +556,7 @@ class ChunkIndexer:
         self._buffer = buffer
         self._spec = spec
 
+    @_direct_call
     def __getitem__(self, picks):
         if not isinstance(picks, tuple):
             picks = (picks,)
@@ -582,6 +585,7 @@ class TileIndexer:
         self._buffer = buffer
         self._specs = specs
 
+    @_direct_call
     def __getitem__(self, picks) -> Buffer:
         if not isinstance(picks, tuple):
             picks = (picks,)

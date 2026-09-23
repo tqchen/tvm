@@ -26,7 +26,7 @@ from types import GetSetDescriptorType, MemberDescriptorType
 from typing import NamedTuple, NoReturn
 
 from . import protocol_registry as protocol
-from .call_args_policy import parse_annotation
+from .expr_str_handling import parse_annotation
 
 
 def collect_annotation_free_names(
@@ -175,7 +175,7 @@ class PrescanContext:
     then discards the collector. Entry's name allocator and the recursive
     rewriter consume the fact collections without mutating them; ``ModuleContext``
     holds their shared reference for the translation. Referenced nodes belong to
-    entry's copied AST and may be rewritten, so this is not an immutable AST copy.
+    entry's freshly acquired AST and may be rewritten; the source input is not mutated.
     The context does not own native construction state and is released with the
     parse or macro invocation that uses it.
     """
@@ -444,13 +444,17 @@ class PrescanCollector(ast.NodeVisitor):
                 annotation.func if isinstance(annotation, ast.Call) else annotation,
                 self.environment,
             )
-            dtype = getattr(constructor, "__tvm_parameter_dtype__", None)
+            dtype_owner = constructor.__func__ if inspect.ismethod(constructor) else constructor
+            dtype = inspect.getattr_static(dtype_owner, "__tvm_parameter_dtype__", None)
+            if not isinstance(dtype, str):
+                dtype = None
             declaration = protocol.get_type_var_decl(constructor)
             self._record_binding(
                 arg.arg,
                 arg,
                 "mutable_parameter"
-                if getattr(self.builder, "supports_mutable_declarations", True)
+                if inspect.getattr_static(self.builder, "supports_mutable_declarations", True)
+                is True
                 and protocol.is_mutable_var_decl(constructor, syntax="parameter")
                 else "parameter",
                 arg.annotation,
@@ -679,7 +683,7 @@ class PrescanCollector(ast.NodeVisitor):
             and isinstance(node.test.func, ast.Attribute)
             and node.test.func.attr == "constexpr"
         )
-        if not marker and getattr(self.builder, "__tvm_value_if__", False):
+        if not marker and inspect.getattr_static(self.builder, "__tvm_value_if__", False) is True:
 
             def ending(body: list[ast.stmt]) -> str | None:
                 last = body[-1] if body else None

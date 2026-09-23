@@ -17,6 +17,7 @@
 """Abstraction for array data structures."""
 
 from enum import IntEnum
+from functools import partial as _partial
 from numbers import Integral
 
 import tvm_ffi
@@ -24,6 +25,8 @@ import tvm_ffi
 import tvm
 from tvm.ir import PointerType, PrimType, Type
 from tvm.runtime import convert
+from tvm.script.parser.protocol_registry import direct_call as _direct_call
+from tvm.script.parser.protocol_registry import register_result_members as _register_result_members
 
 from . import _buffer_view, _ffi_api
 
@@ -197,6 +200,7 @@ class _BufferMethods:
         """
         return _ffi_api.BufferStorageScope(self)  # type: ignore
 
+    @_direct_call
     def get_flattened_buffer(self):
         """Generate a Buffer that is a flattened version of this buffer.
 
@@ -207,10 +211,12 @@ class _BufferMethods:
         """
         return _ffi_api.BufferGetFlattenedBuffer(self)  # type: ignore
 
+    @_direct_call
     def with_allocated_addr(self, allocated_addr):
         """Return a new buffer with the allocated address."""
         return _ffi_api.BufferWithAllocatedAddr(self, allocated_addr)  # type: ignore
 
+    @_direct_call
     def with_dtype(self, dtype):
         """Return a new buffer with the dtype."""
         return _ffi_api.BufferWithDtype(self, dtype)  # type: ignore
@@ -305,6 +311,7 @@ class _BufferMethods:
         )
         return tvm.tirx.address_of(self[tuple(indices)])
 
+    @_direct_call
     def view(self, *args, **kwargs) -> "Buffer":
         """Creates a new view of the buffer. (used by parser)
 
@@ -320,6 +327,7 @@ class _BufferMethods:
 
         return _buffer_view.view(self, *args, **kwargs)
 
+    @_direct_call
     def local(self, *shape, layout=None) -> "Buffer":
         """Create a thread-local view of this buffer.
 
@@ -356,6 +364,7 @@ class _BufferMethods:
         """
         return _buffer_view.local(self, *shape, layout=layout)
 
+    @_direct_call
     def permute(self, *dims) -> "Buffer":
         """Permute the dimensions of the buffer.
 
@@ -371,6 +380,7 @@ class _BufferMethods:
         """
         return _buffer_view.permute(self, *dims)
 
+    @_direct_call
     def rearrange(self, pattern: str = _REARRANGE_PATTERN_UNSET, /, **sizes) -> "Buffer":
         """einops-style relayout in one line: ``buf.rearrange("b (2 r) -> 2 b r")``.
 
@@ -398,6 +408,7 @@ class _BufferMethods:
         return _buffer_view.rearrange(self, pattern, **sizes)
 
     @property
+    @_partial(_register_result_members, members=_buffer_view.SubIndexer)
     def sub(self) -> "_buffer_view.SubIndexer":
         """Numpy-style view indexer: ``buf.sub[2, 4:8, ::4]``.
 
@@ -410,6 +421,8 @@ class _BufferMethods:
         """
         return _buffer_view.sub(self)
 
+    @_direct_call
+    @_partial(_register_result_members, members=_buffer_view.TileIndexer)
     def tile(self, *specs) -> "_buffer_view.TileIndexer":
         """Chunk a dim: split it into factors, pick a chunk, keep the rest.
 
@@ -439,6 +452,8 @@ class _BufferMethods:
         """
         return _buffer_view.tile(self, *specs)
 
+    @_direct_call
+    @_partial(_register_result_members, members=_buffer_view.ChunkIndexer)
     def chunk(self, spec) -> "_buffer_view.ChunkIndexer":
         """Split dims into equal contiguous chunks and pick a chunk per dim —
         **rank-preserving**. Index the result with ``[picks]``.
@@ -457,6 +472,20 @@ class _BufferMethods:
             X.chunk((None, .., n, ..))[.., c, ..]  # after (k inferred)
         """
         return _buffer_view.chunk(self, spec)
+
+
+# These results expose the complete buffer namespace defined above. Indexer
+# definitions precede this class to avoid a circular buffer/view import.
+_register_result_members(_BufferMethods.get_flattened_buffer, _BufferMethods)
+_register_result_members(_BufferMethods.with_allocated_addr, _BufferMethods)
+_register_result_members(_BufferMethods.with_dtype, _BufferMethods)
+_register_result_members(_BufferMethods.view, _BufferMethods)
+_register_result_members(_BufferMethods.local, _BufferMethods)
+_register_result_members(_BufferMethods.permute, _BufferMethods)
+_register_result_members(_BufferMethods.rearrange, _BufferMethods)
+_register_result_members(_buffer_view.SubIndexer.__getitem__, _BufferMethods)
+_register_result_members(_buffer_view.TileIndexer.__getitem__, _BufferMethods)
+_register_result_members(_buffer_view.ChunkIndexer.__getitem__, _BufferMethods)
 
 
 def decl_buffer(

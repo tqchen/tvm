@@ -122,6 +122,24 @@ class Frame:
         raise AttributeError(name)
 
 
+class RecordingSpanEntry:
+    """Use the recording hooks for opaque dummy values, with a real fixed span."""
+
+    def __init__(self, language, span):
+        self.language, self.span = language, span
+
+    @property
+    def location(self):
+        span = self.span
+        return (span.source_name, span.line, span.end_line, span.column, span.end_column)
+
+    def __call__(self, value):
+        return self.language.I.at_(self.location, value)
+
+    def ctx(self, thunk):
+        return self.language.I.with_at_group_(self.location, thunk)
+
+
 class Language:
     """One recording builder namespace X and shared infrastructure namespace I."""
 
@@ -225,8 +243,10 @@ class Language:
         self.frame().reference = self.references.setdefault(name, Value("global", (name,)))
         self.events.append(("name", name))
 
-    def arg(self, name, annotation, **kwargs):
+    def arg(self, name, annotation, *, span=None, **kwargs):
         value = Value("arg", (annotation,), name)
+        if span is not None:
+            value = span(value)
         frame = self.frame()
         frame.params.append(value)
         frame.function.params.append(value)
@@ -255,7 +275,9 @@ class Language:
             self.stack[-1].result = value
         return value
 
-    def emit(self, value):
+    def emit(self, value, *, span=None):
+        if span is not None:
+            value = span(value)
         self.events.append(("emit", value))
         self.frame().function.body.append(("emit", value))
 
@@ -272,8 +294,10 @@ class Language:
         self.events.append(("set", variable, value))
         return variable
 
-    def for_frame(self, frame, *, names=None, **kwargs):
+    def for_frame(self, frame, *, names=None, span=None, **kwargs):
         frame.names = names
+        if span is not None:
+            span(frame)
         self.events.append(("loop_names", names))
         return frame
 

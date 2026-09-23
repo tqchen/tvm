@@ -177,6 +177,9 @@ as ``expr_str`` translate symbolic strings written directly in source expression
 preserves a module reference for builder-side lookup. Dtype and placement strings remain
 literal. Captured or computed symbolic shapes must already contain explicit IR variables;
 the parser does not interpret expression strings found inside captured values.
+The registry selects a call's argument policy before traversal;
+``parser/expr_str_handling.py`` decodes annotation/expression strings and maps their
+escaped, multiline and UTF-8 source ranges. The main visitor rewrites the decoded syntax.
 
 Assignments become binding operations, standalone expressions become emission operations,
 and loops and scopes become builder contexts. Concrete binding, type checking, comparison
@@ -198,15 +201,16 @@ The public entry points include ``tvm.script.parse`` and ``tvm.script.from_sourc
    context temporarily through ``definition_scope``; source-string callers can supply
    external bindings through ``extra_vars``. Source inspection belongs to
    ``parser.inspect_source``.
-2. **Prescan and translate syntax**: entry copies the source AST once. One
+2. **Prescan and translate syntax**: acquisition supplies a fresh owned AST. One
    ``PrescanCollector`` produces read-only ``PrescanContext`` facts for reserved names,
    scoped declarations and conditional outputs. ``IRBuilderTranspiler`` rewrites that owned
    tree with the standard Python AST visitor, using fixed namespace metadata and registered
-   argument policies. Name allocation avoids collisions with user identifiers.
+   argument policies without copying or reparsing the tree. One shared name allocator
+   avoids collisions with user identifiers through rewriting and recomposition.
 3. **Compose the callable**: the private frontend helper ``_recompose_builder`` compiles
    the generated program with the source's globals, closure bindings, and necessary
    annotation context. Explicit temporary phase inputs connect generated helpers to
-   their source functions; the original source AST is unchanged.
+   their source functions without rediscovering them through a generated-AST walk.
 4. **Execute construction**: the callable enters native builder frames and reconstructs
    declarations and annotations in their required context. When forward declarations are
    needed, it declares all signatures first. Inside each retained native function frame,
@@ -228,8 +232,11 @@ retain their source globals and closure bindings. Unrelated callers' local varia
 become part of this environment.
 
 Annotations are reconstructed as builder operations within the module/function context.
-The generated program gives them a separate, hygienic annotation scope, so a body-local
-variable cannot shadow a name used by a signature annotation. Callable recomposition and
+The generated program preserves their definition scope and original names, using a
+distinct compiler binding only when a source-local binding would shadow the annotation.
+One prescan-seeded name allocator serves rewriting and callable recomposition. Body
+globals and closures retain their original lookup, including a method closure whose name
+also appears as a class member. Callable recomposition and
 lexical environment setup belong to the frontend. The transpiler preserves source scopes
 through Python syntax; it does not classify each name by membership in a runtime environment
 or search caller stacks for values.
@@ -242,13 +249,25 @@ symbol declaration does. A Python name in ``R.Tensor((n, 4), ...)`` follows its 
 lexical scope. Module global-info references use ``I.resolve_global_info_`` against the
 active native module frame's existing map.
 
-Generated programs use the shared ``I.at_`` and ``I.with_at_group_`` helpers to attach
-locations and preserve caller/definition provenance while evaluating source calls once.
-Their implementation lives in ``ir_builder.base``. These helpers retain returned object
-identity; builders handle results that already emitted a statement or introduced a binding.
+During rewriting, each needed source range becomes a fixed native span entry in an
+injected table. ``_S[i](value)`` attaches that location while preserving identity;
+``_S[i].ctx(lambda: helper(value))`` evaluates the callee and arguments once within
+the source context and restores it on success or failure. Entries live in
+``ir_builder.base`` and retain no AST or active caller context. Dynamic caller/definition
+provenance is composed when an entry is used. Ordinary names, Python literals, fixed
+namespace/callee lookup and structural indexing tuples need no entries. Arithmetic and
+buffer loads retain their own expression ranges.
+
+Generated hooks receive entries explicitly: ``X.for_(X.range_(3), names="i", span=_S[i])``
+and ``X.emit_(value, span=_S[j])`` own their result locations. A callable registered with
+``result_span`` promises that its complete IR effect is represented by its returned node
+or emission receipt, allowing result attachment without a construction context. Opaque
+helpers still require ``.ctx`` to locate internal effects. This policy does not change
+binding or emission behavior.
 The parser-owned ``parser.protocol_registry`` module defines registration APIs, metadata and
-persistent registration state. Dialect ``parser_protocol`` modules import these APIs
-directly, register their syntax and implement their construction hooks. The shared
+persistent registration state. Dialects apply these policies beside concrete definitions,
+constructor creation or necessary exposure sites, without namespace scans or bulk
+registration inventories. Dialect ``parser_protocol`` modules implement construction hooks. The shared
 ``ir_builder.ir.parser_protocol`` file-level documentation explains the complete
 registration and generated-builder contract; that module implements builder hooks
 without re-exporting registration APIs. For example, dialect registration imports
@@ -259,6 +278,12 @@ binding, emission or result-span attachment. Their arguments still undergo norma
 translation. For example, ``I.meta_var(value)`` preserves the exact value and its span.
 Self-emitting builders instead return ``AlreadyEmitted[T]`` so ordinary source-location
 handling can annotate the emitted object while avoiding a second emission.
+
+Each parse rewrites the fresh AST returned by source acquisition directly, without
+copying or reparsing it. Ordinary functions construct arguments directly and bind their
+known body parameters from ``frame.params``. Specialization setup and conditional
+parameter selection are generated only for an explicit specialization request; an empty
+mapping still requests that path, while ``None`` selects ordinary parsing.
 
 Explicit host control flow
 ~~~~~~~~~~~~~~~~~~~~~~~~~~

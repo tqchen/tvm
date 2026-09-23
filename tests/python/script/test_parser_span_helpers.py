@@ -70,3 +70,104 @@ def test_composition_merges_shared_prefix_of_distinct_definition_chains():
         ("definition.py", 3, 1, 20),
         ("definition.py", 2, 1, 20),
     ]
+
+
+def test_span_entry_reuses_fixed_metadata_with_each_dynamic_caller():
+    # Before: two callers invoke one inline helper at a fixed definition location.
+    # Expected builder program: caller.ctx(lambda: definition(value)) composes
+    # the current caller each time; no caller is frozen into the definition entry.
+    from tvm.script.ir_builder import base
+
+    definition_span = base.source_span(loc(8, "definition.py"))
+    definition = base.SpanEntry(definition_span)
+    assert definition.span is definition_span
+    assert not hasattr(definition, "__dict__")
+    with IRBuilder():
+        for line in (2, 5):
+            caller = base.SpanEntry(base.source_span(loc(line, "caller.py")))
+            value = prim.IntImm("int32", line)
+            assert caller.ctx(lambda: definition(value)) is value
+            assert locations(value) == [("caller.py", line, 1, 20), ("definition.py", 8, 1, 20)]
+        marker = object()
+        assert definition(marker) is marker
+        assert definition.ctx(lambda: marker) is marker
+        fresh = definition(prim.IntImm("int32", 9))
+        assert locations(fresh) == [("definition.py", 8, 1, 20)]
+    assert definition.span is definition_span
+
+
+@pytest.mark.parametrize("existing_definition", [False, True])
+def test_explicit_emission_keeps_receipt_identity_and_normalized_span(existing_definition):
+    # emit_ adds the definition to either a scalar caller or a chain with the
+    # same prefix; the already-stored native statement is never emitted twice.
+    from tvm.script.ir_builder import base
+    from tvm.tirx.script import builder as T
+
+    caller = base.SpanEntry(base.source_span(loc(3, "caller.py")))
+    definition = base.SpanEntry(base.source_span(loc(7, "definition.py")))
+    with IRBuilder() as builder:
+
+        def construct():
+            receipt = T.evaluate(6)
+            assert isinstance(receipt, base.AlreadyEmitted)
+            if existing_definition:
+                assert definition(receipt) is receipt
+            T.emit_(receipt, span=definition)
+            return receipt
+
+        receipt = caller.ctx(construct)
+    assert builder.get().same_as(receipt.value)
+    assert locations(receipt.value) == [("caller.py", 3, 1, 20), ("definition.py", 7, 1, 20)]
+    # Conversion of a plain emitted literal must also annotate the native value.
+    with IRBuilder() as builder:
+        T.emit_(4, span=definition)
+    assert locations(builder.get()) == [("definition.py", 7, 1, 20)]
+    assert locations(builder.get().value) == [("definition.py", 7, 1, 20)]
+
+
+def test_native_loop_keeps_entered_variables_and_stored_span_at_exit():
+    # for i, *tail in grid(...): names are final before native entry; an unrelated
+    # exit-time context cannot replace the loop's recorded caller/definition span.
+    from tvm.script.ir_builder import base
+    from tvm.tirx.script import builder as T
+
+    caller = base.SpanEntry(base.source_span(loc(3, "caller.py")))
+    definition = base.SpanEntry(base.source_span(loc(7, "definition.py")))
+    with IRBuilder() as builder:
+        frame = caller.ctx(lambda: T.for_(T.grid(2, 3), names=("i", "*tail"), span=definition))
+        assert [value.name for value in frame.vars] == ["i", "tail_0"]
+        variables = frame.__enter__()
+        assert variables.same_as(frame.vars)
+        receipt = T.evaluate(variables[0] + variables[1])
+        with builder.with_source_span(base.source_span(loc(90, "unrelated.py"))):
+            frame.__exit__(None, None, None)
+    outer = builder.get()
+    inner = outer.body
+    expected = [("caller.py", 3, 1, 20), ("definition.py", 7, 1, 20)]
+    assert locations(outer) == locations(inner) == expected
+    assert outer.loop_var.same_as(variables[0]) and inner.loop_var.same_as(variables[1])
+    assert inner.body.same_as(receipt.value)
+
+
+def test_span_entry_restores_context_after_original_exception():
+    # Before: a nested opaque call raises while constructing its result.
+    # Expected builder program: nested .ctx calls propagate that exact exception
+    # and restore the caller; later operations see only their own source location.
+    from tvm.script.ir_builder import base
+
+    caller = base.SpanEntry(base.source_span(loc(2, "caller.py")))
+    definition = base.SpanEntry(base.source_span(loc(8, "definition.py")))
+    failure = ValueError("original failure")
+    calls = []
+
+    def fail():
+        calls.append(True)
+        raise failure
+
+    with IRBuilder():
+        with pytest.raises(ValueError) as caught:
+            caller.ctx(lambda: definition.ctx(fail))
+        assert caught.value is failure
+        assert calls == [True]
+        fresh = definition(prim.IntImm("int32", 1))
+        assert locations(fresh) == [("definition.py", 8, 1, 20)]

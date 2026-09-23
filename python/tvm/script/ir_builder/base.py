@@ -241,19 +241,44 @@ class _Missing:
 MISSING = _Missing()
 
 
+_T = TypeVar("_T")
+
+
+class SpanEntry:
+    """A materialized source range shared by generated builder operations.
+
+    Entries retain only fixed source metadata. Calling an entry attaches its
+    span to the same result; ``ctx(thunk)`` additionally supplies call provenance
+    during evaluation. Both compose the active caller context at invocation.
+    Builders accepting an explicit span normalize an entry with ``source_span``.
+    """
+
+    __slots__ = ("span",)
+
+    def __init__(self, span: ir.Span) -> None:
+        self.span = span
+
+    def __call__(self, value: _T) -> _T:
+        """Attach this range to the same value, receipt, or native frame."""
+        return at(self.span, value)
+
+    def ctx(self, thunk: Callable[[], _T]) -> _T:
+        """Evaluate once under this range and restore context even on failure."""
+        return with_at_group_(self.span, thunk)
+
+
 def source_span(
-    location: ir.Span | tuple[str | ir.SourceName, int, int, int, int] | None,
+    location: SpanEntry | ir.Span | tuple[str | ir.SourceName, int, int, int, int] | None,
 ) -> ir.Span | None:
-    """Materialize a source range without retaining source-unit state."""
+    """Normalize an entry or materialize a range without retaining source-unit state."""
+    if isinstance(location, SpanEntry):
+        return location.span
     if location is None or isinstance(location, ir.Span | ir.SequentialSpan):
         return location
     source_name, line, end_line, column, end_column = location
     if isinstance(source_name, str):
         source_name = ir.SourceName(source_name)
     return ir.Span(source_name, line, end_line, column, end_column)
-
-
-_T = TypeVar("_T")
 
 
 class AlreadyEmitted(Generic[_T]):
@@ -265,7 +290,9 @@ class AlreadyEmitted(Generic[_T]):
         self.value = value
 
 
-def at(span: ir.Span | tuple[str | ir.SourceName, int, int, int, int] | None, value: _T) -> _T:
+def at(
+    span: SpanEntry | ir.Span | tuple[str | ir.SourceName, int, int, int, int] | None, value: _T
+) -> _T:
     """Attach source context to the same IR node, emission receipt, or frame.
 
     Native mutation annotates the statement held by the builder itself.  Keep
@@ -290,7 +317,7 @@ def require_defined(value, name):
 
 
 def with_at_group_(
-    location: ir.Span | tuple[str | ir.SourceName, int, int, int, int] | None,
+    location: SpanEntry | ir.Span | tuple[str | ir.SourceName, int, int, int, int] | None,
     thunk: Callable[[], _T],
 ) -> _T:
     """Evaluate a source call exactly once under its location and retain its result."""

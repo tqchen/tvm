@@ -16,6 +16,7 @@
 # under the License.
 """Concrete TIRx construction operations over the shared native IRBuilder stack."""
 
+from functools import partial as _partial
 from functools import wraps as _wraps
 
 import tvm_ffi as _ffi
@@ -27,8 +28,10 @@ from tvm.script.ir_builder.base import source_span as _source_span
 from tvm.script.parser.protocol_registry import args_policy as _args_policy
 from tvm.script.parser.protocol_registry import constexpr as constexpr
 from tvm.script.parser.protocol_registry import (
-    register_type_var_decl as _register_type_var_decl,
+    register_mutable_var_decl as _register_mutable_var_decl,
 )
+from tvm.script.parser.protocol_registry import register_result_members as _register_result_members
+from tvm.tirx.buffer import _BufferMethods
 from tvm.tirx.lang.alloc_pool import SMEMPool as SMEMPool
 from tvm.tirx.lang.alloc_pool import TMEMPool as TMEMPool
 
@@ -96,6 +99,8 @@ def type_var(name, *, dtype=None, span=None):
     return _ir.Var(name, "int64" if dtype is None else dtype, _source_span(span))
 
 
+@_partial(_register_mutable_var_decl, syntax="parameter")
+@_partial(_register_result_members, members=_BufferMethods)
 @_args_policy(
     {
         "shape": "expr_str",
@@ -263,22 +268,27 @@ def grid(*extents, dtype=None):
     return _native.grid(*extents, dtype=dtype)
 
 
+@_register_mutable_var_decl
 def alloc_scalar(dtype="float32", scope="global"):
     """Allocate scalar storage and return its load expression."""
     value = _native.alloc_scalar(dtype, scope)
     return value.scalar if isinstance(value, _native.scalar_wrapper) else value
 
 
+@_register_mutable_var_decl
 def local_scalar(dtype="float32"):
     """Allocate scalar storage in local memory."""
     return alloc_scalar(dtype, "local")
 
 
+@_register_mutable_var_decl
 def shared_scalar(dtype="float32"):
     """Allocate scalar storage in shared memory."""
     return alloc_scalar(dtype, "shared")
 
 
+@_register_mutable_var_decl
+@_partial(_register_result_members, members=_BufferMethods)
 @_args_policy(
     {
         "shape": "expr_str",
@@ -359,13 +369,6 @@ def match_buffer(*args, **kwargs):
     return _native.match_buffer(*args, **kwargs)
 
 
-# Constructor identities carry syntax policy; aliases share it without wrappers.
-for _constructor in vars(_native).values():
-    if isinstance(_constructor, _native.DtypeConstructor):
-        _register_type_var_decl(_constructor, dtype=_constructor._dtype_str)
-del _constructor
-
-
 def logical_and(*values):
     """Construct scalar or vector conjunction from eager operands."""
     if not values:
@@ -419,11 +422,3 @@ def select(condition, true_value, false_value):
 def __getattr__(name):
     """Expose registered backend construction namespaces."""
     return _native._get_script_namespace(name)
-
-
-# Registration executes after constructor exports are initialized; protocol owns
-# the declaration policies used by the syntax-only prescan.
-
-from .parser_protocol import _register_declarations
-
-_register_declarations()

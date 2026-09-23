@@ -227,7 +227,7 @@ def main():
 def test_callee_arguments_and_keywords_evaluate_once_with_caller_context(language):
     # Before: callee()(operand(1), b=operand(2))
     # Expected builder program:
-    # X.emit_(I.with_at_group_(loc, lambda: callee()(operand(1), b=operand(2))))
+    # X.emit_(_S[i].ctx(lambda: callee()(operand(1), b=operand(2))), span=_S[i])
     seen = []
     result_value = Value("returned")
 
@@ -583,19 +583,33 @@ def test_conditional_branches_require_matching_output_names(language, other):
         )
 
 
-def test_entry_keeps_reusable_input_tree_unchanged(language, monkeypatch):
-    # Before: x: X.tensor(("n + 1",)); X.record(x)
-    # Expected builder program: transform one owned copy; the caller's source AST is unchanged.
+def test_repeated_parses_acquire_independent_symbol_trees(language, monkeypatch):
+    # Before: parse the same quoted symbolic annotation twice.
+    # Expected builder program: each parse owns fresh syntax and its own symbol map.
     source = '@X.script\ndef main(x: X.tensor(("n + 1",))):\n    X.record(x)\n'
-    acquired = entry.acquire_source(source, "dummy.py")
-    before = ast.dump(acquired[0], include_attributes=True)
-    monkeypatch.setattr(entry, "acquire_source", lambda *args, **kwargs: acquired)
+    acquire = entry.acquire_source
+    acquired = []
+    original = []
+
+    def capture(*args, **kwargs):
+        tree, filename, flags = acquire(*args, **kwargs)
+        acquired.append(tree)
+        original.append(ast.dump(tree, include_attributes=True))
+        return tree, filename, flags
+
+    monkeypatch.setattr(entry, "acquire_source", capture)
     first = language.parse(source)
     second = language.parse(source)
-    assert ast.dump(acquired[0], include_attributes=True) == before
+    assert len(acquired) == 2 and acquired[0] is not acquired[1]
+    assert original[0] == original[1]
     assert first.params[0] is not second.params[0]
-    assert first.params[0].args[0].args[0][0].op == "add"
-    assert second.params[0].args[0].args[0][0].op == "add"
+    first_shape = first.params[0].args[0].args[0][0]
+    second_shape = second.params[0].args[0].args[0][0]
+    assert first_shape.op == second_shape.op == "add"
+    assert first_shape.args[0] is not second_shape.args[0]
+    assert first_shape.args[1] == second_shape.args[1] == 1
+    assert first.body[0][1] is first.params[0]
+    assert second.body[0][1] is second.params[0]
 
 
 def test_bare_callable_alias_does_not_acquire_constexpr_syntax(language):
@@ -739,7 +753,8 @@ def test_lexical_range_binding_calls_the_custom_iterator_once(language):
 @pytest.mark.parametrize("expression", ["value", "holder.item", "items[0]", "7"])
 def test_non_call_expression_reads_keep_their_source_range(language, expression):
     # Before: value; holder.item; items[0]; 7
-    # Expected builder program: X.emit_(I.at_(expression_loc, expression)).
+    # Expected builder program: X.emit_(expression, span=_S[i]).
+    # Names/literals need no expression wrapper; emission still owns their location.
     # Native expression identity survives; host constants stay ordinary values.
     value, reads, located = Value("read"), [], []
 

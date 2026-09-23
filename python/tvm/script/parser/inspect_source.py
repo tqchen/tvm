@@ -36,7 +36,7 @@ from typing import Any
 
 from tvm.ir import SourceName, Span
 
-from .call_args_policy import parse_annotation
+from .expr_str_handling import parse_annotation
 from .prescan import collect_annotation_free_names
 
 
@@ -239,7 +239,8 @@ def acquire_source(
     retains its original file, line and UTF-8 column offsets, including the
     decoration-site fallback used by gallery runners. Source inspection and
     parsing errors propagate unchanged to the caller.
-    The returned AST is the source snapshot; entry copies it once for rewriting.
+    The returned AST is fresh for this invocation; entry owns it directly through
+    prescan and rewriting. No mutable source AST is cached or shared between parses.
     """
     members = vars(source).values() if inspect.isclass(source) else (source,)
     flags = 0

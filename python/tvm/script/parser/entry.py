@@ -19,7 +19,6 @@
 from __future__ import annotations
 
 import ast
-import copy
 import dis
 import inspect
 import linecache
@@ -30,9 +29,10 @@ from functools import wraps
 from types import FrameType, FunctionType
 from typing import TYPE_CHECKING, Any, TypeVar
 
-from tvm.ir import SourceName
+from tvm.ir import SourceName, Span
 from tvm.script.ir_builder import base
 from tvm.script.ir_builder import ir as builder_ir
+from tvm.script.ir_builder.base import SpanEntry
 
 from . import jit_support
 from . import protocol_registry as syntax_protocol
@@ -105,6 +105,7 @@ def _recompose_builder(
     filename: str,
     flags: int,
     name: str,
+    fresh: Callable[[str], str],
     environment: Mapping[str, Any],
     result: str | None = None,
     definition_scope_name: str | None = None,
@@ -127,9 +128,6 @@ def _recompose_builder(
     if definition_scope_name is not None:
         namespace[definition_scope_name] = definition_scope
 
-    reserved = set(namespace)
-    reserved.update(node.id for node in ast.walk(translated) if isinstance(node, ast.Name))
-    reserved.update(node.arg for node in ast.walk(translated) if isinstance(node, ast.arg))
     for body, source_name, retained in body_sources:
         original = originals.get(source_name)
         if original is None:
@@ -144,14 +142,8 @@ def _recompose_builder(
             if instruction.opname in ("LOAD_GLOBAL", "STORE_GLOBAL", "DELETE_GLOBAL")
         }
         global_names -= retained | parameters
-        if global_names:
-            body.body.insert(0, ast.copy_location(ast.Global(sorted(global_names)), body))
         source_closure = _read_closure_values(original)
         for captured in sorted(source_closure.keys() - retained - parameters):
-            alias = f"{name}_lexical_{len(namespace)}"
-            while alias in reserved:
-                alias += "_"
-            reserved.add(alias)
             value = (
                 environment.get(captured, source_closure[captured])
                 if captured in source_closure and inspect.isfunction(source_fn)
@@ -164,10 +156,22 @@ def _recompose_builder(
                 import builtins
 
                 value = getattr(builtins, captured, base.MISSING)
+            # Standalone lexical inputs already have their original names in the
+            # execution environment. A global declaration prevents generated
+            # enclosing scopes from redirecting those body references.
+            if captured in namespace and namespace[captured] is value:
+                global_names.add(captured)
+                continue
+            # A class method may close over a different value than its class's
+            # same-named member. Only that concrete conflict needs an injected
+            # binding; the body itself still reads the original source name.
+            alias = fresh("_lexical")
             namespace[alias] = value
             reference = ast.copy_location(ast.Name(alias, ast.Load()), body)
             body.args.kwonlyargs.append(ast.arg(captured))
             body.args.kw_defaults.append(reference)
+        if global_names:
+            body.body.insert(0, ast.copy_location(ast.Global(sorted(global_names)), body))
 
     if result is not None:
         location = translated.body[-1]
@@ -491,6 +495,7 @@ def _prepare_transpiler(
     filename: str,
     *,
     track_span: bool = True,
+    specialize: bool = False,
     **options: Any,
 ) -> tuple[IRBuilderTranspiler, dict[str, Any]]:
     """Prescan an owned tree and inject collision-free execution bindings.
@@ -553,29 +558,32 @@ def _prepare_transpiler(
     builder_name, infrastructure_name = fresh("_X"), fresh("_I")
     definition_scope_name = fresh("_definition_scope")
     namespace[infrastructure_name] = builder_ir
-    source_name = fresh("_source") if track_span else None
+    span_table_name = fresh("_S") if track_span else None
     if track_span:
-        # One shared SourceName is metadata, not an IR construction result.
-        namespace[source_name] = SourceName(filename)
+        # Entries contain fixed native metadata only. The existing rewrite creates
+        # them on demand; there is no location collection pass or retained AST.
+        source_name = SourceName(filename)
+        span_entries: list[SpanEntry] = []
+        span_indices: dict[tuple[int, int, int, int], int] = {}
+        namespace[span_table_name] = span_entries
 
     def span(node: ast.AST) -> ast.expr:
-        """Retain source ranges for builders to materialize during execution."""
+        """Materialize a needed location and emit its injected table reference."""
         if not track_span:
             return ast.copy_location(ast.Constant(None), node)
-        location = ast.Tuple(
-            [
-                ast.Name(source_name, ast.Load()),
-                *[
-                    ast.Constant(value)
-                    for value in (
-                        node.lineno,
-                        node.end_lineno,
-                        node.col_offset + 1,
-                        node.end_col_offset + 1,
-                    )
-                ],
-            ],
-            ast.Load(),
+        coordinates = (
+            node.lineno,
+            node.end_lineno,
+            node.col_offset + 1,
+            node.end_col_offset + 1,
+        )
+        index = span_indices.get(coordinates)
+        if index is None:
+            index = len(span_entries)
+            span_indices[coordinates] = index
+            span_entries.append(SpanEntry(Span(source_name, *coordinates)))
+        location = ast.Subscript(
+            ast.Name(span_table_name, ast.Load()), ast.Constant(index), ast.Load()
         )
         return ast.copy_location(location, node)
 
@@ -586,11 +594,14 @@ def _prepare_transpiler(
         span,
         fresh,
         track_span=track_span,
+        specialize=specialize,
         definition_scope=definition_scope,
         definition_scope_name=definition_scope_name,
         source_functions=(
             {key: value for key, value in vars(source).items() if inspect.isfunction(value)}
             if inspect.isclass(source)
+            else {source.__name__: source}
+            if inspect.isfunction(source)
             else {}
         ),
         prescan=prescan,
@@ -613,13 +624,12 @@ def _run_statements(
 ) -> Any:
     """Execute a macro body in its caller's active builder frames.
 
-    Argument binding precedes this call. The helper owns one source AST copy,
+    Argument binding precedes this call. The helper owns the freshly acquired source AST,
     keeps Python parameter names and optionally keeps ordinary Python returns.
     Compilation uses the original coordinates without unparse/reparse. Builder
     and host exceptions propagate unchanged to the caller.
     """
     tree, filename, flags = acquire_source(source)
-    tree = copy.deepcopy(tree)
     definition_scope = {} if definition_scope is None else definition_scope
     transformer, namespace = _prepare_transpiler(
         tree,
@@ -661,6 +671,7 @@ def _run_statements(
         filename=filename,
         flags=flags,
         name=helper_name,
+        fresh=transformer.module.fresh,
         environment=namespace,
     )
     return runnable(*(namespace[name] for name in names))
@@ -716,14 +727,14 @@ def parse(
 
     Notes
     -----
-    Each call owns one AST copy and a fresh lexical environment. Declaration and
+    Each call owns its freshly acquired AST and a fresh lexical environment. Declaration and
     definition frames are entered only during generated execution. Source
     acquisition, host and builder errors propagate with their original type,
     identity and traceback. Temporary captures are released even when execution
     fails.
     """
     # - Recover source and explicit lexical/definition inputs.
-    # - Copy the AST once, then collect source syntax facts.
+    # - Collect source syntax facts on this invocation's freshly acquired AST.
     # - Rewrite syntax into a builder program and recompose its lexical bindings.
     # - Execute the private builder immediately and release temporary captures.
     # Definition scope is a per-root input; it never replaces body globals/closures.
@@ -733,12 +744,11 @@ def parse(
     tree, filename, flags = acquire_source(
         source, filename, definition_source=options.pop("_definition_source", None)
     )
-    # Copy before prescan can decode annotations or rewrite the source tree.
-    owned_tree = copy.deepcopy(tree)
+    # Acquisition returns a fresh tree; prescan and rewriting own it directly.
     _builder = None
     definition_scope_name = None
     try:
-        root = owned_tree.body[-1]
+        root = tree.body[-1]
         root_name = root.name if isinstance(root, ast.FunctionDef) else None
         specialization = options.get("_specialization_bindings")
         check_well_formed = options.get("check_well_formed")
@@ -754,10 +764,16 @@ def parse(
                             )
         # Prescan and rewrite consume only the owned syntax and fixed metadata.
         transformer, namespace = _prepare_transpiler(
-            owned_tree, source, env, definition_scope, filename, track_span=track_span
+            tree,
+            source,
+            env,
+            definition_scope,
+            filename,
+            track_span=track_span,
+            specialize=specialization is not None and root_name is not None,
         )
         transformed, result_name = transformer.rewrite_module(
-            owned_tree, check_well_formed=check_well_formed
+            tree, check_well_formed=check_well_formed
         )
         definition_scope_name = transformer.module.definition_scope_name
         # Recomposition preserves original source ranges and body globals/closures.
@@ -770,6 +786,7 @@ def parse(
             filename=filename,
             flags=flags,
             name=transformer.module.fresh("_builder"),
+            fresh=transformer.module.fresh,
             environment=namespace,
             result=result_name,
         )

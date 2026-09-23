@@ -34,8 +34,8 @@ tvm::Var ResolveTypeVar(ffi::Map<ffi::String, tvm::Var>* symbols, const ffi::Str
                         ffi::Optional<PrimType> dtype, ffi::Optional<tvm::Var> value, Span span) {
   TVM_FFI_CHECK(!name.empty(), ValueError) << "A symbolic variable requires a nonempty name";
   if (auto existing = symbols->Get(name)) return existing.value();
-  tvm::Var symbol = value.has_value() ? value.value()
-                                      : tvm::Var(name, dtype.value_or(PrimType::Int(64)), span);
+  tvm::Var symbol =
+      value.has_value() ? value.value() : tvm::Var(name, dtype.value_or(PrimType::Int(64)), span);
   TVM_FFI_CHECK(symbol->ty.as<PrimTypeNode>(), TypeError)
       << "A symbolic variable requires a primitive type";
   if (symbol->name.empty()) details::Namer::Name(symbol, name);
@@ -116,6 +116,12 @@ Span NormalizedSpan(const std::vector<Span>& normalized) {
 Span ComposeSpan(const Span& active, const Span& existing) {
   std::vector<Span> normalized;
   AppendNormalizedSpan(active, &normalized);
+  // A node constructed under a single caller can acquire its explicit local
+  // location later. Treat that existing caller as a shared prefix, just as
+  // AppendNormalizedSpan does for an existing SequentialSpan.
+  if (!normalized.empty() && SameLocation(normalized.front(), existing)) {
+    return NormalizedSpan(normalized);
+  }
   AppendNormalizedSpan(existing, &normalized);
   return NormalizedSpan(normalized);
 }

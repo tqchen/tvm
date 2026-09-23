@@ -59,7 +59,7 @@ def read_specialization_bindings(name: str) -> dict[str, Any] | None:
     return context[1] if context is not None and context[0] == name else None
 
 
-def unwrap_annotation(annotation: Any, specialization: Mapping[str, Any] | None) -> Any:
+def unwrap_annotation(annotation: Any, specialization: Mapping[str, Any] | None = None) -> Any:
     """Read an optional runtime annotation only within a JIT specialization.
 
     Generated argument construction calls this after checking selected values

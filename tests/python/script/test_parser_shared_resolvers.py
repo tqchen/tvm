@@ -77,3 +77,77 @@ class Module:
 
 def test_dialect_marker_is_same_protocol_identity():
     assert T.constexpr is I.constexpr
+
+    class Ordinary:
+        constexpr = T.int32
+
+    source = "@T.prim_func\ndef main(value: annotation):\n    T.evaluate(value)\n"
+    ordinary = parser.parse(
+        source.replace("annotation", "Ordinary.constexpr"), extra_vars={"Ordinary": Ordinary}
+    )
+    assert len(ordinary.params) == 1 and ordinary.params[0].ty.dtype == "int32"
+    with pytest.raises(TypeError, match="requires a specialization binding"):
+        parser.parse(source, extra_vars={"annotation": I.constexpr})
+
+
+@pytest.mark.parametrize("dialect_name", ["tirx", "relax"])
+def test_native_function_reentry_retains_its_symbol_map_and_reference(dialect_name):
+    # Source: independently declared functions use the same symbolic spelling.
+    # Builder: each native frame owns its map across declaration/body entries.
+    from tvm.relax.script import builder as R
+    from tvm.tirx.script import builder as B
+
+    dialect = B if dialect_name == "tirx" else R
+    with IRBuilder() as builder, I.ir_module() as module:
+        with pytest.raises(ValueError, match="function"):
+            dialect.resolve_type_var_("n")
+        with dialect.function(decl=True) as frame:
+            dialect.func_name("identity")
+            n = dialect.resolve_type_var_("n")
+            annotation = B.Buffer((n,), "float32") if dialect is B else R.Tensor((n,), "float32")
+            parameter = dialect.arg("x", annotation)
+            assert frame.type_var_map["n"].same_as(n)
+            assert builder.frames[-1].same_as(frame)
+        reference = frame.reference
+        assert module.identity.same_as(reference)
+        with frame:
+            assert dialect.resolve_type_var_("n").same_as(n)
+            assert frame.params[0].same_as(parameter)
+            # A separate nested build must resolve its own same-spelling symbol.
+            with IRBuilder(), dialect.function() as nested:
+                inner_n = dialect.resolve_type_var_("n")
+                assert not inner_n.same_as(n)
+                assert nested.type_var_map["n"].same_as(inner_n)
+                if dialect is B:
+                    B.evaluate(0)
+                else:
+                    R.func_ret_value(R.const(0))
+            assert dialect.resolve_type_var_("n").same_as(n)
+            if dialect is B:
+                B.evaluate(parameter[0])
+            else:
+                R.func_ret_value(parameter)
+        assert frame.reference.same_as(reference)
+        assert frame.function.params[0].same_as(parameter)
+    assert builder.get().get_global_var("identity").same_as(reference)
+    assert builder.get()["identity"].params[0].same_as(parameter)
+
+
+@pytest.mark.parametrize("annotation", ["T.Buffer(shape, 'float32')", "R.Tensor(shape, 'float32')"])
+def test_captured_shape_requires_concrete_symbols(annotation):
+    # Literal source strings are decoded; a captured tuple reaches its concrete
+    # constructor unchanged and must already contain native symbols.
+    decorator, body = (
+        ("T.prim_func", "T.evaluate(0)")
+        if annotation.startswith("T.")
+        else ("R.function", "return x")
+    )
+    source = f"@{decorator}\ndef main(x: {annotation}):\n    {body}\n"
+    n = ir.Var("n", "int64")
+    function = parser.parse(source, extra_vars={"shape": (n, 16)})
+    assert function.params[0].ty.shape[0].same_as(n)
+    with pytest.raises(
+        TypeError, match="^Builder expression arguments require concrete symbols, not strings$"
+    ) as caught:
+        parser.parse(source, extra_vars={"shape": ("n", 16)})
+    assert type(caught.value) is TypeError

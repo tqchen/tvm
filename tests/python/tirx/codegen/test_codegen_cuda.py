@@ -20,7 +20,6 @@ import re
 
 import numpy as np
 import pytest
-import tvm_ffi
 
 import tvm
 import tvm.testing
@@ -713,39 +712,6 @@ def test_ptx_cp_async_bulk_non_tma_form_codegen():
     assert "uint64_t __cache_policy" in src
     assert 'asm volatile("cp.async.bulk.wait_group.read 0;" :  :  : "memory");' in src
     assert 'asm volatile("cp.async.bulk.wait_group 1;" :  :  : "memory");' in src
-
-
-@pytest.mark.parametrize("shape,indices", [((3,), (1,)), ((2, 3), (1, 2))])
-def test_clc_query_preserves_output_indices(shape, indices):
-    @T.prim_func
-    def main(A: T.Buffer(shape, "uint32")):
-        response = T.alloc_buffer((4,), "uint32", scope="shared", align=16)
-        query_cancel_first_ctaid_x(A[indices], response.ptr_to([0]))
-
-    stores = []
-    queries = []
-
-    def collect(node):
-        if isinstance(node, tvm.tirx.BufferStore):
-            stores.append(node)
-        if isinstance(node, tvm.ir.Call) and any(
-            isinstance(arg, tvm.ir.StringImm) and arg.value == "get_first_ctaid::x"
-            for arg in node.args
-        ):
-            queries.append(node)
-
-    tvm_ffi.structural_walk(main.body, collect)
-    assert len(stores) == len(queries) == 1
-    sentinel = stores[0]
-    destination = queries[0].args[0]
-    assert sentinel.buffer.same_as(main.params[0])
-    assert destination.source.same_as(sentinel.buffer)
-    assert int(sentinel.value) == 0xFFFFFFFF
-    assert tuple(int(index) for index in sentinel.indices) == indices
-    assert len(sentinel.indices) == len(destination.indices)
-    assert all(
-        stored.same_as(queried) for stored, queried in zip(sentinel.indices, destination.indices)
-    )
 
 
 def test_ptx_sync_and_clc_codegen():

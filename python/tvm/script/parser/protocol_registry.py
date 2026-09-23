@@ -34,12 +34,81 @@ imports from this module; it does not own or re-export the registry.
 
 from __future__ import annotations
 
+import ast
 from collections.abc import Callable, Mapping
-from inspect import signature
+from inspect import getattr_static, signature
 from types import MappingProxyType, MethodType
 from typing import Any, NamedTuple, NoReturn, TypeVar
 
 _Callable = TypeVar("_Callable", bound=Callable[..., Any])
+
+
+def result_span(constructor: _Callable) -> _Callable:
+    """Declare that a callable's complete IR effect is represented by its result.
+
+    Parameters
+    ----------
+    constructor : callable
+        Constructor whose returned node or emission receipt owns all source attribution.
+        It must not emit unrelated statements requiring a caller context.
+
+    Returns
+    -------
+    _Callable
+        The unchanged callable with static syntax metadata.
+
+    Notes
+    -----
+    Register at the concrete definition or creation site after establishing this
+    contract. Unlike direct_call, this marker keeps ordinary binding and emission.
+    It only permits result attachment instead of a construction context. Arguments
+    still receive their own source instrumentation. Registration executes no IR
+    construction and stores no per-parse state.
+
+    .. code:: python
+
+        @result_span
+        def make_node(value):
+            return Node(value)
+
+        # Source: make_node(x)
+        # Builder: X.emit_(make_node(x), span=_S[i])
+        # Nested expression: _S[i](make_node(x))
+    """
+    constructor.__tvm_result_span__ = True
+    return constructor
+
+
+def is_result_span(constructor: object) -> bool:
+    """Read result-attribution metadata without evaluating arbitrary properties.
+
+    Parameters
+    ----------
+    constructor : object
+        Resolved callable or bound method; never invoked by this lookup.
+
+    Returns
+    -------
+    bool
+        Whether the callable explicitly declares complete returned-result attribution.
+
+    Notes
+    -----
+    Bound methods share their underlying function's marker. Only the literal
+    boolean True declares the contract; descriptors and unregistered values do not.
+    This lookup creates no IR, enters no frame and retains no construction state.
+
+    .. code:: python
+
+        # Source: make_node(x)
+        # Rewrite-time classification:
+        if is_result_span(make_node):
+            # Generated: _S[i](make_node(x))
+            pass
+    """
+    if isinstance(constructor, MethodType):
+        constructor = constructor.__func__
+    return getattr_static(constructor, "__tvm_result_span__", False) is True
 
 
 def constexpr(value: object) -> NoReturn:
@@ -165,6 +234,49 @@ def get_args_policy(constructor: object) -> ArgsPolicy | None:
         return _ARGS_POLICIES.get(constructor)
     except TypeError:
         return None
+
+
+def handle_call_args_policy(
+    node: ast.Call, resolve: Callable[[ast.expr], object]
+) -> tuple[ArgsPolicy, list[str]] | None:
+    """Select source-argument policy before the main visitor traverses children.
+
+    Parameters
+    ----------
+    node : ast.Call
+        Original source call, whose children have not yet been rewritten.
+    resolve : Callable[[ast.expr], object]
+        Fixed syntax lookup for the callee; does not evaluate source expressions.
+
+    Returns
+    -------
+    tuple[ArgsPolicy, list[str]] or None
+        Registered policy and positional parameter names, or None for an unmatched call.
+
+    Notes
+    -----
+    Unmatched calls need no normalization. The returned positional names and
+    syntax policy guide that same visitor; no generated nodes are inserted into
+    an unvisited tree and no per-node provenance markers are needed.
+    No builder context, IR construction or per-parse registry state is created.
+
+    .. code:: python
+
+        # Source: tensor(("n",))
+        policy = handle_call_args_policy(source_call, resolve_syntax)
+        # The existing visitor generates:
+        # tensor((X.resolve_type_var_("n"),))
+    """
+    constructor = resolve(node.func)
+    policy = get_args_policy(constructor)
+    if policy is None:
+        return None
+    parameters = [
+        parameter.name
+        for parameter in signature(constructor).parameters.values()
+        if parameter.kind in (parameter.POSITIONAL_ONLY, parameter.POSITIONAL_OR_KEYWORD)
+    ]
+    return policy, parameters
 
 
 def args_policy(
@@ -361,8 +473,8 @@ def get_type_var_decl(constructor: object) -> DeclarationArguments | None:
 
     Notes
     -----
-    Ordinary attribute lookup preserves callable aliases and propagates custom
-    attribute-access errors. No frame, symbol or per-parse state is created.
+    Static metadata lookup preserves callable aliases without evaluating properties.
+    No frame, symbol or per-parse state is created.
 
     .. code:: python
 
@@ -374,7 +486,10 @@ def get_type_var_decl(constructor: object) -> DeclarationArguments | None:
         declaration = get_type_var_decl(X.int32)
         n = X.resolve_type_var_("n", dtype=declaration.dtype)
     """
-    return getattr(constructor, "__tvm_type_var_decl__", None)
+    if isinstance(constructor, MethodType):
+        constructor = constructor.__func__
+    declaration = getattr_static(constructor, "__tvm_type_var_decl__", None)
+    return declaration if isinstance(declaration, DeclarationArguments) else None
 
 
 def is_binding_decl(constructor: object) -> bool:
@@ -388,12 +503,12 @@ def is_binding_decl(constructor: object) -> bool:
     Returns
     -------
     bool
-        The truth value of its binding marker, or False when absent.
+        True only for an explicitly registered binding marker.
 
     Notes
     -----
-    The marker is read and tested once. Attribute or truth-conversion errors
-    propagate unchanged. No native value, frame or source location is inspected.
+    Static lookup never invokes a property or a truth-conversion hook.
+    No native value, frame or source location is inspected.
 
     .. code:: python
 
@@ -405,7 +520,9 @@ def is_binding_decl(constructor: object) -> bool:
         is_binding_decl(make_value)
         x = X.bind_(make_value(), name="x")
     """
-    return bool(getattr(constructor, "__tvm_binding_decl__", False))
+    if isinstance(constructor, MethodType):
+        constructor = constructor.__func__
+    return getattr_static(constructor, "__tvm_binding_decl__", False) is True
 
 
 def register_mutable_var_decl(constructor: _Callable, *, syntax: str = "call") -> _Callable:
@@ -466,8 +583,8 @@ def is_mutable_var_decl(constructor: object, *, syntax: str) -> bool:
 
     Notes
     -----
-    No frame, IR effect or source attachment. This reads a callable attribute; custom
-    attribute-access errors propagate. It does not inspect constructed storage or infer
+    No frame, IR effect or source attachment. Static metadata lookup does not evaluate
+    properties. It does not inspect constructed storage or infer
     mutability from IR types.
 
     .. code:: python
@@ -480,7 +597,10 @@ def is_mutable_var_decl(constructor: object, *, syntax: str) -> bool:
         is_mutable_var_decl(T.local_scalar, syntax="call")
         x = X.decl_mutable_var_(X.local_scalar("int32"), name="x")
     """
-    return syntax in getattr(constructor, "__tvm_mutable_var_decl__", ())
+    if isinstance(constructor, MethodType):
+        constructor = constructor.__func__
+    kinds = getattr_static(constructor, "__tvm_mutable_var_decl__", frozenset())
+    return isinstance(kinds, frozenset) and syntax in kinds
 
 
 class FunctionDecoratorInfo(NamedTuple):
@@ -586,8 +706,8 @@ def function_info(decorator: object) -> FunctionDecoratorInfo | None:
     Notes
     -----
     No context, construction effect or source attachment. Option mappings belong to
-    registration and must not be mutated by a parse. Custom attribute-access errors
-    propagate; unknown decorators are diagnosed by the parser consumer.
+    registration and must not be mutated by a parse. Static lookup does not evaluate
+    properties; unknown decorators are diagnosed by the parser consumer.
 
     .. code:: python
 
@@ -602,7 +722,10 @@ def function_info(decorator: object) -> FunctionDecoratorInfo | None:
         with X.function():
             pass
     """
-    return getattr(decorator, "__tvm_function_info__", None)
+    if isinstance(decorator, MethodType):
+        decorator = decorator.__func__
+    info = getattr_static(decorator, "__tvm_function_info__", None)
+    return info if isinstance(info, FunctionDecoratorInfo) else None
 
 
 def copy_function_info(source: Callable[..., Any], target: Callable[..., Any]) -> None:
@@ -693,7 +816,7 @@ def is_scope_var_query_or_decl(constructor: object) -> bool:
     Notes
     -----
     No builder context/evaluation or span handling occurs. This is syntax recognition, not a
-    runtime variable-type test; custom attribute-access errors propagate.
+    runtime variable-type test. Static lookup does not evaluate properties.
 
     .. code:: python
 
@@ -707,7 +830,7 @@ def is_scope_var_query_or_decl(constructor: object) -> bool:
     """
     if isinstance(constructor, MethodType):
         constructor = constructor.__func__
-    return bool(getattr(constructor, "__tvm_scope_var_query_or_decl__", False))
+    return getattr_static(constructor, "__tvm_scope_var_query_or_decl__", False) is True
 
 
 def direct_call(constructor: _Callable) -> _Callable:
@@ -764,7 +887,7 @@ def is_direct_call(constructor: object) -> bool:
 
     Notes
     -----
-    No frame, IR effect, naming or span attachment. Attribute-access errors propagate.
+    No frame, IR effect, naming or span attachment. Static lookup does not evaluate properties.
     Recognition is by resolved callable metadata, never inferred from a constructed return
     type or an arbitrary method spelling.
 
@@ -780,7 +903,7 @@ def is_direct_call(constructor: object) -> bool:
     """
     if isinstance(constructor, MethodType):
         constructor = constructor.__func__
-    return bool(getattr(constructor, "__tvm_direct_call__", False))
+    return getattr_static(constructor, "__tvm_direct_call__", False) is True
 
 
 def register_result_members(constructor: _Callable, members: object) -> _Callable:
@@ -845,8 +968,8 @@ def get_result_members(constructor: object) -> object | None:
     -----
     This reads syntax metadata only. It enters no frame, calls no producer and
     inspects no constructed IR result. Metadata has callable lifetime; no
-    function-local lookup state is cached. Custom attribute-access errors
-    propagate. Member lookup still checks the actual member's direct_call or
+    function-local lookup state is cached. Static lookup does not evaluate properties.
+    Member lookup still checks the actual member's direct_call or
     declaration metadata; a namespace does not make all its methods direct.
 
     .. code:: python
@@ -865,4 +988,4 @@ def get_result_members(constructor: object) -> object | None:
         constructor = constructor.fget
     if isinstance(constructor, MethodType):
         constructor = constructor.__func__
-    return getattr(constructor, "__tvm_result_members__", None)
+    return getattr_static(constructor, "__tvm_result_members__", None)

@@ -19,6 +19,7 @@
 from __future__ import annotations
 
 import ast
+import copy
 import gc
 import inspect
 import weakref
@@ -43,6 +44,71 @@ def without_cyclic_gc():
     finally:
         if enabled:
             gc.enable()
+
+
+def test_live_jit_retains_only_needed_scope_across_uncached_builds(language):
+    # A live deferred owner needs width, but never the unrelated enclosing payload.
+    from tvm.tirx.script.jit import make_jit
+
+    X = language.X
+    X.jit = make_jit(X)
+
+    def make():
+        payload = Payload()
+        reference = weakref.ref(payload)
+        width = 7
+
+        @X.jit
+        def kernel(x: X.tensor((width,)), *, value: I.constexpr):
+            X.record(value)
+
+        return kernel, reference
+
+    with without_cyclic_gc():
+        kernel, reference = make()
+        assert reference() is None
+        first = kernel.specialize(value=1)
+        second = kernel.specialize(value=2)
+        assert reference() is None
+        assert first is kernel.specialize(value=1) and first is not second
+        for function, value in ((first, 1), (second, 2)):
+            assert function.params[0].args[0].args[0] == (7,)
+            assert function.body == [("emit", value)]
+
+
+def test_reentrant_specialization_restores_root_bindings_after_failure(language):
+    # An ordinary nested parse of the same name must not inherit selected values;
+    # a failing nested specialization must restore the outer selection unchanged.
+    from tvm.script.parser import jit_support
+
+    source = "@X.script\ndef kernel(n: X.tensor((1,))):\n    X.record(n)\n"
+    seen = []
+    failure = ValueError("nested failure")
+
+    def fail():
+        raise failure
+
+    def nested():
+        ordinary = entry.parse(source, extra_vars={"X": language.X})
+        assert len(ordinary.params) == 1
+        assert ordinary.body[0][1] is ordinary.params[0]
+        with pytest.raises(ValueError) as caught:
+            entry.parse(
+                "@X.script\ndef kernel(n: I.constexpr):\n    fail()\n",
+                extra_vars={"X": language.X, "I": I, "fail": fail},
+                _specialization_bindings={"n": 8},
+            )
+        assert caught.value is failure
+        seen.append(jit_support.read_specialization_bindings("kernel"))
+
+    result = entry.parse(
+        "@X.script\ndef kernel(n: I.constexpr):\n    nested()\n    X.record(n)\n",
+        extra_vars={"X": language.X, "I": I, "nested": nested},
+        _specialization_bindings={"n": 4},
+    )
+    assert result.params == [] and result.body[-1] == ("emit", 4)
+    assert seen == [{"n": 4}]
+    assert jit_support.read_specialization_bindings("kernel") is None
 
 
 @pytest.mark.parametrize("module", [False, True])
@@ -78,22 +144,43 @@ def test_eager_entry_releases_unused_scope_but_keeps_annotation_value(language, 
 
 
 @pytest.mark.parametrize("failure", [False, True])
-def test_owned_ast_context_and_builder_are_temporary(language, monkeypatch, failure):
-    # Before: parse one original AST, either returning normally or failing in body execution.
-    # Expected builder program: only copied nodes change; no context/builder cycle survives.
-    source = "@X.script\ndef main():\n    " + ("missing()" if failure else "X.record(1)") + "\n"
-    original, filename, flags = entry.acquire_source(source, filename="lifetime.py")
-    original_fields = [(node, dict(vars(node))) for node in ast.walk(original)]
-    original_dump = ast.dump(original, include_attributes=True)
-    references = []
-    prepare = entry._prepare_transpiler
-    recompose = entry._recompose_builder
+@pytest.mark.parametrize("macro", [False, True])
+def test_acquired_ast_context_and_builder_are_temporary(language, monkeypatch, failure, macro):
+    # Before: parse a function or invoke a statement macro, succeeding or raising.
+    # Expected builder program: consume each freshly acquired tree directly; release
+    # syntax, contexts and private builders without cyclic GC, on either exit path.
+    X = language.X
+
+    def finish():
+        if failure:
+            raise NameError("body failure")
+        return 1
+
+    @entry.make_macro_decorator(X)
+    def helper():
+        X.record(finish())
+
+    body = "helper()" if macro else "X.record(finish())"
+    source = "@X.script\ndef main():\n    " + body + "\n"
+    references, acquired, parse_calls = [], [], []
+    acquire, prepare, recompose = (
+        entry.acquire_source,
+        entry._prepare_transpiler,
+        entry._recompose_builder,
+    )
+    parse_ast, shallow_copy, deep_copy = ast.parse, copy.copy, copy.deepcopy
+
+    def capture_acquire(*args, **kwargs):
+        tree, filename, flags = acquire(*args, **kwargs)
+        acquired.append(weakref.ref(tree))
+        references.append(weakref.ref(tree))
+        return tree, filename, flags
 
     def capture_prepare(tree, *args, **kwargs):
+        assert tree is acquired[-1]()
         transformer, namespace = prepare(tree, *args, **kwargs)
         references.extend(
             [
-                weakref.ref(tree),
                 weakref.ref(transformer),
                 weakref.ref(transformer.module),
                 weakref.ref(transformer.function),
@@ -101,33 +188,50 @@ def test_owned_ast_context_and_builder_are_temporary(language, monkeypatch, fail
         )
         return transformer, namespace
 
-    def capture_recompose(*args, **kwargs):
-        builder = recompose(*args, **kwargs)
+    def capture_recompose(translated, **kwargs):
+        assert all(
+            not any(name.startswith("_tvm_") for name in vars(node))
+            for node in ast.walk(translated)
+        )
+        builder = recompose(translated, **kwargs)
         references.append(weakref.ref(builder))
         return builder
 
-    monkeypatch.setattr(
-        entry, "acquire_source", lambda *args, **kwargs: (original, filename, flags)
-    )
+    def parse_once(*args, **kwargs):
+        parse_calls.append(None)
+        return parse_ast(*args, **kwargs)
+
+    def forbid_ast_copy(value, *args, **kwargs):
+        assert not isinstance(value, ast.AST), "the acquired tree is already owned"
+        return shallow_copy(value, *args, **kwargs)
+
+    def forbid_ast_deepcopy(value, *args, **kwargs):
+        assert not isinstance(value, ast.AST), "the acquired tree is already owned"
+        return deep_copy(value, *args, **kwargs)
+
+    monkeypatch.setattr(entry, "acquire_source", capture_acquire)
     monkeypatch.setattr(entry, "_prepare_transpiler", capture_prepare)
     monkeypatch.setattr(entry, "_recompose_builder", capture_recompose)
+    monkeypatch.setattr(ast, "parse", parse_once)
+    monkeypatch.setattr(copy, "copy", forbid_ast_copy)
+    monkeypatch.setattr(copy, "deepcopy", forbid_ast_deepcopy)
     with without_cyclic_gc():
-        if failure:
-            try:
-                language.parse(source)
-            except NameError:
-                pass
+        for _ in range(2):
+            if failure:
+                try:
+                    language.parse(source, finish=finish, helper=helper)
+                except NameError:
+                    pass
+                else:
+                    pytest.fail("expected failed construction")
             else:
-                pytest.fail("expected failed construction")
-        else:
-            result = language.parse(source)
-            assert result.body == [("emit", 1)]
-        assert references and all(reference() is None for reference in references)
-        assert ast.dump(original, include_attributes=True) == original_dump
-        assert all(vars(node) == fields for node, fields in original_fields)
-        assert all(
-            not any(name.startswith("_tvm_") for name in vars(node)) for node in ast.walk(original)
-        )
+                result = language.parse(source, finish=finish, helper=helper)
+                assert result.body[0] == ("emit", 1)
+            assert references and all(reference() is None for reference in references)
+        assert len(acquired) == (4 if macro else 2)
+        # This source contains no expression-string policy or extra source objects.
+        # Each acquisition parses once; no second parse substitutes for an AST copy.
+        assert len(parse_calls) == len(acquired)
 
 
 class FixedFailure(ValueError):

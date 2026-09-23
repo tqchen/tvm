@@ -45,12 +45,22 @@ from tvm.runtime import convert
 from tvm.script.ir_builder.base import AlreadyEmitted, IRBuilder
 from tvm.script.ir_builder.ir import meta_var
 from tvm.script.ir_builder.ir.frame import IRModuleFrame
+from tvm.script.parser.protocol_registry import direct_call as _direct_call
+from tvm.script.parser.protocol_registry import (
+    register_mutable_var_decl as _register_mutable_var_decl,
+)
+from tvm.script.parser.protocol_registry import register_result_members as _register_result_members
+from tvm.script.parser.protocol_registry import (
+    register_scope_var_query_or_decl as _register_scope_var_query_or_decl,
+)
+from tvm.script.parser.protocol_registry import register_type_var_decl as _register_type_var_decl
 from tvm.target import Target
 
 # pylint: disable=unused-import
 from tvm.target.codegen import llvm_lookup_intrinsic_id
 from tvm.tirx import Buffer, Expr, IndexMap, is_buffer_var, type_annotation
 from tvm.tirx import op as _tir_op
+from tvm.tirx.buffer import _BufferMethods
 from tvm.tirx.exec_scope import ExecScope, ScopeIdDef, Var
 
 # import tirx.expr for direct ir construction to pass structural_equal comparison
@@ -301,6 +311,7 @@ def block_name_suffix_context(block_suffix: str):
         _block_name_suffix.value = old_suffix
 
 
+@partial(_register_result_members, members=_BufferMethods)
 def buffer(
     shape: list[Expr] | tuple[Expr] | Expr | Integral,
     dtype: str = "float32",
@@ -495,6 +506,8 @@ def Tuple(*fields: Type) -> Type:  # pylint: disable=invalid-name
     return ir.TupleType(normalized_fields)
 
 
+@_register_mutable_var_decl
+@partial(_register_result_members, members=_BufferMethods)
 def match_buffer(
     param: Var | TensorLoad | TensorRegion,
     shape: list[Expr] | tuple[Expr] | Expr | Integral = None,
@@ -670,6 +683,7 @@ def elected():
     )
 
 
+@_register_scope_var_query_or_decl
 def scope_id(
     extents: list[Expr | int] | None, parent: str, cur: str, dtype: str = "int32"
 ) -> Var | tuple[Var, ...]:
@@ -684,6 +698,7 @@ def scope_id(
     return tuple(ret)
 
 
+@_register_scope_var_query_or_decl
 def cluster_id(
     extents: list[Expr | int] | None = None, dtype: str = "int32"
 ) -> Var | tuple[Var, ...]:
@@ -698,6 +713,7 @@ def cluster_id(
     return tuple(ret)
 
 
+@_register_scope_var_query_or_decl
 def cta_id(
     extents: list[Expr | int] | None = None, preferred=None, dtype: str = "int32"
 ) -> Var | tuple[Var, ...]:
@@ -712,6 +728,7 @@ def cta_id(
     return tuple(ret)
 
 
+@_register_scope_var_query_or_decl
 def cta_id_in_cluster(
     extents: list[Expr | int] | None = None, preferred=None, dtype: str = "int32"
 ) -> Var | tuple[Var, ...]:
@@ -726,12 +743,14 @@ def cta_id_in_cluster(
     return tuple(ret)
 
 
+@_register_scope_var_query_or_decl
 def cta_id_in_pair(dtype: str = "int32") -> Var:
     """Return the native CTA index within its two-CTA pair."""
     ret = _ffi_api.CtaIdInPair(dtype)  # type: ignore[attr-defined] # pylint: disable=no-member
     return ret[0]
 
 
+@_register_scope_var_query_or_decl
 def warpgroup_id(
     extents: list[Expr | int] | None = None, dtype: str = "int32"
 ) -> Var | tuple[Var, ...]:
@@ -746,6 +765,7 @@ def warpgroup_id(
     return tuple(ret)
 
 
+@_register_scope_var_query_or_decl
 def warp_id(extents: list[Expr | int] | None = None, dtype: str = "int32") -> Var | tuple[Var, ...]:
     """Define a cta→warp scope id. Pass ``None`` (the default) to defer the
     extent; it will be inferred at LowerTIRx from sibling closure.
@@ -758,6 +778,7 @@ def warp_id(extents: list[Expr | int] | None = None, dtype: str = "int32") -> Va
     return tuple(ret)
 
 
+@_register_scope_var_query_or_decl
 def warp_id_in_wg(
     extents: list[Expr | int] | None = None, dtype: str = "int32"
 ) -> Var | tuple[Var, ...]:
@@ -772,6 +793,7 @@ def warp_id_in_wg(
     return tuple(ret)
 
 
+@_register_scope_var_query_or_decl
 def lane_id(extents: list[Expr | int] | None = None, dtype: str = "int32") -> Var | tuple[Var, ...]:
     """Define a warp→thread scope id. Pass ``None`` (the default) to defer the
     extent; it will be inferred at LowerTIRx from sibling closure.
@@ -784,6 +806,7 @@ def lane_id(extents: list[Expr | int] | None = None, dtype: str = "int32") -> Va
     return tuple(ret)
 
 
+@_register_scope_var_query_or_decl
 def thread_id(
     extents: list[Expr | int] | None = None, dtype: str = "int32"
 ) -> Var | tuple[Var, ...]:
@@ -798,6 +821,7 @@ def thread_id(
     return tuple(ret)
 
 
+@_register_scope_var_query_or_decl
 def thread_id_in_wg(
     extents: list[Expr | int] | None = None, dtype: str = "int32"
 ) -> Var | tuple[Var, ...]:
@@ -892,6 +916,8 @@ def sblock_attr(attrs: dict[str, Any]) -> None:
     return _ffi_api.BlockAttrs(attrs)  # type: ignore[attr-defined] # pylint: disable=no-member
 
 
+@_register_mutable_var_decl
+@partial(_register_result_members, members=_BufferMethods)
 def alloc_buffer(
     shape: list[Expr] | tuple[Expr] | Expr | Integral,
     dtype: str = "float32",
@@ -1107,6 +1133,7 @@ class axis:  # pylint: disable=invalid-name
     """The axis class"""
 
     @staticmethod
+    @_register_scope_var_query_or_decl
     def spatial(
         dom: ir.Range | list[Expr] | tuple[Expr],
         binding: Expr,
@@ -1135,6 +1162,7 @@ class axis:  # pylint: disable=invalid-name
         )
 
     @staticmethod
+    @_register_scope_var_query_or_decl
     def reduce(
         dom: ir.Range | list[Expr] | tuple[Expr],
         binding: Expr,
@@ -1163,6 +1191,7 @@ class axis:  # pylint: disable=invalid-name
         )
 
     @staticmethod
+    @_register_scope_var_query_or_decl
     def scan(
         dom: ir.Range | list[Expr] | tuple[Expr],
         binding: Expr,
@@ -1191,6 +1220,7 @@ class axis:  # pylint: disable=invalid-name
         )
 
     @staticmethod
+    @_register_scope_var_query_or_decl
     def opaque(
         dom: ir.Range | list[Expr] | tuple[Expr],
         binding: Expr,
@@ -1219,6 +1249,7 @@ class axis:  # pylint: disable=invalid-name
         )
 
     @staticmethod
+    @_register_scope_var_query_or_decl
     def remap(kinds: str, bindings: list[Expr], dtype: str = "int32") -> list[Var] | Var:
         """The block axis remapping function.
 
@@ -1551,6 +1582,7 @@ def Assert(condition: Expr, message, error_kind: str = "RuntimeError") -> frame.
     return _ffi_api.Assert(condition, error_kind, message)  # type: ignore[attr-defined] # pylint: disable=no-member
 
 
+@_register_scope_var_query_or_decl
 def Bind(  # pylint: disable=invalid-name
     value: Expr,
     type_annotation: Type | None = None,  # pylint: disable=redefined-outer-name
@@ -1596,6 +1628,7 @@ def Let(  # pylint: disable=invalid-name
     return tir.Let(var, value, expr)
 
 
+@_register_scope_var_query_or_decl
 def bind(
     value: Expr,
     type_annotation: Type | None = None,  # pylint: disable=redefined-outer-name
@@ -1645,6 +1678,7 @@ class LetAnnotation:
 let = LetAnnotation()  # Singleton for T.let (no subscript)
 
 
+@partial(_register_mutable_var_decl, syntax="annotation")
 class LocalVectorAnnotation:
     """Marker for local vector/tensor allocation via type annotation subscript.
 
@@ -1833,6 +1867,8 @@ def Else() -> frame.ElseFrame:  # pylint: disable=invalid-name
     return _ffi_api.Else()  # type: ignore[attr-defined] # pylint: disable=no-member
 
 
+@_register_mutable_var_decl
+@partial(_register_result_members, members=_BufferMethods)
 def decl_buffer(
     shape,
     dtype="float32",
@@ -1918,7 +1954,11 @@ def decl_buffer(
 
 
 alloc_shared = functools.partial(alloc_buffer, scope="shared")
+_register_mutable_var_decl(alloc_shared)
+_register_result_members(alloc_shared, _BufferMethods)
 alloc_local = functools.partial(alloc_buffer, scope="local")
+_register_mutable_var_decl(alloc_local)
+_register_result_members(alloc_local, _BufferMethods)
 smem = alloc_shared
 tmem = functools.partial(alloc_buffer, scope="tmem")
 
@@ -2110,6 +2150,7 @@ else:
             return ~self.scalar
 
 
+@_register_mutable_var_decl
 def alloc_scalar(dtype: str = "float32", scope: str = "global") -> TensorLoad:
     """Allocate a zero-dimensional buffer (scalar)."""
     buf = alloc_buffer(shape=(1,), dtype=dtype, scope=scope, layout=TileLayout(S[1]))
@@ -2120,6 +2161,7 @@ def alloc_scalar(dtype: str = "float32", scope: str = "global") -> TensorLoad:
     return scalar_wrapper(scalar)
 
 
+@_register_mutable_var_decl
 def decl_scalar(dtype, data, scope, elem_offset=None, byte_offset=None) -> TensorLoad:
     """Declare a zero-dimensional buffer (scalar) from a pointer."""
     buf = decl_buffer(
@@ -2140,11 +2182,13 @@ def decl_scalar(dtype, data, scope, elem_offset=None, byte_offset=None) -> Tenso
     return scalar_wrapper(scalar)
 
 
+@_register_mutable_var_decl
 def shared_scalar(dtype: str = "float32") -> TensorLoad:
     """Allocate a zero-dimensional buffer in shared memory."""
     return alloc_scalar(dtype=dtype, scope="shared")
 
 
+@_register_mutable_var_decl
 def local_scalar(dtype: str = "float32") -> TensorLoad:
     """Allocate a zero-dimensional buffer in local memory."""
     return alloc_scalar(dtype=dtype, scope="local")
@@ -2281,6 +2325,7 @@ def launch_thread(
     return _ffi_api.LaunchThread(thread, extent)  # type: ignore[attr-defined] # pylint: disable=no-member
 
 
+@_register_scope_var_query_or_decl
 def env_thread(thread_tag: str, dtype: str = "int32") -> IterVar:
     """Bind a var to thread env
 
@@ -2392,7 +2437,11 @@ def func_gen(name: str):
     name: str
         The ffi function name to call, e.g. "Float32", "Int32".
     """
-    return DtypeConstructor(name, _ffi_name_to_dtype(name))
+    dtype = _ffi_name_to_dtype(name)
+    constructor = DtypeConstructor(name, dtype)
+    _register_type_var_decl(constructor, dtype=dtype)
+    _register_mutable_var_decl(constructor, syntax="annotation")
+    return constructor
 
 
 def static_assert(x: Any, message: str = ""):
@@ -2760,6 +2809,7 @@ def max(a: Expr, b: Expr) -> Expr:  # pylint: disable=redefined-builtin
     return _ffi_api.max(a, b)  # type: ignore[attr-defined] # pylint: disable=no-member
 
 
+@_direct_call
 def iter_var(v: Var | str, dom: ir.Range, iter_type: str, thread_tag: str) -> IterVar:
     """The iteration variable.
 

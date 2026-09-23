@@ -23,7 +23,7 @@ import traceback
 import pytest
 
 from tvm.script.ir_builder import IRBuilder
-from tvm.script.parser import entry
+from tvm.script.parser import entry, jit_support
 
 
 @pytest.mark.parametrize(
@@ -102,8 +102,10 @@ def test_lexical_helpers_are_defined_and_called_inside_frames(
     for helper in helpers:
         scope = parents[helper]
         assert isinstance(scope, ast.With)
-        assert len(scope.body) == 2 and scope.body[0] is helper
-        invocation = scope.body[1]
+        # Ordinary signatures are constructed in the same frame before the
+        # zero-argument body helper; declaration re-entry needs no prelude.
+        assert scope.body[-2] is helper
+        invocation = scope.body[-1]
         assert isinstance(invocation, ast.Expr) and isinstance(invocation.value, ast.Call)
         assert isinstance(invocation.value.func, ast.Name)
         assert invocation.value.func.id == helper.name
@@ -172,7 +174,10 @@ def main(x: X.tensor((4,))):
     assert not IRBuilder.is_in_scope()
 
 
-def test_zero_argument_helper_retains_real_closure_defaults(language, monkeypatch):
+def test_zero_argument_helper_preserves_original_capture_names(language, monkeypatch):
+    # Before: the body reads an enclosing token and its original runtime parameter.
+    # Expected builder program: preserve both identities under their source names,
+    # without adding capture parameters where no lexical-binding conflict exists.
     token = object()
     X = language.X
     helpers = []
@@ -195,7 +200,58 @@ def test_zero_argument_helper_retains_real_closure_defaults(language, monkeypatc
     assert len(helpers) == 1
     helper = helpers[0]
     assert helper.args.args == [] and helper.args.posonlyargs == []
-    captures = [argument.arg for argument in helper.args.kwonlyargs]
-    assert "token" in captures
-    assert len(helper.args.kw_defaults) == len(captures)
-    assert all(default is not None for default in helper.args.kw_defaults)
+    assert helper.args.kwonlyargs == [] and helper.args.kw_defaults == []
+    names = {node.id for node in ast.walk(helper) if isinstance(node, ast.Name)}
+    assert {"token", "x"} <= names
+
+
+@pytest.mark.parametrize("parameter_count,bindings", [(0, None), (2, None), (2, {})])
+def test_parameter_setup_depends_on_explicit_specialization_request(
+    language, monkeypatch, parameter_count, bindings
+):
+    # Before: a recursive signature parsed normally or with explicit empty JIT bindings.
+    # Expected builder program: ordinary X.arg/frame.params bindings need no JIT
+    # state/read/selectors/iterator; an explicit {} still enables specialization.
+    signature = ", ".join(f"{name}: X.tensor((4,))" for name in ("x", "y")[:parameter_count])
+    arguments = ", ".join(("x", "y")[:parameter_count])
+    recompose = entry._recompose_builder
+    programs = []
+    requested = bindings is not None
+
+    def capture(translated, **kwargs):
+        nodes = list(ast.walk(translated))
+        names = {node.id for node in nodes if isinstance(node, ast.Name)}
+        assert any(name.startswith("_specialization") for name in names) is requested
+        if not requested:
+            assert not any(name.startswith("_arguments") for name in names)
+            assert not any(isinstance(node, ast.In | ast.NotIn) for node in nodes)
+            helpers = [kwargs["environment"].get(name) for name in names]
+            assert not any(
+                helper is target
+                for helper in helpers
+                for target in (iter, next, jit_support.read_specialization_bindings)
+            )
+        parameter_reads = [
+            node for node in nodes if isinstance(node, ast.Attribute) and node.attr == "params"
+        ]
+        assert bool(parameter_reads) is bool(parameter_count)
+        programs.append(True)
+        return recompose(translated, **kwargs)
+
+    def forbidden_lookup(*args, **kwargs):
+        pytest.fail("ordinary parsing must not read specialization state")
+
+    monkeypatch.setattr(entry, "_recompose_builder", capture)
+    if not requested:
+        monkeypatch.setattr(jit_support, "read_specialization_bindings", forbidden_lookup)
+    result = entry.parse(
+        f"@X.script\ndef main({signature}):\n    main({arguments})\n",
+        extra_vars={"X": language.X},
+        _specialization_bindings=bindings,
+    )
+    assert programs == [True]
+    assert len(result.params) == parameter_count
+    call = result.body[0][1]
+    assert call.args[0] is language.references["main"]
+    assert all(actual is expected for actual, expected in zip(call.args[1:], result.params))
+    assert len(call.args) == parameter_count + 1

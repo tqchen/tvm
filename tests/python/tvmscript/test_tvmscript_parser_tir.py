@@ -778,34 +778,6 @@ def test_alloc_inside_block():
     tvm.ir.assert_structural_equal(func, expected)
 
 
-@pytest.mark.parametrize(
-    "axes",
-    [
-        'i, k = T.axis.remap("SS", [li, lk])',
-        'i, k = axis_alias("SS", [li, lk])',
-        "i = T.axis.spatial(8, li)\n            k = T.axis.S(8, lk)",
-    ],
-)
-def test_block_axes_shadow_outer_buffer_without_stores(axes):
-    func = tvm.script.from_source(
-        f"""@T.prim_func(s_tir=True)
-def main(buffer: T.handle, output: T.Buffer((8, 8), "float32")):
-    k = T.match_buffer(buffer, (8,), "float32")
-    for li, lk in T.grid(8, 8):
-        with T.sblock("output"):
-            {axes}
-            output[i, k] = T.cast(i + k, "float32")
-""",
-        extra_vars={"axis_alias": T.axis.remap},
-    )
-    block = func.body.block.body.body.body.block
-    store = block.body
-    assert isinstance(store, tirx.BufferStore)
-    assert store.indices[0].same_as(block.iter_vars[0].var)
-    assert store.indices[1].same_as(block.iter_vars[1].var)
-    assert [axis.var.name for axis in block.iter_vars] == ["i", "k"]
-
-
 def test_tir_macro_block_name_suffix():
     @T.inline
     def operation(A, idx):

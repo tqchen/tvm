@@ -17,7 +17,7 @@
 """Recording builder fixtures for the production source-to-builder parser."""
 
 import pytest
-from dummy_builder import Language
+from dummy_builder import Language, RecordingSpanEntry
 
 from tvm.script.ir_builder import base
 from tvm.script.parser import entry
@@ -27,11 +27,13 @@ from tvm.script.parser import entry
 def language(monkeypatch):
     language = Language()
     monkeypatch.setattr(entry, "builder_ir", language.I)
+    monkeypatch.setattr(entry, "SpanEntry", lambda span: RecordingSpanEntry(language, span))
     return language
 
 
 @pytest.fixture
-def spanned_language(language):
+def spanned_language(language, monkeypatch):
+    monkeypatch.setattr(entry, "SpanEntry", base.SpanEntry)
     language.I.at_ = base.at_
     language.I.with_at_group_ = base.with_at_group_
     language.X.inline = entry.make_macro_decorator(language.X)

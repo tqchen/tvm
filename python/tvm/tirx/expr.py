@@ -83,6 +83,7 @@ from tvm.ir.prim.expr import (  # noqa: F401
 )
 from tvm.runtime import Object, ObjectConvertible, Scriptable
 from tvm.runtime import const as const
+from tvm.script.parser.protocol_registry import direct_call as _direct_call
 
 from . import _ffi_api
 from .buffer import Buffer
@@ -119,6 +120,7 @@ class IntImmEnum(ObjectConvertible):
 Var = ir.Var
 
 
+@_direct_call
 @tvm_ffi.register_object("tirx.IterVar")
 class IterVar(ExprOp, Object, Scriptable):
     """Represent iteration variable.

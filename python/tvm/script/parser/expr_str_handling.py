@@ -14,7 +14,7 @@
 # KIND, either express or implied.  See the License for the
 # specific language governing permissions and limitations
 # under the License.
-"""Syntax-only rewriting of registered constructor argument policies.
+"""Decode source annotation strings and retain their literal source ranges.
 
 Existing AST nodes retain all four Python location fields. Parsed strings use a
 UTF-8 byte-offset map through the original literal spelling, including escapes
@@ -26,12 +26,8 @@ literal's complete original range. Rewriting never evaluates source expressions.
 from __future__ import annotations
 
 import ast
-import inspect
 import linecache
 import re
-from collections.abc import Callable
-
-from . import protocol_registry as protocol
 
 
 class _LiteralParser:
@@ -133,27 +129,6 @@ def parse_annotation(node: ast.expr, filename: str) -> ast.expr:
     if isinstance(node, ast.Constant) and isinstance(node.value, str):
         return _LiteralParser(filename)._parse_string_expression(node)
     return node
-
-
-def handle_call_args_policy(
-    node: ast.Call, resolve: Callable[[ast.expr], object]
-) -> tuple[protocol.ArgsPolicy, list[str]] | None:
-    """Select source-argument policy before the main visitor traverses children.
-
-    Unmatched calls need no normalization. The returned positional names and
-    syntax policy guide that same visitor; no generated nodes are inserted into
-    an unvisited tree and no per-node provenance markers are needed.
-    """
-    constructor = resolve(node.func)
-    policy = protocol.get_args_policy(constructor)
-    if policy is None:
-        return None
-    parameters = [
-        parameter.name
-        for parameter in inspect.signature(constructor).parameters.values()
-        if parameter.kind in (parameter.POSITIONAL_ONLY, parameter.POSITIONAL_OR_KEYWORD)
-    ]
-    return policy, parameters
 
 
 def parse_expression_string(node: ast.Constant, filename: str) -> ast.expr:

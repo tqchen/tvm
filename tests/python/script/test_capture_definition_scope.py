@@ -399,3 +399,22 @@ def test_local_annotation_preserves_lambda_and_comprehension_bindings(language):
     assert name == "y" and ty.args[:2] == ((2,), "float32")
     assert rhs.args == (function.params[0], function.params[0])
     assert function.body[0] == ("return", rhs)
+
+
+def test_class_annotation_scope_keeps_distinct_method_closure(language):
+    # Before: an enclosing extent=7 and class extent=3 share a method spelling.
+    # Expected builder program: the annotation reads class 3, the body closes over 7.
+    X = language.X
+    extent = 7
+
+    @I.ir_module
+    class Module:
+        extent = 3
+
+        @X.script
+        def main(value: X.tensor((extent,))):
+            X.record(extent)
+
+    function = Module["main"]
+    assert function.params[0].args[0].args[0] == (3,)
+    assert function.body == [("emit", 7)]

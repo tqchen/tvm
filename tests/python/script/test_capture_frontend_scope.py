@@ -89,7 +89,7 @@ def _position(span):
 @pytest.mark.parametrize("entrypoint", ["source", "function"])
 def test_source_and_ir_call_spans_use_one_based_columns(spanned_language, entrypoint):
     # Before: evaluate(call_extern(...)) through source and callable entry points.
-    # Expected builder: production I.at_ attaches Source.to_span(call), one based.
+    # Expected builder: _S[i] attaches the fixed call range with one-based columns.
     language = spanned_language
     X = language.X
 

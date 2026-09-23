@@ -31,7 +31,12 @@ OPERATORS = [("<", "LT"), ("<=", "LE"), (">", "GT"), (">=", "GE"), ("==", "EQ"),
 
 
 @pytest.fixture
-def language(language):
+def language(language, monkeypatch):
+    def span_entry(span):
+        language.events.append(("span_entry", span))
+        return base.SpanEntry(span)
+
+    monkeypatch.setattr(entry, "SpanEntry", span_entry)
     language.I.at_ = base.at
     language.I.with_at_group_ = base.with_at_group_
     for _, kind in OPERATORS:
@@ -60,7 +65,7 @@ def parse(language, source, *, track_span=True, **captures):
 @pytest.mark.parametrize("track_span", [True, False])
 def test_written_comparison_order(language, operator, kind, literal_left, track_span):
     # Before: 0 < x (and each written operator/operand order).
-    # Expected builder program: X.emit_(I.at_(location, X.lt(0, x))).
+    # Expected builder program: X.emit_(X.lt(0, x), span=_S[i]).
     x = ir.Var("x", "int32")
     expression = f"0 {operator} x" if literal_left else f"x {operator} 0"
     actual = parse(
@@ -71,10 +76,19 @@ def test_written_comparison_order(language, operator, kind, literal_left, track_
     ).body[0][1]
     operands = (0, x) if literal_left else (x, 0)
     ir.assert_structural_equal(actual, getattr(prim, kind)(*operands))
+    entries = [event[1] for event in language.events if event[0] == "span_entry"]
     if track_span:
         assert actual.span is not None
+        assert entries
+        # The written comparison owns the expression range, not either name/literal.
+        body_entries = [span for span in entries if span.line == span.end_line == 3]
+        assert body_entries
+        assert all(
+            (span.column, span.end_column) == (5, 5 + len(expression)) for span in body_entries
+        )
     else:
         assert actual.span is None
+        assert entries == []
 
 
 @pytest.mark.parametrize("dtype", ["int64", "uint32", "float32", "int32x4", "float32x4"])

@@ -36,7 +36,7 @@ from . import _ffi_api
 from . import frame as _frame
 from . import ir as _native
 
-_Span = _ir.Span | tuple[_ir.SourceName, int, int, int, int] | None
+_Span = _base.SpanEntry | _ir.Span | tuple[_ir.SourceName, int, int, int, int] | None
 
 
 def bind_(
@@ -60,11 +60,11 @@ def bind_(
         the binding type.
     name : str, optional
         Source target name. None (the default) requests no source-derived name.
-    span : Span or source-location tuple, optional
+    span : SpanEntry, Span or source-location tuple, optional
         Location for the constructed result. None (the default) leaves explicit location
         unspecified; active source-call provenance is composed by the builder. Frames
         retain their location until finalization.
-    name_span : Span or source-location tuple, optional
+    name_span : SpanEntry, Span or source-location tuple, optional
         Location of the target identifier. None (the default) uses span; it can differ
         from the emitted statement location.
     frame_value : bool, optional
@@ -143,10 +143,11 @@ def emit_(value: Any, *, span: _Span = None) -> None:
     value : Any
         Once-evaluated expression result. AlreadyEmitted receipts and None produce no
         additional emission.
-    span : Span or source-location tuple, optional
-        Location for the constructed result. None (the default) leaves explicit location
-        unspecified; active source-call provenance is composed by the builder. Frames
-        retain their location until finalization.
+    span : SpanEntry, Span or source-location tuple, optional
+        Location of the emitted statement and expression, or the existing node in an
+        AlreadyEmitted receipt. None leaves explicit attribution unspecified. Active
+        caller provenance is composed without adding a construction context; native
+        frames retain the location for finalization.
 
     Returns
     -------
@@ -159,23 +160,26 @@ def emit_(value: Any, *, span: _Span = None) -> None:
     evaluates expressions, and can enter concise frames; variables/text are inert and
     sequences are consumed elementwise. Relax accepts only void expressions (or
     None/AlreadyEmitted); unsupported values raise TypeError and non-void expressions raise
-    ValueError. The receipt retains the exact previously emitted object. Ordinary source
-    calls receive source handling before this hook; direct_call statements bypass it.
+    ValueError. An explicit span annotates the exact previously emitted node in a receipt
+    without emitting it again. Known builder results need no separate result wrapper;
+    opaque source calls keep their scoped provenance before this hook. Registered
+    direct_call statements bypass this hook.
 
     .. code:: python
 
         # Source
         T.evaluate(1)
         # Generated builder
-        X.emit_(X.evaluate(1))
+        X.emit_(X.evaluate(1), span=_S[0])
     """
     if isinstance(value, _base.AlreadyEmitted):
+        _base.at_(span, value)
         return None
     if value is None:
         return
     if not isinstance(value, _relax.Expr):
         raise TypeError(f"Unsupported expression statement value: {type(value).__name__}")
-    result = bind_(value, name="_", span=span)
+    result = bind_(_base.at_(span, value), name="_", span=span)
     if not isinstance(result.ty, _ir.TupleType) or len(result.ty.fields) != 0:
         raise ValueError(
             "Non-void expressions must be bound to a variable; "
@@ -202,7 +206,7 @@ def resolve_type_var_(
     value : Var, optional
         Existing primitive variable to register without replacement. None creates a
         variable only if the name is not already registered.
-    span : Span or source-location tuple, optional
+    span : SpanEntry, Span or source-location tuple, optional
         Location for the constructed result. None (the default) leaves explicit location
         unspecified; active source-call provenance is composed by the builder. Frames
         retain their location until finalization.
@@ -281,11 +285,11 @@ def decl_mutable_var_(
         created storage handle.
     name : str, optional
         Source target name. None (the default) requests no source-derived name.
-    span : Span or source-location tuple, optional
+    span : SpanEntry, Span or source-location tuple, optional
         Location for the constructed result. None (the default) leaves explicit location
         unspecified; active source-call provenance is composed by the builder. Frames
         retain their location until finalization.
-    name_span : Span or source-location tuple, optional
+    name_span : SpanEntry, Span or source-location tuple, optional
         Location of the target identifier. None (the default) uses span; it can differ
         from the emitted statement location.
 
@@ -324,7 +328,7 @@ def set_mutable_var_(target: Any, value: Any, *, span: _Span = None) -> NoReturn
     value : Expr or scalar convertible to Expr
         Once-evaluated value to store. Native store checking validates its type and
         indices against the target.
-    span : Span or source-location tuple, optional
+    span : SpanEntry, Span or source-location tuple, optional
         Location of the emitted store. None (the default) leaves explicit location
         unspecified; existing source-call provenance is retained.
 
@@ -379,7 +383,7 @@ def function(
     reference : Var, optional
         Declared local function reference; None is valid except when entering a local
         body.
-    span : Span or source-location tuple, optional
+    span : SpanEntry, Span or source-location tuple, optional
         Location for the constructed result. None (the default) leaves explicit location
         unspecified; active source-call provenance is composed by the builder. Frames
         retain their location until finalization.
@@ -429,7 +433,7 @@ def arg(name: str, ty: Any, *, span: _Span = None) -> _ir.Var:
     ty : Type, Var, Buffer or callable
         Concrete rewritten annotation or existing native parameter. A callable
         annotation is evaluated; an existing variable retains identity.
-    span : Span or source-location tuple, optional
+    span : SpanEntry, Span or source-location tuple, optional
         Location for the constructed result. None (the default) leaves explicit location
         unspecified; active source-call provenance is composed by the builder. Frames
         retain their location until finalization.
@@ -471,7 +475,7 @@ def func_ret_type(annotation: Any, *, span: _Span = None) -> None:
     annotation : Type, Expr or callable
         Rewritten return annotation; expression annotations supply their type. None
         denotes a void/empty tuple return as supported by the dialect.
-    span : Span or source-location tuple, optional
+    span : SpanEntry, Span or source-location tuple, optional
         Location for the constructed result. None (the default) leaves explicit location
         unspecified; active source-call provenance is composed by the builder. Frames
         retain their location until finalization.
@@ -506,7 +510,7 @@ def if_(condition: Any, *, span: _Span = None) -> _frame.IfFrame:
     condition : Expr or bool
         Already-evaluated predicate; both branch bodies construct IR without testing it
         in Python.
-    span : Span or source-location tuple, optional
+    span : SpanEntry, Span or source-location tuple, optional
         Location for the constructed result. None (the default) leaves explicit location
         unspecified; active source-call provenance is composed by the builder. Frames
         retain their location until finalization.
@@ -545,7 +549,7 @@ def Then(*, span: _Span = None) -> _frame.ThenFrame:
 
     Parameters
     ----------
-    span : Span or source-location tuple, optional
+    span : SpanEntry, Span or source-location tuple, optional
         Location for the constructed result. None (the default) leaves explicit location
         unspecified; active source-call provenance is composed by the builder. Frames
         retain their location until finalization.
@@ -583,7 +587,7 @@ def Else(*, span: _Span = None) -> _frame.ElseFrame:
 
     Parameters
     ----------
-    span : Span or source-location tuple, optional
+    span : SpanEntry, Span or source-location tuple, optional
         Location for the constructed result. None (the default) leaves explicit location
         unspecified; active source-call provenance is composed by the builder. Frames
         retain their location until finalization.
@@ -624,7 +628,7 @@ def return_(value: Any = None, *, span: _Span = None) -> None:
     value : Any, optional
         Return operand. None (the default) means an empty tuple in Relax; TIRx requires
         an expression.
-    span : Span or source-location tuple, optional
+    span : SpanEntry, Span or source-location tuple, optional
         Location for the constructed result. None (the default) leaves explicit location
         unspecified; active source-call provenance is composed by the builder. Frames
         retain their location until finalization.
@@ -706,7 +710,7 @@ def assert_(
     message : str or assertion metadata, optional
         Empty text by default. Relax requires construction-time text. TIRx also accepts
         message parts or an (error_kind, parts) pair.
-    span : Span or source-location tuple, optional
+    span : SpanEntry, Span or source-location tuple, optional
         Location for the constructed result. None (the default) leaves explicit location
         unspecified; active source-call provenance is composed by the builder. Frames
         retain their location until finalization.
@@ -748,7 +752,7 @@ def for_(
         Source target names, including at most one ``*starred`` group. None (the default)
         retains constructor defaults. Native configuration expands/validates them before
         entry; names never control the entry return shape.
-    span : Span or source-location tuple, optional
+    span : SpanEntry, Span or source-location tuple, optional
         Location for the constructed result. None (the default) leaves explicit location
         unspecified; active source-call provenance is composed by the builder. Frames
         retain their location until finalization.
@@ -783,7 +787,7 @@ def break_(*, span: _Span = None) -> NoReturn:
 
     Parameters
     ----------
-    span : Span or source-location tuple, optional
+    span : SpanEntry, Span or source-location tuple, optional
         Location for the constructed result. None (the default) leaves explicit location
         unspecified; active source-call provenance is composed by the builder. Frames
         retain their location until finalization.
@@ -796,9 +800,9 @@ def break_(*, span: _Span = None) -> NoReturn:
 
     Notes
     -----
-    TIRx requires an enclosing native ForFrame or WhileFrame inside the current primitive
-    function, emits break for that loop and raises ValueError otherwise. Relax raises
-    TypeError. Explicit constexpr loops retain ordinary Python control flow.
+    TIRx emits the operation during construction; completed native well-formedness
+    validation checks its loop placement. Relax raises TypeError. Explicit constexpr
+    loops retain ordinary Python control flow.
 
     .. code:: python
 
@@ -815,7 +819,7 @@ def continue_(*, span: _Span = None) -> NoReturn:
 
     Parameters
     ----------
-    span : Span or source-location tuple, optional
+    span : SpanEntry, Span or source-location tuple, optional
         Location for the constructed result. None (the default) leaves explicit location
         unspecified; active source-call provenance is composed by the builder. Frames
         retain their location until finalization.
@@ -828,9 +832,9 @@ def continue_(*, span: _Span = None) -> NoReturn:
 
     Notes
     -----
-    TIRx requires an enclosing native ForFrame or WhileFrame inside the current primitive
-    function, emits continue for that loop and raises ValueError otherwise. Relax raises
-    TypeError. Explicit constexpr loops retain ordinary Python control flow.
+    TIRx emits the operation during construction; completed native well-formedness
+    validation checks its loop placement. Relax raises TypeError. Explicit constexpr
+    loops retain ordinary Python control flow.
 
     .. code:: python
 
@@ -853,7 +857,7 @@ def setitem(target: Any, index: Any, value: Any, *, span: _Span = None) -> NoRet
         Indices in written order; native buffer-store rules validate supported forms.
     value : Expr or scalar
         Once-evaluated stored value.
-    span : Span or source-location tuple, optional
+    span : SpanEntry, Span or source-location tuple, optional
         Location for the constructed result. None (the default) leaves explicit location
         unspecified; active source-call provenance is composed by the builder. Frames
         retain their location until finalization.
@@ -1043,7 +1047,7 @@ def While(condition: Any, *, span: _Span = None) -> NoReturn:
     ----------
     condition : Expr or bool
         Loop predicate expression, constructed once and evaluated by the IR at runtime.
-    span : Span or source-location tuple, optional
+    span : SpanEntry, Span or source-location tuple, optional
         Location for the constructed result. None (the default) leaves explicit location
         unspecified; active source-call provenance is composed by the builder. Frames
         retain their location until finalization.
@@ -1118,7 +1122,7 @@ def setattr(target: Any, name: str, value: Any, *, span: _Span = None) -> NoRetu
         Attribute identifier, evaluated by source syntax before this hook.
     value : Any
         Once-evaluated replacement or stored value.
-    span : Span or source-location tuple, optional
+    span : SpanEntry, Span or source-location tuple, optional
         Location for the constructed result. None (the default) leaves explicit location
         unspecified; active source-call provenance is composed by the builder. Frames
         retain their location until finalization.
@@ -1186,7 +1190,7 @@ def eq(lhs: Any, rhs: Any, *, span: _Span = None) -> _ir.Expr:
         Already-evaluated left operand.
     rhs : Expr, IterVar or scalar
         Already-evaluated right operand.
-    span : Span or source-location tuple, optional
+    span : SpanEntry, Span or source-location tuple, optional
         Location for the constructed result. None (the default) leaves explicit location
         unspecified; active source-call provenance is composed by the builder. Frames
         retain their location until finalization.
@@ -1224,7 +1228,7 @@ def ne(lhs: Any, rhs: Any, *, span: _Span = None) -> _ir.Expr:
         Already-evaluated left operand.
     rhs : Expr, IterVar or scalar
         Already-evaluated right operand.
-    span : Span or source-location tuple, optional
+    span : SpanEntry, Span or source-location tuple, optional
         Location for the constructed result. None (the default) leaves explicit location
         unspecified; active source-call provenance is composed by the builder. Frames
         retain their location until finalization.
@@ -1262,7 +1266,7 @@ def lt(lhs: Any, rhs: Any, *, span: _Span = None) -> _ir.Expr:
         Already-evaluated left operand.
     rhs : Expr, IterVar or scalar
         Already-evaluated right operand.
-    span : Span or source-location tuple, optional
+    span : SpanEntry, Span or source-location tuple, optional
         Location for the constructed result. None (the default) leaves explicit location
         unspecified; active source-call provenance is composed by the builder. Frames
         retain their location until finalization.
@@ -1300,7 +1304,7 @@ def le(lhs: Any, rhs: Any, *, span: _Span = None) -> _ir.Expr:
         Already-evaluated left operand.
     rhs : Expr, IterVar or scalar
         Already-evaluated right operand.
-    span : Span or source-location tuple, optional
+    span : SpanEntry, Span or source-location tuple, optional
         Location for the constructed result. None (the default) leaves explicit location
         unspecified; active source-call provenance is composed by the builder. Frames
         retain their location until finalization.
@@ -1338,7 +1342,7 @@ def gt(lhs: Any, rhs: Any, *, span: _Span = None) -> _ir.Expr:
         Already-evaluated left operand.
     rhs : Expr, IterVar or scalar
         Already-evaluated right operand.
-    span : Span or source-location tuple, optional
+    span : SpanEntry, Span or source-location tuple, optional
         Location for the constructed result. None (the default) leaves explicit location
         unspecified; active source-call provenance is composed by the builder. Frames
         retain their location until finalization.
@@ -1376,7 +1380,7 @@ def ge(lhs: Any, rhs: Any, *, span: _Span = None) -> _ir.Expr:
         Already-evaluated left operand.
     rhs : Expr, IterVar or scalar
         Already-evaluated right operand.
-    span : Span or source-location tuple, optional
+    span : SpanEntry, Span or source-location tuple, optional
         Location for the constructed result. None (the default) leaves explicit location
         unspecified; active source-call provenance is composed by the builder. Frames
         retain their location until finalization.
@@ -1465,11 +1469,11 @@ def scope_var_query_or_decl_(
     name : str, optional
         Source name for a scalar target. None (default) leaves its producer name.
         Aggregate target names do not prefix or rename individual members.
-    span : Span or source-location tuple, optional
+    span : SpanEntry, Span or source-location tuple, optional
         Source statement location, used for block-axis naming when name_span is
         omitted. None (default) leaves it unspecified. Other variables retain
         the producer location already supplied by source-call handling.
-    name_span : Span or source-location tuple, optional
+    name_span : SpanEntry, Span or source-location tuple, optional
         Location of the target identifier. None (the default) uses span; it can differ
         from the emitted statement location.
 

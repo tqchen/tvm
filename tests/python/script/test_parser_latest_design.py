@@ -307,3 +307,194 @@ def test_transpilation_restrictions_keep_original_source_ranges(
         expected.end_col_offset + 1,
     )
     assert not language.events
+
+
+def test_result_span_contract_keeps_opaque_context_and_direct_call_exemption(language, monkeypatch):
+    # Before: opaque(arg()), known_result(arg()), and kept = direct(arg()).
+    # Expected builder program: only the opaque call needs .ctx; each argument
+    # still has its own call context, and direct_call wins over result_span.
+    from dummy_builder import RecordingSpanEntry, Value
+
+    seen = []
+    kept = Value("kept", span=("producer",))
+
+    class Opaque:
+        @property
+        def __tvm_direct_call__(self):
+            pytest.fail("classification must not evaluate metadata descriptors")
+
+        @property
+        def __tvm_result_span__(self):
+            pytest.fail("classification must not evaluate metadata descriptors")
+
+        def __call__(self, value, *, span=None):
+            seen.append(("opaque", len(language.source_stack)))
+            return Value("opaque", (value,))
+
+    class Factory:
+        @registry.result_span
+        def make(self, value):
+            seen.append(("result", len(language.source_stack)))
+            return Value("result", (value,))
+
+    @registry.direct_call
+    @registry.result_span
+    def direct(value):
+        seen.append(("direct", len(language.source_stack)))
+        assert value == 3
+        return kept
+
+    def argument(value):
+        seen.append(("argument", value, len(language.source_stack)))
+        return value
+
+    def annotation():
+        pytest.fail("a direct-call assignment does not evaluate its annotation")
+
+    recompose = entry._recompose_builder
+
+    def capture(program, **kwargs):
+        tables = [
+            (name, value)
+            for name, value in kwargs["environment"].items()
+            if isinstance(value, list) and value and isinstance(value[0], RecordingSpanEntry)
+        ]
+        assert len(tables) == 1
+        name, table = tables[0]
+        used = {
+            node.slice.value
+            for node in ast.walk(program)
+            if isinstance(node, ast.Subscript)
+            and isinstance(node.value, ast.Name)
+            and node.value.id == name
+        }
+        assert used == set(range(len(table)))
+        return recompose(program, **kwargs)
+
+    monkeypatch.setattr(entry, "_recompose_builder", capture)
+    function = language.parse(
+        "@X.script\ndef main():\n    opaque(argument(1))\n"
+        "    known(argument(2))\n    kept: annotation() = direct(argument(3))\n",
+        opaque=Opaque(),
+        known=Factory().make,
+        direct=direct,
+        argument=argument,
+        annotation=annotation,
+    )
+    assert seen == [
+        ("argument", 1, 2),
+        ("opaque", 1),
+        ("argument", 2, 1),
+        ("result", 0),
+        ("argument", 3, 1),
+        ("direct", 0),
+    ]
+    assert [value.op for _, value in function.body] == ["opaque", "result"]
+    assert [value.span[-1][1] for _, value in function.body] == [3, 4]
+    assert kept.span == ("producer",)
+    assert not any(event[:2] == ("bind", "kept") for event in language.events)
+
+
+def test_native_view_keeps_producer_identity_name_and_span(monkeypatch):
+    # renamed = captured.view(mark()); assignment must not rename, attach a
+    # consumer span to, or bind the direct native producer's result.
+    from functools import wraps
+
+    from tvm import ir, tirx
+    from tvm.script.ir_builder import base
+    from tvm.tirx.script import builder as T
+
+    captured = T.Buffer((4, 4), "float32")
+    original = type(captured).view
+    seen, produced, observed = [], [], []
+    span = base.source_span(("producer.py", 7, 7, 2, 19))
+
+    @wraps(original)
+    def view(buffer, *args):
+        seen.append("view")
+        value = base.at_(span, original(buffer, *args))
+        produced.append((value, value.name))
+        return value
+
+    def mark():
+        seen.append("argument")
+        return 16
+
+    @registry.direct_call
+    def observe(value):
+        observed.append((value, value.span))
+
+    monkeypatch.setattr(type(captured), "view", view)
+    function = entry.parse(
+        "@T.prim_func\ndef main(A: captured):\n"
+        "    renamed = captured.view(mark())\n    observe(renamed)\n    renamed[0] = 0\n",
+        extra_vars={"captured": captured, "mark": mark, "observe": observe},
+    )
+    assert seen == ["argument", "view"]
+    value, name = produced[0]
+    assert len(produced) == len(observed) == 1
+    assert name != "renamed" and value.name == name
+    assert observed[0][0].same_as(value) and observed[0][1].same_as(span)
+    nodes = list(function.body.seq)
+    assert len(nodes) == 2 and not any(isinstance(node, tirx.Bind) for node in nodes)
+    assert nodes[0].buffer.same_as(value) and nodes[1].buffer.same_as(value)
+    ir.assert_structural_equal(nodes[0].data, captured.data)
+
+
+def test_native_concise_scopes_unwind_with_their_parent():
+    # bx = launch_thread(...); tx = launch_thread(...); evaluate(bx + tx).
+    # bind_ enters native children; parent callbacks close nested scopes in order.
+    from tvm import tirx
+    from tvm.script.ir_builder import IRBuilder
+    from tvm.tirx.script import builder as T
+
+    with IRBuilder() as builder:
+        with T.function() as parent:
+            T.func_name("main")
+            block = T.launch_thread("blockIdx.x", 2)
+            assert builder.frames[-1].same_as(parent)
+            bx = T.bind_(block, name="bx")
+            thread = T.launch_thread("threadIdx.x", 32)
+            tx = T.bind_(thread, name="tx")
+            assert builder.frames[-1].same_as(thread)
+            T.evaluate(bx + tx)
+        assert not builder.frames
+        # Callback storage is native and not exposed as Python frame state;
+        # empty active frames and the nested result establish actual unwinding.
+    body = builder.get().body
+    assert isinstance(body, tirx.AttrStmt) and isinstance(body.body, tirx.AttrStmt)
+    assert body.node.var.same_as(bx) and body.body.node.var.same_as(tx)
+    assert body.body.body.value.a.same_as(bx) and body.body.body.value.b.same_as(tx)
+
+
+@pytest.mark.parametrize("control", ["break", "continue"])
+def test_native_loop_control_is_checked_only_after_construction(monkeypatch, control):
+    # Before: break/continue outside a loop, with validation disabled or enabled.
+    # Expected builder program: construct the same native IR in both cases;
+    # the final native hook rejects invalid placement after the function frame exits.
+    from tvm import ir, tirx
+    from tvm.script.ir_builder import IRBuilder
+    from tvm.tirx.script import builder as T
+
+    check = T.check_well_formed_
+    checked = []
+
+    def check_completed(function):
+        assert not IRBuilder.is_in_scope()
+        checked.append(function)
+        return check(function)
+
+    monkeypatch.setattr(T, "check_well_formed_", check_completed)
+    source = f"@T.prim_func\ndef main():\n    {control}\n"
+    invalid = entry.parse(source, check_well_formed=False)
+    assert isinstance(invalid.body, tirx.Evaluate)
+    assert invalid.body.value.op.same_as(getattr(tirx, control + "_loop")().op)
+    assert checked == []
+    with pytest.raises(ValueError, match="requires an enclosing loop"):
+        entry.parse(source)
+    assert len(checked) == 1
+    ir.assert_structural_equal(checked[0], invalid)
+    valid = entry.parse(f"@T.prim_func\ndef main():\n    for i in range(2):\n        {control}\n")
+    assert isinstance(valid.body, tirx.For)
+    assert valid.body.body.value.op.same_as(invalid.body.value.op)
+    assert len(checked) == 2 and checked[-1] is valid
