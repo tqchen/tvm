@@ -501,11 +501,15 @@ def match_buffer(
     Example
     -------
     Match buffer from function parameter
+
     .. code-block:: python
+
         A = T.match_buffer(a, (128, 128), dtype="float32")
 
     Match buffer from Buffer subregion
+
     .. code-block:: python
+
         A = T.match_buffer(B[0:128, i * 128 : i * 128 + 128], (128, 128), dtype="float32")
 
     Parameters

@@ -337,7 +337,7 @@ def return_(value=None, *, span=None):
 
 
 def match_cast(value, ty, *, span=None):
-    """Construct a match-cast descriptor for bind_ to consume."""
+    """Construct a match-cast descriptor for ``bind_`` to consume."""
     if value is None:
         raise ValueError("The match-cast value cannot be None")
     ty = _type(ty)
