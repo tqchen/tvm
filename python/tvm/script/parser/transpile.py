@@ -133,15 +133,13 @@ class IRBuilderTranspiler(ast.NodeTransformer):
         )
 
     @staticmethod
-    def _definition(
-        name: str, parameters: list[str], body: list[ast.stmt], node: ast.AST
-    ) -> ast.FunctionDef:
+    def _definition(name: str, body: list[ast.stmt], node: ast.AST) -> ast.FunctionDef:
         definition = ast.copy_location(
             ast.FunctionDef(
                 name,
                 ast.arguments(
                     posonlyargs=[],
-                    args=[ast.arg(name) for name in parameters],
+                    args=[],
                     kwonlyargs=[],
                     kw_defaults=[],
                     defaults=[],
@@ -775,7 +773,7 @@ class IRBuilderTranspiler(ast.NodeTransformer):
         # Branch helper scoping keeps source names; mutable stores bind no locals.
         name = self.fresh(prefix)
         return [
-            self._definition(name, [], self.transform_statements(body), node),
+            self._definition(name, self.transform_statements(body), node),
             ast.copy_location(ast.Expr(ast.Call(ast.Name(name, ast.Load()), [], [])), node),
         ]
 
@@ -957,20 +955,18 @@ class IRBuilderTranspiler(ast.NodeTransformer):
 
     def visit_FunctionDef(self, node: ast.FunctionDef) -> ast.FunctionDef | list[ast.stmt]:
         # Source: nested @X.function def f(...): body
-        # Builder: declare fn; def build(fn): with fn: body; build(fn).
+        # Builder:
+        #   declare fn
+        #   with fn:
+        #       def build(): body
+        #       build()
         if self.host_expression:
             return node
         kind, _ = self.function_metadata(node, allow_python=True)
         if kind.python:
             return node
-        declaration, frame, body = self.function_program(node, local=True)
-        return [
-            *declaration,
-            ast.copy_location(
-                ast.Expr(ast.Call(ast.Name(body, ast.Load()), [ast.Name(frame, ast.Load())], [])),
-                node,
-            ),
-        ]
+        declaration, _, body = self.function_program(node, local=True)
+        return [*declaration, body]
 
     def visit_Nonlocal(self, node: ast.Nonlocal) -> ast.Pass:
         # Source closure declarations do not mutate the host closure during build.
@@ -1021,12 +1017,13 @@ class IRBuilderTranspiler(ast.NodeTransformer):
 
     def function_program(
         self, node: ast.FunctionDef, *, local: bool = False, declare: bool = True
-    ) -> tuple[list[ast.stmt], str, str]:
-        """Declare one native frame and emit one body function taking that frame.
+    ) -> tuple[list[ast.stmt], str, ast.With]:
+        """Declare a native frame and emit a lexical body helper inside its scope.
 
         Annotation aliases retain actual definition-local Python values; source
-        parameters are read from the frame when its body resumes. No factory,
-        callback record, copied parameter map or symbol owner is generated.
+        parameters are read from the enclosing frame while its zero-argument
+        helper runs. No factory, callback record, copied parameter map or symbol
+        owner is generated.
         """
         from . import jit_support
 
@@ -1274,7 +1271,8 @@ class IRBuilderTranspiler(ast.NodeTransformer):
             )
         else:
             # Source: a standalone nonrecursive function.
-            # Builder: fn = X.function(); build(fn) enters once for signature+body.
+            # Builder: fn = X.function(); with fn: define/call a helper for
+            # both signature and body, entering this ordinary frame just once.
             statements.append(
                 ast.copy_location(ast.Assign([ast.Name(frame, ast.Store())], constructor), node)
             )
@@ -1346,14 +1344,7 @@ class IRBuilderTranspiler(ast.NodeTransformer):
         self.body_annotation_aliases = body_annotation_aliases
         body.extend(self.transform_statements(node.body))
         self.body_annotation_aliases = old_body_annotations
-        resumed = ast.copy_location(
-            ast.With(
-                [ast.withitem(ast.Name(frame, ast.Load()))],
-                body if declare else [*declaration, *body],
-            ),
-            node,
-        )
-        definition = self._definition(body_name, [frame], [resumed], node)
+        definition = self._definition(body_name, body if declare else [*declaration, *body], node)
         if not local:
             definition._tvm_source_name = node.name
             definition._tvm_signature_names = (
@@ -1361,9 +1352,21 @@ class IRBuilderTranspiler(ast.NodeTransformer):
             )
             if self.module_name:
                 definition._tvm_signature_names.add(self.module_name)
-        statements.append(definition)
+        # Source: def f(...): body
+        # Builder:
+        #   with fn:
+        #       def build(): body
+        #       build()
+        # The helper owns only Python lexical scope; the enclosing with owns
+        # native frame entry/exit, including unwinding a failed body.
+        invocation = ast.copy_location(
+            ast.Expr(ast.Call(ast.Name(body_name, ast.Load()), [], [])), node
+        )
+        resumed = ast.copy_location(
+            ast.With([ast.withitem(ast.Name(frame, ast.Load()))], [definition, invocation]), node
+        )
         self.dialect_prefix, self.current_scope, self.annotation_aliases = old
-        return statements, frame, body_name
+        return statements, frame, resumed
 
     def program(self, tree: ast.Module) -> tuple[ast.Module, str]:
         """Emit direct native module construction, declarations, then bodies."""
@@ -1485,22 +1488,22 @@ class IRBuilderTranspiler(ast.NodeTransformer):
                 )
                 python_functions.append((function.name, host))
                 continue
-            declaration, frame, callback = self.function_program(function, declare=declare)
+            declaration, frame, definition = self.function_program(function, declare=declare)
             body.extend(declaration)
-            definitions.append(
-                ast.copy_location(
-                    ast.Expr(
-                        ast.Call(ast.Name(callback, ast.Load()), [ast.Name(frame, ast.Load())], [])
-                    ),
-                    function,
-                )
-            )
+            definitions.append(definition)
             frames.append(frame)
         body.extend(definitions)
         # Source: class Module: functions...
         # Builder:
         #   with IRBuilder() as builder:
-        #       with I.ir_module(): declarations; build_f(fn); build_g(gn)
+        #       with I.ir_module():
+        #           declarations
+        #           with fn:
+        #               def build_f(): body_f
+        #               build_f()
+        #           with gn:
+        #               def build_g(): body_g
+        #               build_g()
         #   result = builder.get()
         module = ast.copy_location(
             ast.With(
