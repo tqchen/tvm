@@ -20,12 +20,12 @@ from __future__ import annotations
 
 import ast
 import gc
+import inspect
 import weakref
 from contextlib import contextmanager
 
 import pytest
 
-from tvm.error import DiagnosticError
 from tvm.script import ir as I
 from tvm.script.parser import entry
 
@@ -115,7 +115,7 @@ def test_owned_ast_context_and_builder_are_temporary(language, monkeypatch, fail
         if failure:
             try:
                 language.parse(source)
-            except DiagnosticError:
+            except NameError:
                 pass
             else:
                 pytest.fail("expected failed construction")
@@ -130,27 +130,40 @@ def test_owned_ast_context_and_builder_are_temporary(language, monkeypatch, fail
         )
 
 
-def test_expression_exception_keeps_original_source_call_traceback(language):
+class FixedFailure(ValueError):
+    def __setattr__(self, name, value):
+        if name == "__tvm_script_location__":
+            raise AttributeError("exception metadata is immutable")
+        super().__setattr__(name, value)
+
+
+@pytest.mark.parametrize("error_type", [ValueError, FixedFailure])
+def test_expression_exception_keeps_original_source_call_traceback(spanned_language, error_type):
     # Before: a normal Python helper fails within a generated function body.
     # Expected builder program: its real call frame retains the source expression range.
     import traceback
 
-    original = ValueError("original expression failure")
+    # Exercise the production shared span boundary as well as the generated call.
+    language = spanned_language
+    original = error_type("original expression failure")
 
     def explode():
         raise original
 
     source = "@X.script\ndef main():\n    X.record(explode())\n"
     filename = "expression_traceback.py"
-    with pytest.raises(DiagnosticError) as caught:
+    with pytest.raises(error_type) as caught:
         entry.parse(source, extra_vars={"X": language.X, "explode": explode}, filename=filename)
-    cause = caught.value.__cause__
-    assert cause is original
-    assert type(cause) is ValueError
-    frames = traceback.extract_tb(cause.__traceback__)
+    assert caught.value is original
+    assert type(caught.value) is error_type
+    frames = traceback.extract_tb(caught.value.__traceback__)
     calls = [frame for frame in frames if frame.filename == filename and frame.lineno == 3]
     assert calls
-    if calls[-1].colno is not None:
+    helper_frames = [frame for frame in frames if frame.name == "explode"]
+    assert len(helper_frames) == 1
+    assert helper_frames[0].filename == inspect.getsourcefile(explode)
+    assert helper_frames[0].lineno == inspect.getsourcelines(explode)[1] + 1
+    if getattr(calls[-1], "colno", None) is not None:
         assert (calls[-1].colno, calls[-1].end_lineno, calls[-1].end_colno) == (13, 3, 22)
 
 

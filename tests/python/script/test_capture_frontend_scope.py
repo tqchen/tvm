@@ -23,7 +23,7 @@ from dummy_builder import Function
 from tvm import ir
 from tvm.script import ir as I
 from tvm.script.parser import entry
-from tvm.script.parser.source import Source
+from tvm.script.parser.inspect_source import Source
 from tvm.tirx.script.jit import make_jit
 
 VALUE = 1

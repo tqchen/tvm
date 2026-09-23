@@ -18,10 +18,10 @@
 
 import ast
 import copy
+import traceback
 
 import pytest
 
-from tvm.error import DiagnosticError
 from tvm.script.ir_builder import IRBuilder
 from tvm.script.parser import entry
 
@@ -141,13 +141,16 @@ def main(x: X.tensor((4,))):
     observe("outer_after", x, x, scope)
 """
     if fail:
-        with pytest.raises(DiagnosticError) as caught:
+        with pytest.raises(ValueError) as caught:
             language.parse(source, observe=observe)
-        assert caught.value.__cause__ is failure
+        assert caught.value is failure
         source_line = next(
             index for index, line in enumerate(source.splitlines(), 1) if 'observe("inner"' in line
         )
-        assert f"dummy.py:{source_line}:" in str(caught.value)
+        assert any(
+            frame.filename == "dummy.py" and frame.lineno == source_line
+            for frame in traceback.extract_tb(caught.value.__traceback__)
+        )
     else:
         result = language.parse(source, observe=observe)
         assert result is language.functions["main"]

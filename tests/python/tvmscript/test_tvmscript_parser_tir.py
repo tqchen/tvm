@@ -134,7 +134,7 @@ def main(A: T.Buffer(("n",), "float32")):
 
 
 def test_tir_direct_use_before_string_definition_is_undefined():
-    with pytest.raises(tvm.error.DiagnosticError):
+    with pytest.raises(NameError):
         tvm.script.from_source(
             """
 @T.prim_func
@@ -162,12 +162,12 @@ class Module:
     ],
 )
 def test_tir_direct_later_prim_param_is_undefined(source):
-    with pytest.raises(tvm.error.DiagnosticError):
+    with pytest.raises(NameError):
         tvm.script.from_source(source)
 
 
 def test_tir_return_annotation_does_not_define_symbolic_var():
-    with pytest.raises(tvm.error.DiagnosticError):
+    with pytest.raises(ValueError):
         tvm.script.from_source(
             """
 @T.prim_func
@@ -228,7 +228,7 @@ def test_tir_func_private_attrs():
 
 
 def test_tir_func_private_manual_global_symbol_fail():
-    with pytest.raises(tvm.error.DiagnosticError):
+    with pytest.raises(tvm.error.InternalError):
 
         @T.prim_func(private=True, s_tir=True)
         def matmul(a: T.handle, b: T.handle, c: T.handle) -> None:

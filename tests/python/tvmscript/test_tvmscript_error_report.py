@@ -15,8 +15,10 @@
 # specific language governing permissions and limitations
 # under the License.
 # ruff: noqa: E741, F821, F841, RUF005
+import ast
 import inspect
 import re
+import traceback
 
 import pytest
 
@@ -27,39 +29,42 @@ from tvm.script import from_source
 from tvm.script import tirx as T
 
 
-def check_error(func, rel_lineno):
-    """check if TIR script throws error"""
-    check_error_re = re.compile(r"^.*# check_error: (.+)$")
+def check_error(func, rel_lineno, error_type):
+    """Check the original exception class and its real source location."""
     source_code = inspect.getsource(func)
     indent = len(re.match(r"^\s*", source_code).group(0))
     source_code = "@T.prim_func(s_tir=True)\n" + "\n".join(
         line[indent:] for line in source_code.splitlines()
     )
-    # Parse errors now raise DiagnosticError with formatted source location.
-    with pytest.raises(tvm.error.DiagnosticError) as execinfo:
+    with pytest.raises(error_type) as caught:
         from_source(source_code)
-    err_str = str(execinfo.value)
-    if rel_lineno is None:
-        return
-    # The error message contains " --> <source>:<lineno>:<col>" formatted by Diagnostics.error().
-    # Accept either rel_lineno or rel_lineno+1 to match old tolerance.
-    assert f":{rel_lineno}:" in err_str or f":{rel_lineno + 1}:" in err_str, (
-        f"Expected error message to contain line {rel_lineno}, got:\n{err_str}"
-    )
-    error_line = source_code.split("\n")[rel_lineno]
-    m = check_error_re.match(error_line)
-    if m:
-        expected_error_text = m.group(1)
-        assert expected_error_text in err_str, (
-            f'check_error expects "{expected_error_text}" in error: {err_str}'
-        )
+    assert type(caught.value) is error_type
+    if isinstance(caught.value, SyntaxError):
+        assert caught.value.filename == "<str>"
+        assert caught.value.lineno == rel_lineno + 1
+        assert caught.value.offset is not None
+        assert caught.value.end_lineno >= caught.value.lineno
+        assert caught.value.end_offset is not None
+    else:
+        frames = [
+            frame
+            for frame in traceback.extract_tb(caught.value.__traceback__)
+            if frame.filename == "<str>"
+        ]
+        assert frames
+        if rel_lineno is not None:
+            assert frames[-1].lineno == rel_lineno + 1
+    if rel_lineno is not None:
+        match = re.match(r"^.*# check_error: (.+)$", source_code.splitlines()[rel_lineno])
+        if match:
+            assert match.group(1) in str(caught.value)
 
 
 def test_buffer_bind():
     def buffer_bind_missing_args(a: T.handle) -> None:
         A = T.match_buffer((16, 16), "float32")  # error
 
-    check_error(buffer_bind_missing_args, 2)
+    check_error(buffer_bind_missing_args, 2, tvm.error.InternalError)
 
 
 def test_undefined_buffer():
@@ -70,7 +75,7 @@ def test_undefined_buffer():
             for j in T.serial(0, 16):
                 C[i, j] = 0.0  # error
 
-    check_error(undefined_buffer, 6)
+    check_error(undefined_buffer, 6, NameError)
 
 
 def test_unsupported_function_call():
@@ -81,14 +86,14 @@ def test_unsupported_function_call():
             for j in T.serial(0, 16):
                 A[i, j] = 0.0
 
-    check_error(unsupported_function_call, 4)
+    check_error(unsupported_function_call, 4, AttributeError)
 
 
 def test_missing_type_annotation():
     def missing_type_annotation(a) -> None:  # error
         T.evaluate(0.0)
 
-    check_error(missing_type_annotation, 1)
+    check_error(missing_type_annotation, 1, SyntaxError)
 
 
 def test_invalid_for_function():
@@ -98,7 +103,7 @@ def test_invalid_for_function():
             for j in T.serial(0, 16):
                 A[i, j] = 0.0
 
-    check_error(invalid_for_function, 4)
+    check_error(invalid_for_function, 3, TypeError)
 
 
 def test_invalid_block_function():
@@ -108,14 +113,14 @@ def test_invalid_block_function():
         with T.evaluate(0.0):  # error
             T.evaluate(1.0)
 
-    check_error(invalid_block_function, 4)
+    check_error(invalid_block_function, 4, TypeError)
 
 
 def test_return_not_allowed():
     def return_not_allowed(a: T.handle) -> None:
         return T.evaluate(0)  # error
 
-    check_error(return_not_allowed, 2)
+    check_error(return_not_allowed, 2, NotImplementedError)
 
 
 def test_no_body():
@@ -123,7 +128,7 @@ def test_no_body():
         A = T.match_buffer(a, (16, 16), "float32")
         T.realize(A, "")  # error
 
-    check_error(no_body, 3)
+    check_error(no_body, 3, AttributeError)
 
 
 def test_inconsistent_binding():
@@ -137,8 +142,8 @@ def test_inconsistent_binding():
             vi, vj = T.axis.remap("S", [i, j])  # error
             T.evaluate(1.0)
 
-    check_error(inconsistent_binding_value, 3)
-    check_error(inconsistent_binding_type, 3)
+    check_error(inconsistent_binding_value, 3, tvm.error.InternalError)
+    check_error(inconsistent_binding_type, 3, tvm.error.InternalError)
 
 
 def test_error_remap_args():
@@ -154,8 +159,8 @@ def test_error_remap_args():
                 vi, vj = T.axis.remap("SS", [i + j, j])  # error
                 T.evaluate(1.0)
 
-    check_error(error_remap_type, 4)
-    check_error(error_remap_value, 4)
+    check_error(error_remap_type, 4, tvm.error.InternalError)
+    check_error(error_remap_value, 4, tvm.error.InternalError)
 
 
 def test_invalid_block_axes():
@@ -166,7 +171,7 @@ def test_invalid_block_axes():
                 vi = T.axis.S(i, A)  # error
                 T.evaluate(1.0)
 
-    check_error(invalid_block_axes, 5)
+    check_error(invalid_block_axes, 5, TypeError)
 
 
 def test_duplicate_block_axes():
@@ -183,8 +188,8 @@ def test_duplicate_block_axes():
                 vi, vi = T.axis.remap("SS", [i, j])  # error
                 T.evaluate(1.0)
 
-    check_error(duplicate_block_axes, 5)
-    check_error(duplicate_block_axes_remap, 4)
+    check_error(duplicate_block_axes, 5, ValueError)
+    check_error(duplicate_block_axes_remap, 4, ValueError)
 
 
 def test_miss_block_bind():
@@ -194,7 +199,7 @@ def test_miss_block_bind():
                 vi = T.axis.S(i)  # error
                 T.evaluate(1.0)
 
-    check_error(miss_block_bind_value, 4)
+    check_error(miss_block_bind_value, 4, TypeError)
 
 
 def test_invalid_loop_var():
@@ -202,15 +207,15 @@ def test_invalid_loop_var():
         for i, j in range(0, 16):  # error
             T.evaluate(1.0)
 
-    check_error(invalid_loop_var, 2)
+    check_error(invalid_loop_var, 2, ValueError)
 
 
 def test_inconsistent_grid():
     def inconsistent_grid(A: T.Buffer(16)) -> None:
-        for i in T.grid(16, 16):  # valid, i is a tuple (iter0, iter1)
-            T.evaluate(A[i])  # error
+        for i in T.grid(16, 16):  # error: one target cannot unpack two loop variables
+            T.evaluate(A[i])
 
-    check_error(inconsistent_grid, 3)
+    check_error(inconsistent_grid, 2, ValueError)
 
 
 def test_invalid_match_buffer_region():
@@ -221,7 +226,7 @@ def test_invalid_match_buffer_region():
                 A = T.match_buffer(vi)  # error
                 T.evaluate(1.0)
 
-    check_error(invalid_match_buffer_region, 5)
+    check_error(invalid_match_buffer_region, 5, ValueError)
 
 
 def test_buffer_rebinding_preserves_distinct_allocations():
@@ -292,12 +297,12 @@ def test_duplicate_block_signature():
                 T.sblock_attr({"key1": "block2"})  # error
                 T.evaluate(1.0)
 
-    check_error(duplicate_reads, 7)
-    check_error(duplicate_writes, 7)
-    check_error(duplicate_predicate, 6)
-    check_error(duplicate_init, 7)
-    check_error(duplicate_axes, 5)
-    check_error(duplicate_sblock_attrs_with_same_key_diff_value, 6)
+    check_error(duplicate_reads, 7, tvm.error.InternalError)
+    check_error(duplicate_writes, 7, tvm.error.InternalError)
+    check_error(duplicate_predicate, 6, tvm.error.InternalError)
+    check_error(duplicate_init, 7, ValueError)
+    check_error(duplicate_axes, 5, ValueError)
+    check_error(duplicate_sblock_attrs_with_same_key_diff_value, 6, tvm.error.InternalError)
 
 
 def test_opaque_access_during_complete():
@@ -307,7 +312,7 @@ def test_opaque_access_during_complete():
             with T.sblock():
                 T.evaluate(T.call_extern("dummy_extern_function", A.data, dtype="int32"))
 
-    check_error(opaque_access_during_complete, None)
+    check_error(opaque_access_during_complete, None, ValueError)
 
 
 def test_convert_slice_to_bufferload():
@@ -318,7 +323,7 @@ def test_convert_slice_to_bufferload():
                 vi, vj = T.axis.remap("SS", [i, j])
                 A[vi, vj] = A[vi : vi + 2, vj] + 1  # error
 
-    check_error(convert_slice_to_bufferload, 6)
+    check_error(convert_slice_to_bufferload, 6, TypeError)
 
 
 def test_tvm_exception_catch_from_special_stmt():
@@ -326,7 +331,7 @@ def test_tvm_exception_catch_from_special_stmt():
         A = T.sblock_alloc_buffer("(128, 128)", "float32")  # error
         T.evaluate(1.0)
 
-    check_error(special_stmt_except, 2)
+    check_error(special_stmt_except, 2, TypeError)
 
 
 def test_tvm_exception_catch_from_scope_handler():
@@ -334,7 +339,7 @@ def test_tvm_exception_catch_from_scope_handler():
         for i in T.serial("1", "1"):  # error
             T.evaluate(1)
 
-    check_error(scope_handler_except, 2)
+    check_error(scope_handler_except, 2, TypeError)
 
 
 def test_tvm_exception_catch_from_bare_intrin():
@@ -342,7 +347,7 @@ def test_tvm_exception_catch_from_bare_intrin():
         A = T.match_buffer(a, (16, 16), "float32")
         T.evaluate(A)  # error
 
-    check_error(intrin_except_unassign, 3)
+    check_error(intrin_except_unassign, 3, tvm.error.InternalError)
 
 
 def test_tvm_exception_catch_from_assigned_intrin():
@@ -350,7 +355,7 @@ def test_tvm_exception_catch_from_assigned_intrin():
         A = T.match_buffer(a, (16, 16), "float32")
         A[0, 0] = A[A]  # error
 
-    check_error(intrin_except_assign, 3)
+    check_error(intrin_except_assign, 3, tvm.error.InternalError)
 
 
 def test_match_buffer_shape_mismatch():
@@ -366,7 +371,7 @@ def test_match_buffer_shape_mismatch():
                 for jj in range(0, 4):
                     sub_A[i, j * 4 + jj] = 1
 
-    check_error(buffer_shape_mismatch, 7)
+    check_error(buffer_shape_mismatch, 7, tvm.error.InternalError)
 
 
 def test_high_dim_store():
@@ -376,7 +381,7 @@ def test_high_dim_store():
             for i, j in T.grid(16, 16):
                 B[i, j] = 1.0  # error: Store is only allowed with one index
 
-    check_error(high_dim_store, 5)
+    check_error(high_dim_store, 5, tvm.error.InternalError)
 
 
 def test_block_has_option_vars():
@@ -384,7 +389,7 @@ def test_block_has_option_vars():
         with T.sblock("root") as x:  # error: block does not support option_vars
             T.evaluate(0.0)
 
-    check_error(block_has_option_vars, 2)
+    check_error(block_has_option_vars, 2, TypeError)
 
 
 def test_implicit_root_has_attrs():
@@ -408,11 +413,11 @@ def test_implicit_root_has_attrs():
         v = T.axis.S(0, 0)  # error: implicit root does not support axis define
         T.evaluate(0.0)
 
-    check_error(implicit_root_has_read, 2)
-    check_error(implicit_root_has_write, 2)
-    check_error(implicit_root_has_attrs, 2)
-    check_error(implicit_root_has_predicate, 2)
-    check_error(implicit_root_has_axes, 2)
+    check_error(implicit_root_has_read, 2, ValueError)
+    check_error(implicit_root_has_write, 2, ValueError)
+    check_error(implicit_root_has_attrs, 2, tvm.error.InternalError)
+    check_error(implicit_root_has_predicate, 2, ValueError)
+    check_error(implicit_root_has_axes, 2, tvm.error.InternalError)
 
 
 @T.prim_func(s_tir=True)
@@ -502,7 +507,7 @@ def test_load_var():
         d = T.float32()
         d[2] = d[2, 1]  # error cannot provide two indices to load
 
-    check_error(load_var_multiple, 3)
+    check_error(load_var_multiple, 3, TypeError)
 
 
 def test_store_var():
@@ -510,7 +515,7 @@ def test_store_var():
         d = T.float32()
         d[2, 1] = d[1]  # error cannot provide two indices to store
 
-    check_error(store_var_multiple, 3)
+    check_error(store_var_multiple, 3, TypeError)
 
 
 def test_load_handle():
@@ -518,7 +523,7 @@ def test_load_handle():
         h_ = T.match_buffer(h, [1])
         h_[0] = h[0]  # error cannot load from handle
 
-    check_error(load_handle, 3)
+    check_error(load_handle, 3, TypeError)
 
 
 def test_store_handle():
@@ -526,7 +531,7 @@ def test_store_handle():
         h_ = T.match_buffer(h, [1])
         h[0] = h_[0]  # error cannot store to handle
 
-    check_error(store_handle, 3)
+    check_error(store_handle, 3, TypeError)
 
 
 def test_binop_bad_ast_type():
@@ -534,7 +539,7 @@ def test_binop_bad_ast_type():
         h_ = T.match_buffer(h, [1])
         h_[0] = h + [2]  # error rhs should be a primexpr
 
-    check_error(binop_bad_ast_type, 3)
+    check_error(binop_bad_ast_type, 3, TypeError)
 
 
 def test_binop_bad_type():
@@ -542,7 +547,7 @@ def test_binop_bad_type():
         h_ = T.match_buffer(h, [1])
         h_[0] = h + 2  # error lhs and rhs should be the same type
 
-    check_error(binop_bad_type, 3)
+    check_error(binop_bad_type, 3, TypeError)
 
 
 def test_non_integer_typed_block_iter():
@@ -550,7 +555,7 @@ def test_non_integer_typed_block_iter():
         with T.sblock():
             i = T.axis.S(0.1, 0.1)  # error IterVar requires an integer dtype
 
-    check_error(non_integer_typed_block_iter, 3)
+    check_error(non_integer_typed_block_iter, 3, tvm.error.InternalError)
 
 
 def test_illegal_buffer_slice():
@@ -573,9 +578,9 @@ def test_illegal_buffer_slice():
         for i in range(4):
             T.evaluate(A[0:i:1])  # error
 
-    check_error(strided_buffer_region, 3)
-    check_error(access_reversed_slice, 3)
-    check_error(access_non_const_slice_length, 3)
+    check_error(strided_buffer_region, 3, tvm.error.InternalError)
+    check_error(access_reversed_slice, 3, tvm.error.InternalError)
+    check_error(access_non_const_slice_length, 3, tvm.error.InternalError)
 
 
 def test_syntax_sugar_fail():
@@ -584,13 +589,11 @@ def test_syntax_sugar_fail():
         for i in T.thread_binding(128, 128):
             A[i] = A[i] * 2.0
 
-    check_error(loop_syntax_sugar_fail, 3)
+    check_error(loop_syntax_sugar_fail, 3, ValueError)
 
 
 def test_multi_line_error_report():
-    """A parse error whose offending AST node spans several physical source
-    lines must render ALL spanned lines (each with its own gutter line number
-    and an underline covering the span), not just the first line."""
+    """An original builder failure retains the full source-call traceback range."""
 
     # The offending call (`T.axis.remap(...)`) is deliberately split across
     # four physical lines so its AST node spans lineno..end_lineno > lineno.
@@ -607,69 +610,26 @@ def test_multi_line_error_report():
         ]
     )
 
-    with pytest.raises(tvm.error.DiagnosticError) as execinfo:
+    with pytest.raises(tvm.error.InternalError) as caught:
         from_source(source_code)
-    err_str = str(execinfo.value)
-
-    # All four spanned source lines must appear in the rendered snippet.
-    assert "T.axis.remap(" in err_str, err_str
-    assert '"S",' in err_str, err_str
-    assert "[i, j]," in err_str, err_str
-    # The trailing `)` closing line is also part of the span.
-    rendered_lines = err_str.splitlines()
-    assert any(" 7 " in line and ")" in line for line in rendered_lines), err_str
-    # The underline carets must be present on more than one line (multi-line).
-    marker_lines = [line for line in rendered_lines if "^" in line]
-    assert len(marker_lines) >= 2, err_str
-    # The gutter must show distinct line numbers for the spanned lines.
-    assert " 4 " in err_str and " 5 " in err_str and " 6 " in err_str, err_str
-
-
-def test_format_source_snippet_multi_line():
-    """Unit-level check that _format_source_snippet renders every line in a
-    multi-line span, with the underline covering start-col..EOL on the first
-    line, full interior lines, and col-1..end-col on the last line."""
-    from tvm.script.parser.diagnostics import _format_source_snippet
-
-    source_lines = [
-        "first ignored line\n",
-        "    foo(bar,\n",
-        "        baz,\n",
-        "        qux)\n",
-        "last ignored line\n",
+    frames = [
+        frame
+        for frame in traceback.extract_tb(caught.value.__traceback__)
+        if frame.filename == "<str>"
     ]
-    # Span lines 2..4 (1-based), starting at col 5 ('foo'), ending at col 13
-    # (exclusive) on line 4.
-    snippet = _format_source_snippet(
-        source_lines, lineno=2, col_offset=5, end_lineno=4, end_col_offset=13
-    )
-    lines = snippet.splitlines()
-    # All three spanned source lines must be present.
-    assert any("foo(bar," in line for line in lines), snippet
-    assert any("baz," in line for line in lines), snippet
-    assert any("qux)" in line for line in lines), snippet
-    # Underline carets present on the first line under 'foo(bar,'.
-    assert "^" in snippet, snippet
-    # The line numbers 2, 3, 4 appear in the gutter.
-    assert " 2 |" in snippet and " 3 |" in snippet and " 4 |" in snippet, snippet
-
-
-def test_format_source_snippet_single_line_unchanged():
-    """A single-line span (end_lineno == lineno) underlines only the
-    [col_offset, end_col_offset) columns on that one line."""
-    from tvm.script.parser.diagnostics import _format_source_snippet
-
-    source_lines = ["ignored\n", "    abc + def\n", "ignored\n"]
-    # Underline just 'abc' (cols 5..8 exclusive) on line 2.
-    snippet = _format_source_snippet(
-        source_lines, lineno=2, col_offset=5, end_lineno=2, end_col_offset=8
-    )
-    lines = snippet.splitlines()
-    # Exactly one source-text line and one marker line (plus the leading gutter).
-    text_lines = [line for line in lines if "abc + def" in line]
-    assert len(text_lines) == 1, snippet
-    marker_line = next(line for line in lines if "^" in line)
-    assert marker_line.count("^") == 3, snippet
+    assert frames[-1].lineno == 4
+    if getattr(frames[-1], "colno", None) is not None:
+        call = next(
+            node
+            for node in ast.walk(ast.parse(source_code))
+            if isinstance(node, ast.Call) and node.lineno == 4
+        )
+        assert (
+            frames[-1].lineno,
+            frames[-1].colno,
+            frames[-1].end_lineno,
+            frames[-1].end_colno,
+        ) == (call.lineno, call.col_offset, call.end_lineno, call.end_col_offset)
 
 
 if __name__ == "__main__":

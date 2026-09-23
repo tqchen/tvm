@@ -105,8 +105,6 @@ def test_iterator_comparison_keeps_written_operand_order(operator, kind):
 
 @pytest.mark.parametrize("operator,kind", OPERATORS)
 def test_unmarked_host_comparison_never_calls_python_overload(operator, kind):
-    from tvm.error import DiagnosticError
-
     calls = []
 
     class Host:
@@ -130,7 +128,7 @@ def test_unmarked_host_comparison_never_calls_python_overload(operator, kind):
     )
     decorator = "T.prim_func"
     statement = "T.evaluate(left " + operator + " right)"
-    with pytest.raises(DiagnosticError, match="(PrimExpr|primitive|convert|type)"):
+    with pytest.raises(TypeError, match="(PrimExpr|primitive|convert|type)"):
         parser.parse(
             f"@{decorator}\ndef main():\n    {statement}\n",
             extra_vars={"left": Host(), "right": Host()},

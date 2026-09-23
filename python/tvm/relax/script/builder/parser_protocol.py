@@ -1425,7 +1425,7 @@ def check_well_formed_(function: _relax.Function) -> None:
     whole-module checks, s_tir verification, then TIRx verification on each non-s_tir
     primitive function, preserving cross-function checks. Dialect X hooks validate a
     standalone completed function under that dialect policy. Invalid IR raises ValueError
-    retaining native details; the parser converts it to source diagnostics.
+    retaining native details; the parser propagates the exception unchanged.
     check_well_formed=False omits the generated call entirely.
 
     .. code:: python

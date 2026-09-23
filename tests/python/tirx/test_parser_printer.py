@@ -757,7 +757,7 @@ def test_meta_class_constructor_rejects_unowned_resource():
         def __init__(self):
             tmp = T.alloc_buffer((1,), "int32", scope="local")
 
-    with pytest.raises(tvm.error.DiagnosticError):
+    with pytest.raises(ValueError):
 
         @T.prim_func
         def test():
@@ -1088,11 +1088,10 @@ def func():
     v: T.int32
     v = v + T.int32(1)
 """
-    # The ValueError propagates through the parser framework which wraps it
-    # into a DiagnosticError.  Before the fix the broad ``except Exception``
-    # would silently swallow it and fall through to eval_assign.
+    # The ValueError propagates unchanged. A broad ``except Exception`` here
+    # previously swallowed it and fell through to eval_assign.
     with patch("tvm.tirx.script.builder.buffer_store", side_effect=bomb):
-        with pytest.raises(tvm.error.DiagnosticError):
+        with pytest.raises(ValueError, match="boom"):
             from_source(src)
 
 
@@ -1251,7 +1250,7 @@ from tvm.script import tirx as T
 def func():
     x: T.handle = T.int64(0)
 """
-    with pytest.raises(tvm.error.DiagnosticError):
+    with pytest.raises(tvm.error.InternalError):
         from_source(src_handle)
 
     # 3. Banned: non-PrimType annotation without T.let
@@ -1262,7 +1261,7 @@ from tvm.ir import PointerType, PrimType
 def func():
     x: T.Var(name="x", ty=PointerType(PrimType("float16"))) = T.int64(0)
 """
-    with pytest.raises(tvm.error.DiagnosticError):
+    with pytest.raises(tvm.error.InternalError):
         from_source(src_ptr)
 
     # 4. An explicit mutable scalar declaration retains updates — round-trip
@@ -1503,7 +1502,7 @@ def test_buffer_local_compose_layout_printer_roundtrip():
 def test_buffer_local_inference_without_parent_layout_has_clear_diagnostic():
     """Shape inference requires a parent storage layout."""
 
-    with pytest.raises(tvm.error.DiagnosticError, match="parent buffer has layout=None"):
+    with pytest.raises(ValueError, match="parent buffer has layout=None"):
         # fmt: off
         @T.prim_func
         def func() -> None:
@@ -1632,7 +1631,7 @@ def test_buffer_local_printer_preserves_inherited_metadata():
 def test_buffer_local_rejects_shape_that_does_not_match_physical_span():
     """An explicit local shape product must preserve the physical span."""
 
-    with pytest.raises(tvm.error.DiagnosticError, match="physical storage span 6 per thread"):
+    with pytest.raises(ValueError, match="physical storage span 6 per thread"):
         # fmt: off
         @T.prim_func
         def func() -> None:
@@ -2628,7 +2627,7 @@ def test_buffer_sub_tmem_rejects_partial_column_offset():
 
         return func
 
-    with pytest.raises(tvm.error.DiagnosticError, match="aligned to a physical 32-bit column"):
+    with pytest.raises(ValueError, match="aligned to a physical 32-bit column"):
         build()
 
 

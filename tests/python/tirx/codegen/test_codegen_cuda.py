@@ -678,7 +678,7 @@ def test_cuda_ldg_vector_dtype_codegen(dtype, suffix, c_type, vec_base, vec):
 
 
 def test_cuda_ldg_vector_rejects_unsupported_dtype():
-    with pytest.raises((ValueError, tvm.error.DiagnosticError), match="Unsupported vector CUDA"):
+    with pytest.raises(ValueError, match="Unsupported vector CUDA"):
         _get_source(_cuda_ldg_vector_kernel("float16", "v2"))
 
 

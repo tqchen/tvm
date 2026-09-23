@@ -21,7 +21,6 @@ import pytest
 
 import tvm
 from tvm import relax
-from tvm.error import DiagnosticError
 from tvm.relax import BasePyModule
 from tvm.script import ir as I
 from tvm.script import relax as R
@@ -50,7 +49,7 @@ def _invalid_inplace_module(**options):
 
 
 def test_default_relax_validation_rejects_repeated_inplace_input():
-    with pytest.raises(DiagnosticError):
+    with pytest.raises(ValueError):
         _invalid_inplace_module()
 
 

@@ -22,7 +22,6 @@ import pytest
 
 import tvm
 from tvm import tirx
-from tvm.error import DiagnosticError
 from tvm.script import ir as I
 from tvm.script import tirx as T
 
@@ -38,7 +37,7 @@ def _build_lexical_global():
 
 
 def test_default_tirx_validation_rejects_non_divisible_scope_extents():
-    with pytest.raises(DiagnosticError):
+    with pytest.raises(ValueError):
 
         @T.prim_func
         def invalid():
@@ -66,7 +65,7 @@ def test_tirx_validation_can_be_explicitly_disabled():
 
 
 def test_optional_annotation_is_restricted_to_jit():
-    with pytest.raises(DiagnosticError, match="only supported by @T.jit"):
+    with pytest.raises(TypeError, match="only supported by @T.jit"):
 
         @T.prim_func(private=True)
         def invalid(value: T.Optional(T.handle)):

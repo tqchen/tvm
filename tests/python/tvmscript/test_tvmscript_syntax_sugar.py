@@ -233,7 +233,7 @@ def test_match_buffer_region_has_implicit_shape_dtype():
 
 
 def test_match_buffer_input_requires_shape_arg():
-    with pytest.raises(tvm.error.DiagnosticError):
+    with pytest.raises(ValueError):
 
         @T.prim_func(s_tir=True)
         def func(a: T.handle):

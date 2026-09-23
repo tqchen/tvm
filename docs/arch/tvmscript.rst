@@ -156,8 +156,10 @@ mechanism.
 Parser Architecture
 -------------------
 
-The parser lives in ``python/tvm/script/parser/``. Documented functions in ``entry.py``
-manage source acquisition, definition-context capture, callable composition and execution.
+The parser lives in ``python/tvm/script/parser/``. ``inspect_source.py`` owns source
+acquisition, the ``Source`` representation and its coordinate helpers, and definition-context
+capture. Documented functions in ``entry.py`` manage the parse sequence, callable composition
+and execution.
 The transpiler handles syntax; the builders interpret concrete values. TIRx JIT validation,
 defaults and specialization caching live in ``tvm.tirx.script.jit``; shared parser utilities
 remain independent of that policy.
@@ -170,8 +172,8 @@ then lowers to operations supplied by that namespace: for example, unmarked ``if
 TIR control-flow frames in a primitive function and Relax control-flow frames in a Relax
 function. The transpiler emits these operations without implementing dialect IR semantics.
 
-``protocol.py`` records callable syntax metadata. Argument policies such as ``expr_str``
-translate symbolic strings written directly in source expressions, while ``global_info``
+``ir_builder/ir/parser_protocol.py`` records callable syntax metadata. Argument policies such
+as ``expr_str`` translate symbolic strings written directly in source expressions, while ``global_info``
 preserves a module reference for builder-side lookup. Dtype and placement strings remain
 literal. Captured or computed symbolic shapes must already contain explicit IR variables;
 the parser does not interpret expression strings found inside captured values.
@@ -180,6 +182,11 @@ Assignments become binding operations, standalone expressions become emission op
 and loops and scopes become builder contexts. Concrete binding, type checking, comparison
 construction, and frame finalization belong to the builders. Ordinary host calls and
 operator overloads execute as part of the generated Python program.
+
+Parser syntax restrictions raise ``SyntaxError`` with the original filename and source
+range. Python helper and builder exceptions propagate unchanged, preserving their identity,
+type and source-mapped traceback. Temporary parser contexts are released on both successful
+and exceptional exits.
 
 Parse flow
 ~~~~~~~~~~

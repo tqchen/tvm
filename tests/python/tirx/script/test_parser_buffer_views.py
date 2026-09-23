@@ -22,7 +22,6 @@ from types import MethodType
 import pytest
 
 from tvm import ir, tirx
-from tvm.error import DiagnosticError
 from tvm.script import parser
 from tvm.script.ir_builder import IRBuilder
 from tvm.script.ir_builder import ir as I
@@ -168,7 +167,7 @@ def test_native_roundtrip_preserves_buffer_identity_and_shared_methods():
     ],
 )
 def test_view_validation(view, error):
-    with pytest.raises(DiagnosticError, match=error):
+    with pytest.raises(ValueError, match=error):
         parse(f"""
 @T.prim_func
 def main():

@@ -17,6 +17,8 @@
 
 """Deferred native results own spans and loop variables before frame entry."""
 
+import traceback
+
 import pytest
 import tvm_ffi
 
@@ -168,19 +170,34 @@ def test_source_call_preserves_cyclic_containers_and_native_member_spans(contain
 def test_native_diagnostics_keep_definition_location_and_restore_source_context(failure):
     with IRBuilder() as builder:
         if failure == "source_call":
+            original_error = ValueError("native helper failed")
 
             def fail():
-                raise ValueError("native helper failed")
+                raise original_error
 
             with pytest.raises(ValueError, match="native helper failed") as error:
                 _captured(fail)
+            assert error.value is original_error
+            assert type(error.value) is ValueError
+            frames = traceback.extract_tb(error.value.__traceback__)
+            assert frames[-1].filename == __file__
+            assert frames[-1].name == "fail"
+            assert frames[-1].lineno == fail.__code__.co_firstlineno + 1
+            assert any(
+                frame.filename == __file__ and frame.line.strip() == "_captured(fail)"
+                for frame in frames
+            )
         else:
             frame = _captured(lambda: native.If(tirx.IntImm("bool", True)))
+            definition_span = frame.source_span
+            assert positions(definition_span) == [("caller.py", 3), ("frame.py", 7)]
             frame.__enter__()
             with builder.with_source_span(base.source_span(location(90, "unrelated.py"))):
                 with pytest.raises(InternalError, match="then") as error:
                     frame.__exit__(None, None, None)
-        assert error.value.__tvm_script_location__ == location(7)
+            assert type(error.value) is InternalError
+            assert frame.source_span.same_as(definition_span)
+            assert positions(frame.source_span) == [("caller.py", 3), ("frame.py", 7)]
         following = native.serial(2)
         assert following.source_span is None
         with following:

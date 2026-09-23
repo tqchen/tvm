@@ -14,7 +14,13 @@
 # KIND, either express or implied.  See the License for the
 # specific language governing permissions and limitations
 # under the License.
-"""Recover source coordinates and capture the explicit definition context."""
+"""Inspect source text, AST coordinates and the explicit definition context.
+
+``Source`` exposes dedented text and relative AST coordinates with conversion to
+absolute IR spans. ``acquire_source`` returns an AST whose original coordinates
+are already restored for compilation. Both keep inspection in this module;
+source ownership and execution remain with the parser entry point.
+"""
 
 from __future__ import annotations
 import __future__
@@ -28,8 +34,110 @@ from collections.abc import Mapping
 from types import CodeType, FrameType, FunctionType
 from typing import Any
 
+from tvm.ir import SourceName, Span
+
 from .call_args_policy import parse_annotation
 from .prescan import collect_annotation_free_names
+
+
+class Source:
+    """Source code class for TVMScript.
+
+    It is constructed by source code str or doc AST tree.
+
+    Parameters
+    ----------
+    source_name : str
+        The filename of the file where the source code locates.
+
+    start_line : int
+        The first line number of the source code.
+
+    start_column : int
+        The first column number of the first line of the source code.
+
+    source : str
+        The source code str of source code.
+
+    full_source : str
+        The complete source code of the file where the source code locates.
+    """
+
+    source_name: str | None
+    start_line: int
+    start_column: int
+    source: str
+    full_source: str
+
+    def __init__(self, program: str | FunctionType | type) -> None:
+        if isinstance(program, str):
+            self.source_name = "<str>"
+            self.start_line = 1
+            self.start_column = 0
+            self.source = program
+            self.full_source = program
+            return
+
+        self.source_name = inspect.getsourcefile(program)  # type: ignore
+        lines, self.start_line = inspect.getsourcelines(program)  # type: ignore
+        if lines:
+            self.start_column = len(lines[0]) - len(lines[0].lstrip())
+        else:
+            self.start_column = 0
+        if self.start_column and lines:
+            self.source = "\n".join([line[self.start_column :].rstrip() for line in lines])
+        else:
+            self.source = "".join(lines)
+        try:
+            # It will cause a problem when running in Jupyter Notebook.
+            # `mod` will be <module '__main__'>, which is a built-in module
+            # and `getsource` will throw a TypeError
+            mod = inspect.getmodule(program)
+            if mod:
+                self.full_source = inspect.getsource(mod)
+            else:
+                self.full_source = self.source
+        except TypeError:
+            # It's a work around for Jupyter problem.
+            # Since `findsource` is an internal API of inspect, we just use it
+            # as a fallback method.
+            src, _ = inspect.findsource(program)  # type: ignore
+            self.full_source = "".join(src)
+
+    def as_ast(self) -> ast.Module:
+        """Parse the source code into AST.
+
+        Returns
+        -------
+        res : ast.AST
+            The AST of source code.
+        """
+        return ast.parse(self.source)
+
+    def location(self, node: ast.AST) -> tuple[int, int, int, int]:
+        """Return the absolute 1-based source range of an AST node."""
+        lineno = getattr(node, "lineno", 1) or 1
+        col_offset = getattr(node, "col_offset", self.start_column)
+        col_offset = self.start_column if col_offset is None else col_offset
+        end_lineno = getattr(node, "end_lineno", lineno) or lineno
+        end_col_offset = getattr(node, "end_col_offset", col_offset)
+        end_col_offset = col_offset if end_col_offset is None else end_col_offset
+        lineno += self.start_line - 1
+        end_lineno += self.start_line - 1
+        col_offset += self.start_column + 1
+        end_col_offset += self.start_column + 1
+        return lineno, col_offset, end_lineno, end_col_offset
+
+    def to_span(self, node: ast.AST) -> Span:
+        """Convert an AST node to the canonical IR source span."""
+        lineno, col_offset, end_lineno, end_col_offset = self.location(node)
+        return Span(
+            SourceName(self.source_name or "<unknown>"),
+            lineno,
+            end_lineno,
+            col_offset,
+            end_col_offset,
+        )
 
 
 def capture_lexical_bindings(function: FunctionType) -> dict[str, Any]:
@@ -130,7 +238,7 @@ def acquire_source(
     Text uses ``<str>`` unless a filename is supplied. Function/class source
     retains its original file, line and UTF-8 column offsets, including the
     decoration-site fallback used by gallery runners. Source inspection and
-    parsing errors propagate to the caller before diagnostic conversion.
+    parsing errors propagate unchanged to the caller.
     The returned AST is the source snapshot; entry copies it once for rewriting.
     """
     members = vars(source).values() if inspect.isclass(source) else (source,)

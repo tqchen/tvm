@@ -18,7 +18,6 @@
 
 import pytest
 
-from tvm.error import DiagnosticError
 from tvm.script.parser import entry
 
 
@@ -80,10 +79,10 @@ def test_signature_read_before_introduction_remains_unbound(language, annotation
 def main(x: {annotation}):
     return x
 """
-    with pytest.raises(DiagnosticError) as error:
+    with pytest.raises(NameError) as error:
         parse(language, source)
-    assert isinstance(error.value.__cause__, NameError)
-    assert "n" in str(error.value.__cause__)
+    assert isinstance(error.value, NameError)
+    assert "n" in str(error.value)
 
 
 def test_signature_strings_do_not_replace_captured_python_names(language):

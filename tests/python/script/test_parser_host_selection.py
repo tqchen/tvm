@@ -113,7 +113,7 @@ def main():
 
 @pytest.mark.parametrize("track_span", [True, False])
 def test_constexpr_keeps_named_expression_unsupported(language, track_span):
-    with pytest.raises(Exception, match="Unsupported expression: NamedExpr"):
+    with pytest.raises(SyntaxError, match="Unsupported expression: NamedExpr"):
         parse(
             language,
             """
@@ -147,9 +147,7 @@ def main(condition: X.value):
     "expression", ["1 if I.constexpr(x) else 0", "I.constexpr(x) and 1", "I.constexpr(x) or 1"]
 )
 def test_missing_host_binding_cannot_be_truth_tested(language, expression):
-    from tvm.error import DiagnosticError
-
-    with pytest.raises(DiagnosticError) as caught:
+    with pytest.raises(NameError) as caught:
         parse(
             language,
             f"""
@@ -160,13 +158,11 @@ def main():
     X.record({expression})
 """,
         )
-    assert isinstance(caught.value.__cause__, NameError)
+    assert isinstance(caught.value, NameError)
 
 
 def test_missing_host_if_binding_raises_before_branch_assignments(language):
-    from tvm.error import DiagnosticError
-
-    with pytest.raises(DiagnosticError) as caught:
+    with pytest.raises(NameError) as caught:
         parse(
             language,
             """
@@ -180,7 +176,7 @@ def main():
         x = 3
 """,
         )
-    assert isinstance(caught.value.__cause__, NameError)
+    assert isinstance(caught.value, NameError)
 
 
 def test_host_lambda_local_does_not_capture_optional_binding(language):
@@ -246,9 +242,7 @@ def main(a: X.value(), b: X.value(), c: X.value()):
 
 
 def test_ir_branch_incoming_read_and_rebinding_obeys_python_scope(language):
-    from tvm.error import DiagnosticError
-
-    with pytest.raises(DiagnosticError) as error:
+    with pytest.raises(NameError) as error:
         language.parse("""
 @X.script
 def main(condition: X.value(), x: X.value()):
@@ -259,5 +253,5 @@ def main(condition: X.value(), x: X.value()):
         y = x
     return y
 """)
-    assert isinstance(error.value.__cause__, NameError)
-    assert "y" in str(error.value.__cause__)
+    assert isinstance(error.value, NameError)
+    assert "y" in str(error.value)

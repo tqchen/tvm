@@ -19,6 +19,7 @@
 
 from __future__ import annotations
 
+import traceback
 import typing
 
 import pytest
@@ -364,7 +365,7 @@ def test_only_explicit_t_optional_is_specializable():
 
 
 def test_t_optional_is_restricted_to_jit():
-    with pytest.raises(tvm.error.DiagnosticError, match="only supported by @T.jit"):
+    with pytest.raises(TypeError, match="only supported by @T.jit"):
 
         @T.prim_func(private=True)
         def invalid(a: T.Optional(T.handle)):
@@ -411,19 +412,19 @@ def test_runtime_tir_if_cannot_guard_absent_optional_param():
         if flag != 0:
             T.match_buffer(a, (1,), "int32")
 
-    with pytest.raises(tvm.error.DiagnosticError, match="match_buffer"):
+    with pytest.raises(ValueError, match="match_buffer"):
         kernel.specialize(a=None)
 
 
 @pytest.mark.parametrize(
-    ("operation", "source_text"),
+    ("operation", "source_text", "error_type"),
     [
-        ("subscript", "a[10]"),
-        ("attribute", "a.ptr_to"),
-        ("match_buffer", "T.match_buffer"),
+        ("subscript", "a[10]", TypeError),
+        ("attribute", "a.ptr_to", AttributeError),
+        ("match_buffer", "T.match_buffer", tvm.error.InternalError),
     ],
 )
-def test_unguarded_absent_optional_param_reports_source(operation, source_text):
+def test_unguarded_absent_optional_param_reports_source(operation, source_text, error_type):
     @T.jit(private=True)
     def kernel(a: T.Optional(T.handle)):
         if T.constexpr(operation == "subscript"):
@@ -433,9 +434,11 @@ def test_unguarded_absent_optional_param_reports_source(operation, source_text):
         else:
             T.match_buffer(a, (1,), "int32")
 
-    with pytest.raises(tvm.error.DiagnosticError) as exc_info:
+    with pytest.raises(error_type) as exc_info:
         kernel.specialize(a=None)
-    assert source_text in str(exc_info.value)
+    assert type(exc_info.value) is error_type
+    frames = traceback.extract_tb(exc_info.value.__traceback__)
+    assert any(frame.filename == __file__ and source_text in frame.line for frame in frames)
 
 
 def test_present_optional_param_still_rejects_ffi_none():

@@ -161,7 +161,17 @@ class IRBuilderTranspiler(ast.NodeTransformer):
         return ast.Name(name, ast.Load())
 
     def _raise_error(self, node: ast.AST, message: str) -> NoReturn:
-        raise SyntaxError(message, (self.module.filename, node.lineno, node.col_offset + 1, None))
+        raise SyntaxError(
+            message,
+            (
+                self.module.filename,
+                node.lineno,
+                node.col_offset + 1,
+                None,
+                node.end_lineno,
+                node.end_col_offset + 1,
+            ),
+        )
 
     def _call(
         self, namespace: str, member: str, args: list[ast.expr], node: ast.AST, **keywords: ast.expr
@@ -1017,6 +1027,10 @@ class IRBuilderTranspiler(ast.NodeTransformer):
                 #     y = X.bind_(value, name="y")
                 # -------------------------------------------------
                 value = self._call_dialect("bind_", [value], statement, **keywords)
+            if frame_value:
+                # Binding an entered frame originates at the source as-target;
+                # retain the existing native span argument while locating this call.
+                ast.copy_location(value, target)
             return [ast.copy_location(ast.Assign([target], value), statement)]
         if isinstance(target, ast.Attribute):
             # -------------------- Pattern --------------------
@@ -1417,6 +1431,9 @@ class IRBuilderTranspiler(ast.NodeTransformer):
         else:
             self._raise_error(node.target, "Loop targets must be names or a flat tuple of names")
         context = self._call_dialect("for_", [iterable], node, names=names)
+        # The generated iteration check originates at the source iterable, not
+        # the final body line. Its native frame span still covers the whole loop.
+        ast.copy_location(context, node.iter)
         body = self.transform_statements(node.body)
         return ast.copy_location(
             ast.With([ast.withitem(context, node.target)], body or [ast.Pass()]), node

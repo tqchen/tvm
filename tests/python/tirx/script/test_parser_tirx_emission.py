@@ -18,7 +18,6 @@
 
 import pytest
 
-import tvm
 from tvm import tirx
 from tvm.relax.script import builder as R
 from tvm.script import parser
@@ -47,9 +46,9 @@ def test_source_store_uses_public_builder_and_propagates_errors(monkeypatch, err
 
     monkeypatch.setattr(tir_builder, "buffer_store", reject_store)
     source = f"@T.prim_func\ndef main():\n    {body}\n"
-    with pytest.raises(tvm.error.DiagnosticError, match="store rejected") as raised:
+    with pytest.raises(error_type, match="store rejected") as raised:
         parser.parse(source)
-    assert raised.value.__cause__ is error
+    assert raised.value is error
     assert len(calls) == 1
 
 

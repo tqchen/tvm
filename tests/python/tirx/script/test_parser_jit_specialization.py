@@ -123,7 +123,7 @@ def test_specialization_context_restored_after_failure():
             missing_call()  # noqa: F821
         T.evaluate(N)
 
-    with pytest.raises(tvm.error.DiagnosticError):
+    with pytest.raises(NameError):
         broken.specialize(N=1)
     assert len(broken.specialize(N=2).params) == 0
     result = parser.parse("@T.prim_func\ndef normal(N: T.int32):\n    T.evaluate(N)\n")
@@ -232,7 +232,7 @@ def test_capture_transport_does_not_specialize_ordinary_captured_names():
 
 
 def test_missing_constexpr_binding_has_explicit_diagnostic():
-    with pytest.raises(tvm.error.DiagnosticError, match="requires a specialization binding"):
+    with pytest.raises(TypeError, match="requires a specialization binding"):
         parser.parse("@T.jit\ndef kernel(N: T.constexpr):\n    T.evaluate(N)\n")
 
 
@@ -250,7 +250,7 @@ def kernel(a: T.Optional(annotation())):
         missing_call()
     T.evaluate(1)
 """
-    with pytest.raises(tvm.error.DiagnosticError, match="missing_call"):
+    with pytest.raises(NameError, match="missing_call"):
         parser.parse(
             source, extra_vars={"annotation": annotation}, _specialization_bindings={"a": None}
         )

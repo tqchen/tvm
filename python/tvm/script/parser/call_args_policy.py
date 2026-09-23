@@ -43,7 +43,17 @@ class _LiteralParser:
         try:
             expression = ast.parse(node.value, mode="eval").body
         except SyntaxError as error:
-            raise SyntaxError(f"Invalid annotation expression: {error.msg}") from error
+            raise SyntaxError(
+                f"Invalid annotation expression: {error.msg}",
+                (
+                    self.filename,
+                    node.lineno,
+                    node.col_offset + 1,
+                    None,
+                    node.end_lineno,
+                    node.end_col_offset + 1,
+                ),
+            ) from error
         # Example: in R.Tensor(("n + 1",), "float32"), the generated resolve
         # call for n retains the byte range of n inside the quoted literal, not
         # the whole constructor. A triple-quoted physical newline advances lineno;

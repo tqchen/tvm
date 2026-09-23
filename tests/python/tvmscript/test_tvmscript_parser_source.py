@@ -17,6 +17,7 @@
 # ruff: noqa: F401
 """Source and span tests for the canonical parser"""
 
+import ast as doc
 import inspect
 
 import pytest
@@ -27,8 +28,7 @@ import tvm
 import tvm.testing
 from tvm.ir import Call, SequentialSpan, TensorLoad, assert_structural_equal
 from tvm.script import tirx as T
-import ast as doc
-from tvm.script.parser.source import Source
+from tvm.script.parser.inspect_source import Source
 from tvm.script.tirx import tile as Tx
 from tvm.tirx.stmt import TilePrimitiveCall
 

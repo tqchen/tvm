@@ -18,7 +18,6 @@
 
 import pytest
 
-import tvm
 from tvm.script import parser
 
 
@@ -39,5 +38,5 @@ def main():
             {axes}
             T.evaluate(vi)
 """
-    with pytest.raises(tvm.error.DiagnosticError):
+    with pytest.raises(ValueError):
         parser.parse(source)

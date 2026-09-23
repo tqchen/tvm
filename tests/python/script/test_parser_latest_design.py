@@ -18,9 +18,10 @@
 
 from __future__ import annotations
 
+import ast
+
 import pytest
 
-from tvm.error import DiagnosticError
 from tvm.script import ir as I
 from tvm.script.ir_builder.ir import parser_protocol as protocol
 from tvm.script.parser import entry
@@ -98,13 +99,13 @@ def test_symbol_reassignment_reports_introduction_and_exact_write(
 ):
     # Before: annotation-free/body-declared n, followed by an ordinary write.
     # Expected diagnostic: n, its introduction line, and the actual offending source target.
-    with pytest.raises(DiagnosticError) as caught:
+    with pytest.raises(SyntaxError) as caught:
         language.parse(source, n=4)
     message = str(caught.value)
     assert "Symbolic variable 'n' cannot be reassigned" in message
     assert f"introduced at line {introduction}" in message
-    assert f"dummy.py:{offending}:" in message
-    cause = caught.value.__cause__
+    assert caught.value.filename == "dummy.py"
+    cause = caught.value
     assert isinstance(cause, SyntaxError)
     assert (cause.lineno, cause.end_lineno) == (offending, offending)
     assert cause.end_offset - cause.offset == 1
@@ -264,9 +265,45 @@ def test_scope_declaration_reuses_symbol_spelling_but_plain_write_is_rejected(
     source = "@X.script\ndef main():\n    n = X.symbol()\n    n = declared()\n"
     if ordinary_write:
         source += "    n = 3\n"
-        with pytest.raises(DiagnosticError, match="Symbolic variable 'n' cannot be reassigned"):
+        with pytest.raises(SyntaxError, match="Symbolic variable 'n' cannot be reassigned"):
             language.parse(source, declared=declared)
     else:
         result = language.parse(source + "    X.record(n)\n", declared=declared)
         assert result.body == [("emit", value)]
         assert not any(event[:2] == ("bind", "n") for event in language.events)
+
+
+@pytest.mark.parametrize(
+    "source, node_type, message",
+    [
+        ("@X.script\ndef main(value):\n    pass\n", ast.arg, "requires an annotation"),
+        (
+            '@X.script\ndef main(value: "invalid +"):\n    pass\n',
+            ast.Constant,
+            "Invalid annotation expression",
+        ),
+        (
+            "@X.script\ndef main():\n    X.record((value :=\n        1))\n",
+            ast.NamedExpr,
+            "Unsupported expression: NamedExpr",
+        ),
+    ],
+)
+def test_transpilation_restrictions_keep_original_source_ranges(
+    language, source, node_type, message
+):
+    # Before: invalid signature, quoted annotation or multiline expression syntax.
+    # Expected: direct SyntaxError points at the original node before builder execution.
+    expected = next(node for node in ast.walk(ast.parse(source)) if isinstance(node, node_type))
+    with pytest.raises(SyntaxError, match=message) as caught:
+        entry.parse(source, extra_vars={"X": language.X}, filename="restriction.py")
+    error = caught.value
+    assert type(error) is SyntaxError
+    assert (error.filename, error.lineno, error.offset, error.end_lineno, error.end_offset) == (
+        "restriction.py",
+        expected.lineno,
+        expected.col_offset + 1,
+        expected.end_lineno,
+        expected.end_col_offset + 1,
+    )
+    assert not language.events

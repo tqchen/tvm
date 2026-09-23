@@ -98,8 +98,9 @@ def py_module(
     TypeError
         If the decorated value is not a class, or an unsupported parser option
         is supplied.
-    DiagnosticError
-        If shared parsing, construction or enabled validation fails.
+    SyntaxError
+        If the source violates a parser syntax restriction. Construction and
+        enabled validation propagate their original exceptions unchanged.
     OSError
         If source inspection cannot recover a Python function's definition.
 

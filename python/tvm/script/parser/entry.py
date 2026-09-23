@@ -30,14 +30,12 @@ from functools import wraps
 from types import FrameType, FunctionType
 from typing import TYPE_CHECKING, Any, TypeVar
 
-from tvm.error import DiagnosticError
 from tvm.ir import SourceName
 from tvm.script.ir_builder import base
 from tvm.script.ir_builder import ir as builder_ir
 from tvm.script.ir_builder.ir import parser_protocol as syntax_protocol
 
 from . import jit_support
-from .diagnostics import diagnostic_error
 from .inspect_source import (
     acquire_source,
     capture_annotation_bindings,
@@ -260,8 +258,8 @@ def make_decorator(
     ------
     ValueError
         When the returned decorator receives a non-function positional value.
-    DiagnosticError
-        When standalone construction fails during `parse` execution.
+    SyntaxError
+        When standalone source violates a parser restriction.
 
     Notes
     -----
@@ -269,7 +267,8 @@ def make_decorator(
     Standalone functions immediately transpile and execute a builder program.
     Annotations must be safe to re-evaluate: eager MissingType placeholders
     are not cached, and source annotations execute in declaration frames.
-    Registration persists for the lifetime of the returned decorator.
+    Construction errors propagate unchanged through `parse`. Registration
+    persists for the lifetime of the returned decorator.
     """
     mapping, default_options = dict(option_map or {}), dict(defaults or {})
 
@@ -707,22 +706,21 @@ def parse(
 
     Raises
     ------
-    DiagnosticError
-        If transpilation or host/builder execution fails. An existing
-        DiagnosticError is preserved; other execution errors gain original
-        source ranges.
     OSError
         If source inspection cannot recover the supplied object's text.
     TypeError
         If the source object cannot be inspected.
     SyntaxError
-        If initial source parsing fails before program execution.
+        If source parsing fails or transpilation detects a syntax restriction.
+        Parser restrictions retain their source filename and range.
 
     Notes
     -----
     Each call owns one AST copy and a fresh lexical environment. Declaration and
     definition frames are entered only during generated execution. Source
-    acquisition errors propagate directly, before diagnostic conversion.
+    acquisition, host and builder errors propagate with their original type,
+    identity and traceback. Temporary captures are released even when execution
+    fails.
     """
     # - Recover source and explicit lexical/definition inputs.
     # - Copy the AST once, then collect source syntax facts.
@@ -780,10 +778,6 @@ def parse(
         with jit_support.use_specialization(root_name, specialization):
             result = _builder()
         return result
-    except DiagnosticError:
-        raise
-    except Exception as error:
-        raise diagnostic_error(error, filename, tree) from error
     finally:
         # Release temporary captures on both successful and exceptional exits.
         if _builder is not None and definition_scope_name is not None:
@@ -811,14 +805,15 @@ def ir_module(module: type | None = None, **options: Any) -> IRModule | Callable
 
     Raises
     ------
-    DiagnosticError
-        If module transpilation or builder execution fails.
+    SyntaxError
+        If module source violates a parser restriction.
 
     Notes
     -----
     Class host bindings are captured before transpilation. Generated execution
     declares all registered signatures before defining their bodies. Source
-    acquisition errors and frame lifetime follow `parse`.
+    acquisition and builder errors propagate unchanged; frame lifetime follows
+    `parse`.
     """
 
     def apply(module: type) -> IRModule:

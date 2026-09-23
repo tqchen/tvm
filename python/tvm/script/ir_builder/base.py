@@ -68,21 +68,13 @@ class IRBuilderFrame(_Object):
     """
 
     def __enter__(self) -> "IRBuilderFrame":
-        try:
-            _ffi_api.IRBuilderFrameEnter(self)  # type: ignore[attr-defined] # pylint: disable=no-member
-        except Exception as error:
-            _attach_diagnostic_span(error, self.source_span)
-            raise
+        _ffi_api.IRBuilderFrameEnter(self)  # type: ignore[attr-defined] # pylint: disable=no-member
         return self
 
     def __exit__(self, exc_type, exc_value, trace) -> None:  # pylint: disable=unused-argument
         if exc_type is None and exc_value is None:
             # Do not execute `FrameExit` if the with scope exits because of exceptions
-            try:
-                _ffi_api.IRBuilderFrameExit(self)  # type: ignore[attr-defined] # pylint: disable=no-member
-            except Exception as error:
-                _attach_diagnostic_span(error, self.source_span)
-                raise
+            _ffi_api.IRBuilderFrameExit(self)  # type: ignore[attr-defined] # pylint: disable=no-member
 
     def add_callback(self, callback: Callable[[], None]) -> None:
         """Add a callback method invoked when exiting the with-scope.
@@ -261,19 +253,6 @@ def source_span(
     return ir.Span(source_name, line, end_line, column, end_column)
 
 
-def _attach_diagnostic_span(error: Exception, span: ir.Span | None) -> None:
-    """Retain an operation's explicit location without opening a source scope."""
-    if span is not None and not hasattr(error, "__tvm_script_location__"):
-        diagnostic_span = span.spans[-1] if isinstance(span, ir.SequentialSpan) else span
-        error.__tvm_script_location__ = (
-            str(diagnostic_span.source_name.name),
-            diagnostic_span.line,
-            diagnostic_span.end_line,
-            diagnostic_span.column,
-            diagnostic_span.end_column,
-        )
-
-
 _T = TypeVar("_T")
 
 
@@ -321,12 +300,8 @@ def with_at_group_(
         if span is not None and IRBuilder.is_in_scope()
         else nullcontext()
     )
-    try:
-        with context:
-            return at(location, thunk())
-    except Exception as error:
-        _attach_diagnostic_span(error, span)
-        raise
+    with context:
+        return at(location, thunk())
 
 
 at_ = at

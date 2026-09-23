@@ -441,13 +441,13 @@ def test_quoted_symbols_share_identity_without_introducing_python_bindings(langu
     # Before: def main(x: X.tensor(("n", "n"))): X.record(n)
     # Expected builder program: X.tensor((X.resolve_type_var_("n"), X.resolve_type_var_("n")))
     # The unquoted body name n raises NameError until explicitly declared.
-    with pytest.raises(Exception) as error:
+    with pytest.raises(NameError) as error:
         language.parse("""
 @X.script
 def main(x: X.tensor(("n", "n"))):
     X.record(n)
 """)
-    assert isinstance(error.value.__cause__, NameError)
+    assert isinstance(error.value, NameError)
 
 
 def test_explicit_symbol_declaration_reuses_annotation_identity(language):
@@ -469,7 +469,7 @@ def main(x: X.tensor(("n",))):
 def test_script_namespace_cannot_be_rebound(language, binding):
     # Before: X = 1  (also loop/with targets)
     # Expected builder program: reject a binding that shadows the fixed script namespace X.
-    with pytest.raises(Exception, match="namespace|shadow|rebind"):
+    with pytest.raises(SyntaxError, match="namespace|shadow|rebind"):
         language.parse(f"@X.script\ndef main():\n    {binding}\n")
 
 
@@ -616,7 +616,7 @@ def test_conditional_branches_require_matching_output_names(language, other):
     # Before: if condition: y = left; else: z = right
     # Expected builder program: reject branches without the same named terminal output.
     language.X.__tvm_value_if__ = True
-    with pytest.raises(Exception, match="same named output"):
+    with pytest.raises(SyntaxError, match="same named output"):
         language.parse(
             "@X.script\ndef main():\n    if condition:\n        y = left\n"
             f"    else:\n        {other}\n"
@@ -641,7 +641,7 @@ def test_entry_keeps_reusable_input_tree_unchanged(language, monkeypatch):
 def test_bare_callable_alias_does_not_acquire_constexpr_syntax(language):
     # Before: marker = I.constexpr; if marker(True): ...
     # Expected builder program: an ordinary call to marker raises its runtime syntax-marker error.
-    with pytest.raises(Exception, match="syntax marker"):
+    with pytest.raises(TypeError, match="syntax marker"):
         language.parse(
             """
 @X.script
@@ -703,30 +703,33 @@ class Module:
 
 
 @pytest.mark.parametrize(
-    "body, line, column, message",
+    "body, line, column, end_column, message",
     [
-        ("    X = 1\n", 3, 5, "namespace"),
-        ("    for X in range(2):\n        pass\n", 3, 9, "namespace"),
+        ("    X = 1\n", 3, 5, 6, "namespace"),
+        ("    for X in range(2):\n        pass\n", 3, 9, 10, "namespace"),
         (
             "    if condition:\n        y = left\n    else:\n        z = right\n",
             6,
             9,
+            18,
             "same named output",
         ),
     ],
 )
-def test_syntax_diagnostics_point_to_the_offending_binding(language, body, line, column, message):
+def test_syntax_diagnostics_point_to_the_offending_binding(
+    language, body, line, column, end_column, message
+):
     # Before: X = 1; or if condition: y = left; else: z = right
     # Expected builder program: reject the offending namespace/output binding
     # at its original filename, line and column, before running the builder.
     language.X.__tvm_value_if__ = True
-    with pytest.raises(Exception, match=message) as error:
+    with pytest.raises(SyntaxError, match=message) as error:
         language.parse("@X.script\ndef main():\n" + body)
-    cause = error.value.__cause__
+    cause = error.value
     assert isinstance(cause, SyntaxError)
     assert (cause.filename, cause.lineno, cause.offset) == ("dummy.py", line, column)
-    assert f"dummy.py:{line}: SyntaxError:" in str(error.value)
-    assert f" {line} | {body.splitlines()[line - 3]}" in str(error.value)
+    assert cause.end_lineno == line
+    assert cause.end_offset == end_column
     assert not language.events
 
 

@@ -23,7 +23,6 @@ from types import SimpleNamespace
 
 import pytest
 
-from tvm.error import DiagnosticError
 from tvm.script import ir as I
 from tvm.script.ir_builder import IRBuilder
 from tvm.tirx.script.jit import make_jit
@@ -234,7 +233,7 @@ def test_unrelated_same_file_caller_does_not_supply_annotation_locals(language):
 
 def test_inactive_lexical_ancestor_is_not_replaced_by_unrelated_caller(language):
     # Before: annotation-only extent has left scope while an unrelated caller has extent.
-    # Expected builder: raise DiagnosticError naming extent; do not capture the caller.
+    # Expected builder: raise NameError naming extent; do not capture the caller.
     X = language.X
 
     def outer(extent):
@@ -249,7 +248,7 @@ def test_inactive_lexical_ancestor_is_not_replaced_by_unrelated_caller(language)
 
     middle = outer(8)
     extent = 99  # noqa: F841
-    with pytest.raises(DiagnosticError, match="extent"):
+    with pytest.raises(NameError, match="extent"):
         middle()
 
 
@@ -297,7 +296,7 @@ def test_jit_retains_active_lexical_ancestor_snapshot(factory, language):
 
 def test_unrelated_intervening_call_ends_annotation_capture(language):
     # Before: an unrelated invoke(callback) frame interrupts lexical ancestor capture.
-    # Expected builder: raise DiagnosticError naming unavailable extent.
+    # Expected builder: raise NameError naming unavailable extent.
     X = language.X
 
     def invoke(callback):
@@ -313,7 +312,7 @@ def test_unrelated_intervening_call_ends_annotation_capture(language):
 
         return invoke(middle)
 
-    with pytest.raises(DiagnosticError, match="extent"):
+    with pytest.raises(NameError, match="extent"):
         outer(8)
 
 
