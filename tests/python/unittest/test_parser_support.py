@@ -52,10 +52,9 @@ def test_global_info_selectors_use_module_map():
         devices = [I.vdevice("llvm"), I.vdevice("cuda"), I.vdevice("cuda", 1)]
         I.module_global_infos({"vdevice": devices, "other": [I.dummy_global_info()]})
         for spelling, index in (("cuda:1", 2), ("vdevice[1]", 1), ("cuda", 1)):
-            assert I.resolve_global_info(spelling).__chandle__() == devices[index].__chandle__()
-            assert (
-                module.resolve_global_info(spelling).__chandle__() == devices[index].__chandle__()
-            )
+            resolved = I.resolve_global_info(spelling)
+            assert resolved.__chandle__() == devices[index].__chandle__()
+            assert resolved.__chandle__() == module.global_infos["vdevice"][index].__chandle__()
         assert I.resolve_global_info("other[0]") is not None
 
 

@@ -59,6 +59,9 @@ from .protocol import emit_ as emit_
 from .protocol import resolve_type_var_ as resolve_type_var_
 from .protocol import set_mutable_var_ as set_mutable_var_
 
+# Syntax capability: mutable declaration policies apply only in this dialect.
+supports_mutable_declarations = False
+
 
 @_args_policy({"shape": "expr_str", "vdevice": "global_info"}, scalar_strings=False)
 def Tensor(shape=None, dtype=None, vdevice=None, ndim=-1, *, span=None):

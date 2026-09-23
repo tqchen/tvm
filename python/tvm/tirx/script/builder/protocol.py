@@ -62,10 +62,14 @@ def bind_(
             if not value.value.name and name is not None:
                 _IRBuilder.name(name, value.value)
         return value.value
+    if isinstance(value, _I.IRModuleFrame):
+        # A source class alias retains its active module; it is not a new scope.
+        return value
     name_span = span if name_span is None else name_span
     # Axis and environment-thread variables already belong to native frames;
-    # naming an assignment must preserve their registration identities.
-    if not frame_value and _ir.is_prim_var(value):
+    # naming an assignment must preserve their registration identities. An
+    # explicit T.let annotation instead requests a distinct immutable binding.
+    if not frame_value and not isinstance(ty, _native.LetAnnotation) and _ir.is_prim_var(value):
         for frame in reversed(_IRBuilder.current().frames):
             if isinstance(frame, _frame.SBlockFrame) and _python.any(
                 axis.var.same_as(value) for axis in frame.iter_vars

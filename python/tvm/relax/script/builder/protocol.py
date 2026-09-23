@@ -46,6 +46,9 @@ def bind_(
     """Emit a Relax binding or retain a named frame-owned value."""
     if isinstance(value, _BypassBind):
         return value.value
+    if isinstance(value, _I.IRModuleFrame):
+        # A source class alias retains its active module; it is not a new scope.
+        return value
     name_span = _source_span(span if name_span is None else name_span)
     if frame_value:
         if isinstance(value, _python.list | _python.tuple | _ir.Array):

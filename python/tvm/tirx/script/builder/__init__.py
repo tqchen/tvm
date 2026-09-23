@@ -65,6 +65,9 @@ from .utils import buffer_proxy as buffer_proxy
 from .utils import frame_scope as frame_scope
 from .utils import seq_scope as seq_scope
 
+# Syntax capability: mutable declaration policies apply only in this dialect.
+supports_mutable_declarations = True
+
 is_type_var = _ir.is_prim_var
 
 

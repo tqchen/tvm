@@ -21,9 +21,14 @@ ordinary Python. Its state describes syntax, never IR values. Generated code
 uses ``I`` for shared module and source-location support and ``X`` for the
 current dialect's builders and protocol hooks. Native function frames own
 parameters, symbols and completed functions; module and region frames own their
-references and results. A declaration entry reserves each function signature
-before any body entry, allowing sibling calls without another ownership record.
+references and results. Ordinary functions can use one ``X.function()`` entry.
+When forward references are needed, ``X.function(decl=True)`` reserves each
+signature before body entry, allowing sibling calls without another ownership
+record. Re-entering that same frame completes its body.
 Syntax policy registration belongs to ``tvm.script.parser.protocol``.
+The dialect namespace advertises ``supports_mutable_declarations`` so a
+primitive annotation imported from another dialect does not grant mutable
+storage syntax to a dialect whose bindings are immutable.
 
 For example, source functions can share a symbolic shape spelling while each
 function retains its own symbol identity:
@@ -75,6 +80,8 @@ The function stubs below document dialect hooks, implemented in each dialect's
 runtime dispatcher. ``resolve_global_info`` is the real shared ``I`` operation.
 """
 
+import re
+
 from ..base import MISSING, IRBuilder
 from .frame import IRModuleFrame
 
@@ -88,11 +95,31 @@ def resolve_global_info(content):
     """
     if not isinstance(content, str):
         return content
-    if IRBuilder.is_in_scope():
-        for frame in reversed(IRBuilder.current().frames):
-            if isinstance(frame, IRModuleFrame):
-                return frame.resolve_global_info(content)
-    raise ValueError("Global-info lookup requires an enclosing module frame")
+    if not IRBuilder.is_in_scope():
+        raise ValueError("Global-info lookup requires an enclosing module frame")
+    for frame in reversed(IRBuilder.current().frames):
+        if isinstance(frame, IRModuleFrame):
+            break
+    else:
+        raise ValueError("Global-info lookup requires an enclosing module frame")
+    match = re.fullmatch(r"([^\[\]]+)\[(\d+)\]", content)
+    if match:
+        name, index = match.groups()
+        return frame.global_infos[name][int(index)]
+    selector = re.fullmatch(r"([^:\[\]]+)(?::(\d+)(?::([^:]+))?)?", content)
+    if selector is None:
+        raise ValueError(f"Invalid global-info reference: {content!r}")
+    target, index, _scope = selector.groups()
+    ordinal = int(index) if index is not None else 0
+    devices = frame.global_infos.get("vdevice", ())
+    if target == "vdevice":
+        return devices[ordinal]
+    for device in devices:
+        if device.target.kind.name == target:
+            if ordinal == 0:
+                return device
+            ordinal -= 1
+    raise ValueError(f"Global-info device reference was not found: {content!r}")
 
 
 def resolve_type_var_(name, dtype=None, *, value=None, span=None):
