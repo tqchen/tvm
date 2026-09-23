@@ -448,6 +448,27 @@ def pyfunc(function):
 syntax_protocol.register_function(pyfunc, None, python=True)
 
 
+def _source_lines(source, definition_source):
+    """Recover a class from its exact decoration site when module inspection fails."""
+    try:
+        lines, start = inspect.getsourcelines(source)
+        return lines, start, inspect.getsourcefile(source)
+    except OSError:
+        if not inspect.isclass(source) or definition_source is None:
+            raise
+        filename, lineno = definition_source
+        lines = linecache.getlines(filename)
+        # Gallery runners may execute the class in a temporary __main__ module
+        # without __file__. Its decorator still has the original code location.
+        tree = ast.parse("".join(lines), filename)
+        for node in ast.walk(tree):
+            if isinstance(node, ast.ClassDef) and node.name == source.__name__:
+                start = min([node.lineno, *(item.lineno for item in node.decorator_list)])
+                if start <= lineno <= node.lineno:
+                    return lines[start - 1 : node.end_lineno], start, filename
+        raise
+
+
 class Compiler:
     """Acquire source and execute a location-preserving builder program.
 
@@ -490,7 +511,14 @@ class Compiler:
     """
 
     def __init__(
-        self, source, env=None, filename=None, *, track_span: bool = True, definition_scope=None
+        self,
+        source,
+        env=None,
+        filename=None,
+        *,
+        track_span: bool = True,
+        definition_scope=None,
+        definition_source=None,
     ):
         self.env = {"TypeVar": TypeVar, "tvm": sys.modules.get("tvm"), **_NAMESPACES, **(env or {})}
         self.original = source
@@ -513,9 +541,9 @@ class Compiler:
                 self.filename,
             )
         else:
-            lines, start = inspect.getsourcelines(source)
+            lines, start, source_filename = _source_lines(source, definition_source)
             text = "".join(lines)
-            self.filename = filename or inspect.getsourcefile(source)
+            self.filename = filename or source_filename
             indent = len(lines[0]) - len(lines[0].lstrip())
         self.tree = ast.parse(textwrap.dedent(text), self.filename)
         if start != 1:
@@ -921,7 +949,12 @@ def parse(source, extra_vars=None, *, filename=None, track_span: bool = True, **
         "_definition_scope", getattr(source, "__tvm_definition_scope__", {})
     )
     compiler = Compiler(
-        source, env, filename, track_span=track_span, definition_scope=definition_scope
+        source,
+        env,
+        filename,
+        track_span=track_span,
+        definition_scope=definition_scope,
+        definition_source=options.pop("_definition_source", None),
     )
     try:
         root = compiler.tree.body[-1]
@@ -1038,9 +1071,15 @@ def ir_module(module=None, **options):
             if frame.f_code is ir_module.__code__:
                 frame = frame.f_back
             definition_scope = _definition_scope(frame)
+            definition_source = (frame.f_code.co_filename, frame.f_lineno)
         finally:
             del frame
-        result = parse(module, _definition_scope=definition_scope, **options)
+        result = parse(
+            module,
+            _definition_scope=definition_scope,
+            _definition_source=definition_source,
+            **options,
+        )
         from tvm.relax.base_py_module import BasePyModule
 
         if issubclass(module, BasePyModule):
