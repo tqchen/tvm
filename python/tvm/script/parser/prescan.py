@@ -58,6 +58,8 @@ class Binding:
     annotation: ast.AST | None = None
     dtype: object = None
     direct: bool = False
+    # Original callee root; assignment dispatch checks completed lexical bindings.
+    declaration_root: ast.Name | None = None
 
 
 @dataclass(frozen=True)
@@ -153,11 +155,13 @@ class PrescanCollector(ast.NodeVisitor):
     def _error(self, node, message):
         raise SyntaxError(message, (self.filename, node.lineno, node.col_offset + 1, None))
 
-    def _binding(self, name, node, kind="ordinary", annotation=None, dtype=None):
+    def _binding(
+        self, name, node, kind="ordinary", annotation=None, dtype=None, *, declaration_root=None
+    ):
         if name in self.namespaces:
             self._error(node, f"Script namespace {name!r} cannot be rebound or shadowed")
         self.names.add(name)
-        item = Binding(name, node, kind, annotation, dtype, self.direct)
+        item = Binding(name, node, kind, annotation, dtype, self.direct, declaration_root)
         self.bindings[self.scope].append(item)
         self.sites[node] = item
 
@@ -241,11 +245,14 @@ class PrescanCollector(ast.NodeVisitor):
 
     visit_AsyncFunctionDef = visit_FunctionDef
 
-    def _target(self, target, value=None, annotation=None, *, binding_declaration=False):
+    def _target(self, target, value=None, annotation=None, *, binding_declaration=None):
         constructor = (
             resolve_syntax(value.func, self.environment) if isinstance(value, ast.Call) else None
         )
-        binding_declaration |= getattr(constructor, "__tvm_binding_decl__", False)
+        if getattr(constructor, "__tvm_binding_decl__", False):
+            binding_declaration = value.func
+            while isinstance(binding_declaration, ast.Attribute):
+                binding_declaration = binding_declaration.value
         if isinstance(target, ast.Name):
             declaration = getattr(constructor, "__tvm_type_var_decl__", None)
             if declaration is not None and not value.args and not value.keywords:
@@ -266,8 +273,14 @@ class PrescanCollector(ast.NodeVisitor):
                 )
             ):
                 self._binding(target.id, target, "mutable", annotation)
-            elif binding_declaration:
-                self._binding(target.id, target, "binding_declaration", annotation)
+            elif binding_declaration is not None:
+                self._binding(
+                    target.id,
+                    target,
+                    "binding_declaration",
+                    annotation,
+                    declaration_root=binding_declaration,
+                )
             elif isinstance(value, ast.Name) and value.id == self.module_name:
                 self._binding(target.id, target, "module_alias")
             else:

@@ -191,12 +191,13 @@ def test_module_alias_is_the_native_frame_and_lookup_keeps_reference(dialect):
 
 
 @pytest.mark.parametrize("alias", [False, True])
+@pytest.mark.parametrize("parameter", ["x", "callee"])
 @pytest.mark.parametrize(
     "dialect, decorator, annotation",
     [(T, "T.prim_func", "T.int32"), (R, "R.function", 'R.Tensor((4,), "float32")')],
 )
 def test_module_member_calls_use_the_callers_native_dialect(
-    monkeypatch, dialect, decorator, annotation, alias
+    monkeypatch, dialect, decorator, annotation, alias, parameter
 ):
     # Before: cls = Module; return cls.callee(x)
     # Expected builder program:
@@ -215,9 +216,9 @@ def test_module_member_calls_use_the_callers_native_dialect(
 @I.ir_module
 class Module:
     @{decorator}
-    def caller(x: {annotation}) -> {annotation}:
+    def caller({parameter}: {annotation}) -> {annotation}:
         {setup}
-        return {owner}.callee(x)
+        return {owner}.callee({parameter})
     @{decorator}
     def callee(y: {annotation}) -> {annotation}:
         return y

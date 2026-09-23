@@ -246,13 +246,8 @@ class IRBuilderTranspiler(ast.NodeTransformer):
         # child expressions to transform or locations to invent.
         if getattr(node, "_tvm_intrinsic", False):
             return node
-        # Source: Module.f; Builder: f (the same reserved native GlobalVar).
-        if (
-            isinstance(node.value, ast.Name)
-            and node.value.id == self.module_name
-            and node.attr in self.module_functions
-        ):
-            return self._at(ast.copy_location(ast.Name(node.attr, node.ctx), node), node)
+        # Source: Module.f; Builder: Module.f, using the native module's map.
+        # Retaining the owner keeps a local f from shadowing this GlobalVar.
         result = self.generic_visit(node)
         return (
             self._at(result, node)
@@ -536,6 +531,9 @@ class IRBuilderTranspiler(ast.NodeTransformer):
         if isinstance(target, ast.Name):
             site = self.prescan.sites.get(target) if self.prescan else None
             kind = site.kind if site is not None else "ordinary"
+            binding_declaration = kind == "binding_declaration" and (
+                self._resolve(site.declaration_root) is not None
+            )
             mutable = self.prescan.mutable_names.get(self.current_scope, ()) if self.prescan else ()
             keywords = {"name": ast.Constant(target.id), "name_span": self.span(target)}
             if ty is not None:
@@ -553,7 +551,7 @@ class IRBuilderTranspiler(ast.NodeTransformer):
             elif kind == "mutable" and not frame_value:
                 # Source: x = X.local_scalar(...); Builder: x = X.decl_mutable_var_(...).
                 value = self._operation("decl_mutable_var_", [value], statement, **keywords)
-            elif target.id in mutable and kind != "binding_declaration" and not frame_value:
+            elif target.id in mutable and not binding_declaration and not frame_value:
                 # Source: x = value; Builder: X.set_mutable_var_(x, value).
                 return [
                     ast.copy_location(

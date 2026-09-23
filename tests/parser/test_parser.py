@@ -402,6 +402,47 @@ def main():
     ]
 
 
+@pytest.mark.parametrize("scope", ["local", "parameter", "enclosing"])
+def test_shadowed_binding_declaration_alias_uses_ordinary_assignment(language, scope):
+    # Before: axis_alias = ordinary; cell = X.cell(); cell = axis_alias()
+    # Expected builder program: X.set_mutable_var_(cell, axis_alias()).
+    # An ambient declaration policy cannot override a lexical callable binding.
+    marker, calls = object(), []
+
+    @protocol.register_binding_decl
+    def axis_alias():
+        raise AssertionError("The shadowed ambient declaration must not run")
+
+    def ordinary():
+        calls.append("ordinary")
+        return marker
+
+    body = "cell = X.cell()\n    cell = axis_alias()\n    X.record(cell)"
+    if scope == "local":
+        source = "@X.script\ndef main():\n    axis_alias = ordinary\n    " + body
+    elif scope == "parameter":
+        # A callable parameter is an opaque value supplied by the fake frame.
+        def arg(name, annotation, **kwargs):
+            frame = language.frame()
+            frame.params.append(ordinary)
+            frame.function.params.append(ordinary)
+            return ordinary
+
+        language.X.arg = arg
+        source = "@X.script\ndef main(axis_alias: X.tensor(())):\n    " + body
+    else:
+        source = (
+            "@X.script\ndef main():\n    axis_alias = ordinary\n"
+            "    @X.script\n    def inner():\n        " + body.replace("\n", "\n    ")
+        )
+    language.parse(source, axis_alias=axis_alias, ordinary=ordinary)
+    declaration = next(event[2] for event in language.events if event[0] == "declare")
+    stores = [event for event in language.events if event[0] == "set"]
+    assert calls == ["ordinary"]
+    assert len(stores) == 1 and stores[0][1] is declaration and stores[0][2] is marker
+    assert next(event[1] for event in language.events if event[0] == "record") is declaration
+
+
 def test_quoted_symbols_share_identity_without_introducing_python_bindings(language):
     # Before: def main(x: X.tensor(("n", "n"))): X.record(n)
     # Expected builder program: X.tensor((X.resolve_type_var_("n"), X.resolve_type_var_("n")))
