@@ -274,7 +274,7 @@ def test_bind_with_constant():
 def test_func_call():
     def shared_16x16_to_ldmatrix_32x8_layout(i, j):
         thread_id = (i % 8) * 4 + (j % 8) // 2
-        return T.meta_var((thread_id, (j // 8) * 4 + (i // 8) * 2 + (j % 2)))
+        return thread_id, (j // 8) * 4 + (i // 8) * 2 + (j % 2)
 
     @T.prim_func(s_tir=True)
     def mma_sync_m16n16k16_desc(a: T.handle, b: T.handle, c: T.handle) -> None:
@@ -288,9 +288,9 @@ def test_func_call():
             for i, j, k in T.grid(16, 16, 16):
                 with T.sblock("C"):
                     i, j, k = T.axis.remap("SSR", [i, j, k])
-                    thread_id_C, local_id_C = shared_16x16_to_ldmatrix_32x8_layout(i, j)
-                    thread_id_A, local_id_A = shared_16x16_to_ldmatrix_32x8_layout(i, k)
-                    thread_id_B, local_id_B = shared_16x16_to_ldmatrix_32x8_layout(k, j)
+                    thread_id_C, local_id_C = T.meta_var(shared_16x16_to_ldmatrix_32x8_layout(i, j))
+                    thread_id_A, local_id_A = T.meta_var(shared_16x16_to_ldmatrix_32x8_layout(i, k))
+                    thread_id_B, local_id_B = T.meta_var(shared_16x16_to_ldmatrix_32x8_layout(k, j))
 
                     T.reads(
                         C[thread_id_C, local_id_C],

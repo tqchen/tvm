@@ -410,7 +410,7 @@ def llama_rope(  # pylint: disable=too-many-arguments
         q = T.match_buffer(var_q, (batch_size, seq_len, num_q_heads, head_dim), dtype)
         k = T.match_buffer(var_k, (batch_size, seq_len, num_kv_heads, head_dim), dtype)
         v = T.match_buffer(var_v, (batch_size, seq_len, num_kv_heads, head_dim), dtype)
-        for iters in T.grid(batch_size, seq_len, fused_heads, head_dim):
+        for (*iters,) in T.grid(batch_size, seq_len, fused_heads, head_dim):
             with T.sblock("llama_fused_rope"):
                 b, s, h, d = T.axis.remap("SSSS", iters)
                 if h < num_q_heads:
@@ -499,7 +499,7 @@ def llama_rope_with_position_map(  # pylint: disable=too-many-arguments
         ext_factors: T.Buffer | None = None,
     ):
         kwargs = {}
-        if ext_factors:
+        if ext_factors is not None:
             kwargs["ext_factors"] = ext_factors
         cos_freq, sin_freq, var_map = switch_rope_freq_func(rope_scaling)(
             pos * scale, d, rotary_dim, theta, "float32", **kwargs
@@ -546,7 +546,7 @@ def llama_rope_with_position_map(  # pylint: disable=too-many-arguments
         position_map = T.match_buffer(
             var_position_map, (seq_len,), "int32", elem_offset=position_map_elem_offset
         )
-        for iters in T.grid(seq_len, fused_heads, head_dim):
+        for (*iters,) in T.grid(seq_len, fused_heads, head_dim):
             with T.sblock("llama_fused_rope"):
                 s, h, d = T.axis.remap("SSS", iters)
                 if h < num_q_heads:
@@ -598,7 +598,7 @@ def llama_rope_with_position_map(  # pylint: disable=too-many-arguments
         )
 
         if seq_len > original_max_position_embeddings:
-            for iters in T.grid(seq_len, fused_heads, head_dim):
+            for (*iters,) in T.grid(seq_len, fused_heads, head_dim):
                 with T.sblock("llama_fused_rope"):
                     s, h, d = T.axis.remap("SSS", iters)
                     if h < num_q_heads:
@@ -630,7 +630,7 @@ def llama_rope_with_position_map(  # pylint: disable=too-many-arguments
                     else:
                         v[s, h - (num_q_heads + num_kv_heads), d] = qkv[s, h, d]
         else:
-            for iters in T.grid(seq_len, fused_heads, head_dim):
+            for (*iters,) in T.grid(seq_len, fused_heads, head_dim):
                 with T.sblock("llama_fused_rope"):
                     s, h, d = T.axis.remap("SSS", iters)
                     if h < num_q_heads:
@@ -725,7 +725,7 @@ def llama4_rope_with_position_map(  # pylint: disable=too-many-arguments
         ext_factors: T.Buffer | None = None,
     ):
         kwargs = {}
-        if ext_factors:
+        if ext_factors is not None:
             kwargs["ext_factors"] = ext_factors
         cos_freq, sin_freq, var_map = switch_rope_freq_func(rope_scaling)(
             pos * scale, d, rotary_dim, theta, "float32", **kwargs
@@ -773,7 +773,7 @@ def llama4_rope_with_position_map(  # pylint: disable=too-many-arguments
         position_map = T.match_buffer(
             var_position_map, (seq_len,), "int32", elem_offset=position_map_elem_offset
         )
-        for iters in T.grid(seq_len, fused_heads, head_dim):
+        for (*iters,) in T.grid(seq_len, fused_heads, head_dim):
             with T.sblock("llama_fused_rope"):
                 s, h, d = T.axis.remap("SSS", iters)
                 if h < num_q_heads:
@@ -825,7 +825,7 @@ def llama4_rope_with_position_map(  # pylint: disable=too-many-arguments
         )
 
         if seq_len > original_max_position_embeddings:
-            for iters in T.grid(seq_len, fused_heads, head_dim):
+            for (*iters,) in T.grid(seq_len, fused_heads, head_dim):
                 with T.sblock("llama_fused_rope"):
                     s, h, d = T.axis.remap("SSS", iters)
                     if h < num_q_heads:
@@ -857,7 +857,7 @@ def llama4_rope_with_position_map(  # pylint: disable=too-many-arguments
                     else:
                         v[s, h - (num_q_heads + num_kv_heads), d] = qkv[s, h, d]
         else:
-            for iters in T.grid(seq_len, fused_heads, head_dim):
+            for (*iters,) in T.grid(seq_len, fused_heads, head_dim):
                 with T.sblock("llama_fused_rope"):
                     s, h, d = T.axis.remap("SSS", iters)
                     if h < num_q_heads:

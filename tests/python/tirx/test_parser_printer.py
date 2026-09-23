@@ -667,7 +667,7 @@ def test_grid():
     @T.prim_func
     def test():
         T.device_entry()
-        for lvs in T.grid(10, (2, 12)):
+        for (*lvs,) in T.grid(10, (2, 12)):
             T.evaluate(lvs[0] + lvs[1])
         # fmt: on
     code = test.script()
@@ -765,13 +765,16 @@ def test_meta_class_constructor_rejects_unowned_resource():
             bad = Bad()
 
 
-def test_meta_class_multiple_instances_auto_name_owned_resources():
+def test_meta_class_multiple_instances_preserve_owned_resources():
+    instances = []
+
     @T.meta_class
     class Holder:
         def __init__(self, external):
             self.external = external
             self.buf = T.alloc_buffer((2,), "int32", scope="local")
             self.scalar = T.local_scalar("int32")
+            instances.append(self)
 
     @T.prim_func
     def test():
@@ -789,15 +792,29 @@ def test_meta_class_multiple_instances_auto_name_owned_resources():
         )
 
     code = test.script()
-    bufs = _collect_buffers(test)
-    assert "external" in bufs
-    assert "first_external" not in bufs
-    assert "second_external" not in bufs
-    assert {"first_buf", "second_buf", "first_scalar", "second_scalar"}.issubset(bufs)
-    assert 'first_buf = T.alloc_local((2,), "int32")' in code
-    assert 'second_buf = T.alloc_local((2,), "int32")' in code
-    assert "first_scalar: T.int32" in code
-    assert "second_scalar: T.int32" in code
+    assert len(instances) == 2
+    first, second = instances
+    assert first.external.same_as(second.external)
+    assert first.external.name == "external"
+    owned = [first.buf, second.buf, first.scalar.source, second.scalar.source]
+    assert all(resource.name == "" for resource in owned)
+    assert all(
+        not lhs.same_as(rhs) for index, lhs in enumerate(owned) for rhs in owned[index + 1 :]
+    )
+    assert [tuple(resource.shape) for resource in owned] == [(2,), (2,), (1,), (1,)]
+    assert all(resource.dtype == "int32" and resource.scope() == "local" for resource in owned)
+    allocations = []
+
+    def collect_allocation(node):
+        if isinstance(node, tvm.tirx.AllocBuffer):
+            allocations.append(node.buffer)
+
+    tvm_ffi.structural_walk(test.body, collect_allocation)
+    assert len(allocations) == 5
+    assert all(
+        sum(resource.same_as(allocated) for allocated in allocations) == 1
+        for resource in [first.external, *owned]
+    )
     assert from_source(code).script() == code
 
 

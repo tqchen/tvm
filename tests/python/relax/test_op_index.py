@@ -923,7 +923,7 @@ def test_legalize_dynamic_begin_end():
             B: T.Buffer((T.int64(1), T.int64(16))),
         ):
             T.func_attr({"tirx.noalias": True})
-            for iters in T.grid(*B.shape):
+            for (*iters,) in T.grid(*B.shape):
                 with T.sblock("T_dynamic_strided_slice"):
                     i, j = T.axis.remap("SS", iters)
                     B[i, j] = A[i + index, j]

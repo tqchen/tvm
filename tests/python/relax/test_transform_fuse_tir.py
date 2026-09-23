@@ -751,7 +751,7 @@ def test_fuse_of_dynamic_kernel_with_var_params_and_static_args():
             A = T.match_buffer(a, [m, n], "float32")
             B = T.match_buffer(b, [m, n], "float32")
 
-            for iters in T.grid(m, n):
+            for (*iters,) in T.grid(m, n):
                 with T.sblock("compute"):
                     i, j = T.axis.remap("SS", iters)
                     B[i, j] = A[i, j] * i + j
@@ -783,12 +783,12 @@ def test_fuse_of_dynamic_kernel_with_var_params_and_static_args():
         ):
             T.func_attr({"tirx.noalias": True})
             Y = T.sblock_alloc_buffer(X.shape, "float32")
-            for iters in T.grid(*X.shape):
+            for (*iters,) in T.grid(*X.shape):
                 with T.sblock("compute_Y"):
                     i, j = T.axis.remap("SS", iters)
                     Y[i, j] = X[i, j] * i + j
 
-            for iters in T.grid(*X.shape):
+            for (*iters,) in T.grid(*X.shape):
                 with T.sblock("compute_Z"):
                     i, j = T.axis.remap("SS", iters)
                     Z[i, j] = Y[i, j] * i + j

@@ -1110,7 +1110,7 @@ def test_call_tir_inplace_with_tuple_var_raises_error():
             ):
                 # copies the contents of B into A and out1
                 T.func_attr({"tirx.noalias": True})
-                for iters in T.grid(T.int64(2), T.int64(3)):
+                for (*iters,) in T.grid(T.int64(2), T.int64(3)):
                     with T.sblock("T_zeros"):
                         i, j = T.axis.remap("SS", iters)
                         A[i, j] = B[i, j]
