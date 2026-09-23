@@ -1269,12 +1269,14 @@ def test_dataflow_inside_branch():
             if transpose_weights:
                 with R.dataflow():
                     w_t = R.permute_dims(w)
-                    out = R.matmul(x, w_t)
-                    R.output(out)
+                    out_then = R.matmul(x, w_t)
+                    R.output(out_then)
+                out = out_then
             else:
                 with R.dataflow():
-                    out = R.matmul(x, w)
-                    R.output(out)
+                    out_else = R.matmul(x, w)
+                    R.output(out_else)
+                out = out_else
             return out
 
     @I.ir_module(s_tir=True)
