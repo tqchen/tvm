@@ -66,7 +66,7 @@ def test_prim_func_symbolic_buffer_param_roundtrip():
     )
 
     source = func.script()
-    assert 'T.Buffer(("n + 1", n)' in source
+    assert 'T.Buffer(("n + 1", "n")' in source
     assert source.index("n = T.int32()") < source.index("T.evaluate(n)")
     tvm.ir.assert_structural_equal(tvm.script.from_source(source), func)
 
