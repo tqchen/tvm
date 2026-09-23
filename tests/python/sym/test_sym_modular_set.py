@@ -15,6 +15,8 @@
 # specific language governing permissions and limitations
 # under the License.
 # ruff: noqa: F841
+import pytest
+
 import tvm
 import tvm.testing
 from tvm import te
@@ -228,6 +230,26 @@ def test_bitwise_and():
     m = analyzer.modular_set((x * 16 + y * 4) & 17)
     assert m.coeff == 1
     assert m.base == 0
+
+
+@pytest.mark.parametrize("bits", [31, 32, 40, 62])
+def test_bitwise_and_wide_mask(bits):
+    analyzer = tvm.sym.Analyzer()
+    x = tvm.tirx.Var("x", "int64")
+    mask = tvm.tirx.const((1 << bits) - 1, "int64")
+    result = analyzer.modular_set((x * 16 + 3) & mask)
+    assert result.coeff == 16
+    assert result.base == 3
+
+
+def test_bitwise_and_max_int64_mask():
+    analyzer = tvm.sym.Analyzer()
+    x = tvm.tirx.Var("x", "int64")
+    mask = tvm.tirx.const((1 << 63) - 1, "int64")
+    # The modulus is outside signed int64; retain a conservative result.
+    result = analyzer.modular_set(x & mask)
+    assert result.coeff == 1
+    assert result.base == 0
 
 
 if __name__ == "__main__":
