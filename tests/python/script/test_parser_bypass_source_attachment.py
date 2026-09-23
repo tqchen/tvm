@@ -1,4 +1,3 @@
-#!/usr/bin/env bash
 # Licensed to the Apache Software Foundation (ASF) under one
 # or more contributor license agreements.  See the NOTICE file
 # distributed with this work for additional information
@@ -15,13 +14,22 @@
 # KIND, either express or implied.  See the License for the
 # specific language governing permissions and limitations
 # under the License.
+"""Source attachment preserves common IR identity through binding bypass."""
 
-set -euxo pipefail
+import pytest
 
-export PYTHONPATH="$(pwd)/python"
-export PYTEST_ADDOPTS="${CI_PYTEST_ADD_OPTIONS:-} ${PYTEST_ADDOPTS:-}"
+import tvm
+from tvm.script.ir_builder import IRBuilder
+from tvm.script.ir_builder import ir as I
+from tvm.script.ir_builder.base import BypassBind
 
-# setup tvm-ffi into python folder
-uv pip install -v --target=python ./3rdparty/tvm-ffi/
 
-python3 -m pytest -vvs -n auto -m "${TVM_TEST_MARKER:-not gpu}" tests/python
+@pytest.mark.parametrize("count", [1, 2])
+def test_bypass_source_attachment_preserves_value_identity(count):
+    span = tvm.ir.Span(tvm.ir.SourceName("scope.py"), 3, 3, 4, 25)
+    with IRBuilder():
+        values = tuple(tvm.ir.Var("", "int32") for _ in range(count))
+        result = BypassBind(values[0] if count == 1 else values)
+        assert I.at_(span, result) is result
+        for value in values:
+            assert value.span.same_as(span)

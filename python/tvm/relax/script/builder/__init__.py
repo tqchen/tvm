@@ -38,7 +38,6 @@ from tvm.script.ir_builder.base import source_span as _source_span
 from tvm.script.ir_builder.ir.protocol import resolve_global_info as _lookup_global_info
 from tvm.script.parser.protocol import args_policy as _args_policy
 from tvm.script.parser.protocol import constexpr as constexpr
-from tvm.script.parser.protocol import expr_str_args as _expr_str_args
 
 from . import _ffi_api
 from . import distributed as dist
@@ -100,7 +99,7 @@ Range = _ir.Range
 __tvm_value_if__ = True
 
 
-@_expr_str_args("values", introduce=True, dtype="int64")
+@_args_policy({"values": "expr_str"}, dtype="int64")
 def Shape(values=None, ndim=-1, *, span=None):
     """Construct a shape type from concrete dimensions."""
     return _relax.ShapeType(values, ndim, _source_span(span))
@@ -234,7 +233,13 @@ def arg(name, ty, *, span=None):
 
 
 def func_ret_type(ret_ty):
-    """Set the active function signature return type."""
+    """Set the active function signature return type.
+
+    Parameters
+    ----------
+    ret_ty : Type
+        The function return type.
+    """
     return _native.func_ret_type(_type(_return_annotation(ret_ty)))
 
 
@@ -242,7 +247,18 @@ func_ret_ty = func_ret_type
 
 
 def dataflow(*, span=None):
-    """Create a dataflow context with explicit finalized exports."""
+    """Create a dataflow context with explicit finalized exports.
+
+    Parameters
+    ----------
+    span : Span or source location, optional
+        Source location attached to the constructed IR.
+
+    Returns
+    -------
+    res : frame.BindingBlockFrame
+        The constructed frame, retaining source metadata.
+    """
     return _at(span, _native.dataflow())
 
 
@@ -268,12 +284,34 @@ def If(condition, *, span=None):
 
 
 def Then(*, span=None):
-    """Create the true branch of the active conditional."""
+    """Create the true branch of the active conditional.
+
+    Parameters
+    ----------
+    span : Span or source location, optional
+        Source location attached to the constructed IR.
+
+    Returns
+    -------
+    res : frame.ThenFrame
+        The constructed frame, retaining source metadata.
+    """
     return _at(span, _native.Then())
 
 
 def Else(*, span=None):
-    """Create the false branch of the active conditional."""
+    """Create the false branch of the active conditional.
+
+    Parameters
+    ----------
+    span : Span or source location, optional
+        Source location attached to the constructed IR.
+
+    Returns
+    -------
+    res : frame.ElseFrame
+        The constructed frame, retaining source metadata.
+    """
     return _at(span, _native.Else())
 
 

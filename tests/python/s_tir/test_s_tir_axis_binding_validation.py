@@ -1,4 +1,3 @@
-#!/usr/bin/env bash
 # Licensed to the Apache Software Foundation (ASF) under one
 # or more contributor license agreements.  See the NOTICE file
 # distributed with this work for additional information
@@ -15,13 +14,30 @@
 # KIND, either express or implied.  See the License for the
 # specific language governing permissions and limitations
 # under the License.
+"""Scheduled block axes reject duplicate source bindings in their native frame."""
 
-set -euxo pipefail
+import pytest
 
-export PYTHONPATH="$(pwd)/python"
-export PYTEST_ADDOPTS="${CI_PYTEST_ADD_OPTIONS:-} ${PYTEST_ADDOPTS:-}"
+import tvm
+from tvm.script import parser
 
-# setup tvm-ffi into python folder
-uv pip install -v --target=python ./3rdparty/tvm-ffi/
 
-python3 -m pytest -vvs -n auto -m "${TVM_TEST_MARKER:-not gpu}" tests/python
+@pytest.mark.parametrize(
+    "axes",
+    [
+        "vi = T.axis.spatial(16, i)\n            vi = T.axis.spatial(16, j)",
+        'vi, vi = T.axis.remap("SS", [i, j])',
+        'vi, vj = T.axis.remap("SS", [i, j])\n            vi = T.axis.spatial(16, j)',
+    ],
+)
+def test_duplicate_block_axis_source_name_is_rejected(axes):
+    source = f"""
+@T.prim_func(s_tir=True)
+def main():
+    for i, j in T.grid(16, 16):
+        with T.sblock("block"):
+            {axes}
+            T.evaluate(vi)
+"""
+    with pytest.raises(tvm.error.DiagnosticError):
+        parser.parse(source)

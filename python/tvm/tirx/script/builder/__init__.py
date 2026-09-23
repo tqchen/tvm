@@ -30,8 +30,8 @@ from tvm.script.ir_builder.base import BypassBind as _BypassBind
 from tvm.script.ir_builder.base import _construction_span, _return_annotation
 from tvm.script.ir_builder.base import at as _at
 from tvm.script.ir_builder.base import source_span as _source_span
+from tvm.script.parser.protocol import args_policy as _args_policy
 from tvm.script.parser.protocol import constexpr as constexpr
-from tvm.script.parser.protocol import expr_str_args as _expression_args
 from tvm.script.parser.protocol import register_type_var_decl as _register_type_var_decl
 from tvm.tirx.lang.alloc_pool import SMEMPool as SMEMPool
 from tvm.tirx.lang.alloc_pool import TMEMPool as TMEMPool
@@ -76,14 +76,14 @@ def type_var(name, *, dtype=None, span=None):
     return _ir.Var(name, "int64" if dtype is None else dtype, _source_span(span))
 
 
-@_expression_args(
-    "shape",
-    "strides",
-    "elem_offset",
-    "byte_offset",
-    "allocated_addr",
-    introduce=True,
-    compound_declarations=True,
+@_args_policy(
+    {
+        "shape": "expr_str",
+        "strides": "expr_str",
+        "elem_offset": "expr_str",
+        "byte_offset": "expr_str",
+        "allocated_addr": "expr_str",
+    },
     as_type=True,
 )
 def Buffer(
@@ -405,13 +405,35 @@ def If(condition, *, span=None):
 
 
 def Then(*, span=None):
-    """Create a native then statement region."""
+    """Create a native then statement region.
+
+    Parameters
+    ----------
+    span : Span or source location, optional
+        Source location attached to the constructed IR.
+
+    Returns
+    -------
+    res : frame.ThenFrame
+        The constructed frame, retaining source metadata.
+    """
     with _construction_span(span):
         return _at(span, _native.Then())
 
 
 def Else(*, span=None):
-    """Create a native else statement region."""
+    """Create a native else statement region.
+
+    Parameters
+    ----------
+    span : Span or source location, optional
+        Source location attached to the constructed IR.
+
+    Returns
+    -------
+    res : frame.ElseFrame
+        The constructed frame, retaining source metadata.
+    """
     with _construction_span(span):
         return _at(span, _native.Else())
 
@@ -507,13 +529,13 @@ def shared_scalar(dtype="float32"):
     return alloc_scalar(dtype, "shared")
 
 
-@_expression_args(
-    "shape",
-    "strides",
-    "elem_offset",
-    "allocated_addr",
-    introduce=True,
-    compound_declarations=True,
+@_args_policy(
+    {
+        "shape": "expr_str",
+        "strides": "expr_str",
+        "elem_offset": "expr_str",
+        "allocated_addr": "expr_str",
+    }
 )
 @_wraps(_native.match_buffer)
 def match_buffer(*args, **kwargs):

@@ -1,4 +1,3 @@
-#!/usr/bin/env bash
 # Licensed to the Apache Software Foundation (ASF) under one
 # or more contributor license agreements.  See the NOTICE file
 # distributed with this work for additional information
@@ -15,13 +14,22 @@
 # KIND, either express or implied.  See the License for the
 # specific language governing permissions and limitations
 # under the License.
+"""Captured Relax tensor shapes need concrete symbols."""
 
-set -euxo pipefail
+import pytest
 
-export PYTHONPATH="$(pwd)/python"
-export PYTEST_ADDOPTS="${CI_PYTEST_ADD_OPTIONS:-} ${PYTEST_ADDOPTS:-}"
+from tvm import ir
+from tvm.script import parser
 
-# setup tvm-ffi into python folder
-uv pip install -v --target=python ./3rdparty/tvm-ffi/
 
-python3 -m pytest -vvs -n auto -m "${TVM_TEST_MARKER:-not gpu}" tests/python
+def test_captured_shapes_require_explicit_symbols():
+    n = ir.Var("n", "int64")
+    source = """
+@R.function
+def main(x: R.Tensor(shape, "float32")):
+    return x
+"""
+    result = parser.parse(source, extra_vars={"shape": (n, 16)})
+    assert result.params[0].ty.shape[0].same_as(n)
+    with pytest.raises(Exception):
+        parser.parse(source, extra_vars={"shape": ("n", 16)})

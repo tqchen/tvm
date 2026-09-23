@@ -16,11 +16,13 @@
 # under the License.
 """Canonical TVMScript AST parser and public construction namespaces."""
 
+from __future__ import annotations
+
 import importlib
 import sys
-from typing import TypeVar
+from typing import Any, TypeVar
 
-_ENTRY_EXPORTS = (
+_ENTRY_EXPORTS: tuple[str, ...] = (
     "_NAMESPACES",
     "from_source",
     "ir_module",
@@ -30,12 +32,12 @@ _ENTRY_EXPORTS = (
     "pyfunc",
     "register_namespace",
 )
-__all__ = [name for name in _ENTRY_EXPORTS if not name.startswith("_")]
-_initialized = False
-_initializing = False
+__all__: list[str] = [name for name in _ENTRY_EXPORTS if not name.startswith("_")]
+_initialized: bool = False
+_initializing: bool = False
 
 
-def _initialize():
+def _initialize() -> None:
     global _initialized, _initializing
     if _initialized or _initializing:
         return
@@ -104,7 +106,7 @@ def _initialize():
         _initializing = False
 
 
-def __getattr__(name):
+def __getattr__(name: str) -> Any:
     if name in _ENTRY_EXPORTS:
         _initialize()
         return getattr(importlib.import_module(f"{__name__}.entry"), name)

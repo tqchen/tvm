@@ -16,16 +16,20 @@
 # under the License.
 """One syntax prescan for generated names, declarations and region outputs."""
 
+from __future__ import annotations
+
 import ast
 import builtins
 import inspect
+from collections.abc import Mapping
 from dataclasses import dataclass
 from types import GetSetDescriptorType, MappingProxyType, MemberDescriptorType
+from typing import NoReturn
 
 from . import protocol
 
 
-def resolve_syntax(node, environment):
+def resolve_syntax(node: ast.AST | None, environment: Mapping[str, object]) -> object:
     """Read fixed namespace metadata without executing source descriptors."""
     if isinstance(node, ast.Name):
         return environment.get(node.id, getattr(builtins, node.id, None))
@@ -55,11 +59,11 @@ class Binding:
     name: str
     node: ast.AST
     kind: str
-    annotation: ast.AST | None = None
+    annotation: ast.expr | None = None
     dtype: object = None
     direct: bool = False
     # Original callee root; assignment dispatch checks completed lexical bindings.
-    declaration_root: ast.Name | None = None
+    declaration_root: ast.expr | None = None
 
 
 @dataclass(frozen=True)
@@ -73,45 +77,45 @@ class PrescanContext:
     ``conditional_outputs`` supplies the one explicit native-frame result name.
     """
 
-    reserved_names: frozenset
-    bindings: object
-    sites: object
-    mutable_names: object
-    conditional_outputs: object
-    namespaces: frozenset
+    reserved_names: frozenset[str]
+    bindings: Mapping[ast.AST | None, tuple[Binding, ...]]
+    sites: Mapping[ast.AST, Binding]
+    mutable_names: Mapping[ast.AST | None, frozenset[str]]
+    conditional_outputs: Mapping[ast.stmt, str]
+    namespaces: frozenset[str]
     # Explicit source dataflow outputs preserve native export identity on exit.
-    with_outputs: object
+    with_outputs: Mapping[ast.With, tuple[str, ...]]
     # Only source functions referencing themselves need early standalone refs.
-    recursive_functions: frozenset
+    recursive_functions: frozenset[ast.FunctionDef | ast.AsyncFunctionDef]
 
 
 class PrescanCollector(ast.NodeVisitor):
     """Collect binding syntax once, then discard all traversal accumulators."""
 
-    def __init__(self, environment, *, filename="<str>"):
+    def __init__(self, environment: Mapping[str, object], *, filename: str = "<str>") -> None:
         # Fixed lookup inputs last for this scan; never updated by assignments.
-        self.environment = environment
-        self.filename = filename
+        self.environment: Mapping[str, object] = environment
+        self.filename: str = filename
         # Accumulators are frozen by collect(); no native values are stored.
-        self.names = set(environment)
-        self.bindings = {}
-        self.sites = {}
-        self.outputs = {}
-        self.namespaces = set()
-        self.exports = {}
-        self.recursive = set()
+        self.names: set[str] = set(environment)
+        self.bindings: dict[ast.AST | None, list[Binding]] = {}
+        self.sites: dict[ast.AST, Binding] = {}
+        self.outputs: dict[ast.stmt, str] = {}
+        self.namespaces: set[str] = set()
+        self.exports: dict[ast.With, list[str]] = {}
+        self.recursive: set[ast.FunctionDef | ast.AsyncFunctionDef] = set()
         # Active source declarations, used only to recognize self references.
-        self.functions = []
-        self.module_name = None
+        self.functions: list[ast.FunctionDef | ast.AsyncFunctionDef] = []
+        self.module_name: str | None = None
         # Temporary lexical with-stack routes explicit output calls, then resets.
-        self.regions = []
+        self.regions: list[ast.With] = []
         # Lexical scope and dialect restore on function/class exit. direct marks
         # unconditional function-body declarations eligible before signatures.
-        self.scope = None
-        self.builder = None
-        self.direct = False
+        self.scope: ast.Module | ast.ClassDef | ast.FunctionDef | ast.AsyncFunctionDef | None = None
+        self.builder: object = None
+        self.direct: bool = False
 
-    def collect(self, tree):
+    def collect(self, tree: ast.Module) -> PrescanContext:
         """Scan the owned tree and return immutable facts for its rewrite."""
         # Decorator roots establish namespace meaning for this translation.
         for node in ast.walk(tree):
@@ -152,12 +156,19 @@ class PrescanCollector(ast.NodeVisitor):
             frozenset(self.recursive),
         )
 
-    def _error(self, node, message):
+    def _error(self, node: ast.AST, message: str) -> NoReturn:
         raise SyntaxError(message, (self.filename, node.lineno, node.col_offset + 1, None))
 
     def _binding(
-        self, name, node, kind="ordinary", annotation=None, dtype=None, *, declaration_root=None
-    ):
+        self,
+        name: str,
+        node: ast.AST,
+        kind: str = "ordinary",
+        annotation: ast.expr | None = None,
+        dtype: object = None,
+        *,
+        declaration_root: ast.expr | None = None,
+    ) -> None:
         if name in self.namespaces:
             self._error(node, f"Script namespace {name!r} cannot be rebound or shadowed")
         self.names.add(name)
@@ -165,7 +176,7 @@ class PrescanCollector(ast.NodeVisitor):
         self.bindings[self.scope].append(item)
         self.sites[node] = item
 
-    def visit_Name(self, node):
+    def visit_Name(self, node: ast.Name) -> None:
         if isinstance(node.ctx, ast.Store) and node.id in self.namespaces:
             self._error(node, f"Script namespace {node.id!r} cannot be rebound or shadowed")
         self.names.add(node.id)
@@ -175,19 +186,19 @@ class PrescanCollector(ast.NodeVisitor):
                     self.recursive.add(function)
                     break
 
-    def visit_arg(self, node):
+    def visit_arg(self, node: ast.arg) -> None:
         if node.arg in self.namespaces:
             self._error(node, f"Script namespace {node.arg!r} cannot be rebound or shadowed")
         self.names.add(node.arg)
         self.generic_visit(node)
 
-    def visit_alias(self, node):
+    def visit_alias(self, node: ast.alias) -> None:
         name = node.asname or node.name.split(".")[0]
         if isinstance(self.scope, ast.FunctionDef) and name in self.namespaces:
             self._error(node, f"Script namespace {name!r} cannot be rebound or shadowed")
         self.names.add(name)
 
-    def visit_ClassDef(self, node):
+    def visit_ClassDef(self, node: ast.ClassDef) -> None:
         self.names.add(node.name)
         old, old_module = self.scope, self.module_name
         self.scope, self.module_name = node, node.name
@@ -195,7 +206,7 @@ class PrescanCollector(ast.NodeVisitor):
         self.generic_visit(node)
         self.scope, self.module_name = old, old_module
 
-    def visit_FunctionDef(self, node):
+    def visit_FunctionDef(self, node: ast.FunctionDef | ast.AsyncFunctionDef) -> None:
         self._binding(node.name, node, "function")
         old_scope, old_builder, old_direct = self.scope, self.builder, self.direct
         self.scope, self.direct = node, True
@@ -245,7 +256,14 @@ class PrescanCollector(ast.NodeVisitor):
 
     visit_AsyncFunctionDef = visit_FunctionDef
 
-    def _target(self, target, value=None, annotation=None, *, binding_declaration=None):
+    def _target(
+        self,
+        target: ast.expr,
+        value: ast.expr | None = None,
+        annotation: ast.expr | None = None,
+        *,
+        binding_declaration: ast.expr | None = None,
+    ) -> None:
         constructor = (
             resolve_syntax(value.func, self.environment) if isinstance(value, ast.Call) else None
         )
@@ -298,18 +316,18 @@ class PrescanCollector(ast.NodeVisitor):
             self._target(target.value, binding_declaration=binding_declaration)
         self.visit(target)
 
-    def visit_Assign(self, node):
+    def visit_Assign(self, node: ast.Assign) -> None:
         for target in node.targets:
             self._target(target, node.value)
         self.visit(node.value)
 
-    def visit_AnnAssign(self, node):
+    def visit_AnnAssign(self, node: ast.AnnAssign) -> None:
         self._target(node.target, node.value, node.annotation)
         self.visit(node.annotation)
         if node.value:
             self.visit(node.value)
 
-    def visit_If(self, node):
+    def visit_If(self, node: ast.If) -> None:
         old_direct, self.direct = self.direct, False
         self.generic_visit(node)
         marker = (
@@ -319,7 +337,7 @@ class PrescanCollector(ast.NodeVisitor):
         )
         if not marker and getattr(self.builder, "__tvm_value_if__", False):
 
-            def ending(body):
+            def ending(body: list[ast.stmt]) -> str | None:
                 last = body[-1] if body else None
                 if (
                     isinstance(last, ast.Assign)
@@ -349,7 +367,7 @@ class PrescanCollector(ast.NodeVisitor):
                 self.outputs[node] = then
         self.direct = old_direct
 
-    def visit_For(self, node):
+    def visit_For(self, node: ast.For) -> None:
         old_direct, self.direct = self.direct, False
         self._target(node.target)
         self.visit(node.iter)
@@ -357,12 +375,12 @@ class PrescanCollector(ast.NodeVisitor):
             self.visit(statement)
         self.direct = old_direct
 
-    def visit_While(self, node):
+    def visit_While(self, node: ast.While) -> None:
         old_direct, self.direct = self.direct, False
         self.generic_visit(node)
         self.direct = old_direct
 
-    def visit_With(self, node):
+    def visit_With(self, node: ast.With) -> None:
         old_direct, self.direct = self.direct, False
         self.regions.append(node)
         for item in node.items:
@@ -374,7 +392,7 @@ class PrescanCollector(ast.NodeVisitor):
         self.regions.pop()
         self.direct = old_direct
 
-    def visit_Call(self, node):
+    def visit_Call(self, node: ast.Call) -> None:
         if self.regions and isinstance(node.func, ast.Attribute) and node.func.attr == "output":
             output = getattr(self.builder, "output", None)
             if output is not None and resolve_syntax(node.func, self.environment) is output:

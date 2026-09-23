@@ -21,13 +21,17 @@ Concrete eager annotation behavior is delegated to a builder-owned adapter;
 no IR definition, concrete annotation result, symbol or frame is stored here.
 """
 
-from collections.abc import Mapping
+from __future__ import annotations
+
+from collections.abc import Callable, Mapping
 from inspect import signature
-from types import MappingProxyType
-from typing import Any, NamedTuple
+from types import MappingProxyType, MethodType
+from typing import Any, NamedTuple, NoReturn, TypeVar
+
+_Callable = TypeVar("_Callable", bound=Callable[..., Any])
 
 
-def constexpr(value):
+def constexpr(value: object) -> NoReturn:
     """Mark a host control value in source syntax; consumed by the transpiler.
 
     The same callable may annotate a JIT specialization parameter. Generated
@@ -36,7 +40,7 @@ def constexpr(value):
     raise TypeError("constexpr is a parser syntax marker, not a runtime operation")
 
 
-def is_constexpr_marker(value):
+def is_constexpr_marker(value: object) -> bool:
     """Recognize the shared marker by identity without inspecting host values."""
     return value is constexpr
 
@@ -48,15 +52,11 @@ class ExprStrPolicy(NamedTuple):
     ----------
     fields : tuple of str
         Parameter names whose string values represent expressions.
-    introduce : bool, optional
-        Legacy symbol-introduction metadata. Default is False.
     dtype : object, optional
         Dtype spelling passed to builder symbol resolution. Default is None.
     scalar_strings : bool, optional
         Interpret bare strings as expressions. Default is True. Nested
         strings in marked fields are always treated as expressions.
-    compound_declarations : bool, optional
-        Legacy compound-expression metadata. Default is False.
 
     Notes
     -----
@@ -68,16 +68,14 @@ class ExprStrPolicy(NamedTuple):
     """
 
     fields: tuple[str, ...]
-    introduce: bool = False
-    dtype: Any = None
+    dtype: object = None
     scalar_strings: bool = True
-    compound_declarations: bool = False
 
 
 # Process-wide registry: callable identity -> immutable syntax policy. Dialect
 # imports register once; aliases share identities. No per-function entries or
 # evaluation results are cached, and transpilers only read this table.
-_ARGS_POLICIES = {}
+_ARGS_POLICIES: dict[object, ArgsPolicy] = {}
 
 
 class ArgsPolicy(NamedTuple):
@@ -87,25 +85,26 @@ class ArgsPolicy(NamedTuple):
     expression: ExprStrPolicy
 
 
-def get_args_policy(constructor):
-    """Return registered argument policies without evaluating the constructor.
+def get_args_policy(constructor: object) -> ArgsPolicy | None:
+    """Read a registered policy without evaluating the constructor.
 
-    Legacy attached expression metadata is read without changing its owner.
     Unregistered and unhashable host values have no argument policy.
     """
+    if isinstance(constructor, MethodType):
+        constructor = constructor.__func__
     try:
-        policy = _ARGS_POLICIES.get(constructor)
+        return _ARGS_POLICIES.get(constructor)
     except TypeError:
         return None
-    if policy is not None:
-        return policy
-    expression = getattr(constructor, "__tvm_expression_args__", None)
-    if expression is None:
-        return None
-    return ArgsPolicy(MappingProxyType(dict.fromkeys(expression.fields, "expr_str")), expression)
 
 
-def args_policy(fields, *, scalar_strings=True, as_type=False):
+def args_policy(
+    fields: Mapping[str, str],
+    *,
+    scalar_strings: bool = True,
+    dtype: object = None,
+    as_type: bool = False,
+) -> Callable[[Callable[..., Any]], Callable[..., Any]]:
     """Register ``expr_str`` and ``global_info`` policies by parameter name.
 
     Expression strings are rewritten as expressions; global-info arguments
@@ -118,7 +117,26 @@ def args_policy(fields, *, scalar_strings=True, as_type=False):
     (such as ``Tensor("float32")``), while nested shape strings are expressions.
     Builders own the eager expression adapter: unresolved annotations outside
     builder scope return MissingType, and concrete arguments construct normally.
-    ``as_type=True`` preserves the Python annotation-class surface.
+    ``dtype`` is opaque syntax metadata forwarded to builder symbol resolution;
+    its default of None leaves the dtype choice to the builder.
+    ``as_type=True`` preserves the Python annotation-class surface, including
+    Python type unions; construction still returns the wrapped callable's result.
+
+    Both original and wrapped callable identities share the registered policy,
+    including bound methods. Concrete arguments call the original constructor.
+    Outside a builder, marked strings and ``typing.TypeVar`` values return
+    MissingType. Inside a builder, TypeVar values resolve through the current
+    function frame and unresolved expression strings raise TypeError. Calls and
+    annotation results are never cached; annotations must be safe to re-evaluate.
+
+    Raises
+    ------
+    ValueError
+        If a policy kind or parameter name is unknown, or the constructor's
+        signature cannot be inspected.
+    TypeError
+        If the constructor cannot be inspected, a wrapped call cannot bind its
+        signature, or expression strings remain unresolved inside a builder.
 
     Examples
     --------
@@ -134,134 +152,25 @@ def args_policy(fields, *, scalar_strings=True, as_type=False):
     if unsupported:
         raise ValueError(f"Unknown argument policies: {sorted(unsupported)}")
 
-    def decorate(constructor):
-        unknown = set(fields).difference(signature(constructor).parameters)
-        if unknown:
-            raise ValueError(f"Unknown argument policy fields: {sorted(unknown)}")
-        expression_fields = tuple(name for name, kind in fields.items() if kind == "expr_str")
-        if expression_fields or as_type:
-            result = expr_str_args(
-                *expression_fields, scalar_strings=scalar_strings, as_type=as_type
-            )(constructor)
-            expression = expr_str_policy(result)
-        else:
-            result = constructor
-            expression = ExprStrPolicy((), scalar_strings=scalar_strings)
-        policy = ArgsPolicy(MappingProxyType(fields.copy()), expression)
-        _ARGS_POLICIES[constructor] = policy
-        _ARGS_POLICIES[result] = policy
-        return result
-
-    return decorate
-
-
-def expr_str_policy(constructor):
-    """Look up the expression-string policy for a host value.
-
-    Parameters
-    ----------
-    constructor : object
-        Python value whose registration or attached policy is queried.
-
-    Returns
-    -------
-    ExprStrPolicy or None
-        Registered or attached policy, or None if unregistered or unhashable.
-        Legacy attached policies may use the equivalent legacy record type.
-
-    Notes
-    -----
-    This read-only lookup neither imports dialects nor calls the constructor.
-    Returned policies are shared registration state; no builder frame is
-    entered. Exceptions from custom attribute access propagate.
-    """
-    policy = get_args_policy(constructor)
-    return policy.expression if policy is not None else None
-
-
-def expr_str_args(
-    *fields,
-    introduce=False,
-    dtype=None,
-    scalar_strings=True,
-    compound_declarations=False,
-    as_type=False,
-):
-    """Register expression-string fields and wrap eager constructor calls.
-
-    Parameters
-    ----------
-    *fields : str
-        Parameter names whose string values denote source expressions.
-    introduce : bool, optional
-        Legacy syntax metadata. Default is False; builders own introduction.
-    dtype : object, optional
-        Dtype spelling passed to builder symbol resolution. Default is None.
-    scalar_strings : bool, optional
-        Interpret bare strings as expressions. Default is True. False
-        preserves literal shorthand such as ``Tensor("float32")``; nested
-        strings in tuples and lists remain expressions.
-    compound_declarations : bool, optional
-        Legacy compound-expression metadata. Default is False.
-    as_type : bool, optional
-        Preserve use as an annotation class, including Python type unions.
-        Default is False. True returns a class invoking the wrapped callable;
-        construction still returns that callable's result.
-
-    Returns
-    -------
-    decorator : callable
-        Registers the constructor's policy and returns its eager-call adapter.
-
-    Raises
-    ------
-    ValueError
-        When applying the decorator to a constructor whose signature cannot
-        be inspected or does not contain a requested field.
-    TypeError
-        When the constructor cannot be inspected, or a wrapped call cannot
-        bind its signature or has unresolved fields inside an active builder.
-
-    Notes
-    -----
-    Both original and wrapped callable identities retain the policy in the
-    process-wide registry. Builders own eager annotation behavior: unresolved
-    strings or typing.TypeVar values in marked fields produce MissingType
-    outside active builders. Concrete arguments call the original constructor.
-    Handwritten builders require concrete expressions. Calls are never cached;
-    annotations must be safe to re-evaluate.
-
-    Examples
-    --------
-    Register a shape parameter while leaving the dtype string literal intact::
-
-        @expr_str_args("shape", scalar_strings=False)
-        def tensor_type(shape, dtype="float32"):
-            return make_tensor_type(shape, dtype)
-    """
-
-    def decorate(constructor):
+    def decorate(constructor: Callable[..., Any]) -> Callable[..., Any]:
         call_signature = signature(constructor)
         unknown = set(fields).difference(call_signature.parameters)
         if unknown:
-            raise ValueError(f"Unknown expression argument fields: {sorted(unknown)}")
-        policy = ExprStrPolicy(
-            tuple(fields),
-            bool(introduce),
-            dtype,
-            bool(scalar_strings),
-            bool(compound_declarations),
-        )
+            raise ValueError(f"Unknown argument policy fields: {sorted(unknown)}")
+        expression_fields = tuple(name for name, kind in fields.items() if kind == "expr_str")
+        expression = ExprStrPolicy(expression_fields, dtype, bool(scalar_strings))
+        if expression_fields or as_type:
+            # Builders own eager construction and active-frame/MissingType decisions.
+            from tvm.script.ir_builder.base import wrap_expression_constructor
 
-        # Registration is syntax-only. Builders own eager construction and the
-        # active-frame/MissingType decisions behind this generic wrapper factory.
-        from tvm.script.ir_builder.base import wrap_expression_constructor
-
-        result = wrap_expression_constructor(constructor, call_signature, policy, as_type=as_type)
-        result.__tvm_expression_args__ = policy
-        arguments = ArgsPolicy(MappingProxyType(dict.fromkeys(fields, "expr_str")), policy)
-        _ARGS_POLICIES[result] = arguments
-        _ARGS_POLICIES[constructor] = arguments
+            result = wrap_expression_constructor(
+                constructor, call_signature, expression, as_type=as_type
+            )
+        else:
+            result = constructor
+        policy = ArgsPolicy(MappingProxyType(fields.copy()), expression)
+        _ARGS_POLICIES[constructor] = policy
+        _ARGS_POLICIES[result] = policy
         return result
 
     return decorate
@@ -285,10 +194,12 @@ class DeclarationArguments(NamedTuple):
     """
 
     value_parameter: str
-    dtype: Any = None
+    dtype: object = None
 
 
-def register_type_var_decl(constructor, *, value_parameter="expr", dtype=None):
+def register_type_var_decl(
+    constructor: _Callable, *, value_parameter: str = "expr", dtype: object = None
+) -> _Callable:
     """Register a constructor that can declare a type variable.
 
     Parameters
@@ -328,7 +239,7 @@ def register_type_var_decl(constructor, *, value_parameter="expr", dtype=None):
     return constructor
 
 
-def register_binding_decl(constructor):
+def register_binding_decl(constructor: _Callable) -> _Callable:
     """Mark a call that explicitly introduces an ordinary source binding.
 
     Its scalar or unpacked targets bind the returned values even when an outer
@@ -340,7 +251,7 @@ def register_binding_decl(constructor):
     return constructor
 
 
-def register_mutable_var_decl(constructor, *, syntax="call"):
+def register_mutable_var_decl(constructor: _Callable, *, syntax: str = "call") -> _Callable:
     """Register mutable storage in call, annotation or parameter position.
 
     The immutable syntax set belongs to the callable across translations. It
@@ -348,12 +259,12 @@ def register_mutable_var_decl(constructor, *, syntax="call"):
     """
     if syntax not in ("call", "annotation", "parameter"):
         raise ValueError("Mutable declaration syntax must be call, annotation or parameter")
-    kinds = getattr(constructor, "__tvm_mutable_var_decl__", frozenset())
+    kinds: frozenset[str] = getattr(constructor, "__tvm_mutable_var_decl__", frozenset())
     constructor.__tvm_mutable_var_decl__ = kinds | frozenset((syntax,))
     return constructor
 
 
-def is_mutable_var_decl(constructor, *, syntax):
+def is_mutable_var_decl(constructor: object, *, syntax: str) -> bool:
     """Read a registered mutable declaration without evaluating source values."""
     return syntax in getattr(constructor, "__tvm_mutable_var_decl__", ())
 
@@ -382,13 +293,20 @@ class FunctionDecoratorInfo(NamedTuple):
     result, annotation result, or symbol state and enter no builder frames.
     """
 
-    builder: Any
-    option_map: dict | None = None
-    defaults: dict | None = None
+    builder: object
+    option_map: dict[str, str] | None = None
+    defaults: dict[str, Any] | None = None
     python: bool = False
 
 
-def register_function(decorator, builder, *, option_map=None, defaults=None, python=False):
+def register_function(
+    decorator: _Callable,
+    builder: object,
+    *,
+    option_map: Mapping[str, str] | None = None,
+    defaults: Mapping[str, Any] | None = None,
+    python: bool = False,
+) -> _Callable:
     """Register a decorator with explicit supported syntax options.
 
     Parameters
@@ -430,7 +348,7 @@ def register_function(decorator, builder, *, option_map=None, defaults=None, pyt
     return decorator
 
 
-def function_info(decorator):
+def function_info(decorator: object) -> FunctionDecoratorInfo | None:
     """Read registered construction metadata without calling the decorator.
 
     The returned option mappings are shared registration state. This lookup

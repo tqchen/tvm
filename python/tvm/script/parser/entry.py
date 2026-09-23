@@ -16,6 +16,7 @@
 # under the License.
 """Source acquisition and declaration/body execution for registered builders."""
 
+from __future__ import annotations
 import __future__
 
 import ast
@@ -25,8 +26,10 @@ import inspect
 import linecache
 import sys
 import textwrap
+from collections.abc import Callable, Mapping
 from functools import wraps
-from typing import TypeVar
+from types import FrameType, FunctionType
+from typing import TYPE_CHECKING, Any, TypeVar
 
 from tvm.error import DiagnosticError
 from tvm.ir import SourceName
@@ -39,10 +42,21 @@ from .diagnostics import diagnostic_error
 from .prescan import PrescanCollector
 from .transpile import IRBuilderTranspiler
 
-_NAMESPACES = {}
+if TYPE_CHECKING:
+    from tvm.ir import IRModule, Span
+    from tvm.relax import ExternFunc
+    from tvm.relax.base_py_module import BasePyModule
+    from tvm.runtime import Device
+    from tvm.target import Target
 
 
-def register_namespace(alias, namespace):
+_Callable = TypeVar("_Callable", bound=Callable[..., Any])
+
+# Executed Python bodies and registered dialects may supply arbitrary host/IR values.
+_NAMESPACES: dict[str, object] = {}
+
+
+def register_namespace(alias: str, namespace: object) -> None:
     """Register a host namespace for source-text entry points.
 
     Parameters
@@ -65,7 +79,7 @@ def register_namespace(alias, namespace):
     _NAMESPACES[alias] = namespace
 
 
-def _closure_values(function):
+def _closure_values(function: FunctionType) -> dict[str, Any]:
     values = {}
     for name, cell in zip(function.__code__.co_freevars, function.__closure__ or ()):
         try:
@@ -76,7 +90,7 @@ def _closure_values(function):
     return values
 
 
-def _lexical_environment(obj):
+def _lexical_environment(obj: FunctionType | type) -> dict[str, Any]:
     """Retain Python globals and closure bindings without inspecting callers."""
     if inspect.isfunction(obj):
         return {**obj.__globals__, **_closure_values(obj)}
@@ -84,7 +98,7 @@ def _lexical_environment(obj):
     return dict(vars(module)) if module is not None else {}
 
 
-def _definition_scope(frame):
+def _definition_scope(frame: FrameType) -> dict[str, Any]:
     """Snapshot immediate locals and active enclosing Python function scopes.
 
     Postponed annotations do not necessarily create closure cells. Retain their
@@ -107,17 +121,17 @@ def _definition_scope(frame):
 
 
 def recompose_builder(
-    translated,
+    translated: ast.Module,
     *,
-    source_fn,
-    definition_scope,
-    filename,
-    flags,
-    name,
-    environment,
-    result=None,
-    definition_scopes_name=None,
-):
+    source_fn: str | FunctionType | type,
+    definition_scope: Mapping[str, Any],
+    filename: str,
+    flags: int,
+    name: str,
+    environment: Mapping[str, Any],
+    result: str | None = None,
+    definition_scopes_name: str | None = None,
+) -> Callable[..., Any]:
     """Compile one builder callable with source lexical and annotation scopes.
 
     Python code objects identify the source's globals and closure cells. The
@@ -189,7 +203,7 @@ def recompose_builder(
                 default = body.args.kw_defaults[index]
 
                 class LexicalDefault(ast.NodeTransformer):
-                    def visit_Name(self, node):
+                    def visit_Name(self, node: ast.Name) -> ast.Name:
                         return (
                             ast.copy_location(ast.Name(alias, ast.Load()), node)
                             if node.id == captured
@@ -228,7 +242,7 @@ def recompose_builder(
     return namespace[name]
 
 
-def _inside_class(function, frame):
+def _inside_class(function: FunctionType, frame: FrameType) -> bool:
     """Defer only in the exact class frame of a registered module decorator."""
     local = frame.f_locals
     if local.get("__module__") != function.__module__ or "__qualname__" not in local:
@@ -250,7 +264,7 @@ def _inside_class(function, frame):
     if frame.f_back is not None:
         environment.update(frame.f_back.f_locals)
 
-    def resolve(expr):
+    def resolve(expr: ast.expr) -> object:
         if isinstance(expr, ast.Name):
             return environment.get(expr.id)
         if isinstance(expr, ast.Attribute):
@@ -265,7 +279,12 @@ def _inside_class(function, frame):
     )
 
 
-def make_decorator(builder, *, option_map=None, defaults=None):
+def make_decorator(
+    builder: object,
+    *,
+    option_map: Mapping[str, str] | None = None,
+    defaults: Mapping[str, Any] | None = None,
+) -> Callable[..., Any]:
     """Create and register a function decorator for a construction namespace.
 
     Parameters
@@ -302,11 +321,36 @@ def make_decorator(builder, *, option_map=None, defaults=None):
     """
     mapping, default_options = dict(option_map or {}), dict(defaults or {})
 
-    def decorator(function=None, **options):
+    def decorator(function: FunctionType | None = None, **options: Any) -> Any:
+        """Parse a Python function into a function of the selected IR dialect.
+
+        Parameters
+        ----------
+        function : Callable, optional
+            The function to be parsed. May be omitted to use the decorator with
+            keyword options, such as ``@T.prim_func(private=True)``.
+        private : bool, optional
+            Whether the function should be treated as private. A private
+            function has no global symbol attribute; a public function has a
+            global symbol matching its name. Defaults to False.
+        check_well_formed : bool, optional
+            Whether to check that the constructed function is well formed.
+            Defaults to True.
+        **options
+            Additional dialect options. ``T.prim_func`` accepts ``s_tir`` and
+            ``persistent``; ``R.function`` accepts ``pure``.
+
+        Returns
+        -------
+        result : PrimFunc or relax.Function or Callable
+            The parsed function, or a decorator when ``function`` is omitted.
+            Class members retain their Python functions until the enclosing
+            module is constructed.
+        """
         if function is not None and not inspect.isfunction(function):
             raise ValueError("Construction decorators require a function or keyword options")
 
-        def apply(function):
+        def apply(function: FunctionType) -> Any:
             frame = inspect.currentframe().f_back
             try:
                 if frame.f_code is decorator.__code__:
@@ -333,7 +377,9 @@ def make_decorator(builder, *, option_map=None, defaults=None):
     )
 
 
-def make_macro_decorator(builder, *, preserve_return=True, late_binding=False):
+def make_macro_decorator(
+    builder: object, *, preserve_return: bool = True, late_binding: bool = False
+) -> Callable[..., Callable[..., Any]]:
     """Create a decorator for helpers executed in a caller's builder frames.
 
     Parameters
@@ -368,11 +414,51 @@ def make_macro_decorator(builder, *, preserve_return=True, late_binding=False):
     compilation, and builder exceptions propagate to the caller.
     """
 
-    def decorator(function=None, **options):
+    def decorator(function: FunctionType | None = None, **options: Any) -> Callable[..., Any]:
+        """Decorate a helper that constructs IR in its caller's active frames.
+
+        Parameters
+        ----------
+        function : Callable, optional
+            The helper function. May be omitted to supply keyword options.
+        hygienic : bool, optional
+            Whether the helper resolves symbols in its definition environment
+            instead of its calling environment. Defaults to True. ``T.macro``
+            and ``R.macro`` capture values at definition time; ``T.inline``
+            refreshes captured closure cells when called.
+
+        Returns
+        -------
+        result : Callable
+            The construction helper, or a decorator when ``function`` is omitted.
+
+        Notes
+        -----
+        ``T.inline`` follows Python lexical scoping with late binding of captured
+        closure cells. Its return statements produce Python values, as do those
+        of ``R.macro``. ``T.macro`` emits returns in the active primitive function.
+
+        Examples
+        --------
+        An inline helper can read values from its enclosing scope::
+
+            import tvm
+            from tvm.script import tirx as T
+
+            x_value = 128
+
+            @T.inline
+            def capture(A, B):
+                B[()] = A[x_value]  # x_value resolved from enclosing scope
+
+            @T.prim_func(s_tir=True)
+            def use(A: T.Buffer((1024,), "int32"), B: T.Buffer((), "int32")) -> None:
+                capture(A, B)       # Produces B[()] = A[128]
+        """
         if function is not None and not inspect.isfunction(function):
             raise ValueError("Construction decorators require a function or keyword options")
 
-        def apply(function):
+        def apply(function: FunctionType) -> Callable[..., Any]:
             frame = inspect.currentframe().f_back
             try:
                 if frame.f_code is decorator.__code__:
@@ -383,7 +469,7 @@ def make_macro_decorator(builder, *, preserve_return=True, late_binding=False):
             definition_env = _lexical_environment(function)
 
             @wraps(function)
-            def invoke(*args, **kwargs):
+            def invoke(*args: Any, **kwargs: Any) -> Any:
                 bound = inspect.signature(function).bind(*args, **kwargs)
                 bound.apply_defaults()
                 environment = (
@@ -407,7 +493,7 @@ def make_macro_decorator(builder, *, preserve_return=True, late_binding=False):
     return decorator
 
 
-def pyfunc(function):
+def pyfunc(function: _Callable) -> _Callable:
     """Mark a Python function for opaque registration in a module.
 
     Parameters
@@ -438,7 +524,9 @@ def pyfunc(function):
 syntax_protocol.register_function(pyfunc, None, python=True)
 
 
-def _source_lines(source, definition_source):
+def _source_lines(
+    source: FunctionType | type, definition_source: tuple[str, int] | None
+) -> tuple[list[str], int, str | None]:
     """Recover a class from its exact decoration site when module inspection fails."""
     try:
         lines, start = inspect.getsourcelines(source)
@@ -459,7 +547,12 @@ def _source_lines(source, definition_source):
         raise
 
 
-def acquire_source(source, filename=None, *, definition_source=None):
+def acquire_source(
+    source: str | FunctionType | type,
+    filename: str | None = None,
+    *,
+    definition_source: tuple[str, int] | None = None,
+) -> tuple[ast.Module, str, int]:
     """Read source into a location-preserving AST, filename and compiler flags.
 
     Text uses ``<str>`` unless a filename is supplied. Function/class source
@@ -496,8 +589,15 @@ def acquire_source(source, filename=None, *, definition_source=None):
 
 
 def _prepare_transpiler(
-    tree, source, environment, definition_scope, filename, *, track_span=True, **options
-):
+    tree: ast.Module,
+    source: str | FunctionType | type,
+    environment: Mapping[str, Any],
+    definition_scope: Mapping[str, Any],
+    filename: str,
+    *,
+    track_span: bool = True,
+    **options: Any,
+) -> tuple[IRBuilderTranspiler, dict[str, Any]]:
     """Prescan an owned tree and inject collision-free execution bindings.
 
     The lexical environment is copied per invocation. Descriptor-safe metadata
@@ -514,7 +614,9 @@ def _prepare_transpiler(
     }
     # Imports establish source-text namespace metadata before prescan. Their
     # original AST nodes remain owned here and execute only once.
-    imports = [node for node in tree.body[:-1] if isinstance(node, ast.Import | ast.ImportFrom)]
+    imports: list[ast.stmt] = [
+        node for node in tree.body[:-1] if isinstance(node, ast.Import | ast.ImportFrom)
+    ]
     if imports:
         exec(compile(ast.Module(imports, []), filename, "exec", dont_inherit=True), namespace)
     metadata_environment = {**namespace, **definition_scope}
@@ -531,7 +633,7 @@ def _prepare_transpiler(
     prescan = PrescanCollector(metadata, filename=filename).collect(tree)
     names = dict.fromkeys([*namespace, *prescan.reserved_names], 0)
 
-    def fresh(prefix="_t"):
+    def fresh(prefix: str = "_t") -> str:
         """Allocate a name without changing any source identifier."""
         counter = names.get(prefix, 0)
         while f"{prefix}{counter}" in names:
@@ -562,7 +664,7 @@ def _prepare_transpiler(
         # One shared SourceName is metadata, not an IR construction result.
         namespace[source_name] = SourceName(filename)
 
-    def span(node):
+    def span(node: ast.AST) -> ast.expr:
         """Retain source ranges for builders to materialize during execution."""
         if not track_span:
             return ast.copy_location(ast.Constant(None), node)
@@ -599,7 +701,14 @@ def _prepare_transpiler(
     return transformer, namespace
 
 
-def _run_statements(source, builder, environment, bound_names, *, preserve_return=False):
+def _run_statements(
+    source: FunctionType,
+    builder: object,
+    environment: Mapping[str, Any],
+    bound_names: set[str],
+    *,
+    preserve_return: bool = False,
+) -> Any:
     """Execute a macro body in its caller's active builder frames.
 
     Argument binding precedes this call. The helper owns one source AST copy,
@@ -654,7 +763,16 @@ def _run_statements(source, builder, environment, bound_names, *, preserve_retur
     return runnable(*(namespace[name] for name in names))
 
 
-def _build(tree, source, environment, definition_scope, filename, flags, *, track_span):
+def _build(
+    tree: ast.Module,
+    source: str | FunctionType | type,
+    environment: Mapping[str, Any],
+    definition_scope: Mapping[str, Any],
+    filename: str,
+    flags: int,
+    *,
+    track_span: bool,
+) -> Any:
     """Translate an owned AST and execute its direct native builder program.
 
     Source expressions and annotations execute only in the generated program.
@@ -680,7 +798,12 @@ def _build(tree, source, environment, definition_scope, filename, flags, *, trac
     return runnable()
 
 
-def make_opaque_function(name, function, source, location=None):
+def make_opaque_function(
+    name: str,
+    function: Callable[..., Any],
+    source: str,
+    location: tuple[SourceName, int, int, int, int] | Span | None = None,
+) -> ExternFunc:
     """Represent a Python module member without executing its body."""
     from tvm import relax
 
@@ -695,7 +818,14 @@ def make_opaque_function(name, function, source, location=None):
     )
 
 
-def parse(source, extra_vars=None, *, filename=None, track_span: bool = True, **options):
+def parse(
+    source: str | FunctionType | type,
+    extra_vars: Mapping[str, Any] | None = None,
+    *,
+    filename: str | None = None,
+    track_span: bool = True,
+    **options: Any,
+) -> Any:
     """Transpile and execute a source string, Python function, or Python class.
 
     Parameters
@@ -788,7 +918,7 @@ def parse(source, extra_vars=None, *, filename=None, track_span: bool = True, **
         raise diagnostic_error(error, filename, tree) from error
 
 
-def _check_well_formed(result):
+def _check_well_formed(result: object) -> None:
     """Apply the public entry point's default validation to constructed IR."""
     from tvm import ir, relax, s_tir, tirx
 
@@ -814,13 +944,13 @@ def _check_well_formed(result):
 class _PyModuleFactory:
     """Keep executable Python attachments on each fresh module instance."""
 
-    def __init__(self, module, original_class):
-        self.ir_module = module
-        self.original_class = original_class
-        self.pyfunc_methods = list(getattr(module, "pyfuncs", {}))
-        self.__name__ = original_class.__name__
+    def __init__(self, module: IRModule, original_class: type) -> None:
+        self.ir_module: IRModule = module
+        self.original_class: type = original_class
+        self.pyfunc_methods: list[str] = list(getattr(module, "pyfuncs", {}))
+        self.__name__: str = original_class.__name__
 
-    def __call__(self, device=None, target=None):
+    def __call__(self, device: Device | None = None, target: Target | None = None) -> BasePyModule:
         from tvm import cpu, ir
         from tvm.relax.base_py_module import BasePyModule
 
@@ -833,11 +963,13 @@ class _PyModuleFactory:
             instance.add_python_function(name, getattr(self.original_class, name))
         return instance
 
-    def __getattr__(self, name):
+    def __getattr__(self, name: str) -> Any:
         return getattr(self.ir_module, name)
 
 
-def ir_module(module=None, **options):
+def ir_module(
+    module: type | None = None, **options: Any
+) -> IRModule | _PyModuleFactory | Callable[[type], IRModule | _PyModuleFactory]:
     """Decorate a Python class with two-phase module construction.
 
     Parameters
@@ -866,7 +998,7 @@ def ir_module(module=None, **options):
     acquisition errors and frame lifetime follow `parse`.
     """
 
-    def apply(module):
+    def apply(module: type) -> IRModule | _PyModuleFactory:
         if not inspect.isclass(module):
             raise TypeError(f"Expect a class, but got: {module}")
         frame = inspect.currentframe().f_back

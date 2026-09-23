@@ -22,16 +22,27 @@ values after nested parsing or an exception. Native builder frames own no JIT
 state, and ordinary parsing does not import the TIRx JIT entry point.
 """
 
+from __future__ import annotations
+
+from collections.abc import Iterator, Mapping
 from contextlib import contextmanager
 from contextvars import ContextVar
+from typing import Any, TypeVar
 
 # Per-execution inputs, never a second owner of native function or parameter state.
-_SPECIALIZATION = ContextVar("tvm_parser_specialization", default=None)
-_ABSENT_PARAMETERS = ContextVar("tvm_parser_absent_parameters", default=None)
+_Value = TypeVar("_Value")
+
+# Host/JIT values and callable annotation adapters have open-ended Python types.
+_SPECIALIZATION: ContextVar[tuple[str | None, dict[str, Any]] | None] = ContextVar(
+    "tvm_parser_specialization", default=None
+)
+_ABSENT_PARAMETERS: ContextVar[tuple[str | None, dict[str, None]] | None] = ContextVar(
+    "tvm_parser_absent_parameters", default=None
+)
 
 
 @contextmanager
-def specialization_context(name, bindings):
+def specialization_context(name: str | None, bindings: Mapping[str, Any] | None) -> Iterator[None]:
     """Pass selected JIT bindings to one root builder execution.
 
     ``None`` denotes ordinary parsing; an empty mapping is a specialization
@@ -46,7 +57,7 @@ def specialization_context(name, bindings):
 
 
 @contextmanager
-def absent_parameters(name, parameters):
+def absent_parameters(name: str | None, parameters: Mapping[str, None] | None) -> Iterator[None]:
     """Transport explicitly absent root parameters while preserving None.
 
     The legacy entry input maps each selected parameter name to None. No
@@ -62,19 +73,19 @@ def absent_parameters(name, parameters):
         _ABSENT_PARAMETERS.reset(token)
 
 
-def specialization_bindings(name):
+def specialization_bindings(name: str) -> dict[str, Any] | None:
     """Read the current root's bindings, or None outside specialization."""
     context = _SPECIALIZATION.get()
     return context[1] if context is not None and context[0] == name else None
 
 
-def absent_parameter_names(name):
+def absent_parameter_names(name: str) -> frozenset[str]:
     """Read explicit root absences without treating missing bindings as None."""
     context = _ABSENT_PARAMETERS.get()
     return frozenset(context[1]) if context is not None and context[0] == name else frozenset()
 
 
-def unwrap_annotation(annotation, specialization):
+def unwrap_annotation(annotation: Any, specialization: Mapping[str, Any] | None) -> Any:
     """Read an optional runtime annotation only within a JIT specialization.
 
     Generated argument construction calls this after checking selected values
@@ -88,7 +99,7 @@ def unwrap_annotation(annotation, specialization):
     return annotation
 
 
-def constexpr_binding(value, name):
+def constexpr_binding(value: _Value, name: str) -> _Value:
     """Require an explicit captured value for a constexpr parameter."""
     from tvm.script.ir_builder.base import MISSING
 

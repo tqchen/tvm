@@ -1,4 +1,3 @@
-#!/usr/bin/env bash
 # Licensed to the Apache Software Foundation (ASF) under one
 # or more contributor license agreements.  See the NOTICE file
 # distributed with this work for additional information
@@ -15,13 +14,25 @@
 # KIND, either express or implied.  See the License for the
 # specific language governing permissions and limitations
 # under the License.
+"""Recording builder fixtures for the production source-to-builder parser."""
 
-set -euxo pipefail
+import pytest
+from dummy_builder import Language
 
-export PYTHONPATH="$(pwd)/python"
-export PYTEST_ADDOPTS="${CI_PYTEST_ADD_OPTIONS:-} ${PYTEST_ADDOPTS:-}"
+from tvm.script.ir_builder import base
+from tvm.script.parser import entry
 
-# setup tvm-ffi into python folder
-uv pip install -v --target=python ./3rdparty/tvm-ffi/
 
-python3 -m pytest -vvs -n auto -m "${TVM_TEST_MARKER:-not gpu}" tests/python
+@pytest.fixture
+def language(monkeypatch):
+    language = Language()
+    monkeypatch.setattr(entry, "builder_ir", language.I)
+    return language
+
+
+@pytest.fixture
+def spanned_language(language):
+    language.I.at_ = base.at_
+    language.I.with_at_group_ = base.with_at_group_
+    language.X.inline = entry.make_macro_decorator(language.X)
+    return language

@@ -23,20 +23,23 @@ AST or adjacent concatenated literals), ranges conservatively fall back to the
 literal's complete original range. Rewriting never evaluates source expressions.
 """
 
+from __future__ import annotations
+
 import ast
 import inspect
 import linecache
 import re
+from collections.abc import Callable
 
 from . import protocol
 
 
 class _LiteralParser:
     # filename is immutable for one expression rewrite and owns no source/IR cache.
-    def __init__(self, filename):
-        self.filename = filename
+    def __init__(self, filename: str) -> None:
+        self.filename: str = filename
 
-    def _string_expression(self, node):
+    def _string_expression(self, node: ast.Constant) -> ast.expr:
         try:
             expression = ast.parse(node.value, mode="eval").body
         except SyntaxError as error:
@@ -72,7 +75,7 @@ class _LiteralParser:
         return expression
 
     @staticmethod
-    def _literal_positions(literal, node):
+    def _literal_positions(literal: str, node: ast.Constant) -> dict[int, tuple[int, int]] | None:
         """Map decoded expression byte offsets back through the literal's escapes."""
         match = re.match("(?i:([rub]*))([\"'])", literal)
         if match is None:
@@ -84,7 +87,7 @@ class _LiteralParser:
         positions, decoded, offset = {}, "", 0
         index = start
 
-        def location(raw_index):
+        def location(raw_index: int) -> tuple[int, int]:
             before = literal[:raw_index]
             line = node.lineno + before.count("\n")
             column = len(before.rsplit("\n", 1)[-1].encode("utf-8"))
@@ -113,14 +116,16 @@ class _LiteralParser:
         return positions if decoded == node.value else None
 
 
-def parse_annotation(node, filename):
+def parse_annotation(node: ast.expr, filename: str) -> ast.expr:
     """Decode a quoted whole annotation without interpreting its Python names."""
     if isinstance(node, ast.Constant) and isinstance(node.value, str):
         return _LiteralParser(filename)._string_expression(node)
     return node
 
 
-def handle_call_args_policy(node, resolve, infrastructure, filename):
+def handle_call_args_policy(
+    node: ast.Call, resolve: Callable[[ast.expr], object], infrastructure: str, filename: str
+) -> ast.Call:
     """Normalize this call's marked literal arguments before normal visitation.
 
     This local preorder step neither visits ordinary arguments nor copies the
@@ -137,12 +142,12 @@ def handle_call_args_policy(node, resolve, infrastructure, filename):
     class Symbols(ast.NodeTransformer):
         # Only the newly parsed argument string is visited here. This is literal
         # normalization, not a second pass over source expressions.
-        def visit_Attribute(self, current):
+        def visit_Attribute(self, current: ast.Attribute) -> ast.Attribute:
             if resolve(current.value) is not None:
                 return current
             return self.generic_visit(current)
 
-        def visit_Call(self, current):
+        def visit_Call(self, current: ast.Call) -> ast.Call:
             if resolve(current.func) is None:
                 current.func = self.visit(current.func)
             current.args = [self.visit(value) for value in current.args]
@@ -150,11 +155,11 @@ def handle_call_args_policy(node, resolve, infrastructure, filename):
                 keyword.value = self.visit(keyword.value)
             return current
 
-        def visit_Name(self, current):
+        def visit_Name(self, current: ast.Name) -> ast.Name:
             current._tvm_quoted_symbol = policy.expression.dtype
             return current
 
-    def expression_field(current, nested=False):
+    def expression_field(current: ast.expr, nested: bool = False) -> ast.expr:
         if isinstance(current, ast.Tuple | ast.List):
             current.elts = [expression_field(value, True) for value in current.elts]
         elif isinstance(current, ast.Constant) and isinstance(current.value, str):
@@ -162,7 +167,7 @@ def handle_call_args_policy(node, resolve, infrastructure, filename):
                 return Symbols().visit(literals._string_expression(current))
         return current
 
-    def argument(current, name):
+    def argument(current: ast.expr, name: str | None) -> ast.expr:
         kind = policy.fields.get(name)
         if kind == "expr_str":
             return expression_field(current)

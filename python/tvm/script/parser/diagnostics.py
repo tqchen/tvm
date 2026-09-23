@@ -16,6 +16,8 @@
 # under the License.
 """Source-located construction errors without replacing their original traceback."""
 
+from __future__ import annotations
+
 import ast
 import linecache
 import traceback
@@ -23,7 +25,7 @@ import traceback
 from tvm.error import DiagnosticError
 
 
-def diagnostic_error(error, filename, tree):
+def diagnostic_error(error: Exception, filename: str, tree: ast.Module) -> DiagnosticError:
     """Return a DiagnosticError highlighting the original source operation.
 
     error is the caught Python/builder exception. filename and tree supply the source
@@ -85,7 +87,7 @@ def diagnostic_error(error, filename, tree):
 
 
 def _format_source_snippet(
-    source_lines: list,
+    source_lines: list[str],
     lineno: int,
     col_offset: int,
     end_lineno: int,

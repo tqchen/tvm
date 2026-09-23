@@ -15,10 +15,15 @@
 # specific language governing permissions and limitations
 # under the License.
 """Source text and canonical one-based IR coordinates."""
+
+from __future__ import annotations
+
 import ast
 import inspect
+from types import FunctionType
 
 from tvm.ir import SourceName, Span
+
 
 class Source:
     """Source code class for TVMScript.
@@ -43,13 +48,13 @@ class Source:
         The complete source code of the file where the source code locates.
     """
 
-    source_name: str
+    source_name: str | None
     start_line: int
     start_column: int
     source: str
     full_source: str
 
-    def __init__(self, program: str | ast.AST):
+    def __init__(self, program: str | FunctionType | type) -> None:
         if isinstance(program, str):
             self.source_name = "<str>"
             self.start_line = 1
@@ -65,7 +70,7 @@ class Source:
         else:
             self.start_column = 0
         if self.start_column and lines:
-            self.source = "\n".join([l[self.start_column :].rstrip() for l in lines])
+            self.source = "\n".join([line[self.start_column :].rstrip() for line in lines])
         else:
             self.source = "".join(lines)
         try:
@@ -84,7 +89,7 @@ class Source:
             src, _ = inspect.findsource(program)  # type: ignore
             self.full_source = "".join(src)
 
-    def as_ast(self) -> ast.AST:
+    def as_ast(self) -> ast.Module:
         """Parse the source code into AST.
 
         Returns
@@ -118,4 +123,3 @@ class Source:
             col_offset,
             end_col_offset,
         )
-
