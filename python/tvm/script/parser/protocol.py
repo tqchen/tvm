@@ -255,7 +255,7 @@ def expr_str_args(
 
         # Registration is syntax-only. Builders own eager construction and the
         # active-frame/MissingType decisions behind this generic wrapper factory.
-        from tvm.script.ir_builder.type_var_frame import wrap_expression_constructor
+        from tvm.script.ir_builder.base import wrap_expression_constructor
 
         result = wrap_expression_constructor(constructor, call_signature, policy, as_type=as_type)
         result.__tvm_expression_args__ = policy
@@ -326,6 +326,24 @@ def register_type_var_decl(constructor, *, value_parameter="expr", dtype=None):
     """
     constructor.__tvm_type_var_decl__ = DeclarationArguments(value_parameter, dtype)
     return constructor
+
+
+def register_mutable_var_decl(constructor, *, syntax="call"):
+    """Register mutable storage in call, annotation or parameter position.
+
+    The immutable syntax set belongs to the callable across translations. It
+    describes source forms only; builders own the resulting storage and stores.
+    """
+    if syntax not in ("call", "annotation", "parameter"):
+        raise ValueError("Mutable declaration syntax must be call, annotation or parameter")
+    kinds = getattr(constructor, "__tvm_mutable_var_decl__", frozenset())
+    constructor.__tvm_mutable_var_decl__ = kinds | frozenset((syntax,))
+    return constructor
+
+
+def is_mutable_var_decl(constructor, *, syntax):
+    """Read a registered mutable declaration without evaluating source values."""
+    return syntax in getattr(constructor, "__tvm_mutable_var_decl__", ())
 
 
 class FunctionDecoratorInfo(NamedTuple):

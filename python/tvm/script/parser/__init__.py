@@ -20,11 +20,17 @@ import importlib
 import sys
 from typing import TypeVar
 
-_FRONTEND_EXPORTS = (
-    "_NAMESPACES", "from_source", "ir_module", "make_decorator", "make_helper",
-    "parse", "pyfunc", "register_namespace",
+_ENTRY_EXPORTS = (
+    "_NAMESPACES",
+    "from_source",
+    "ir_module",
+    "make_decorator",
+    "make_macro_decorator",
+    "parse",
+    "pyfunc",
+    "register_namespace",
 )
-__all__ = [name for name in _FRONTEND_EXPORTS if not name.startswith("_")]
+__all__ = [name for name in _ENTRY_EXPORTS if not name.startswith("_")]
 _initialized = False
 _initializing = False
 
@@ -35,16 +41,14 @@ def _initialize():
         return
     _initializing = True
     try:
-        from tvm import relax
         from tvm.relax import script as relax_namespace
         from tvm.relax.script import builder as relax_builder
-        from tvm.script.ir_builder import construction
         from tvm.tirx import script as tir_namespace
         from tvm.tirx.layout import Axis
         from tvm.tirx.script import builder as tir_builder
         from tvm.tirx.script import tile
-        from . import frontend, ir
-        from .jit import OptionalAnnotation, make_jit
+
+        from . import entry, ir
 
         for namespace, builder in ((tir_namespace, tir_builder), (relax_namespace, relax_builder)):
             namespace.__dict__.update(
@@ -52,46 +56,54 @@ def _initialize():
             )
         # Source assignment consumes a receipt; imperative bind returns the Var.
         tir_namespace.bind = tir_builder._native.bind
-        tir_namespace.prim_func = frontend.make_decorator(
-            tir_builder, option_map={"private": "private", "s_tir": "s_tir", "persistent": "persistent"}
+        tir_namespace.prim_func = entry.make_decorator(
+            tir_builder,
+            option_map={"private": "private", "s_tir": "s_tir", "persistent": "persistent"},
         )
-        tir_namespace.jit = make_jit(tir_builder)
-        tir_namespace.Optional = OptionalAnnotation
-        tir_namespace.inline = frontend.make_helper(tir_builder, preserve_return=True, late_binding=True)
-        tir_namespace.macro = frontend.make_helper(tir_builder, preserve_return=False)
+        tir_namespace.inline = entry.make_macro_decorator(
+            tir_builder, preserve_return=True, late_binding=True
+        )
+        tir_namespace.macro = entry.make_macro_decorator(tir_builder, preserve_return=False)
         tir_namespace.tile = tile
         for name in ("cluster", "cta", "thread", "warp", "warpgroup", "wg"):
             setattr(tir_namespace, name, getattr(tile, name))
-        relax_namespace.function = frontend.make_decorator(
+        relax_namespace.function = entry.make_decorator(
             relax_builder, option_map={"pure": "is_pure", "private": "is_private"}
         )
-        relax_namespace.macro = frontend.make_helper(relax_builder, preserve_return=True)
-        ir.ir_module = frontend.ir_module
-        ir.pyfunc = frontend.pyfunc
+        relax_namespace.macro = entry.make_macro_decorator(relax_builder, preserve_return=True)
+        ir.ir_module = entry.ir_module
+        ir.pyfunc = entry.pyfunc
         for namespace in (tir_namespace, relax_namespace, ir):
-            namespace.__all__ = [name for name in vars(namespace) if not name.startswith("_")]
-        frontend._NAMESPACES.update(
-            I=ir, ir=ir, T=tir_namespace, tir=tir_namespace, tirx=tir_namespace,
-            R=relax_namespace, relax=relax_namespace, Tx=tile, Axis=Axis, TypeVar=TypeVar,
+            namespace.__all__ = sorted(
+                {
+                    *vars(namespace).get("__all__", ()),
+                    *vars(namespace).get("_ENTRY_EXPORTS", ()),
+                    *(name for name in vars(namespace) if not name.startswith("_")),
+                }
+            )
+        entry._NAMESPACES.update(
+            I=ir,
+            ir=ir,
+            T=tir_namespace,
+            tir=tir_namespace,
+            tirx=tir_namespace,
+            R=relax_namespace,
+            relax=relax_namespace,
+            Tx=tile,
+            Axis=Axis,
+            TypeVar=TypeVar,
         )
 
-        def opaque(name, function, source, span):
-            return relax.ExternFunc(name, span=span).with_attrs({
-                "is_pyfunc": True, "function_type": "python", "python_function_name": name,
-                "python_source": source, "python_packed_func": function,
-            })
-
-        construction.register_opaque_factory(opaque)
         _initialized = True
     finally:
         _initializing = False
 
 
 def __getattr__(name):
-    if name in _FRONTEND_EXPORTS:
+    if name in _ENTRY_EXPORTS:
         _initialize()
-        return getattr(importlib.import_module(f"{__name__}.frontend"), name)
+        return getattr(importlib.import_module(f"{__name__}.entry"), name)
     if name in ("tirx", "tir", "relax", "I", "T", "R", "Tx"):
         _initialize()
-        return sys.modules[f"{__name__}.frontend"]._NAMESPACES[name]
+        return sys.modules[f"{__name__}.entry"]._NAMESPACES[name]
     raise AttributeError(f"module {__name__!r} has no attribute {name!r}")

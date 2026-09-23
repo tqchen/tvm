@@ -21,10 +21,8 @@ import inspect
 from collections.abc import Callable
 from typing import Any
 
+from tvm.script.parser import protocol
 from tvm.tirx import PrimFunc
-
-from . import protocol
-from .frontend import _definition_scope, _lexical_environment, parse
 
 
 class OptionalAnnotation:
@@ -42,6 +40,8 @@ def make_jit(builder):
 
     def jit(func=None, *, private=False, check_well_formed=True, is_stir=False, persistent=False):
         def apply(function):
+            from tvm.script.parser.entry import _definition_scope
+
             if not inspect.isfunction(function):
                 raise TypeError(f"Expect a function, but got: {function}")
             frame = inspect.currentframe().f_back
@@ -89,6 +89,8 @@ class TIRJit:
         persistent: bool = False,
         private: bool = False,
     ) -> None:
+        from tvm.script.parser.entry import _lexical_environment
+
         self.func = func
         self.check_well_formed = check_well_formed
         self.is_stir = is_stir
@@ -157,6 +159,8 @@ class TIRJit:
             A concrete TIRx PrimFunc, identical in type to the output of
             ``@T.prim_func``.
         """
+        from tvm.script.parser.entry import parse
+
         specializable_names = self.constexpr_names | self.optional_names
         extra = specialization_kwargs.keys() - specializable_names
         if extra:

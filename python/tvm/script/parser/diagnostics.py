@@ -23,17 +23,16 @@ import traceback
 from tvm.error import DiagnosticError
 
 
-def diagnostic_error(error, compiler):
+def diagnostic_error(error, filename, tree):
     """Return a DiagnosticError highlighting the original source operation.
 
-    error is the caught Python/builder exception. compiler supplies the source
+    error is the caught Python/builder exception. filename and tree supply the source
     filename and original AST for fallback coordinates. Builder errors carry
     plain location tuples; otherwise Python traceback/SyntaxError coordinates
     identify the innermost original operation. Python 3.11+ supplies precise
     traceback columns, while earlier versions fall back to the source line.
     No frame or IR object is inspected; the caller attaches error as __cause__.
     """
-    filename = compiler.filename
     location = getattr(error, "__tvm_script_location__", None)
     if location is not None:
         filename, start, end, column, end_column = location
@@ -61,14 +60,14 @@ def diagnostic_error(error, compiler):
                 # statement beginning on that line (a nested body over its def).
                 candidates = [
                     node
-                    for node in ast.walk(compiler.tree)
+                    for node in ast.walk(tree)
                     if isinstance(node, ast.stmt) and node.lineno == start
                 ]
                 if candidates:
                     node = min(candidates, key=lambda item: item.end_lineno - item.lineno)
                     end, column, end_column = node.end_lineno, node.col_offset, node.end_col_offset
         else:
-            node = compiler.tree.body[-1]
+            node = tree.body[-1]
             start, end = node.lineno, node.lineno
             column, end_column = node.col_offset, None
     lines = [f"{filename}:{start}: {type(error).__name__}: {error}"]

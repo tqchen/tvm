@@ -24,7 +24,6 @@ from tvm.script import tirx as T
 from tvm.script.ir_builder import IRBuilder
 from tvm.script.ir_builder import tirx as imperative
 from tvm.script.ir_builder.base import BypassBind
-from tvm.script.ir_builder.type_var_frame import TypeVarFrame
 from tvm.tirx.script.builder import ir as native
 
 
@@ -46,9 +45,9 @@ def test_imperative_bind_returns_native_variable(explicit_variable):
 @pytest.mark.parametrize("constant", [True, False])
 @pytest.mark.parametrize("explicit_name", [False, True])
 def test_self_bind_preserves_native_identity_and_name(constant, explicit_name):
-    with IRBuilder() as builder, TypeVarFrame() as symbols:
-        signature_symbol = symbols.resolve("assigned", "int32")
-        with T.function():
+    with IRBuilder() as builder:
+        with T.function() as symbols:
+            signature_symbol = symbols.resolve_type_var("assigned", "int32")
             x = T.arg("x", T.int32())
             expression = 10 if constant else x + 1
             variable = tvm.ir.Var("immutable", "int32") if explicit_name else None
@@ -57,7 +56,7 @@ def test_self_bind_preserves_native_identity_and_name(constant, explicit_name):
             original_name = result.value.name
             # Bypass precedes annotation, rebinding, and symbol resolution policy.
             assigned = T.bind_(
-                result, name="assigned", ty=object(), previous=object(), declaration=True
+                result, name="assigned", ty=object()
             )
             assert assigned is result.value
             assert assigned.name == original_name
@@ -65,7 +64,7 @@ def test_self_bind_preserves_native_identity_and_name(constant, explicit_name):
                 assert assigned.same_as(variable)
                 assert assigned.name == "immutable"
             assert not assigned.same_as(signature_symbol)
-            assert symbols.resolve("assigned").same_as(signature_symbol)
+            assert symbols.resolve_type_var("assigned").same_as(signature_symbol)
             T.evaluate(assigned)
         function = builder.get()
     binding, use = function.body.seq

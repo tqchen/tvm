@@ -15,5 +15,5 @@
 # specific language governing permissions and limitations
 # under the License.
 """Module construction and shared parser support."""
+
 from tvm.script.ir_builder.ir import *  # noqa: F403
-from .frontend import ir_module, pyfunc

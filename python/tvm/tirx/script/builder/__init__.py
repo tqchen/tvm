@@ -17,8 +17,6 @@
 """Concrete TIRx construction operations over the shared native IRBuilder stack."""
 
 import builtins as _python
-from dataclasses import dataclass as _dataclass
-from dataclasses import field as _field
 from functools import wraps as _wraps
 
 import tvm_ffi as _ffi
@@ -29,12 +27,9 @@ from tvm.script.ir_builder import IRBuilder as _IRBuilder
 from tvm.script.ir_builder import ir as _I
 from tvm.script.ir_builder.base import MISSING as _MISSING
 from tvm.script.ir_builder.base import BypassBind as _BypassBind
-from tvm.script.ir_builder.base import _construction_span
-from tvm.script.ir_builder.base import _frame_result as _named_frame_result
+from tvm.script.ir_builder.base import _construction_span, _return_annotation
 from tvm.script.ir_builder.base import at as _at
 from tvm.script.ir_builder.base import source_span as _source_span
-from tvm.script.ir_builder.type_var_frame import TypeVarDecl as _TypeVarDecl
-from tvm.script.ir_builder.type_var_frame import resolve_type_var as resolve_type_var
 from tvm.script.parser.protocol import constexpr as constexpr
 from tvm.script.parser.protocol import expr_str_args as _expression_args
 from tvm.script.parser.protocol import register_type_var_decl as _register_type_var_decl
@@ -55,7 +50,11 @@ from .ir import *
 from .ir import Bind as bind
 from .ir import boolean as bool  # pylint: disable=redefined-builtin
 from .protocol import bind_ as bind_
+from .protocol import call_global_var_ as call_global_var_
+from .protocol import decl_mutable_var_ as decl_mutable_var_
 from .protocol import emit_ as emit_
+from .protocol import resolve_type_var_ as resolve_type_var_
+from .protocol import set_mutable_var_ as set_mutable_var_
 from .tirx import cluster as cluster
 from .tirx import cta as cta
 from .tirx import thread as thread
@@ -191,7 +190,7 @@ def Ptr(dtype, storage_scope="global", *, span=None):
     """
     if callable(dtype) and not isinstance(dtype, _ir.Expr):
         dtype = dtype()
-    if isinstance(dtype, _ir.Expr | _TypeVarDecl):
+    if isinstance(dtype, _ir.Expr):
         dtype = dtype.ty
     if isinstance(dtype, _ir.PrimType):
         dtype = dtype.dtype
@@ -199,49 +198,13 @@ def Ptr(dtype, storage_scope="global", *, span=None):
         return _at(span, _native.ptr(dtype, storage_scope))
 
 
-class _Frame:
-    """Preserve a frame's source range through native finalization."""
-
-    def __init__(self, native, span=None):
-        # Each wrapper owns one native construction frame and source location.
-        # result starts empty, records finalized lexical exports on exit, and
-        # never outlives its construction region or stores another function's
-        # symbols (those belong to the separate TypeVarFrame).
-        self.native = native
-        self.span = span
-        self.result = {}
-
-    def _set_source_span(self, span):
-        _at(span, self.native)
-
-    def __enter__(self):
-        with _construction_span(self.span):
-            value = self.native.__enter__()
-        return self if value is self.native else value
-
-    def __exit__(self, *exc):
-        with _construction_span(self.span):
-            return self.native.__exit__(*exc)
-
-    @property
-    def reference(self):
-        """Return the stable module reference after signature finalization."""
-        return self.native.global_var
-
-    def __getattr__(self, name):
-        return getattr(self.native, name)
-
-
-def frame_result(completed_frame, name):
-    """Return a named export from an explicitly supplied completed region."""
-    return _named_frame_result(completed_frame, name)
-
-
-def function(*, private=False, s_tir=False, persistent=False, span=None):
+def function(*, private=False, s_tir=False, persistent=False, decl=False, span=None):
     """Create a primitive-function definition frame.
 
     Parameters
     ----------
+    decl : bool
+        Collect a signature and retain this frame for a later body entry.
     private : bool
         Whether the function is private. Defaults to False.
     s_tir : bool
@@ -258,13 +221,12 @@ def function(*, private=False, s_tir=False, persistent=False, span=None):
         A primitive-function construction context retaining source metadata.
     """
     with _construction_span(span):
-        return _Frame(_native.prim_func(private=private, s_tir=s_tir, persistent=persistent), span)
-
-
-def decl_function(*, private=False, s_tir=False, persistent=False, span=None):
-    """Create a native primitive-function declaration frame."""
-    with _construction_span(span):
-        return _Frame(_ffi_api.DeclFunction(private, s_tir, persistent), span)
+        native = (
+            _ffi_api.DeclFunction(private, s_tir, persistent)
+            if decl
+            else _native.prim_func(private=private, s_tir=s_tir, persistent=persistent)
+        )
+        return _at(span, native)
 
 
 def arg(name, annotation, *, span=None):
@@ -289,9 +251,9 @@ def arg(name, annotation, *, span=None):
     """
     if callable(annotation) and not isinstance(annotation, _ir.Expr):
         annotation = annotation()
-    if isinstance(annotation, _TypeVarDecl):
-        annotation = annotation.ty
-    if isinstance(annotation, _ir.Type):
+    if isinstance(annotation, _ir.PrimType) or _ir.is_prim_var(annotation):
+        annotation = resolve_type_var_(name, annotation, span=span)
+    elif isinstance(annotation, _ir.Type):
         annotation = _ir.Var(name, annotation)
     with _construction_span(span):
         if _tir.is_buffer_var(annotation) and annotation.ty.layout is not None:
@@ -317,9 +279,10 @@ def arg(name, annotation, *, span=None):
 
 def func_ret_type(annotation, *, span=None):
     """Set the active primitive function's return type."""
-    if callable(annotation) and not isinstance(annotation, _ir.Expr):
+    annotation = _return_annotation(annotation)
+    if callable(annotation) and not isinstance(annotation, _ir.Expr | _ir.Type):
         annotation = annotation()
-    if isinstance(annotation, _ir.Expr | _TypeVarDecl):
+    if isinstance(annotation, _ir.Expr):
         annotation = annotation.ty
     with _construction_span(span):
         return _native.func_ret(annotation)
@@ -364,7 +327,7 @@ def setattr(target, name, value, *, span=None):
     if _tir.is_buffer_var(buffer):
         shape = buffer.ty.shape
         if len(shape) == 1 and bool(shape[0] == 1):
-            bind_(value, previous=previous, span=span)
+            set_mutable_var_(previous, value, span=span)
             return
     _python.setattr(target, name, value)
 
@@ -434,53 +397,23 @@ def If(condition, *, span=None):
         Construction context for the native frame, retaining source metadata.
     """
     with _construction_span(span):
-        return _Frame(_native.If(condition), span)
+        return _at(span, _native.If(condition))
 
 
 def Then(*, span=None):
     """Create a native then statement region."""
     with _construction_span(span):
-        return _Frame(_native.Then(), span)
+        return _at(span, _native.Then())
 
 
 def Else(*, span=None):
     """Create a native else statement region."""
     with _construction_span(span):
-        return _Frame(_native.Else(), span)
-
-
-@_dataclass(frozen=True)
-class _IterationSpec:
-    """Loop description; native frame construction belongs to for_."""
-
-    kind: str
-    arguments: tuple
-    dtype: str | None = None
-    annotations: dict[str, object] | None = None
-    _context: object = _field(default=None, init=False, repr=False, compare=False)
-
-    def __enter__(self):
-        if self._context is not None:
-            raise ValueError("An iteration descriptor is already entered")
-        context = for_(self)
-        _python.object.__setattr__(self, "_context", context)
-        try:
-            return context.__enter__()
-        except BaseException:
-            _python.object.__setattr__(self, "_context", None)
-            raise
-
-    def __exit__(self, exc_type, exc_value, traceback):
-        if self._context is None:
-            raise ValueError("An iteration descriptor is not entered")
-        try:
-            return self._context.__exit__(exc_type, exc_value, traceback)
-        finally:
-            _python.object.__setattr__(self, "_context", None)
+        return _at(span, _native.Else())
 
 
 def grid(*extents, dtype=None):
-    """Describe a Cartesian iteration domain.
+    """Create a native Cartesian loop frame.
 
     Parameters
     ----------
@@ -496,47 +429,9 @@ def grid(*extents, dtype=None):
     Returns
     -------
     res : context manager
-        An iteration description consumed by the construction loop operation.
-        Entering it constructs the native loop frames.
+        The native loop frame; entering it constructs the loop body.
     """
-    return _IterationSpec("grid", extents, dtype)
-
-
-class _LoopFrame(_Frame):
-    """One loop frame plus optional source target names, consumed at entry."""
-
-    def __init__(self, native, names, span):
-        super().__init__(native, span)
-        self.names = names
-
-    def __enter__(self):
-        values = super().__enter__()
-        if self.names is not None:
-            variables = values if isinstance(values, list | tuple | _ir.Array) else [values]
-            if isinstance(self.names, str):
-                names = (
-                    [self.names]
-                    if len(variables) == 1
-                    else [f"{self.names}_{index}" for index in range(len(variables))]
-                )
-            else:
-                names = list(self.names)
-                stars = [index for index, name in enumerate(names) if name.startswith("*")]
-                if stars:
-                    index = stars[0]
-                    count = len(variables) - len(names) + 1
-                    if count < 0:
-                        raise ValueError("Loop target count differs from iteration dimensions")
-                    prefix = names[index][1:]
-                    names[index : index + 1] = [f"{prefix}_{item}" for item in range(count)]
-                if len(variables) != len(names):
-                    raise ValueError("Loop target count differs from iteration dimensions")
-                # Python's original tuple target still performs unpacking; even
-                # a one-dimensional grid must return a one-element sequence.
-                values = variables
-            for name, value in zip(names, variables):
-                _IRBuilder.name(name, value)
-        return values
+    return _native.grid(*extents, dtype=dtype)
 
 
 def for_(iterable, *, names=None, span=None):
@@ -547,19 +442,12 @@ def for_(iterable, *, names=None, span=None):
         if _python.sum(name.startswith("*") for name in names) > 1:
             raise ValueError("Loop targets may contain only one starred group")
     with _construction_span(span):
-        if isinstance(iterable, _IterationSpec):
-            if iterable.kind == "grid":
-                iterable = _native.grid(*iterable.arguments, dtype=iterable.dtype)
-            else:
-                start, stop, step = iterable.arguments
-                iterable = _native.serial(
-                    start, stop, step=step, annotations=iterable.annotations
-                )
         if isinstance(iterable, _python.range):
             iterable = _native.serial(iterable.start, iterable.stop, step=iterable.step)
         if not isinstance(iterable, _frame.ForFrame):
             raise TypeError("A primitive for loop requires an iteration specification")
-        return _LoopFrame(iterable, names, span)
+        iterable.names = names
+        return _at(span, iterable)
 
 
 For = for_
@@ -582,13 +470,15 @@ def While(condition, *, span=None):
         Construction context for the native frame, retaining source metadata.
     """
     with _construction_span(span):
-        return _Frame(_native.While(condition), span)
+        return _at(span, _native.While(condition))
 
 
 def unpack(value):
     """Project a concrete IR tuple while preserving Python iteration."""
     if isinstance(value, _BypassBind):
-        wrapper = _native._ScopeIdResult if isinstance(value, _native._ScopeIdResult) else _BypassBind
+        wrapper = (
+            _native._ScopeIdResult if isinstance(value, _native._ScopeIdResult) else _BypassBind
+        )
         return _python.tuple(wrapper(item) for item in unpack(value.value))
     if isinstance(value, _ir.Tuple):
         return _python.tuple(value.fields)
@@ -697,7 +587,7 @@ del _constructor
 
 
 def range_(*args, annotations=None):
-    """Describe serial bounds and annotations without constructing a loop frame."""
+    """Construct a native serial loop frame from Python-style bounds."""
     if len(args) == 1:
         args = (0, args[0], None)
     elif len(args) == 2:
@@ -706,7 +596,7 @@ def range_(*args, annotations=None):
         raise TypeError("range expects one to three arguments")
     if isinstance(args[2], _python.int) and args[2] == 0:
         raise ValueError("range step cannot be zero")
-    return _IterationSpec("range", args, annotations=annotations)
+    return _native.serial(args[0], args[1], step=args[2], annotations=annotations)
 
 
 def logical_and(*values):
@@ -786,3 +676,10 @@ def not_(value):
 def __getattr__(name):
     """Expose registered backend construction namespaces."""
     return _native._get_script_namespace(name)
+
+
+# Registration executes after constructor exports are initialized; protocol owns
+# the declaration policies used by the syntax-only prescan.
+from .protocol import _register_declarations
+
+_register_declarations()

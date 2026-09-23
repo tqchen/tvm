@@ -20,7 +20,8 @@
 from tvm.ir import GenericConst, Range, StringImm, StringType
 from tvm.script.parser.protocol import constexpr as constexpr
 
-from .. import parser_support
+from ..base import IRBuilder, MISSING, annotation_value_, at_, with_at_group_, require_defined
+from .protocol import module_member_, resolve_global_info
 from .frame import IRModuleFrame
 from .ir import (
     reserve_function,

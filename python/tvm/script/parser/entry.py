@@ -26,27 +26,19 @@ import linecache
 import sys
 import textwrap
 from functools import wraps
-from types import SimpleNamespace
 from typing import TypeVar
 
 from tvm.error import DiagnosticError
 from tvm.ir import SourceName
-from tvm.script.ir_builder import base, construction
+from tvm.script.ir_builder import base
 from tvm.script.ir_builder import ir as builder_ir
 
+from . import jit_support
 from . import protocol as syntax_protocol
 from .diagnostics import diagnostic_error
-from .transpile import IRBuilderTranspiler, NameCollector
+from .prescan import PrescanCollector
+from .transpile import IRBuilderTranspiler
 
-# Runtime callables are injected by identity; this namespace owns no IR state.
-_EXECUTION = SimpleNamespace(
-    MISSING=base.MISSING,
-    require_defined=construction.require_defined,
-    is_python_bool=construction.is_python_bool,
-    slice=slice,
-    locals=locals,
-    globals=globals,
-)
 _NAMESPACES = {}
 
 
@@ -66,8 +58,8 @@ def register_namespace(alias, namespace):
 
     Notes
     -----
-    Registration replaces the process-wide alias entry. Each new `Compiler`
-    copies this table; existing compilations are unaffected. This operation
+    Registration replaces the process-wide alias entry. Each parse copies this
+    table; existing compilations are unaffected. This operation
     enters no builder frame.
     """
     _NAMESPACES[alias] = namespace
@@ -132,7 +124,7 @@ def recompose_builder(
     generated body keeps those lexical bindings, while annotation expressions
     execute in separate definition-site scopes inside builder declaration frames.
     """
-    namespace = {key: construction.capture_value(value) for key, value in environment.items()}
+    namespace = dict(environment)
     originals = (
         {key: value for key, value in vars(source_fn).items() if inspect.isfunction(value)}
         if inspect.isclass(source_fn)
@@ -190,7 +182,7 @@ def recompose_builder(
                 import builtins
 
                 value = getattr(builtins, captured, base.MISSING)
-            namespace[alias] = construction.capture_value(value)
+            namespace[alias] = value
             reference = ast.copy_location(ast.Name(alias, ast.Load()), body)
             if captured in captures:
                 index = next(i for i, arg in enumerate(body.args.kwonlyargs) if arg.arg == captured)
@@ -199,7 +191,7 @@ def recompose_builder(
                 class LexicalDefault(ast.NodeTransformer):
                     def visit_Name(self, node):
                         return (
-                            ast.copy_location(copy.deepcopy(reference), node)
+                            ast.copy_location(ast.Name(alias, ast.Load()), node)
                             if node.id == captured
                             else node
                         )
@@ -341,7 +333,7 @@ def make_decorator(builder, *, option_map=None, defaults=None):
     )
 
 
-def make_helper(builder, *, preserve_return=True, late_binding=False):
+def make_macro_decorator(builder, *, preserve_return=True, late_binding=False):
     """Create a decorator for helpers executed in a caller's builder frames.
 
     Parameters
@@ -399,12 +391,10 @@ def make_helper(builder, *, preserve_return=True, late_binding=False):
                     if options.get("hygienic", True)
                     else {**function.__globals__, **inspect.currentframe().f_back.f_locals}
                 )
-                compiler = Compiler(function, environment)
-                node = compiler.tree.body[0]
-                return compiler.run_statements(
-                    node.body,
+                return _run_statements(
+                    function,
                     builder,
-                    {**compiler.env, **bound.arguments},
+                    {**environment, **bound.arguments},
                     set(bound.arguments),
                     preserve_return=preserve_return,
                 )
@@ -469,431 +459,243 @@ def _source_lines(source, definition_source):
         raise
 
 
-class Compiler:
-    """Acquire source and execute a location-preserving builder program.
+def acquire_source(source, filename=None, *, definition_source=None):
+    """Read source into a location-preserving AST, filename and compiler flags.
 
-    Parameters
-    ----------
-    source : str or function or type
-        Source text, Python function, or Python class to compile.
-    env : mapping of str to object, optional
-        Opaque lexical bindings overriding registered source aliases.
-        Default is None, interpreted as an empty mapping.
-    filename : str, optional
-        Override the original filename. Default is None, which uses the
-        inspected filename for objects and ``"<str>"`` for source text.
-    track_span : bool, optional
-        Emit shared source metadata and IR location instrumentation.
-        Default is True. False preserves Python AST locations and tracebacks.
-
-    Raises
-    ------
-    OSError
-        If inspection cannot recover the object's source.
-    TypeError
-        If the source object cannot be inspected.
-    SyntaxError
-        If the acquired text is not valid Python syntax.
-
-    Notes
-    -----
-    ``env``, ``original``, and the fresh source ``tree`` belong to this
-    compilation. ``filename`` and ``compile_flags`` retain the source's file
-    and annotation mode. ``name_map`` holds reserved identifiers and prefix
-    counters shared by all generated functions. ``builder_name`` and
-    ``infrastructure_name`` are reserved aliases.
-
-    With tracking enabled, one SourceName metadata object is held in ``env``
-    under ``source_name_binding`` for the complete source unit. Disabling
-    tracking skips that object and generated span instrumentation. No
-    concrete IR construction state is retained; `build` passes its result
-    opaquely to the caller.
+    Text uses ``<str>`` unless a filename is supplied. Function/class source
+    retains its original file, line and UTF-8 column offsets, including the
+    decoration-site fallback used by gallery runners. Source inspection and
+    parsing errors propagate to the caller before diagnostic conversion.
+    The returned AST is the source snapshot; entry copies it once for rewriting.
     """
+    members = vars(source).values() if inspect.isclass(source) else (source,)
+    flags = 0
+    for member in members:
+        code = getattr(member, "__code__", None)
+        if code is not None:
+            flags |= code.co_flags & __future__.annotations.compiler_flag
+    if isinstance(source, str):
+        text = source
+        filename = filename or "<str>"
+        start, indent = 1, 0
+        linecache.cache[filename] = (len(text), None, text.splitlines(keepends=True), filename)
+    else:
+        lines, start, source_filename = _source_lines(source, definition_source)
+        text = "".join(lines)
+        filename = filename or source_filename
+        indent = len(lines[0]) - len(lines[0].lstrip())
+    tree = ast.parse(textwrap.dedent(text), filename)
+    if start != 1:
+        ast.increment_lineno(tree, start - 1)
+    if indent:
+        for node in ast.walk(tree):
+            if hasattr(node, "col_offset"):
+                node.col_offset += indent
+                node.end_col_offset += indent
+    return tree, filename, flags
 
-    def __init__(
-        self,
-        source,
-        env=None,
-        filename=None,
-        *,
-        track_span: bool = True,
-        definition_scope=None,
-        definition_source=None,
-    ):
-        self.env = {"TypeVar": TypeVar, "tvm": sys.modules.get("tvm"), **_NAMESPACES, **(env or {})}
-        self.original = source
-        self.definition_scope = dict(definition_scope or {})
-        self.track_span = track_span
-        members = vars(source).values() if inspect.isclass(source) else (source,)
-        self.compile_flags = 0
-        for member in members:
-            code = getattr(member, "__code__", None)
-            if code is not None:
-                self.compile_flags |= code.co_flags & __future__.annotations.compiler_flag
-        if isinstance(source, str):
-            text = source
-            self.filename = filename or "<str>"
-            start, indent = 1, 0
-            linecache.cache[self.filename] = (
-                len(text),
-                None,
-                text.splitlines(keepends=True),
-                self.filename,
-            )
-        else:
-            lines, start, source_filename = _source_lines(source, definition_source)
-            text = "".join(lines)
-            self.filename = filename or source_filename
-            indent = len(lines[0]) - len(lines[0].lstrip())
-        self.tree = ast.parse(textwrap.dedent(text), self.filename)
-        if start != 1:
-            ast.increment_lineno(self.tree, start - 1)
-        if indent:
-            for node in ast.walk(self.tree):
-                if hasattr(node, "col_offset"):
-                    node.col_offset += indent
-                    node.end_col_offset += indent
-        # env is the opaque execution namespace; the transformer receives only
-        # host namespace/callable bindings needed to identify registered metadata.
-        # name_map is shared by every nested factory/body in this compilation unit.
-        self.name_map = dict.fromkeys(self.env, 0)
-        NameCollector(self.name_map).visit(self.tree)
-        self.definition_scopes_name = self.fresh("_definition_scopes")
-        self.builder_name = self.fresh()
-        self.infrastructure_name = self.fresh()
-        self.parser_support_name = "_PS" if "_PS" not in self.name_map else self.fresh("_PS")
-        self.name_map[self.parser_support_name] = 0
-        self.ir_builder_name = self.fresh("_I")
-        # One source metadata object is shared by this unit and nested factories.
-        # This narrow metadata exception never constructs Expr, Type or Span.
-        # The hygienic binding cannot collide with source or captured names.
-        self.source_name_binding = self.fresh() if track_span else None
-        if track_span:
-            self.env[self.source_name_binding] = SourceName(self.filename)
 
-    def parser_support_binding(self, location):
-        """Bind the shared parser helpers once under a hygienic source-unit name."""
-        return ast.copy_location(
-            ast.Assign(
-                [ast.Name(self.parser_support_name, ast.Store())],
-                ast.Attribute(
-                    ast.Name(self.ir_builder_name, ast.Load()), "parser_support", ast.Load()
-                ),
-            ),
-            location,
-        )
+def _prepare_transpiler(
+    tree, source, environment, definition_scope, filename, *, track_span=True, **options
+):
+    """Prescan an owned tree and inject collision-free execution bindings.
 
-    def fresh(self, prefix="_t"):
-        """Allocate a generated identifier without changing any source name.
+    The lexical environment is copied per invocation. Descriptor-safe metadata
+    lookup retains namespace owners, including annotation-only definition
+    bindings; ordinary body values remain opaque. Prescan facts are read-only, while the
+    local name map allocates fresh identifiers across the complete source unit.
+    No builder frame or expression is created here.
+    """
+    namespace = {
+        "TypeVar": TypeVar,
+        "tvm": sys.modules.get("tvm"),
+        **_NAMESPACES,
+        **environment,
+    }
+    # Imports establish source-text namespace metadata before prescan. Their
+    # original AST nodes remain owned here and execute only once.
+    imports = [node for node in tree.body[:-1] if isinstance(node, ast.Import | ast.ImportFrom)]
+    if imports:
+        exec(compile(ast.Module(imports, []), filename, "exec", dont_inherit=True), namespace)
+    metadata_environment = {**namespace, **definition_scope}
+    if inspect.isclass(source):
+        metadata_environment.update(vars(source))
+    # Namespace owners may be modules, classes or user instances with registered
+    # methods. Keep their identity for descriptor-safe static policy lookup;
+    # transpilation never evaluates or classifies ordinary lexical values.
+    metadata = dict(metadata_environment)
+    # Direct decorator application may have no decorator in the inspected AST.
+    # Give prescan its registered syntax policy before allocating injected names.
+    if inspect.isfunction(source):
+        tree.body[-1]._tvm_function_info = syntax_protocol.function_info(source)
+    prescan = PrescanCollector(metadata).collect(tree)
+    names = dict.fromkeys([*namespace, *prescan.reserved_names], 0)
 
-        Parameters
-        ----------
-        prefix : str, optional
-            Identifier prefix. Default is ``"_t"``.
-
-        Returns
-        -------
-        str
-            An unused generated identifier.
-
-        Notes
-        -----
-        Updates this compilation's shared ``name_map``. Reserved names have
-        value zero; prefix entries hold the next counter. The allocator remains
-        shared across every function in the source unit.
-        """
-        counter = self.name_map.get(prefix, 0)
-        while f"{prefix}{counter}" in self.name_map:
+    def fresh(prefix="_t"):
+        """Allocate a name without changing any source identifier."""
+        counter = names.get(prefix, 0)
+        while f"{prefix}{counter}" in names:
             counter += 1
         name = f"{prefix}{counter}"
-        self.name_map[prefix] = counter + 1
-        self.name_map[name] = 0
+        names[prefix], names[name] = counter + 1, 0
         return name
 
-    def span_ast(self, node):
-        """Emit location data for builders to materialize during execution.
-
-        Parameters
-        ----------
-        node : ast.AST
-            Original node carrying line, end-line, and UTF-8 column ranges.
-
-        Returns
-        -------
-        ast.expr
-            Tuple expression referencing the unit's shared SourceName binding,
-            or a None constant when span tracking is disabled.
-
-        Notes
-        -----
-        The generated expression inherits the full source range through
-        ``ast.copy_location``. This method constructs no IR Span object.
-        """
-        if not self.track_span:
-            return ast.copy_location(ast.Constant(None), node)
-        return ast.copy_location(
-            ast.Tuple(
-                [
-                    ast.Name(self.source_name_binding, ast.Load()),
-                    *[
-                        ast.Constant(value)
-                        for value in (
-                            node.lineno,
-                            node.end_lineno,
-                            node.col_offset + 1,
-                            node.end_col_offset + 1,
-                        )
-                    ],
-                ],
-                ast.Load(),
-            ),
-            node,
-        )
-
-    def transformer(self, builder_name=None, **options):
-        """Create a syntax transformer sharing this unit's name allocator.
-
-        Parameters
-        ----------
-        builder_name : str, optional
-            Injected builder alias. Default is None, which selects this unit's
-            ``builder_name``.
-        **options
-            Additional `IRBuilderTranspiler` syntax-handler configuration.
-
-        Returns
-        -------
-        IRBuilderTranspiler
-            New transformer with local binding and export analysis.
-
-        Raises
-        ------
-        TypeError
-            If options are unsupported or duplicate internally supplied options.
-
-        Notes
-        -----
-        Only host namespace and callable metadata are exposed to the transformer.
-        The name allocator is shared with this compiler; no IR state is shared.
-        """
-        # Registered host namespace metadata can occur only in annotations,
-        # with no corresponding Python closure cell. This metadata is solely
-        # for syntax policies; body binding never depends on membership here.
-        metadata_environment = {**self.env, **self.definition_scope}
-        if inspect.isclass(self.original):
-            metadata_environment.update(vars(self.original))
-        metadata = {
-            name: value
-            if (
-                inspect.ismodule(value)
-                or inspect.isfunction(value)
-                or inspect.isclass(value)
-                or type(value).__module__ == "types"
-            )
-            else None
-            for name, value in metadata_environment.items()
-        }
-        return IRBuilderTranspiler(
-            self.filename,
-            metadata,
-            builder_name or self.builder_name,
-            self.infrastructure_name,
-            self.span_ast,
-            None,
-            name_map=self.name_map,
-            track_span=self.track_span,
-            parser_support_name=self.parser_support_name,
-            definition_scopes_name=self.definition_scopes_name,
-            **options,
-        )
-
-    def function_kind(self, node, env=None, *, allow_python=False):
-        """Read registered function metadata and unevaluated option syntax.
-
-        Parameters
-        ----------
-        node : ast.FunctionDef
-            Original function definition with construction decorator syntax.
-        env : mapping, optional
-            Unused compatibility argument. Default is None.
-        allow_python : bool, optional
-            Permit unregistered ordinary Python helpers. Default is False.
-
-        Returns
-        -------
-        info : FunctionDecoratorInfo
-            Registered metadata or an ordinary-Python fallback when permitted.
-        options : ast.Dict
-            Unevaluated construction options.
-
-        Raises
-        ------
-        SyntaxError
-            If construction metadata is absent and Python helpers are disallowed,
-            or a construction decorator supplies positional options.
-
-        Notes
-        -----
-        This lookup evaluates neither annotations nor option expressions.
-        """
-        return self.transformer().function_metadata(node, allow_python=allow_python)
-
-    def run_statements(self, body, builder, env, bound_names, *, preserve_return=False):
-        """Compile and execute a helper body through AST-only lowering.
-
-        Parameters
-        ----------
-        body : list of ast.stmt
-            Nonempty original helper body.
-        builder : object
-            Registered construction namespace for the helper.
-        env : mapping of str to object
-            Opaque execution bindings, copied for this invocation.
-        bound_names : iterable of str
-            Names of supplied Python parameters.
-        preserve_return : bool, optional
-            Retain ordinary Python return semantics. Default is False.
-
-        Returns
-        -------
-        object
-            Opaque result of the generated helper.
-
-        Raises
-        ------
-        SyntaxError
-            If the helper body cannot be translated or compiled.
-
-        Notes
-        -----
-        Execution shares the caller's active builder frames and this unit's name
-        allocator. Source nodes are copied before translation. Builder and host
-        execution exceptions propagate unchanged.
-        """
-        namespace = dict(env)
-        namespace.update(
-            {
-                self.builder_name: builder,
-                self.infrastructure_name: _EXECUTION,
-                self.ir_builder_name: builder_ir,
-            }
-        )
-        transformer = self.transformer(signature_names=bound_names, preserve_return=preserve_return)
-        statements = [self.parser_support_binding(body[0]), *transformer.transform_statements(body)]
-        names = sorted(name for name in bound_names if name in namespace)
-        helper_name = self.fresh()
-        helper = ast.copy_location(
-            ast.FunctionDef(
-                helper_name,
-                ast.arguments(
-                    posonlyargs=[],
-                    args=[ast.arg(name) for name in names],
-                    kwonlyargs=[],
-                    kw_defaults=[],
-                    defaults=[],
-                ),
-                statements or [ast.Pass()],
-                [],
-                None,
-            ),
-            body[0],
-        )
-        if "type_params" in ast.FunctionDef._fields:
-            helper.type_params = []
-        module = ast.fix_missing_locations(ast.Module([helper], []))
-        helper = recompose_builder(
-            module,
-            source_fn=self.original,
-            definition_scope=self.definition_scope,
-            filename=self.filename,
-            flags=self.compile_flags,
-            name=helper_name,
-            environment=namespace,
-        )
-        return helper(*(namespace[name] for name in names))
-
-    def build(self):
-        """Compile original-location builder AST and execute it.
-
-        Returns
-        -------
-        object
-            Opaque result produced by the builder program.
-
-        Raises
-        ------
-        SyntaxError
-            If the source cannot be lowered to supported construction syntax
-            or the generated program cannot be compiled.
-
-        Notes
-        -----
-        Imports establish host namespace bindings before metadata lookup. The
-        remaining source expressions execute in the generated builder program;
-        execution exceptions propagate to `parse` for diagnostic conversion.
-
-        Compilation uses the original filename and AST coordinates, never
-        unparse/reparse. Replaced nodes inherit all four location fields, while
-        ``fix_missing_locations`` fills only absent fields. Python exceptions
-        therefore retain the source file and original expression range; column
-        detail requires Python 3.11 or later. Generated names and injected
-        bindings remain local to this compiler and its execution namespace.
-        """
-        # Source-text imports establish host namespace bindings before static
-        # metadata lookup. Only import statements execute here; annotations and
-        # construction expressions remain exclusively in the generated program.
-        imports = [
-            copy.deepcopy(node)
-            for node in self.tree.body[:-1]
-            if isinstance(node, ast.Import | ast.ImportFrom)
+    # A directly applied decorator has no registered decorator syntax in its
+    # original function. Inject its metadata and opaque option bindings only.
+    if inspect.isfunction(source) and syntax_protocol.function_info(source) is not None:
+        decorator_name = fresh()
+        namespace[decorator_name] = metadata[decorator_name] = source
+        keywords = []
+        for key, value in getattr(source, "__tvm_function_options__", {}).items():
+            option_name = fresh()
+            namespace[option_name] = value
+            keywords.append(ast.keyword(key, ast.Name(option_name, ast.Load())))
+        root = tree.body[-1]
+        root.decorator_list = [
+            ast.copy_location(ast.Call(ast.Name(decorator_name, ast.Load()), [], keywords), root)
         ]
-        if imports:
-            exec(
-                compile(ast.Module(imports, []), self.filename, "exec", dont_inherit=True), self.env
-            )
-        if (
-            inspect.isfunction(self.original)
-            and syntax_protocol.function_info(self.original) is not None
-        ):
-            # Direct decorator application (T.prim_func(host_function)) has no
-            # decorator in source AST. Inject only its registered host metadata;
-            # already evaluated option values stay opaque execution bindings.
-            decorator_name = self.fresh()
-            self.env[decorator_name] = self.original
-            keywords = []
-            for key, value in getattr(self.original, "__tvm_function_options__", {}).items():
-                option_name = self.fresh()
-                self.env[option_name] = value
-                keywords.append(ast.keyword(key, ast.Name(option_name, ast.Load())))
-            root = self.tree.body[-1]
-            root.decorator_list = [
-                ast.copy_location(
-                    ast.Call(ast.Name(decorator_name, ast.Load()), [], keywords), root
-                )
-            ]
-        runtime, original = self.fresh(), self.fresh()
-        bindings = {
-            runtime: construction,
-            original: self.original if inspect.isclass(self.original) else None,
-            self.infrastructure_name: _EXECUTION,
-            self.ir_builder_name: builder_ir,
-        }
-        transformed, result = self.transformer().program(self.tree, runtime, original, bindings)
-        transformed.body.insert(0, self.parser_support_binding(self.tree.body[-1]))
-        ast.fix_missing_locations(transformed)
-        namespace = {**self.env, **bindings}
-        builder = recompose_builder(
-            transformed,
-            source_fn=self.original,
-            definition_scope=self.definition_scope,
-            definition_scopes_name=self.definition_scopes_name,
-            filename=self.filename,
-            flags=self.compile_flags,
-            name=self.fresh("_builder"),
-            environment=namespace,
-            result=result,
+    builder_name, infrastructure_name = fresh("_X"), fresh("_I")
+    definition_scopes_name = fresh("_definition_scopes")
+    namespace[infrastructure_name] = builder_ir
+    source_name = fresh("_source") if track_span else None
+    if track_span:
+        # One shared SourceName is metadata, not an IR construction result.
+        namespace[source_name] = SourceName(filename)
+
+    def span(node):
+        """Retain source ranges for builders to materialize during execution."""
+        if not track_span:
+            return ast.copy_location(ast.Constant(None), node)
+        location = ast.Tuple(
+            [
+                ast.Name(source_name, ast.Load()),
+                *[
+                    ast.Constant(value)
+                    for value in (
+                        node.lineno,
+                        node.end_lineno,
+                        node.col_offset + 1,
+                        node.end_col_offset + 1,
+                    )
+                ],
+            ],
+            ast.Load(),
         )
-        return builder()
+        return ast.copy_location(location, node)
+
+    transformer = IRBuilderTranspiler(
+        filename,
+        metadata,
+        builder_name,
+        infrastructure_name,
+        span,
+        fresh,
+        name_map=names,
+        track_span=track_span,
+        definition_scopes_name=definition_scopes_name,
+        prescan=prescan,
+        bindings=namespace,
+        **options,
+    )
+    return transformer, namespace
+
+
+def _run_statements(source, builder, environment, bound_names, *, preserve_return=False):
+    """Execute a macro body in its caller's active builder frames.
+
+    Argument binding precedes this call. The helper owns one source AST copy,
+    keeps Python parameter names and optionally keeps ordinary Python returns.
+    Compilation uses the original coordinates without unparse/reparse. Builder
+    and host exceptions propagate unchanged to the caller.
+    """
+    tree, filename, flags = acquire_source(source)
+    tree = copy.deepcopy(tree)
+    definition_scope = getattr(source, "__tvm_definition_scope__", {})
+    transformer, namespace = _prepare_transpiler(
+        tree,
+        source,
+        environment,
+        definition_scope,
+        filename,
+        preserve_return=preserve_return,
+        current_scope=tree.body[-1],
+    )
+    namespace[transformer.dialect_prefix] = builder
+    node = tree.body[-1]
+    statements = transformer.transform_statements(node.body)
+    names = sorted(name for name in bound_names if name in namespace)
+    helper_name = transformer.fresh("_macro")
+    helper = ast.copy_location(
+        ast.FunctionDef(
+            helper_name,
+            ast.arguments(
+                posonlyargs=[],
+                args=[ast.arg(name) for name in names],
+                kwonlyargs=[],
+                kw_defaults=[],
+                defaults=[],
+            ),
+            statements or [ast.Pass()],
+            [],
+            None,
+        ),
+        node,
+    )
+    if "type_params" in ast.FunctionDef._fields:
+        helper.type_params = []
+    runnable = recompose_builder(
+        ast.Module([helper], []),
+        source_fn=source,
+        definition_scope=definition_scope,
+        filename=filename,
+        flags=flags,
+        name=helper_name,
+        environment=namespace,
+    )
+    return runnable(*(namespace[name] for name in names))
+
+
+def _build(tree, source, environment, definition_scope, filename, flags, *, track_span):
+    """Translate an owned AST and execute its direct native builder program.
+
+    Source expressions and annotations execute only in the generated program.
+    Recomposition restores the source's body and annotation scopes, then Python
+    compilation retains its original file and full AST ranges. Injected bindings
+    and name allocation live only for this invocation.
+    """
+    transformer, namespace = _prepare_transpiler(
+        tree, source, environment, definition_scope, filename, track_span=track_span
+    )
+    original_name = transformer.fresh("_original")
+    namespace[original_name] = source if inspect.isclass(source) else None
+    transformed, result = transformer.program(tree, original_name, namespace)
+    runnable = recompose_builder(
+        transformed,
+        source_fn=source,
+        definition_scope=definition_scope,
+        definition_scopes_name=transformer.definition_scopes_name,
+        filename=filename,
+        flags=flags,
+        name=transformer.fresh("_builder"),
+        environment=namespace,
+        result=result,
+    )
+    return runnable()
+
+
+def make_opaque_function(name, function, source, location=None):
+    """Represent a Python module member without executing its body."""
+    from tvm import relax
+
+    return relax.ExternFunc(name, span=base.source_span(location)).with_attrs(
+        {
+            "is_pyfunc": True,
+            "function_type": "python",
+            "python_function_name": name,
+            "python_source": source,
+            "python_packed_func": function,
+        }
+    )
 
 
 def parse(source, extra_vars=None, *, filename=None, track_span: bool = True, **options):
@@ -939,7 +741,7 @@ def parse(source, extra_vars=None, *, filename=None, track_span: bool = True, **
 
     Notes
     -----
-    Each call owns a fresh compiler and lexical environment. Declaration and
+    Each call owns one AST copy and a fresh lexical environment. Declaration and
     definition frames are entered only during generated execution. Source
     acquisition errors propagate directly, before diagnostic conversion.
     """
@@ -948,16 +750,12 @@ def parse(source, extra_vars=None, *, filename=None, track_span: bool = True, **
     definition_scope = options.pop(
         "_definition_scope", getattr(source, "__tvm_definition_scope__", {})
     )
-    compiler = Compiler(
-        source,
-        env,
-        filename,
-        track_span=track_span,
-        definition_scope=definition_scope,
-        definition_source=options.pop("_definition_source", None),
+    tree, filename, flags = acquire_source(
+        source, filename, definition_source=options.pop("_definition_source", None)
     )
+    owned_tree = copy.deepcopy(tree)
     try:
-        root = compiler.tree.body[-1]
+        root = owned_tree.body[-1]
         root_name = root.name if isinstance(root, ast.FunctionDef) else None
         specialization = options.get("_specialization_bindings")
         if specialization is None and options.get("absent_params") is not None:
@@ -970,19 +768,27 @@ def parse(source, extra_vars=None, *, filename=None, track_span: bool = True, **
                     for keyword in decorator.keywords:
                         if keyword.arg == "check_well_formed":
                             check_well_formed = eval(
-                                compile(ast.Expression(keyword.value), compiler.filename, "eval"),
-                                compiler.env,
+                                compile(ast.Expression(keyword.value), filename, "eval"),
+                                {**_NAMESPACES, **env},
                             )
-        with construction.specialization_context(root_name, specialization):
-            with construction.absent_parameters(root_name, options.get("absent_params")):
-                result = compiler.build()
+        with jit_support.specialization_context(root_name, specialization):
+            with jit_support.absent_parameters(root_name, options.get("absent_params")):
+                result = _build(
+                    owned_tree,
+                    source,
+                    env,
+                    definition_scope,
+                    filename,
+                    flags,
+                    track_span=track_span,
+                )
         if check_well_formed:
             _check_well_formed(result)
         return result
     except DiagnosticError:
         raise
     except Exception as error:
-        raise diagnostic_error(error, compiler) from error
+        raise diagnostic_error(error, filename, tree) from error
 
 
 def _check_well_formed(result):

@@ -64,6 +64,14 @@ void SeqExprFrameNode::EnterWithScope() {
 }
 
 void FunctionFrameNode::EnterWithScope() {
+  if (function.has_value()) {
+    ffi::Optional<tvm::IRModule> mod = std::nullopt;
+    if (auto frame = IRBuilder::Current()->FindFrame<ir::IRModuleFrame>()) {
+      mod = tvm::IRModule(frame.value()->functions);
+    }
+    block_builder = tvm::relax::BlockBuilder::Create(
+        mod, tvm::relax::BlockBuilder::DisableOperatorSpecificNormalizationForTVMScript());
+  }
   this->block_builder->BeginScope(params);
   if (declaration) {
     RelaxFrameNode::EnterWithScope();
@@ -78,8 +86,6 @@ void FunctionFrameNode::ExitWithScope() {
   IRBuilder builder = IRBuilder::Current();
   if (declaration) {
     TVM_FFI_CHECK(name.has_value(), ValueError) << "A function declaration requires a name";
-    TVM_FFI_CHECK(local || builder->FindFrame<IRModuleFrame>().has_value(), ValueError)
-        << "A function declaration requires an IRModule frame";
     RelaxFrameNode::ExitWithScope();
     block_builder->EndScope();
     function = tvm::relax::Function::CreateEmpty(params, ret_ty.value_or(tvm::relax::AnyType()),
@@ -89,9 +95,10 @@ void FunctionFrameNode::ExitWithScope() {
       local_var = CheckBindingBlockFrameExistAndUnended()->is_dataflow
                       ? tvm::relax::DataflowVar(name.value(), ty, span)
                       : tvm::Var(name.value(), ty, span);
-    } else {
+    } else if (builder->FindFrame<IRModuleFrame>().has_value()) {
       global_var = ir::DeclFunction(name.value(), function.value());
     }
+    declaration = false;
     return;
   }
   SeqExprFrameNode::ExitWithScope();
@@ -151,7 +158,7 @@ void FunctionFrameNode::ExitWithScope() {
     }
     local_var.value()->ty = reference_type;
     EmitVarBinding(tvm::relax::VarBinding(local_var.value(), func, span));
-  } else if (!builder->HasConstructionFrames()) {
+  } else if (builder->frames.empty()) {
     // Case 0. No outer frame, return function directly
     TVM_FFI_CHECK(!builder->result.has_value(), ValueError)
         << "Builder.result has already been set";

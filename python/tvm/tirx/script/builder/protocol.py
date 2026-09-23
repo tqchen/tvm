@@ -19,8 +19,6 @@
 import builtins as _python
 from functools import partial as _partial
 
-import tvm_ffi as _ffi
-
 from tvm import ir as _ir
 from tvm import tirx as _tir
 from tvm.script.ir_builder import IRBuilder as _IRBuilder
@@ -30,8 +28,6 @@ from tvm.script.ir_builder.base import BypassBind as _BypassBind
 from tvm.script.ir_builder.base import IRBuilderFrame as _NativeFrame
 from tvm.script.ir_builder.base import _construction_span
 from tvm.script.ir_builder.base import at as _at
-from tvm.script.ir_builder.type_var_frame import TypeVarDecl as _TypeVarDecl
-from tvm.script.ir_builder.type_var_frame import TypeVarFrame as _TypeVarFrame
 
 from .. import builder as _builder
 from . import frame as _frame
@@ -45,8 +41,7 @@ def _name(value, name, span):
 
 
 def _enter_concise(frame):
-    native = frame.native if isinstance(frame, _builder._Frame) else frame
-    native.add_callback(_partial(frame.__exit__, None, None, None))
+    frame.add_callback(_partial(frame.__exit__, None, None, None))
     return frame.__enter__()
 
 
@@ -57,8 +52,6 @@ def bind_(
     name=None,
     span=None,
     name_span=None,
-    previous=_MISSING,
-    declaration=False,
     frame_value=False,
 ):
     """Construct a named binding under the active primitive function's policy."""
@@ -70,11 +63,9 @@ def bind_(
                 _IRBuilder.name(name, value.value)
         return value.value
     name_span = span if name_span is None else name_span
-    # Dtype constructors return anonymous Vars.
-    # Block axes and environment threads are owned by native frames;
-    # replacing their Vars would disconnect references from those registrations.
-    # Other anonymous declarations share the function-owned type-variable frame.
-    if ty is None and not frame_value and _ir.is_prim_var(value):
+    # Axis and environment-thread variables already belong to native frames;
+    # naming an assignment must preserve their registration identities.
+    if not frame_value and _ir.is_prim_var(value):
         for frame in reversed(_IRBuilder.current().frames):
             if isinstance(frame, _frame.SBlockFrame) and _python.any(
                 axis.var.same_as(value) for axis in frame.iter_vars
@@ -85,16 +76,10 @@ def bind_(
                 ):
                     raise ValueError(f"Duplicate block axis name {name!r}")
                 return _name(value, name, name_span)
-        if _python.any(
-            isinstance(frame, _frame.PrimFuncFrame)
-            and _python.any(thread.same_as(value) for thread in frame.env_threads)
-            for frame in _IRBuilder.current().frames
-        ):
-            return _name(value, name, name_span)
-        if not value.name:
-            return _TypeVarFrame.current().resolve(name, value.ty, span=name_span)
-    if isinstance(value, _TypeVarDecl):
-        return _TypeVarFrame.current().resolve(name, value.ty, span=name_span)
+            if isinstance(frame, _frame.PrimFuncFrame) and _python.any(
+                thread.same_as(value) for thread in frame.env_threads
+            ):
+                return _name(value, name, name_span)
     with _construction_span(span):
         if frame_value:
             if isinstance(value, _frame.SBlockFrame):
@@ -113,53 +98,8 @@ def bind_(
             elif isinstance(value, _ir.TensorLoad) and _tir.is_buffer_var(value.source):
                 _name(value.source, name, name_span)
             return value
-        if previous is not _MISSING and _tir.is_buffer_var(previous):
-            shape = previous.ty.shape
-            if len(shape) == 1 and _builder.bool(shape[0] == 1):
-                if value is _MISSING:
-                    raise ValueError("A reassignment requires an initializer")
-                _builder.buffer_store(previous, value, [0])
-                return previous
-        if previous is not _MISSING and isinstance(getattr(previous, "ty", None), _ir.PointerType):
-            raise ValueError(f"Pointer variable {name!r} cannot be reassigned")
-        if previous is not _MISSING and (
-            _tir.is_buffer_var(previous)
-            or isinstance(previous, _tir.IterVar)
-            or _python.any(
-                isinstance(frame, _frame.SBlockFrame)
-                and _python.any(axis.var.same_as(previous) for axis in frame.iter_vars)
-                for frame in _IRBuilder.current().frames
-            )
-        ):
-            raise ValueError(f"Cannot rebind buffer or block axis {name!r}")
-        if declaration:
-            if not _ir.is_prim_var(value):
-                raise TypeError("A symbol declaration requires a concrete primitive variable")
-            if ty is not None:
-                annotation = ty() if callable(ty) else ty
-                annotation = (
-                    annotation.ty if isinstance(annotation, _ir.Expr | _TypeVarDecl) else annotation
-                )
-                if not _ffi.structural_equal(annotation, value.ty):
-                    raise TypeError("The symbol declaration has an incompatible type")
-            if previous is not _MISSING:
-                if not _ir.is_prim_var(previous) or not _ffi.structural_equal(
-                    previous.ty, value.ty
-                ):
-                    raise TypeError("The symbol declaration has an incompatible signature dtype")
-                return previous
-            return _name(value, name, name_span)
-        if previous is not _MISSING and isinstance(previous, _ir.TensorLoad):
-            if value is _MISSING:
-                raise ValueError("A reassignment requires an initializer")
-            _builder.buffer_store(previous.source, value, list(previous.indices))
-            return previous
         if isinstance(value, _I.meta_var):
             return value.value
-        if isinstance(ty, _native.LocalVectorAnnotation):
-            if value is not _MISSING:
-                raise ValueError("Vector annotation does not support an initializer")
-            return _name(_native.alloc_local(ty.shape, ty.dtype), name, name_span)
         if isinstance(ty, _native.LetAnnotation):
             if value is _MISSING:
                 raise ValueError("An immutable binding requires an initializer")
@@ -169,32 +109,13 @@ def bind_(
             return variable
         if ty is not None:
             annotation = ty() if callable(ty) and not isinstance(ty, _ir.Expr) else ty
-            annotation = (
-                annotation.ty if isinstance(annotation, _ir.Expr | _TypeVarDecl) else annotation
-            )
-            if not isinstance(annotation, _ir.PrimType) or str(annotation) == "handle":
-                raise TypeError("Mutable scalar annotations require a primitive scalar type")
-            result = _native.local_scalar(str(annotation)).scalar
-            _name(result.source, name, name_span)
-            if value is not _MISSING:
-                _builder.buffer_store(result.source, value, [0])
-            return result
+            annotation = annotation.ty if isinstance(annotation, _ir.Expr) else annotation
+            value = _builder._as_expr(value)
+            variable = _ir.Var(name or "", annotation)
+            return _name(_native.Bind(value, var=variable), name, name_span)
         if value is _MISSING:
             raise ValueError("An uninitialized binding requires a scalar type annotation")
-        if (
-            isinstance(value, _ir.TensorLoad)
-            and _tir.is_buffer_var(value.source)
-            and not value.source.name
-            and len(value.source.ty.shape) == 1
-            and isinstance(value.source.ty.shape[0], _tir.IntImm)
-            and value.source.ty.shape[0].value == 1
-        ):
-            _name(value.source, name, name_span)
-            return value
-        if isinstance(value, _native.scalar_wrapper):
-            _name(value.scalar.source, name, name_span)
-            return value.scalar
-        if isinstance(value, _NativeFrame | _builder._Frame):
+        if isinstance(value, _NativeFrame):
             return _name(_enter_concise(value), name, name_span)
         if isinstance(value, list | tuple):
             for index, item in enumerate(value):
@@ -213,11 +134,6 @@ def bind_(
         if not isinstance(value, _ir.Expr | _python.int | _python.float | _python.bool | str):
             return value
         value = _builder._as_expr(value)
-        if _ir.is_prim_expr(value):
-            result = _native.local_scalar(str(value.ty.dtype)).scalar
-            _name(result.source, name, name_span)
-            _builder.buffer_store(result.source, value, [0])
-            return result
         return _name(_native.Bind(value), name, name_span)
 
 
@@ -237,7 +153,7 @@ def emit_(value, *, span=None):
     if value is None or isinstance(value, str | _ir.Var):
         return
     with _construction_span(span):
-        if isinstance(value, _NativeFrame | _builder._Frame):
+        if isinstance(value, _NativeFrame):
             _enter_concise(value)
         elif hasattr(value, "frames"):
             for frame in value.frames:
@@ -246,3 +162,85 @@ def emit_(value, *, span=None):
             _native.add_to_parent(value)
         else:
             _native.evaluate(value)
+
+
+def resolve_type_var_(name, dtype=None, *, value=None, span=None):
+    """Resolve a symbol using the nearest native primitive-function frame."""
+    from tvm.script.ir_builder.base import _current_function_frame
+
+    return _current_function_frame().resolve_type_var(name, dtype, value=value, span=span)
+
+
+def call_global_var_(function, args):
+    """Build a primitive call using the declared callee's exact result type."""
+    return _native._call_global(function, *args)
+
+
+def decl_mutable_var_(value=_MISSING, *, ty=None, name=None, span=None, name_span=None):
+    """Name explicit scalar/vector storage and optionally initialize an annotation declaration."""
+    name_span = span if name_span is None else name_span
+    with _construction_span(span):
+        if isinstance(ty, _native.LocalVectorAnnotation):
+            if value is not _MISSING:
+                raise ValueError("Vector annotation does not support an initializer")
+            return _name(_native.alloc_local(ty.shape, ty.dtype), name, name_span)
+        if ty is not None:
+            annotation = ty() if callable(ty) and not isinstance(ty, _ir.Expr) else ty
+            annotation = annotation.ty if isinstance(annotation, _ir.Expr) else annotation
+            if not isinstance(annotation, _ir.PrimType) or str(annotation) == "handle":
+                raise TypeError("Mutable scalar annotations require a primitive scalar type")
+            storage = _native.local_scalar(str(annotation)).scalar
+            if value is not _MISSING:
+                set_mutable_var_(storage, value, span=span)
+        else:
+            storage = value.scalar if isinstance(value, _native.scalar_wrapper) else value
+        if isinstance(storage, _ir.TensorLoad):
+            _name(storage.source, name, name_span)
+        elif _tir.is_buffer_var(storage):
+            _name(storage, name, name_span)
+        else:
+            raise TypeError("A mutable declaration requires scalar or vector storage")
+        return storage
+
+
+def set_mutable_var_(target, value, *, span=None):
+    """Store through an explicitly declared handle without rebinding it."""
+    with _construction_span(span):
+        if isinstance(target, _native.scalar_wrapper):
+            target = target.scalar
+        if isinstance(target, _ir.TensorLoad):
+            _builder.buffer_store(target.source, value, list(target.indices))
+        elif (
+            _tir.is_buffer_var(target)
+            and len(target.ty.shape) == 1
+            and isinstance(target.ty.shape[0], _tir.IntImm)
+            and target.ty.shape[0].value == 1
+        ):
+            _builder.buffer_store(target, value, [0])
+        else:
+            raise TypeError("A mutable assignment requires scalar storage")
+
+
+def _register_declarations():
+    from tvm.script.parser.protocol import register_mutable_var_decl
+
+    for constructor in vars(_native).values():
+        if isinstance(constructor, _native.DtypeConstructor):
+            register_mutable_var_decl(constructor, syntax="annotation")
+    # These source calls explicitly declare storage. Naming preserves the
+    # native handle; assignment to a scalar buffer later emits a store.
+    for namespace in (_builder, _native):
+        for name in (
+            "local_scalar",
+            "shared_scalar",
+            "alloc_scalar",
+            "decl_scalar",
+            "alloc_buffer",
+            "alloc_local",
+            "alloc_shared",
+            "decl_buffer",
+            "match_buffer",
+        ):
+            register_mutable_var_decl(getattr(namespace, name), syntax="call")
+    register_mutable_var_decl(_native.LocalVectorAnnotation, syntax="annotation")
+    register_mutable_var_decl(_builder.Buffer, syntax="parameter")

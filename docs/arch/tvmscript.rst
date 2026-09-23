@@ -95,7 +95,7 @@ TVMScript uses three import aliases by convention:
    from tvm.script import ir as I       # module-level constructs
    from tvm.script import tirx as T     # TIR constructs
    from tvm.script import relax as R    # Relax constructs
-   from tvm.script.parser.frontend import make_helper
+   from tvm.script.parser.entry import make_macro_decorator
    from tvm.target import Target
 
 These are public authoring APIs. ``Target`` configures compilation targets; it remains in
@@ -142,12 +142,13 @@ A helper can construct expressions or statements in the caller's active builder 
 
 .. code-block:: python
 
-   @make_helper(T)
+   @make_macro_decorator(T)
    def add_one(value):
        return value + 1
 
-Unlike a function decorator, ``make_helper`` does not create an IR function for each helper.
-Its default return behavior is ordinary Python return from the generated helper program.
+Unlike a function decorator, ``make_macro_decorator`` does not create an IR function for
+each helper. Its default return behavior is ordinary Python return from the generated
+helper program.
 ``T.inline`` and the dialect macro decorators are supplied through the same frontend helper
 mechanism.
 
@@ -155,8 +156,11 @@ mechanism.
 Parser Architecture
 -------------------
 
-The parser lives in ``python/tvm/script/parser/``. The frontend manages source and callable
-composition; the transpiler handles syntax; the builders interpret concrete values.
+The parser lives in ``python/tvm/script/parser/``. Documented functions in ``entry.py``
+manage source acquisition, definition-context capture, callable composition and execution.
+The transpiler handles syntax; the builders interpret concrete values. TIRx JIT validation,
+defaults and specialization caching live in ``tvm.tirx.script.jit``; shared parser utilities
+remain independent of that policy.
 
 Syntax and construction protocol
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -185,15 +189,19 @@ The public entry points include ``tvm.script.parse`` and ``tvm.script.from_sourc
 1. **Acquire source and context**: the frontend accepts a function, class, or source string,
    obtains its Python AST, and retains source locations. Decorators capture the definition
    context; source-string callers can supply external bindings through ``extra_vars``.
-2. **Translate syntax**: ``IRBuilderTranspiler`` emits Python AST for a builder program,
-   using registered construction operations and argument policies. Name allocation avoids
-   collisions with user identifiers.
+2. **Prescan and translate syntax**: entry copies the source AST once. One
+   ``PrescanCollector`` produces read-only ``PrescanContext`` facts for reserved names,
+   scoped declarations and conditional outputs. ``IRBuilderTranspiler`` rewrites that owned
+   tree with the standard Python AST visitor, using fixed namespace metadata and registered
+   argument policies. Name allocation avoids collisions with user identifiers.
 3. **Compose the callable**: the single frontend helper ``recompose_builder`` compiles the
    generated program with the source's globals, closure bindings, and retained annotation
    context.
-4. **Execute construction**: the callable enters builder frames, reconstructs declarations
-   and annotations in their required context, and constructs function bodies. Builders own
-   module references and function-local symbolic identity.
+4. **Execute construction**: the callable enters native builder frames and reconstructs
+   declarations and annotations in their required context. When forward declarations are
+   needed, it declares the signatures first and calls one body-builder function with each
+   retained native function frame. Re-entry uses the existing parameters instead of adding
+   them again. Native frames own module references, results and function-local symbols.
 5. **Return IR**: the frontend extracts the constructed object and performs the requested
    validation; public parsing validates well-formedness by default.
 
@@ -213,16 +221,20 @@ lexical environment setup belong to the frontend. The transpiler preserves sourc
 through Python syntax; it does not classify each name by membership in a runtime environment
 or search caller stacks for values.
 
-DSL expression strings such as ``R.Tensor(("n", 4), "float32")`` use a builder-owned
-``TypeVarFrame`` shared across one function's parameters, return annotation, and body.
-Repeated symbolic names refer to the same symbol. A Python name in ``R.Tensor((n, 4), ...)``
-instead follows its source lexical scope. Module global-info references resolve against
-the enclosing module's builder state.
+DSL expression strings such as ``R.Tensor(("n", 4), "float32")`` use
+``X.resolve_type_var_("n")``, which delegates to the nearest native function frame's
+``type_var_map``. Repeated names refer to the same symbol across parameters, return
+annotations and the body. Quoted lookup does not introduce a Python name; an explicit
+symbol declaration does. A Python name in ``R.Tensor((n, 4), ...)`` follows its source
+lexical scope. Module global-info references use ``I.resolve_global_info`` against the
+active native module frame's existing map.
 
-Shared construction support is exposed as ``I.parser_support``. Generated programs use its
-``at`` and ``with_at_scope`` helpers to attach locations and preserve caller/definition
-provenance while evaluating source calls once. These helpers retain returned object identity;
-builders handle results that already emitted a statement or introduced a binding.
+Generated programs use the shared ``I.at_`` and ``I.with_at_group_`` helpers to attach
+locations and preserve caller/definition provenance while evaluating source calls once.
+Their implementation lives in ``ir_builder.base``. These helpers retain returned object
+identity; builders handle results that already emitted a statement or introduced a binding.
+The shared ``ir_builder.ir.protocol`` module documents the generated builder contract,
+while ``parser.protocol`` owns syntax registration.
 
 Explicit host control flow
 ~~~~~~~~~~~~~~~~~~~~~~~~~~

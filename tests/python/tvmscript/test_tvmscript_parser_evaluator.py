@@ -20,16 +20,15 @@
 import pytest
 
 import tvm.testing
-from tvm.script.parser.frontend import Compiler
+from tvm.script.parser.entry import _run_statements
 from tvm.tirx.script import builder as T
 
 
 def _calc(expr, extra_vars=None):
     if extra_vars is None:
         extra_vars = {}
-    compiler = Compiler("def evaluate():\n    return " + expr + "\n", extra_vars)
-    return compiler.run_statements(
-        compiler.tree.body[0].body, T, compiler.env, set(), preserve_return=True
+    return _run_statements(
+        "def evaluate():\n    return " + expr + "\n", T, extra_vars, set(), preserve_return=True
     )
 
 

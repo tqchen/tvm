@@ -25,7 +25,7 @@ from tvm.relax.script.builder import ir as native_R
 from tvm.script import parser
 from tvm.script import tirx as T
 from tvm.script.ir_builder import IRBuilder
-from tvm.script.ir_builder import parser_support as PS
+from tvm.script.ir_builder import ir as I
 from tvm.tirx.script import builder as tir_builder
 
 
@@ -75,7 +75,7 @@ def test_emit_keeps_existing_buffer_store_identity_and_span():
         with T.function():
             T.func_name("store")
             buffer = tirx.decl_buffer((4,), "int32")
-            statement = PS.at(("store.py", 3, 3, 1, 12), tirx.BufferStore(buffer, 1, [0]))
+            statement = I.at_(("store.py", 3, 3, 1, 12), tirx.BufferStore(buffer, 1, [0]))
             T.emit(statement)
     stored = builder.get().body
     assert stored.same_as(statement)

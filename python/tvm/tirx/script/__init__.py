@@ -15,17 +15,35 @@
 # specific language governing permissions and limitations
 # under the License.
 """Public canonical TVMScript dialect namespace."""
+
 import importlib as _importlib
+
+# These entry points are owned here, independently of shared parsing.
+_ENTRY_EXPORTS = ("jit", "Optional")
 
 
 def __getattr__(name):
+    if name == "jit":
+        decorator = _make_jit(_importlib.import_module(__name__ + ".builder"))
+        globals()[name] = decorator
+        return decorator
     if name in ("builder", "tile"):
         return _importlib.import_module(__name__ + "." + name)
     if name.startswith("_") and name != "__all__":
         raise AttributeError(name)
     from tvm.script import parser as _parser
+
     _parser._initialize()
     if name in globals():
         return globals()[name]
     builder = _importlib.import_module(__name__ + ".builder")
     return getattr(builder, name)
+
+
+# Load JIT policy without loading builders during dialect bootstrap. Remove the
+# submodule attribute so first public T.jit lookup creates the decorator lazily;
+# subsequent direct imports find the cached module and leave T.jit unchanged.
+from .jit import OptionalAnnotation as Optional
+from .jit import make_jit as _make_jit
+
+globals().pop("jit", None)

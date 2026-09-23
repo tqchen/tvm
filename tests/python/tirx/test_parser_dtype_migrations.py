@@ -27,7 +27,7 @@ import tvm
 from tvm import ir, tirx
 from tvm.script import parser
 
-_ROOT = Path(__file__).resolve().parents[2]
+_ROOT = Path(__file__).resolve().parents[3]
 _PAGE_KERNELS = "python/tvm/relax/frontend/nn/llm/_page_kernels.py"
 
 

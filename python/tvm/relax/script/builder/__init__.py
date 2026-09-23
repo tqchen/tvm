@@ -32,13 +32,10 @@ from tvm.relax.distributed import device_mesh as device_mesh
 from tvm.script.ir_builder import IRBuilder as _IRBuilder
 from tvm.script.ir_builder import ir as _I
 from tvm.script.ir_builder.base import BypassBind as _BypassBind
-from tvm.script.ir_builder.base import _construction_span
-from tvm.script.ir_builder.base import _frame_result as _named_frame_result
+from tvm.script.ir_builder.base import _construction_span, _return_annotation
 from tvm.script.ir_builder.base import at as _at
 from tvm.script.ir_builder.base import source_span as _source_span
-from tvm.script.ir_builder.parser_support import lookup_global_info as _lookup_global_info
-from tvm.script.ir_builder.type_var_frame import TypeVarDecl as _TypeVarDecl
-from tvm.script.ir_builder.type_var_frame import resolve_type_var
+from tvm.script.ir_builder.ir.protocol import resolve_global_info as _lookup_global_info
 from tvm.script.parser.protocol import args_policy as _args_policy
 from tvm.script.parser.protocol import constexpr as constexpr
 from tvm.script.parser.protocol import expr_str_args as _expr_str_args
@@ -56,7 +53,11 @@ from .comparison import ne as ne
 from .distributed.ir import _lookup_device_mesh
 from .ir import *
 from .protocol import bind_ as bind_
+from .protocol import call_global_var_ as call_global_var_
+from .protocol import decl_mutable_var_ as decl_mutable_var_
 from .protocol import emit_ as emit_
+from .protocol import resolve_type_var_ as resolve_type_var_
+from .protocol import set_mutable_var_ as set_mutable_var_
 
 
 @_args_policy({"shape": "expr_str", "vdevice": "global_info"}, scalar_strings=False)
@@ -92,6 +93,9 @@ dist.device_mesh = device_mesh
 
 Range = _ir.Range
 
+# Syntax metadata: Relax statements return one same-named branch output.
+__tvm_value_if__ = True
+
 
 @_expr_str_args("values", introduce=True, dtype="int64")
 def Shape(values=None, ndim=-1, *, span=None):
@@ -104,7 +108,7 @@ def _type(value):
         return _ir.TupleType([])
     if callable(value):
         value = value()
-    if _ir.is_prim_expr(value) or isinstance(value, _TypeVarDecl):
+    if _ir.is_prim_expr(value):
         value = value.ty
     if not isinstance(value, _ir.Type):
         raise TypeError(f"Expected a concrete type, got {type(value).__name__}")
@@ -162,58 +166,7 @@ def type_var(name, *, dtype=None, span=None):
     return _ir.Var(name, "int64" if dtype is None else dtype, _source_span(span))
 
 
-class _Frame:
-    """Retain source metadata and exports around an existing native frame."""
-
-    def __init__(self, native, span=None):
-        # Each wrapper owns one native construction frame and source location.
-        # result starts empty, records finalized lexical exports on exit, and
-        # never outlives its construction region or stores another function's
-        # symbols (those belong to the separate TypeVarFrame).
-        self.native = native
-        self.span = span
-        self.result = {}
-
-    def __getattr__(self, name):
-        return getattr(self.native, name)
-
-    @property
-    def reference(self):
-        """Return the stable module or local function reference after declaration."""
-        if isinstance(self.native, _frame.FunctionFrame):
-            local_var = self.native.local_var
-            return local_var if local_var is not None else self.native.global_var
-        raise AttributeError("This frame does not declare a function")
-
-    def _set_source_span(self, span):
-        _at(span, self.native)
-
-    def __enter__(self):
-        with _construction_span(self.span):
-            self.native.__enter__()
-        return self
-
-    def __exit__(self, exc_type, exc_value, traceback):
-        with _construction_span(self.span):
-            self.native.__exit__(exc_type, exc_value, traceback)
-        if exc_type is None:
-            if isinstance(self.native, _frame.BindingBlockFrame):
-                self.result = {var.name: var for var in self.native.output_vars}
-            elif (
-                isinstance(self.native, _frame.FunctionFrame) and self.native.local_var is not None
-            ):
-                self.result = {self.native.name: self.native.local_var}
-            elif isinstance(self.native, _frame.IfFrame):
-                self.result = {self.native.var_name: self.native.var}
-        return False
-
-
-def frame_result(completed_frame, name):
-    """Read one named export from an explicitly supplied completed region."""
-    return _named_frame_result(completed_frame, name)
-
-
-def function(is_pure=True, is_private=False, *, local=False, reference=None, span=None):
+def function(is_pure=True, is_private=False, *, decl=False, local=False, reference=None, span=None):
     """Start a function frame.
 
     Parameters
@@ -224,6 +177,8 @@ def function(is_pure=True, is_private=False, *, local=False, reference=None, spa
     is_private : bool
         Whether the function is annotated as private.
 
+    decl : bool, optional
+        Collect a signature and retain this frame for a later body entry.
     local : bool, optional
         Whether to define a local function instead of a module function.
     reference : Var, optional
@@ -236,16 +191,13 @@ def function(is_pure=True, is_private=False, *, local=False, reference=None, spa
     frame : context manager
         Construction context for the native frame, retaining source metadata.
     """
+    if decl:
+        return _at(span, _ffi_api.DeclFunction(is_pure, is_private, local))
     if local:
         if reference is None:
             raise ValueError("A local function requires its declared reference")
-        return _Frame(_ffi_api.LocalFunction(is_pure, reference), span)
-    return _Frame(_native.function(is_pure, is_private), span)
-
-
-def decl_function(is_pure=True, is_private=False, *, local=False, span=None):
-    """Create a bodyless Relax function declaration context."""
-    return _Frame(_ffi_api.DeclFunction(is_pure, is_private, local), span)
+        return _at(span, _ffi_api.LocalFunction(is_pure, reference))
+    return _at(span, _native.function(is_pure, is_private))
 
 
 def arg(name, ty, *, span=None):
@@ -269,6 +221,10 @@ def arg(name, ty, *, span=None):
         The created or retained function parameter variable.
     """
     with _construction_span(span):
+        if not isinstance(ty, _ir.Var):
+            ty = _type(ty)
+        if isinstance(ty, _ir.PrimType) or _ir.is_prim_var(ty):
+            ty = resolve_type_var_(name, ty, span=span)
         if isinstance(ty, _ir.Var):
             return _ffi_api.ArgVar(name, ty)
         return _at(span, _native.arg(name, _type(ty)))
@@ -276,7 +232,7 @@ def arg(name, ty, *, span=None):
 
 def func_ret_type(ret_ty):
     """Set the active function signature return type."""
-    return _native.func_ret_type(_type(ret_ty))
+    return _native.func_ret_type(_type(_return_annotation(ret_ty)))
 
 
 func_ret_ty = func_ret_type
@@ -284,7 +240,7 @@ func_ret_ty = func_ret_type
 
 def dataflow(*, span=None):
     """Create a dataflow context with explicit finalized exports."""
-    return _Frame(_native.dataflow(), span)
+    return _at(span, _native.dataflow())
 
 
 def If(condition, *, span=None):
@@ -305,17 +261,17 @@ def If(condition, *, span=None):
     frame : context manager
         Construction context for the native frame, retaining source metadata.
     """
-    return _Frame(_native.If(condition), span)
+    return _at(span, _native.If(condition))
 
 
 def Then(*, span=None):
     """Create the true branch of the active conditional."""
-    return _Frame(_native.Then(), span)
+    return _at(span, _native.Then())
 
 
 def Else(*, span=None):
     """Create the false branch of the active conditional."""
-    return _Frame(_native.Else(), span)
+    return _at(span, _native.Else())
 
 
 def _value(value, ty=None):
@@ -390,8 +346,10 @@ __all__ = [
     "DTensor",
     "For",
     "for_",
-    "frame_result",
-    "resolve_type_var",
+    "resolve_type_var_",
+    "call_global_var_",
+    "decl_mutable_var_",
+    "set_mutable_var_",
     "Object",
     "Prim",
     "Range",
@@ -402,7 +360,6 @@ __all__ = [
     "break_",
     "continue_",
     "bind_",
-    "decl_function",
     "device_mesh",
     "dist",
     "emit_",

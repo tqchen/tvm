@@ -131,28 +131,10 @@ class IRBuilderFrame : public ffi::ObjectRef {
   }
 };
 
-/*! \brief Per-function symbols, retained across declaration and definition.
- * The native builder stack owns active scope; the FunctionRecord owns this
- * frame between entries. symbols maps source names to canonical primitive Vars.
- * It starts empty, survives re-entry, and is never shared between functions.
- */
-class TypeVarFrameNode : public IRBuilderFrameNode {
- public:
-  ffi::Map<ffi::String, tvm::Var> symbols;
-
-  static void RegisterReflection() {
-    ffi::reflection::ObjectDef<TypeVarFrameNode>().def_ro("symbols", &TypeVarFrameNode::symbols);
-  }
-  TVM_FFI_DECLARE_OBJECT_INFO_FINAL("script.ir_builder.TypeVarFrame", TypeVarFrameNode,
-                                    IRBuilderFrameNode);
-};
-
-/*! \brief Managed reference to the shared function symbol frame. */
-class TypeVarFrame : public IRBuilderFrame {
- public:
-  TypeVarFrame() : IRBuilderFrame(ffi::make_object<TypeVarFrameNode>()) {}
-  TVM_FFI_DEFINE_OBJECT_REF_METHODS_NOTNULLABLE(TypeVarFrame, IRBuilderFrame, TypeVarFrameNode);
-};
+/*! \brief Resolve one symbol in a native function frame's retained map. */
+TVM_DLL tvm::Var ResolveTypeVar(ffi::Map<ffi::String, tvm::Var>* symbols,
+                              const ffi::String& name, ffi::Optional<PrimType> dtype,
+                              ffi::Optional<tvm::Var> value, Span span);
 
 ////////////////////////////// IRBuilder //////////////////////////////
 
@@ -208,7 +190,7 @@ class IRBuilderNode : public ffi::Object {
   template <typename TFrame>
   inline ffi::Optional<TFrame> FindFrame() const;
   /*!
-   * \brief Get the top semantic frame if its type is `TFrame`; skip symbol-only frames.
+   * \brief Get the top frame if its type is `TFrame`.
    * \tparam TFrame The assumed type of the last frame on stack.
    * \return The frame if the stack is non-empty and the top of the stack is of type `TFrame`.
    * Otherwise std::nullopt.
@@ -222,13 +204,6 @@ class IRBuilderNode : public ffi::Object {
    */
   template <typename TObjectRef>
   inline TObjectRef Get() const;
-  /*! \brief Whether any semantic construction frame remains (symbol frames are transparent). */
-  bool HasConstructionFrames() const {
-    for (const auto& frame : frames) {
-      if (!frame->IsInstance<TypeVarFrameNode>()) return true;
-    }
-    return false;
-  }
   /*! \brief Push a frontend source span for IR constructed in the nested scope. */
   void PushSourceSpan(Span span);
   /*! \brief Pop the innermost frontend source span. */
@@ -328,10 +303,8 @@ inline ffi::Optional<TFrame> IRBuilderNode::FindFrame() const {
 template <typename TFrame>
 inline ffi::Optional<TFrame> IRBuilderNode::GetLastFrame() const {
   using TFrameNode = typename TFrame::ContainerType;
-  for (auto it = frames.rbegin(); it != frames.rend(); ++it) {
-    if ((*it)->IsInstance<TFrameNode>()) return (*it).template as_or_throw<TFrame>();
-    // Symbol state is administrative, not a lexical IR construction scope.
-    if (!(*it)->IsInstance<TypeVarFrameNode>()) break;
+  if (!frames.empty() && frames.back()->IsInstance<TFrameNode>()) {
+    return frames.back().template as_or_throw<TFrame>();
   }
   return std::nullopt;
 }

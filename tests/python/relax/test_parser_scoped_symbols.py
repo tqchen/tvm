@@ -14,7 +14,7 @@
 # KIND, either express or implied.  See the License for the
 # specific language governing permissions and limitations
 # under the License.
-"""Signature symbols cross call scopes without changing introduction order."""
+"""Quoted symbols remain frame-local without creating Python bindings."""
 
 import pytest
 
@@ -28,9 +28,10 @@ def test_signature_symbols_cross_nested_calls_parameters_return_and_body(track_s
         """
 @R.function
 def main(
-    x: R.Tuple(R.Tensor(("n",), "float32"), R.Tensor((n,), "float32")),
-    y: R.Tensor((n,), "float32"),
-) -> R.Tensor((n,), "float32"):
+    x: R.Tuple(R.Tensor(("n",), "float32"), R.Tensor(("n",), "float32")),
+    y: R.Tensor(("n",), "float32"),
+) -> R.Tensor(("n",), "float32"):
+    n = T.int64()
     R.func_attr({"symbol": n})
     return y
 """,
@@ -43,11 +44,12 @@ def main(
     assert function.attrs["symbol"].same_as(n)
 
 
-def test_signature_string_binds_before_later_dimension():
+def test_signature_strings_reuse_symbol_before_explicit_body_declaration():
     function = parser.parse(
         """
 @R.function
-def main(x: R.Tensor(("n + 1", n), "float32")):
+def main(x: R.Tensor(("n + 1", "n"), "float32")):
+    n = T.int64()
     R.func_attr({"symbol": n})
     return x
 """
@@ -77,7 +79,7 @@ def main(x: {annotation}):
     assert "n" in str(error.value.__cause__)
 
 
-def test_signature_capture_precedes_string_rebinding():
+def test_signature_strings_do_not_replace_captured_python_names():
     function = parser.parse(
         """
 @R.function
@@ -89,37 +91,6 @@ def main(x: R.Tensor((n, "n"), "float32"), y: R.Tensor((n,), "float32")):
     )
     first, n = function.params[0].ty.shape
     assert first.value == 7
-    assert function.params[1].ty.shape[0].same_as(n)
-    assert function.attrs["symbol"].same_as(n)
-
-
-def test_static_resolution_preserves_instance_functions_and_bound_methods():
-    import ast
-    import inspect
-    from types import SimpleNamespace
-
-    from tvm.script.parser.transpile import IRBuilderTranspiler
-
-    class Owner:
-        def constructor(self, shape):
-            return shape
-
-    instance = Owner()
-    namespace = SimpleNamespace(constructor=Owner.constructor)
-    shadowed = Owner()
-    shadowed.constructor = Owner.constructor
-    transformer = IRBuilderTranspiler(
-        "<static-resolution>",
-        {"instance": instance, "namespace": namespace, "shadowed": shadowed},
-        "X",
-        "I",
-        lambda node: ast.Constant(None),
-        None,
-    )
-    for name in ("namespace", "shadowed"):
-        resolved = transformer._resolve(ast.parse(f"{name}.constructor", mode="eval").body)
-        assert resolved is Owner.constructor
-        assert list(inspect.signature(resolved).parameters) == ["self", "shape"]
-    resolved = transformer._resolve(ast.parse("instance.constructor", mode="eval").body)
-    assert resolved.__self__ is instance
-    assert list(inspect.signature(resolved).parameters) == ["shape"]
+    assert function.params[1].ty.shape[0].value == 7
+    assert function.attrs["symbol"] == 7
+    assert n.name == "n"

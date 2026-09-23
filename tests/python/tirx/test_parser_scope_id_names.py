@@ -22,7 +22,6 @@ import tvm
 from tvm.script import parser
 from tvm.script.ir_builder import IRBuilder
 from tvm.script.ir_builder.base import BypassBind
-from tvm.script.ir_builder.type_var_frame import TypeVarFrame
 from tvm.script import tirx as T
 
 
@@ -43,7 +42,7 @@ from tvm.script import tirx as T
     ],
 )
 def test_anonymous_scope_name_preserves_native_declaration(constructor, args):
-    with IRBuilder() as builder, TypeVarFrame():
+    with IRBuilder() as builder:
         with T.function():
             T.device_entry()
             result = getattr(T, constructor)(*args)
@@ -81,7 +80,7 @@ def main():
 
 
 def test_explicit_native_scope_name_is_retained():
-    with IRBuilder(), TypeVarFrame(), T.function():
+    with IRBuilder(), T.function():
         T.device_entry()
         result = T.thread_id([32])
         IRBuilder.name("native_name", result.value)
@@ -99,7 +98,7 @@ def test_generic_bypass_does_not_opt_into_source_naming():
 
 
 def test_scope_tuple_preserves_value_and_individual_name_opt_in():
-    with IRBuilder(), TypeVarFrame(), T.function():
+    with IRBuilder(), T.function():
         T.device_entry()
         result = T.cta_id([2, 3])
         values = T.bind_(result, name="ids")

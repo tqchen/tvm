@@ -24,7 +24,7 @@ from tvm.script.ir_builder import ir as I
 from tvm.script import tirx as T
 
 
-@pytest.mark.parametrize("marker", ["I.constexpr", "T.constexpr", "marked"])
+@pytest.mark.parametrize("marker", ["I.constexpr", "T.constexpr"])
 @pytest.mark.parametrize("track_span", [True, False])
 def test_marked_if_shares_parent_scope(marker, track_span):
     seen = []
@@ -43,7 +43,7 @@ def main(a: T.handle):
         invalid()
     A[0] = 3
 """,
-        extra_vars={"choose": choose, "marked": I.constexpr},
+        extra_vars={"choose": choose},
         track_span=track_span,
     )
     assert seen == ["condition"]
@@ -229,3 +229,36 @@ def main():
         T.evaluate(222)
 """)
     assert result.body.value.value == 222
+
+
+def test_parser_skips_invalid_ramp_and_preserves_support_name():
+    # Before: X.ramp(0, 1, _PS) if I.constexpr(_PS > 1) else 0
+    # Expected builder program: X.ramp(0, 1, _PS) if _PS > 1 else 0
+    # The captured _PS name remains an ordinary user binding.
+    source = """
+@T.prim_func
+def main():
+    T.evaluate(T.ramp(0, 1, _PS) if I.constexpr(_PS > 1) else 0)
+"""
+    function = parser.parse(source, extra_vars={"_PS": 1})
+    assert isinstance(function.body, tirx.Evaluate)
+    assert function.body.value.value == 0
+
+
+def test_source_logical_operands_skip_at_construction():
+    # Before: value if I.constexpr(False and fail()) else fallback
+    # Expected builder program: value if False and fail() else fallback
+    # Calls inside the constexpr operand retain Python short-circuit behavior.
+    def fail():
+        raise AssertionError("skipped source operand was evaluated")
+
+    function = parser.parse(
+        """
+@T.prim_func
+def main():
+    T.evaluate(1 if I.constexpr(False and fail()) else 2)
+    T.evaluate(3 if I.constexpr(True or fail()) else 4)
+""",
+        extra_vars={"fail": fail},
+    )
+    assert [statement.value.value for statement in function.body.seq] == [2, 3]

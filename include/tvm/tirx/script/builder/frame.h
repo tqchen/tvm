@@ -70,6 +70,8 @@ class TIRFrame : public IRBuilderFrame {
  */
 class PrimFuncFrameNode : public TIRFrameNode {
  public:
+  /*! \brief Function-local symbols retained across declaration and body entry. */
+  ffi::Map<ffi::String, tvm::Var> type_var_map;
   /*! \brief The name of the block. */
   ffi::Optional<ffi::String> name;
   /*! \brief Function parameters. */
@@ -102,6 +104,7 @@ class PrimFuncFrameNode : public TIRFrameNode {
   static void RegisterReflection() {
     namespace refl = tvm::ffi::reflection;
     refl::ObjectDef<PrimFuncFrameNode>()
+        .def_ro("type_var_map", &PrimFuncFrameNode::type_var_map)
         .def_ro("name", &PrimFuncFrameNode::name)
         .def_ro("args", &PrimFuncFrameNode::args)
         .def_ro("is_private", &PrimFuncFrameNode::is_private)
@@ -275,6 +278,8 @@ class ForFrameNode : public TIRFrameNode {
       ffi::Array<ffi::Optional<PrimExpr>> loop_steps, tvm::tirx::Stmt loop_body)>;
   /*! \brief The loop variable. */
   ffi::Array<tvm::tirx::Var> vars;
+  /*! \brief Source target: absent, one name, or an array for tuple/starred unpacking. */
+  ffi::Any names;
   /*! \brief The domains of iteration. */
   ffi::Array<Range> doms;
   /*! \brief The optional steps of iteration. */
@@ -285,6 +290,7 @@ class ForFrameNode : public TIRFrameNode {
   static void RegisterReflection() {
     namespace refl = tvm::ffi::reflection;
     refl::ObjectDef<ForFrameNode>()
+        .def_rw("names", &ForFrameNode::names)
         .def_ro("vars", &ForFrameNode::vars)
         .def_ro("doms", &ForFrameNode::doms);
     // `f_make_for_loop` is not registered as it's not visited.

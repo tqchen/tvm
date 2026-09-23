@@ -14,14 +14,14 @@
 # KIND, either express or implied.  See the License for the
 # specific language governing permissions and limitations
 # under the License.
-"""Range loop annotations survive deferred frame construction."""
+"""Range loop annotations belong to the native loop frame."""
 
 import pytest
 
 from tvm import ir, tirx
 from tvm.script import parser
-from tvm.script.ir_builder import IRBuilder
 from tvm.script import tirx as T
+from tvm.script.ir_builder import IRBuilder
 
 
 def annotated_source(bounds, s_tir):
@@ -86,17 +86,26 @@ def main(A: T.Buffer((16,), "float32")):
     ir.assert_structural_equal(parser.parse(expected_source), result)
 
 
-def test_range_descriptor_keeps_annotations_until_frame_construction():
-    annotations = {"pragma_test": 3}
-    descriptor = T.range_(4, annotations=annotations)
-    assert descriptor.annotations is annotations
+def test_range_returns_native_frame_and_preserves_annotations():
+    # Before: for i in range(4, annotations={"pragma_test": 3}): X.evaluate(i)
+    # Expected builder program:
+    # with X.for_(X.range_(4, annotations={"pragma_test": 3}), names="i") as i:
+    #     X.emit_(X.evaluate(i))
+    from tvm.tirx.script.builder.frame import ForFrame
+
     with IRBuilder() as builder:
-        with T.for_(descriptor):
-            T.evaluate(1)
-    assert builder.get().annotations["pragma_test"] == 3
+        frame = T.range_(4, annotations={"pragma_test": 3})
+        assert isinstance(frame, ForFrame)
+        assert T.for_(frame, names="i") is frame
+        with frame as index:
+            T.evaluate(index)
+    loop = builder.get()
+    assert loop.annotations["pragma_test"] == 3
+    assert loop.loop_var.name == "i"
+    assert loop.body.value.same_as(loop.loop_var)
 
 
 @pytest.mark.parametrize("args", [(), (0, 1, 2, 3), (0, 4, 0)])
 def test_annotations_do_not_weaken_range_argument_validation(args):
-    with pytest.raises((TypeError, ValueError), match="range"):
+    with IRBuilder(), pytest.raises((TypeError, ValueError), match="range"):
         T.range_(*args, annotations={"pragma_test": 1})

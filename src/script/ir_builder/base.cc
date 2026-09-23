@@ -30,6 +30,19 @@ namespace tvm {
 namespace script {
 namespace ir_builder {
 
+tvm::Var ResolveTypeVar(ffi::Map<ffi::String, tvm::Var>* symbols, const ffi::String& name,
+                        ffi::Optional<PrimType> dtype, ffi::Optional<tvm::Var> value, Span span) {
+  TVM_FFI_CHECK(!name.empty(), ValueError) << "A symbolic variable requires a nonempty name";
+  if (auto existing = symbols->Get(name)) return existing.value();
+  tvm::Var symbol = value.has_value() ? value.value()
+                                      : tvm::Var(name, dtype.value_or(PrimType::Int(64)), span);
+  TVM_FFI_CHECK(symbol->ty.as<PrimTypeNode>(), TypeError)
+      << "A symbolic variable requires a primitive type";
+  if (symbol->name.empty()) details::Namer::Name(symbol, name);
+  symbols->Set(name, symbol);
+  return symbol;
+}
+
 namespace {
 
 bool PositionLessEqual(int lhs_line, int lhs_column, int rhs_line, int rhs_column) {
@@ -111,7 +124,6 @@ Span ComposeSpan(const Span& active, const Span& existing) {
 
 TVM_FFI_STATIC_INIT_BLOCK() {
   IRBuilderFrameNode::RegisterReflection();
-  TypeVarFrameNode::RegisterReflection();
   IRBuilderNode::RegisterReflection();
 }
 
@@ -234,11 +246,6 @@ TVM_FFI_STATIC_INIT_BLOCK() {
       .def_method("script.ir_builder.IRBuilderFrameEnter", &IRBuilderFrameNode::EnterWithScope)
       .def_method("script.ir_builder.IRBuilderFrameExit", &IRBuilderFrameNode::ExitWithScope)
       .def_method("script.ir_builder.IRBuilderFrameAddCallback", &IRBuilderFrameNode::AddCallback)
-      .def("script.ir_builder.TypeVarFrame", []() { return TypeVarFrame(); })
-      .def("script.ir_builder.TypeVarFrameSetSymbol",
-           [](TypeVarFrame frame, ffi::String name, tvm::Var symbol) {
-             frame->symbols.Set(name, symbol);
-           })
       .def("script.ir_builder.IRBuilder", []() { return IRBuilder(); })
       .def_method("script.ir_builder.IRBuilderEnter", &IRBuilder::EnterWithScope)
       .def_method("script.ir_builder.IRBuilderExit", &IRBuilder::ExitWithScope)

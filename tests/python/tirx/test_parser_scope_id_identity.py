@@ -21,8 +21,8 @@ import pytest
 import tvm
 from tvm.script import parser
 from tvm.script.ir_builder import IRBuilder
-from tvm.script.ir_builder.base import BypassBind, at
-from tvm.script.ir_builder.type_var_frame import TypeVarFrame
+from tvm.script.ir_builder.base import BypassBind
+from tvm.script.ir_builder import ir as I
 from tvm.script import tirx as T
 
 
@@ -71,25 +71,25 @@ def main():
 
 
 def test_scope_owned_variable_does_not_replace_signature_symbol():
-    with IRBuilder(), TypeVarFrame() as symbols:
-        signature_symbol = symbols.resolve("tx", "int32")
-        with T.function():
+    with IRBuilder():
+        with T.function() as symbols:
+            signature_symbol = symbols.resolve_type_var("tx", "int32")
             T.device_entry()
             variable = T.thread_id([32])
             bound = T.bind_(variable, name="tx")
             assert bound.same_as(variable.value)
             assert not bound.same_as(signature_symbol)
-            assert symbols.resolve("tx").same_as(signature_symbol)
+            assert symbols.resolve_type_var("tx").same_as(signature_symbol)
             T.evaluate(bound)
 
 
 def test_unowned_anonymous_declarations_still_reuse_function_symbols():
-    with IRBuilder(), TypeVarFrame() as symbols:
-        signature_symbol = symbols.resolve("n", "int32")
-        with T.function():
+    with IRBuilder():
+        with T.function() as symbols:
+            signature_symbol = symbols.resolve_type_var("n", "int32")
             value = T.int32()
             assert not value.same_as(signature_symbol)
-            assert T.bind_(value, name="n").same_as(signature_symbol)
+            assert T.resolve_type_var_("n", "int32").same_as(signature_symbol)
             T.evaluate(0)
 
 
@@ -102,13 +102,13 @@ def test_bypass_bind_returns_exact_value_before_any_binding_policy(dialect):
     # No builder or symbol frame is active. Neither an annotation nor a previous
     # binding may cause ordinary binding logic to inspect the wrapped value.
     assert (
-        builder.bind_(BypassBind(value), name="x", ty=object(), previous=object(), declaration=True)
+        builder.bind_(BypassBind(value), name="x", ty=object())
         is value
     )
 
 
 def test_scope_tuple_assignment_returns_native_values():
-    with IRBuilder(), TypeVarFrame():
+    with IRBuilder():
         with T.function():
             T.device_entry()
             result = T.cta_id([2, 3])
@@ -128,7 +128,7 @@ def test_bypass_source_attachment_preserves_value_identity(count):
     with IRBuilder():
         values = tuple(tvm.ir.Var("", "int32") for _ in range(count))
         result = BypassBind(values[0] if count == 1 else values)
-        assert at(span, result) is result
+        assert I.at_(span, result) is result
         for value in values:
             assert value.span.same_as(span)
 
@@ -170,7 +170,7 @@ def main():
     ],
 )
 def test_all_scope_id_helpers_opt_into_bypass(constructor, args):
-    with IRBuilder() as builder, TypeVarFrame():
+    with IRBuilder() as builder:
         with T.function():
             T.device_entry()
             result = getattr(T, constructor)(*args)
@@ -185,7 +185,7 @@ def test_all_scope_id_helpers_opt_into_bypass(constructor, args):
 @pytest.mark.parametrize("extents", [[32], [2, 3]])
 @pytest.mark.parametrize("emitter", [T.emit, T.emit_])
 def test_standalone_scope_ids_direct(extents, emitter):
-    with IRBuilder() as builder, TypeVarFrame():
+    with IRBuilder() as builder:
         with T.function():
             T.device_entry()
             result = T.cta_id(extents)
@@ -221,7 +221,7 @@ def main():
 @pytest.mark.parametrize("emitter", [T.emit, T.emit_])
 @pytest.mark.parametrize("tuple_value", [False, True])
 def test_binding_bypass_does_not_suppress_value_emission(emitter, tuple_value):
-    with IRBuilder() as builder, TypeVarFrame():
+    with IRBuilder() as builder:
         with T.function():
             values = (tvm.tirx.IntImm("int32", 7), tvm.tirx.IntImm("int32", 9))
             emitter(BypassBind(values if tuple_value else values[0]))

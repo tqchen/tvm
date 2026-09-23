@@ -1666,17 +1666,37 @@ def test_pointer_expression_assignment_uses_bind():
     assert_structural_equal(func, from_source(code))
 
 
-def test_pointer_expression_assignment_rejects_reassignment():
-    with pytest.raises(tvm.error.DiagnosticError, match="cannot be reassigned"):
-        # fmt: off
-        @T.prim_func
-        def func() -> None:
-            T.device_entry()
-            buf = T.alloc_buffer((4,), "uint32", scope="shared")
-            ptr = buf.ptr_to([0])
-            ptr = buf.ptr_to([1])
-            T.evaluate(T.reinterpret("uint64", ptr))
-        # fmt: on
+def test_pointer_expression_rebinding_creates_distinct_native_bindings():
+    # Before: ptr = buf.ptr_to([0]); ptr = buf.ptr_to([1]); X.evaluate(ptr)
+    # Expected builder program:
+    # ptr = X.bind_(buf.ptr_to([0]), name="ptr")
+    # ptr = X.bind_(buf.ptr_to([1]), name="ptr"); X.emit_(X.evaluate(ptr))
+    # Pointer expressions are ordinary immutable bindings.
+    # fmt: off
+    @T.prim_func
+    def func() -> None:
+        T.device_entry()
+        buf = T.alloc_buffer((4,), "uint32", scope="shared")
+        ptr = buf.ptr_to([0])
+        ptr = buf.ptr_to([1])
+        T.evaluate(T.reinterpret("uint64", ptr))
+    # fmt: on
+
+    bindings, uses = [], []
+
+    def collect(node):
+        if isinstance(node, tvm.tirx.Bind):
+            bindings.append(node)
+        elif isinstance(node, tvm.tirx.Evaluate):
+            uses.append(node)
+
+    tvm_ffi.structural_walk(func.body, collect)
+    assert len(bindings) == 2
+    assert all(isinstance(binding.var.ty, PointerType) for binding in bindings)
+    assert not bindings[0].var.same_as(bindings[1].var)
+    assert len(uses) == 1
+    assert uses[0].value.args[0].same_as(bindings[1].var)
+    assert_structural_equal(func, from_source(func.script()))
 
 
 def test_pointer_expression_assignment_can_shadow_extra_var():

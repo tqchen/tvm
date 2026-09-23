@@ -29,8 +29,6 @@ from tvm.script.ir_builder.base import BypassBind as _BypassBind
 from tvm.script.ir_builder.base import _construction_span
 from tvm.script.ir_builder.base import at as _at
 from tvm.script.ir_builder.base import source_span as _source_span
-from tvm.script.ir_builder.type_var_frame import TypeVarDecl as _TypeVarDecl
-from tvm.script.ir_builder.type_var_frame import TypeVarFrame as _TypeVarFrame
 
 from .. import builder as _builder
 from . import _ffi_api
@@ -43,25 +41,12 @@ def bind_(
     name=None,
     span=None,
     name_span=None,
-    previous=_MISSING,
-    declaration=False,
     frame_value=False,
 ):
     """Emit a Relax binding or retain a named frame-owned value."""
     if isinstance(value, _BypassBind):
         return value.value
     name_span = _source_span(span if name_span is None else name_span)
-    # Shared dtype constructors return anonymous primitive Vars. Reuse the
-    # signature's canonical symbol for declarations, while named aliases and
-    # computed primitive expressions retain ordinary Relax binding semantics.
-    if not frame_value and _ir.is_prim_var(value) and not value.name:
-        # A matching explicit annotation still denotes the same declaration.
-        # Mismatches follow the existing native binding validation below.
-        ty = None if ty is None else _builder._type(ty)
-        if ty is None or _ffi.structural_equal(ty, value.ty):
-            return _TypeVarFrame.current().resolve(name, value.ty, span=name_span)
-    if isinstance(value, _TypeVarDecl):
-        return _TypeVarFrame.current().resolve(name, value.ty, span=name_span)
     if frame_value:
         if isinstance(value, _python.list | _python.tuple | _ir.Array):
             for index, item in enumerate(value):
@@ -77,18 +62,6 @@ def bind_(
                 _IRBuilder.name(name, value)
             _at(name_span if name_span is not None else span, value)
         return value
-    if declaration:
-        if not _ir.is_prim_var(value):
-            raise TypeError("A symbol declaration requires a concrete primitive variable")
-        if ty is not None and not _ffi.structural_equal(_builder._type(ty), value.ty):
-            raise TypeError("The symbol declaration has an incompatible type")
-        if previous is not _MISSING:
-            if not _ir.is_prim_var(previous) or not _ffi.structural_equal(previous.ty, value.ty):
-                raise TypeError("The symbol declaration has an incompatible signature dtype")
-            return previous
-        if name is not None:
-            _IRBuilder.name(name, value)
-        return _at(name_span if name_span is not None else span, value)
     if value is _MISSING:
         raise ValueError("Relax bindings require an initializer")
     if isinstance(value, _I.meta_var):
@@ -125,3 +98,25 @@ def emit_(value, *, span=None):
             "Non-void expressions must be bound to a variable; "
             f"expression of type {result.ty} was used as a statement"
         )
+
+
+def resolve_type_var_(name, dtype=None, *, value=None, span=None):
+    """Resolve a symbol using the nearest native function frame."""
+    from tvm.script.ir_builder.base import _current_function_frame
+
+    return _current_function_frame().resolve_type_var(name, dtype, value=value, span=span)
+
+
+def call_global_var_(function, args):
+    """Build a Relax call with the caller dialect's argument conversion."""
+    return _relax.Call(function, [_relax.utils.convert_to_expr(value) for value in args])
+
+
+def decl_mutable_var_(*args, **kwargs):
+    """Relax does not declare mutable local scalar storage."""
+    raise TypeError("Relax does not support mutable local storage")
+
+
+def set_mutable_var_(*args, **kwargs):
+    """Relax bindings are immutable."""
+    raise TypeError("Relax does not support mutable local storage")

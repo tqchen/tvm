@@ -21,7 +21,7 @@ import pytest
 from tvm import ir, tirx
 from tvm.script import parser
 from tvm.script.ir_builder import IRBuilder
-from tvm.script.ir_builder import parser_support as PS
+from tvm.script.ir_builder import ir as I
 from tvm.script import tirx as T
 
 
@@ -38,11 +38,11 @@ def test_call_scope_keeps_result_identity_and_restores_after_exception():
     seen = []
     with IRBuilder():
         value = tirx.IntImm("int32", 1)
-        assert PS.with_at_scope(loc(1), lambda: (seen.append(1), value)[1]) is value
+        assert I.with_at_group_(loc(1), lambda: (seen.append(1), value)[1]) is value
         assert seen == [1]
         with pytest.raises(ValueError, match="failure"):
-            PS.with_at_scope(loc(2), lambda: (_ for _ in ()).throw(ValueError("failure")))
-        other = PS.at(loc(3), tirx.IntImm("int32", 2))
+            I.with_at_group_(loc(2), lambda: (_ for _ in ()).throw(ValueError("failure")))
+        other = I.at_(loc(3), tirx.IntImm("int32", 2))
         assert span_lines(other) == [3]
 
 
@@ -53,11 +53,11 @@ def test_scoped_helper_multiple_emissions_and_normal_return():
             T.func_name("multiple")
 
             def helper():
-                PS.with_at_scope(loc(8), lambda: T.evaluate(1))
-                PS.with_at_scope(loc(9), lambda: T.evaluate(2))
+                I.with_at_group_(loc(8), lambda: T.evaluate(1))
+                I.with_at_group_(loc(9), lambda: T.evaluate(2))
                 return marker
 
-            assert PS.with_at_scope(loc(4), helper) is marker
+            assert I.with_at_group_(loc(4), helper) is marker
     statements = builder.get().body.seq
     assert len(statements) == 2
     assert span_lines(statements[0]) == [4, 8]

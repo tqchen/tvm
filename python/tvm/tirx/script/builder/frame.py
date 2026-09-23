@@ -18,8 +18,10 @@
 
 from tvm_ffi import register_object as _register_object
 
-from tvm.script.ir_builder.base import IRBuilderFrame
+from tvm.script.ir_builder.base import IRBuilder, IRBuilderFrame, _resolve_type_var
 from tvm.tirx import Buffer, Var
+
+from . import _ffi_api
 
 
 @_register_object("script.ir_builder.tirx.TIRFrame")
@@ -27,7 +29,22 @@ class TIRFrame(IRBuilderFrame): ...
 
 
 @_register_object("script.ir_builder.tirx.PrimFuncFrame")
-class PrimFuncFrame(TIRFrame): ...
+class PrimFuncFrame(TIRFrame):
+    """Native function frame retaining signature, symbols and finalized results."""
+
+    @property
+    def params(self):
+        """The native declared parameters, shared with the resumed body."""
+        return self.args
+
+    @property
+    def reference(self):
+        """The stable declared module or local reference."""
+        return self.global_var
+
+    def resolve_type_var(self, name, dtype=None, *, value=None, span=None):
+        """Resolve a primitive symbol in this function's native map."""
+        return _resolve_type_var(self, _ffi_api.ResolveTypeVar, name, dtype, value=value, span=span)
 
 
 @_register_object("script.ir_builder.tirx.SSBlockFrame")
@@ -42,7 +59,28 @@ class BlockInitFrame(TIRFrame): ...
 class ForFrame(TIRFrame):
     def __enter__(self) -> Var | list[Var]:  # type: ignore[override]
         super().__enter__()
-        return self.vars if len(self.vars) > 1 else self.vars[0]
+        variables = self.vars
+        names = self.names
+        if names is None:
+            return variables if len(variables) > 1 else variables[0]
+        if isinstance(names, str):
+            targets = (
+                [names] if len(variables) == 1 else [f"{names}_{i}" for i in range(len(variables))]
+            )
+        else:
+            targets = list(names)
+            for index, name in enumerate(targets):
+                if name.startswith("*"):
+                    count = len(variables) - len(targets) + 1
+                    if count < 0:
+                        raise ValueError("Loop target count differs from iteration dimensions")
+                    targets[index : index + 1] = [f"{name[1:]}_{i}" for i in range(count)]
+                    break
+            if len(targets) != len(variables):
+                raise ValueError("Loop target count differs from iteration dimensions")
+        for name, variable in zip(targets, variables):
+            IRBuilder.name(name, variable)
+        return variables[0] if isinstance(names, str) and len(variables) == 1 else variables
 
 
 @_register_object("script.ir_builder.tirx.AssertFrame")
@@ -93,8 +131,6 @@ class LaunchThreadFrame(TIRFrame):
     def __enter__(self) -> Var:
         super().__enter__()
         return self.iter_var.var
-
-
 
 
 @_register_object("script.ir_builder.tirx.AllocBufferFrame")

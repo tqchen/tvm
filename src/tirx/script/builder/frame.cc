@@ -106,13 +106,16 @@ void PrimFuncFrameNode::ExitWithScope() {
       attrs = std::move(new_attrs);
     }
   };
-  if (!is_private && name.has_value() && !attrs.count(tvm::attr::kGlobalSymbol)) {
+  // Default attributes belong to the completed function. A declaration must
+  // leave body-level func_attr free to supply those values on the same frame.
+  if (!is_declaration && !is_private && name.has_value() &&
+      !attrs.count(tvm::attr::kGlobalSymbol)) {
     insert_attr(tvm::attr::kGlobalSymbol, name.value());
   }
-  if (s_tir) {
+  if (!is_declaration && s_tir) {
     insert_attr(tvm::attr::kSTir, true);
   }
-  if (persistent) {
+  if (!is_declaration && persistent) {
     insert_attr(tvm::tirx::attr::kPersistentKernel, true);
   }
   // s_tir-mode normalization: drop stale default layouts (see comment on
@@ -184,10 +187,10 @@ void PrimFuncFrameNode::ExitWithScope() {
   }
   function = func;
   IRBuilder builder = IRBuilder::Current();
-  if (!builder->HasConstructionFrames()) {
+  if (builder->frames.empty()) {
     TVM_FFI_CHECK(!builder->result.has_value(), ValueError)
         << "Builder.result has already been set";
-    builder->result = func;
+    if (!is_declaration) builder->result = func;
   } else if (ffi::Optional<ir::IRModuleFrame> opt_frame = builder->FindFrame<ir::IRModuleFrame>()) {
     TVM_FFI_CHECK(name.has_value(), ValueError)
         << "The function name must be defined before exiting the "
@@ -211,6 +214,7 @@ void PrimFuncFrameNode::ExitWithScope() {
   } else {
     TVM_FFI_THROW(ValueError) << "Cannot find where to insert PrimFunc";
   }
+  is_declaration = false;
 }
 
 void SBlockFrameNode::ExitWithScope() {
