@@ -93,6 +93,32 @@ TVM_FFI_STATIC_INIT_BLOCK() {
           AccessPath var_p = p->Attr("params")->ArrayItem(i);
           if (var->ty.as<tirx::BufferTypeNode>()) {
             tirx::BufferVar buffer(var);
+            // Layout expressions have no expression-string syntax.
+            // Materialize a dependent buffer after its parameters
+            // are bound, using the existing handle/match_buffer form.
+            bool needs_body_declaration = false;
+            auto check_annotation_var =
+                [&](const tirx::Var& annotation_var) -> ffi::Expected<ffi::WalkResult> {
+              if (!bound_signature_vars.count(annotation_var)) {
+                needs_body_declaration = true;
+              }
+              return ffi::WalkResult::Advance();
+            };
+            if (buffer->layout.has_value() &&
+                !ffi::StructuralEqual()(buffer->layout,
+                                        tirx::TileLayoutNode::DefaultLayout(buffer->shape))) {
+              ffi::StructuralWalk<ffi::WalkOrder::kPostOrder>(buffer->layout, check_annotation_var);
+            }
+            if (needs_body_declaration) {
+              tirx::Var handle(var->name + "_handle", PointerType::VoidPointerTy());
+              ExprDoc handle_doc = DefineVar(handle, *f, d);
+              args.push_back(AssignDoc(handle_doc, std::nullopt, TIR(d, "handle")));
+              IdDoc lhs = DefineBuffer(buffer, *f, d);
+              ExprDoc rhs = BufferDecl(buffer, "match_buffer", {handle_doc}, var_p->Attr("ty"), *f,
+                                       d, BufferVarDefinition::MatchBuffer);
+              (*f)->stmts.push_back(AssignDoc(lhs, rhs, std::nullopt));
+              continue;
+            }
             std::unordered_set<tirx::Var> stringify_shape_vars;
             std::unordered_set<tirx::Var> stringify_compound_shape_vars;
             auto walk_fn = [&](const tirx::Var& shape_var) -> ffi::Expected<ffi::WalkResult> {
@@ -107,6 +133,13 @@ TVM_FFI_STATIC_INIT_BLOCK() {
             };
             for (const PrimExpr& shape : buffer->shape) {
               ffi::StructuralWalk<ffi::WalkOrder::kPostOrder>(shape, walk_fn);
+            }
+            for (const PrimExpr& stride : buffer->strides) {
+              ffi::StructuralWalk<ffi::WalkOrder::kPostOrder>(stride, walk_fn);
+            }
+            ffi::StructuralWalk<ffi::WalkOrder::kPostOrder>(buffer->elem_offset, walk_fn);
+            for (const PrimExpr& address : buffer->allocated_addr) {
+              ffi::StructuralWalk<ffi::WalkOrder::kPostOrder>(address, walk_fn);
             }
             IdDoc lhs = DefineBuffer(buffer, *f, d);
             ExprDoc annotation =

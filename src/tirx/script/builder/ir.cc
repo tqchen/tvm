@@ -149,9 +149,9 @@ tvm::Type FuncRet(tvm::Type ret_type) {
 BufferVar MatchBuffer(ffi::ObjectRef param, ffi::Array<PrimExpr> shape, PrimType dtype,
                       ffi::Optional<Expr> data, ffi::Array<PrimExpr> strides, PrimExpr elem_offset,
                       ffi::String storage_scope, int align, int offset_factor,
-                      ffi::Optional<Layout> layout) {
+                      ffi::Optional<Layout> layout, ffi::Array<PrimExpr> allocated_addr) {
   BufferVar buffer = BufferDecl(shape, dtype, "", data, strides, elem_offset, storage_scope, align,
-                                offset_factor, layout, {});
+                                offset_factor, layout, allocated_addr);
   if (auto var = param.as<tvm::tirx::Var>()) {
     PrimFuncFrame frame = FindPrimFuncFrame("T.match_buffer");
     Var v = var.value();

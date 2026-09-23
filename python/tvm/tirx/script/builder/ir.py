@@ -489,6 +489,7 @@ def match_buffer(
     align: int = -1,
     offset_factor: int = 0,
     layout: str | Layout | None = "default",
+    allocated_addr: Expr | int | tuple[Expr | int, ...] | None = None,
 ) -> Buffer:
     """The buffer match function.
 
@@ -544,6 +545,9 @@ def match_buffer(
     layout: Optional[Union[str, Layout]]
         The layout of the buffer.
 
+    allocated_addr : Expr or int or tuple of Expr or int, optional
+        Addresses assigned to the buffer allocation.
+
     Returns
     -------
     res : Buffer
@@ -562,6 +566,10 @@ def match_buffer(
         strides = [Var(s, "int64") if isinstance(s, str) else s for s in strides]
     else:
         strides = []
+    if allocated_addr is None:
+        allocated_addr = []
+    if not isinstance(allocated_addr, list | tuple):
+        allocated_addr = [allocated_addr]
     result = _ffi_api.MatchBuffer(  # type: ignore[attr-defined] # pylint: disable=no-member
         param,
         shape,
@@ -573,6 +581,7 @@ def match_buffer(
         align,
         offset_factor,
         _get_layout(layout, shape, scope),
+        allocated_addr,
     )
     return result
 

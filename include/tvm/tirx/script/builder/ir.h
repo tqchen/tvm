@@ -117,13 +117,16 @@ Type FuncRet(Type ret_type);
  * \param storage_scope The optional storage scope of buffer data pointer.
  * \param align The alignment requirement of data pointer in bytes.
  * \param offset_factor The factor of elem_offset field.
+ * \param layout The buffer layout.
+ * \param allocated_addr Addresses assigned to the buffer allocation.
  * \return The matched buffer.
  */
 BufferVar MatchBuffer(ffi::ObjectRef param, ffi::Array<PrimExpr> shape,
                       PrimType dtype = PrimType::Float(32), ffi::Optional<Expr> data = std::nullopt,
                       ffi::Array<PrimExpr> strides = {}, PrimExpr elem_offset = PrimExpr(),
                       ffi::String storage_scope = "global", int align = -1, int offset_factor = 0,
-                      ffi::Optional<Layout> layout = std::nullopt);
+                      ffi::Optional<Layout> layout = std::nullopt,
+                      ffi::Array<PrimExpr> allocated_addr = {});
 
 /*!
  * \brief The block declaration statement.

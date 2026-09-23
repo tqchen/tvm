@@ -81,6 +81,7 @@ def type_var(name, *, dtype=None, span=None):
     "strides",
     "elem_offset",
     "byte_offset",
+    "allocated_addr",
     introduce=True,
     compound_declarations=True,
     as_type=True,
@@ -510,6 +511,7 @@ def shared_scalar(dtype="float32"):
     "shape",
     "strides",
     "elem_offset",
+    "allocated_addr",
     introduce=True,
     compound_declarations=True,
 )
@@ -569,6 +571,9 @@ def match_buffer(*args, **kwargs):
     layout: Optional[Union[str, Layout]]
         The layout of the buffer.
 
+    allocated_addr : Expr or int or tuple of Expr or int, optional
+        Addresses assigned to the buffer allocation.
+
     Returns
     -------
     res : Buffer
@@ -576,8 +581,8 @@ def match_buffer(*args, **kwargs):
 
     Notes
     -----
-    Shape, stride and element-offset expression strings are resolved by the
-    construction protocol before the native buffer match is created.
+    Shape, stride, element-offset and allocation-address expression strings are
+    resolved by the construction protocol before the native buffer match is created.
     """
     return _native.match_buffer(*args, **kwargs)
 
