@@ -241,13 +241,12 @@ class PrescanCollector(ast.NodeVisitor):
 
     visit_AsyncFunctionDef = visit_FunctionDef
 
-    def _target(self, target, value=None, annotation=None):
+    def _target(self, target, value=None, annotation=None, *, binding_declaration=False):
+        constructor = (
+            resolve_syntax(value.func, self.environment) if isinstance(value, ast.Call) else None
+        )
+        binding_declaration |= getattr(constructor, "__tvm_binding_decl__", False)
         if isinstance(target, ast.Name):
-            constructor = (
-                resolve_syntax(value.func, self.environment)
-                if isinstance(value, ast.Call)
-                else None
-            )
             declaration = getattr(constructor, "__tvm_type_var_decl__", None)
             if declaration is not None and not value.args and not value.keywords:
                 self._binding(target.id, target, "symbol", value, declaration.dtype)
@@ -267,6 +266,8 @@ class PrescanCollector(ast.NodeVisitor):
                 )
             ):
                 self._binding(target.id, target, "mutable", annotation)
+            elif binding_declaration:
+                self._binding(target.id, target, "binding_declaration", annotation)
             elif isinstance(value, ast.Name) and value.id == self.module_name:
                 self._binding(target.id, target, "module_alias")
             else:
@@ -278,9 +279,10 @@ class PrescanCollector(ast.NodeVisitor):
                 else [None] * len(target.elts)
             )
             for child, rhs in zip(target.elts, values):
-                self._target(child, rhs)
+                # One declaration call may return several already-owned values.
+                self._target(child, rhs, binding_declaration=binding_declaration)
         elif isinstance(target, ast.Starred):
-            self._target(target.value)
+            self._target(target.value, binding_declaration=binding_declaration)
         self.visit(target)
 
     def visit_Assign(self, node):

@@ -553,7 +553,7 @@ class IRBuilderTranspiler(ast.NodeTransformer):
             elif kind == "mutable" and not frame_value:
                 # Source: x = X.local_scalar(...); Builder: x = X.decl_mutable_var_(...).
                 value = self._operation("decl_mutable_var_", [value], statement, **keywords)
-            elif target.id in mutable and not frame_value:
+            elif target.id in mutable and kind != "binding_declaration" and not frame_value:
                 # Source: x = value; Builder: X.set_mutable_var_(x, value).
                 return [
                     ast.copy_location(

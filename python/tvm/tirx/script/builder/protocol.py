@@ -226,7 +226,12 @@ def set_mutable_var_(target, value, *, span=None):
 
 
 def _register_declarations():
-    from tvm.script.parser.protocol import register_mutable_var_decl
+    from tvm.script.parser.protocol import register_binding_decl, register_mutable_var_decl
+
+    # Native axes declare fresh bindings, including unpacked remap results.
+    # Their names can shadow outer storage handles without emitting stores.
+    for name in ("spatial", "reduce", "scan", "opaque", "remap"):
+        register_binding_decl(getattr(_builder.axis, name))
 
     for constructor in vars(_native).values():
         if isinstance(constructor, _native.DtypeConstructor):

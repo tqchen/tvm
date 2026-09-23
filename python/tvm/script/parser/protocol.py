@@ -328,6 +328,18 @@ def register_type_var_decl(constructor, *, value_parameter="expr", dtype=None):
     return constructor
 
 
+def register_binding_decl(constructor):
+    """Mark a call that explicitly introduces an ordinary source binding.
+
+    Its scalar or unpacked targets bind the returned values even when an outer
+    declaration uses the same name for mutable storage. Builders still own the
+    returned values and their identity; this flag only selects assignment syntax.
+    Callable aliases share the metadata, without a separate registry.
+    """
+    constructor.__tvm_binding_decl__ = True
+    return constructor
+
+
 def register_mutable_var_decl(constructor, *, syntax="call"):
     """Register mutable storage in call, annotation or parameter position.
 

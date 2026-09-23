@@ -320,6 +320,88 @@ def main():
     assert mutation[2] is marker
 
 
+@pytest.mark.parametrize("callee", ["X.axes", "axis_alias"])
+@pytest.mark.parametrize("target", ["cell", "i, cell", "[i, cell]", "i, (cell, *tail)", "i, *cell"])
+def test_binding_declarations_override_mutable_targets_and_unpack_once(language, callee, target):
+    # Before: cell = X.cell(); i, cell = X.axes()
+    # Expected builder program: cell = X.decl_mutable_var_(X.cell(), name="cell")
+    # values = X.axes(); i, cell = X.unpack(values); cell = X.bind_(cell, name="cell")
+    # The declaration preserves returned identity rather than storing into the old cell.
+    marker, other = object(), object()
+    returned = {
+        "cell": marker,
+        "i, cell": (other, marker),
+        "[i, cell]": [other, marker],
+        "i, (cell, *tail)": (other, (marker, other)),
+        "i, *cell": (other, marker),
+    }[target]
+    calls = []
+
+    @protocol.register_binding_decl
+    def axes():
+        calls.append("axes")
+        return returned
+
+    language.X.axes = axes
+    language.X.unpack = lambda value: value
+    language.parse(
+        f"""
+@X.script
+def main():
+    cell = X.cell()
+    {target} = {callee}()
+    X.record(cell)
+""",
+        axis_alias=axes,
+    )
+    assert calls == ["axes"]
+    assert not any(event[0] == "set" for event in language.events)
+    result = next(event[1] for event in language.events if event[0] == "record")
+    if target == "i, *cell":
+        assert len(result) == 1 and result[0] is marker
+    else:
+        assert result is marker
+
+
+def test_ordinary_tuple_and_outer_branch_assignments_still_store(language):
+    # Before: a = X.cell(); b = X.cell(); a, b = values(); if cond: a = first
+    # Expected builder program: declare a/b; unpack values once; set a/b;
+    # with X.Then(): def branch(): X.set_mutable_var_(a, first); branch()
+    first, second = object(), object()
+    calls = []
+
+    def values():
+        calls.append("values")
+        return first, second
+
+    language.X.unpack = lambda value: value
+    language.parse(
+        """
+@X.script
+def main():
+    a = X.cell()
+    b = X.cell()
+    a, b = values()
+    if X.value():
+        a = first
+    else:
+        a = second
+""",
+        values=values,
+        first=first,
+        second=second,
+    )
+    declarations = {event[1]: event[2] for event in language.events if event[0] == "declare"}
+    stores = [(event[1], event[2]) for event in language.events if event[0] == "set"]
+    assert calls == ["values"]
+    assert stores == [
+        (declarations["a"], first),
+        (declarations["b"], second),
+        (declarations["a"], first),
+        (declarations["a"], second),
+    ]
+
+
 def test_quoted_symbols_share_identity_without_introducing_python_bindings(language):
     # Before: def main(x: X.tensor(("n", "n"))): X.record(n)
     # Expected builder program: X.tensor((X.resolve_type_var_("n"), X.resolve_type_var_("n")))
