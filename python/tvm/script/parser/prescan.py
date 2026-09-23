@@ -170,7 +170,16 @@ class Binding(NamedTuple):
 
 
 class PrescanContext:
-    """Temporary syntax facts consumed read-only; all nodes belong to entry's AST."""
+    """Hand collected syntax facts to one temporary translation.
+
+    ``PrescanCollector.collect`` creates this context from its accumulators and
+    then discards the collector. Entry's name allocator and the recursive
+    rewriter consume the fact collections without mutating them; ``ModuleContext``
+    holds their shared reference for the translation. Referenced nodes belong to
+    entry's copied AST and may be rewritten, so this is not an immutable AST copy.
+    The context does not own native construction state and is released with the
+    parse or macro invocation that uses it.
+    """
 
     def __init__(
         self,
@@ -182,24 +191,28 @@ class PrescanContext:
         with_outputs: dict[ast.With, list[str]],
         recursive_functions: set[ast.FunctionDef | ast.AsyncFunctionDef],
     ) -> None:
-        # Source and entry names seed the translation's hygienic allocator.
+        # Collected source/entry names seed the allocator; this set stays read-only.
         self.reserved_names = reserved_names
-        # Source-ordered declarations per lexical scope drive signature and body lowering.
+        # Collected, source-ordered declarations per scope drive signature/body lowering.
+        # Neither this map nor its declaration lists are extended during rewriting.
         self.bindings = bindings
-        # A target's source node selects its declaration/assignment rewrite.
+        # Collected target-node lookup selects declaration/assignment rewrites unchanged.
         self.sites = sites
-        # Derived once from declarations; no independent flow-sensitive value state.
+        # Derive mutable-name sets once for assignment dispatch, then read them only;
+        # these are syntax categories, not independently updated runtime value state.
         self.mutable_names = {
             scope: {item.name for item in items if item.kind in ("mutable", "mutable_parameter")}
             for scope, items in bindings.items()
         }
-        # Matching branch endings name a value-producing conditional's native result.
+        # Collected branch-ending names select conditional results without later updates.
         self.conditional_outputs = conditional_outputs
-        # Fixed entry namespaces cannot be rebound in any source scope.
+        # Collected entry namespaces forbid source rebinding; the set stays read-only.
         self.namespaces = namespaces
-        # Explicit dataflow output syntax selects exports after that with-region exits.
+        # Collected explicit output names select exports after each with-region exits;
+        # rewriting reads the original lists without adding inferred outputs.
         self.with_outputs = with_outputs
-        # Only self-referencing standalone functions require declaration before body.
+        # Collected self-reference facts select standalone declaration-before-body
+        # lowering; rewriting does not add or remove functions from this set.
         self.recursive_functions = recursive_functions
 
 
@@ -257,6 +270,8 @@ class PrescanCollector(ast.NodeVisitor):
         # Supply its builder as a phase input, not an attachment on the tree.
         self.builder = root_function_info.builder if root_function_info is not None else None
         self.visit(tree)
+        # Transfer the completed collections directly. Consumers keep the facts, not
+        # this collector, and do not mutate the collections during AST rewriting.
         return PrescanContext(
             self.names,
             self.bindings,

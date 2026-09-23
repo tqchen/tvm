@@ -14,11 +14,24 @@
 # KIND, either express or implied.  See the License for the
 # specific language governing permissions and limitations
 # under the License.
-"""Rewrite owned Python syntax into ordinary native-builder programs.
+"""Rewrite an entry-owned source AST into an executable native-builder AST.
 
-The prescan supplies read-only syntax facts. This visitor owns only translation
-inputs, generated-name allocation and a small lexical rewrite context. Native
-frames own symbols, declarations, parameters, region results and final IR.
+Entry first copies the source AST and collects its syntax facts in a
+``PrescanContext``. The recursive rewriter consumes those facts without mutating
+their collections. A ``ModuleContext`` references them and shares translation
+inputs, generated-name allocation and injected bindings across the whole parse,
+including when the root is a standalone function. A ``FunctionContext`` holds
+the active function's lexical rewrite state. Each function, including a nested
+function, gets a fresh context; the enclosing context is restored on both normal
+and exceptional exit.
+
+These contexts are temporary Python translation state. They refer to the one
+entry-owned definition scope and hand generated helpers to private recomposition
+in one direction, without back-references to the rewriter. Entry executes the
+recomposed builder and releases temporary captures. Short-lived frame names,
+statement lists and assembly results stay local to the methods that need them.
+Native frames own symbols, declarations, parameters, region results and final
+IR; the Python contexts do not mirror that construction state.
 """
 
 from __future__ import annotations
@@ -39,7 +52,14 @@ _Node = TypeVar("_Node", bound=ast.AST)
 
 
 class ModuleContext:
-    """One parse's shared syntax inputs and hygienic allocation, never native state."""
+    """Share inputs and generated bindings for one temporary translation.
+
+    Entry's preparation creates this context for a module, standalone function
+    or macro. The recursive rewriter shares it across lexical function contexts;
+    private recomposition then consumes its generated-helper handoff. References
+    last only through that parse or macro invocation. There is one shared root
+    definition scope, no per-function copy and no reference back to the rewriter.
+    """
 
     def __init__(
         self,
@@ -56,47 +76,66 @@ class ModuleContext:
         source_functions: Mapping[str, FunctionType],
         bindings: dict[str, Any],
     ) -> None:
-        # Fixed namespace/protocol metadata and source-coordinate inputs for this parse.
+        # Fixed source filename used by rewrite diagnostics.
         self.filename = filename
+        # Borrowed lookup layers preserve source namespace meanings; injections may grow.
         self.environment = environment
+        # Fixed generated name for the shared builder/protocol namespace.
         self.infrastructure_name = infrastructure_name
+        # Borrowed callback builds span AST from source coordinates, not native frame state.
         self.span = span
+        # Fixed policy controls whether generated builder calls receive source spans.
         self.track_span = track_span
+        # Borrowed syntax facts; the rewriter reads their collections without mutation.
         self.prescan = prescan
-        # One temporary entry scope, shared by all members without per-member copies.
+        # Borrow the one temporary entry scope across members, without copying it.
         self.definition_scope = definition_scope
+        # Fixed injected lookup name for that scope; entry releases the temporary binding.
         self.definition_scope_name = definition_scope_name
+        # Borrowed original callables preserve pyfunc identity during module assembly.
         self.source_functions = source_functions
-        # Allocation and injected host values intentionally accumulate across functions.
+        # Entry-owned allocator accumulates hygienic names across all function rewrites.
         self.fresh = fresh
+        # Shared injected values accumulate into generated globals until entry cleanup.
         self.bindings = bindings
-        # Root syntax identifies plain module references and dialect function callees.
+        # rewrite_module sets the root class name, or None for a standalone function.
+        # Reference rewrites use it to recognize lexical module aliases.
         self.module_name: str | None = None
+        # rewrite_module records native member names once for call/reference rewriting.
         self.module_functions: frozenset[str] = frozenset()
-        # Explicit, one-way generated-helper/source handoff to private recomposition.
+        # Lowering appends helper AST, source name and protected names; private
+        # recomposition consumes this one-way handoff without retaining the context.
         self.body_sources: list[tuple[ast.FunctionDef, str, set[str]]] = []
 
 
 class FunctionContext:
-    """Fresh lexical rewrite state for one source function, restored after nesting."""
+    """Hold only the active lexical function's temporary rewrite state.
+
+    Entry creates the initial context. Function lowering creates a fresh context
+    for each source function, including nested functions, and the same recursive
+    visitor consumes it. The enclosing context stays in a local variable and is
+    restored in ``finally``, so neither successful nor failed nesting leaks state.
+    """
 
     def __init__(self, current_scope: ast.AST | None, dialect_prefix: str) -> None:
-        # Source scope selects declaration facts; the dialect binding is generated syntax.
+        # Borrowed source scope selects prescan declarations; fixed for this context.
         self.current_scope = current_scope
+        # Fixed generated namespace name selects this function's dialect operations.
         self.dialect_prefix = dialect_prefix
-        # Only definition/signature substitutions, never values or a second body map.
+        # Source-to-generated names start with definition captures and grow in signature
+        # order. Annotation rewriting reads this one map; lexical masks temporarily
+        # replace it and restore it on exit. Ordinary body lookup does not use it.
         self.annotation_aliases: dict[str, str] = {}
 
 
 class IRBuilderTranspiler(ast.NodeTransformer):
     """A single statement/expression visitor over the entry-owned AST.
 
-    ``environment``, ``prescan``, ``filename`` and ``span`` are fixed inputs for
-    one translation. ``fresh`` allocates names in the entry-owned name map;
-    ``bindings`` receives only injected host namespaces and helper functions.
-    ``dialect_prefix``, ``current_scope``, ``bypass_ast_rewrite`` and annotation
-    substitutions are saved/restored at their lexical visitor boundaries. They
-    contain AST names, never native frames, values or construction ownership.
+    The module context shares source inputs, name allocation and injected values.
+    The active function context selects lexical facts and annotation substitutions.
+    Function entry and temporary expression modes save and restore their state at
+    lexical boundaries, including failures. Generated AST calls construct native
+    frames at execution time; this visitor does not own their IR state.
     """
 
     def __init__(
@@ -222,11 +261,13 @@ class IRBuilderTranspiler(ast.NodeTransformer):
     @contextmanager
     def _use_aliases(self, mapping: dict[str, str]) -> Iterator[None]:
         """Restore lexical annotation substitutions even when a visitor fails."""
+        # Mask the active context's one map, retaining the enclosing map by identity.
         old = self.function.annotation_aliases
         self.function.annotation_aliases = mapping
         try:
             yield
         finally:
+            # Nested annotation scopes cannot leak substitutions into their caller.
             self.function.annotation_aliases = old
 
     @contextmanager
@@ -1897,6 +1938,8 @@ class IRBuilderTranspiler(ast.NodeTransformer):
         builder = self.module.fresh("_X")
         self.module.bindings[builder] = kind.builder
         frame, body_name = self.module.fresh("_fn"), self.module.fresh("_build")
+        # Keep the shared module context, but activate fresh lexical state for this
+        # function. Saving its caller locally avoids a context ownership back-reference.
         old = self.function
         self.function = FunctionContext(node, builder)
         try:
@@ -2000,6 +2043,8 @@ class IRBuilderTranspiler(ast.NodeTransformer):
                 )
                 return statements, frame, resumed
         finally:
+            # Restore the enclosing function before returning fragments or propagating
+            # an error; partially rewritten nested functions cannot leave active state.
             self.function = old
 
     def rewrite_module(
@@ -2014,6 +2059,8 @@ class IRBuilderTranspiler(ast.NodeTransformer):
         functions = [item for item in members if isinstance(item, ast.FunctionDef)]
         if len({item.name for item in functions}) != len(functions):
             self._raise_error(root, "Duplicate function declaration")
+        # One module context serves either root shape; only root syntax facts persist
+        # here. Frame names and output lists below remain local assembly values.
         self.module.module_name = root.name if is_module else None
         self.module.module_functions = frozenset(
             item.name for item in functions if not self.read_function_metadata(item)[0].python
