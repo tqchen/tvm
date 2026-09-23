@@ -31,5 +31,8 @@ def main(x: R.Tensor(shape, "float32")):
 """
     result = parser.parse(source, extra_vars={"shape": (n, 16)})
     assert result.params[0].ty.shape[0].same_as(n)
-    with pytest.raises(Exception):
+    with pytest.raises(
+        TypeError, match="^Builder expression arguments require concrete symbols, not strings$"
+    ) as error:
         parser.parse(source, extra_vars={"shape": ("n", 16)})
+    assert type(error.value) is TypeError

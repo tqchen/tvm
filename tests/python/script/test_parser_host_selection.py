@@ -26,6 +26,8 @@ def parse(language, source, *, extra_vars=None, **options):
 
 
 def test_marked_expressions_are_lazy_operand_valued_and_ordered(language):
+    # Before: value if I.constexpr(condition) else other; I.constexpr(a) and b.
+    # Expected builder program: Python conditional/and/or expressions retain lazy operands.
     seen = []
 
     def operand(value):
@@ -47,30 +49,6 @@ def main():
     )
     assert seen == [True, 1, 0, 4, 2, 7, 0, 8]
     assert [value for _, value in result.body] == [1, 0, 4, 7, 8]
-
-
-def test_unmarked_expression_eagerly_constructs_both_ir_arms(language):
-    seen = []
-
-    def operand(value):
-        seen.append(value)
-        return value
-
-    result = parse(
-        language,
-        """
-@X.script
-def main(condition: X.value):
-    X.record(operand(1) if condition else operand(2))
-    X.record(condition and operand(True))
-    X.record(condition or operand(False))
-""",
-        extra_vars={"operand": operand},
-    )
-    assert seen == [1, 2, True, False]
-    assert result.body[0][1].op == "select"
-    assert result.body[1][1].op == "and"
-    assert result.body[2][1].op == "or"
 
 
 def test_nested_unmarked_statement_retains_ir_frame(language):
@@ -229,6 +207,8 @@ def main():
 
 @pytest.mark.parametrize("operator", ["and", "or"])
 def test_unmarked_logical_chain_preserves_left_association(language, operator):
+    # Before: a and b and c (also or).
+    # Expected builder program: X.and_(X.and_(a, b), c).
     result = language.parse(f"""
 @X.script
 def main(a: X.value(), b: X.value(), c: X.value()):

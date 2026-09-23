@@ -46,18 +46,7 @@ def test_constexpr_preserves_host_comparison_with_iterator(operator, kind):
         calls.append(other)
         return result
 
-    setattr(
-        Host,
-        {
-            "LT": "__lt__",
-            "LE": "__le__",
-            "GT": "__gt__",
-            "GE": "__ge__",
-            "EQ": "__eq__",
-            "NE": "__ne__",
-        }[kind],
-        compare,
-    )
+    setattr(Host, "__" + kind.lower() + "__", compare)
 
     def consume(value):
         assert value is result
@@ -114,18 +103,7 @@ def test_unmarked_host_comparison_never_calls_python_overload(operator, kind):
         calls.append(other)
         return True
 
-    setattr(
-        Host,
-        {
-            "LT": "__lt__",
-            "LE": "__le__",
-            "GT": "__gt__",
-            "GE": "__ge__",
-            "EQ": "__eq__",
-            "NE": "__ne__",
-        }[kind],
-        comparison,
-    )
+    setattr(Host, "__" + kind.lower() + "__", comparison)
     decorator = "T.prim_func"
     statement = "T.evaluate(left " + operator + " right)"
     with pytest.raises(TypeError, match="(PrimExpr|primitive|convert|type)"):

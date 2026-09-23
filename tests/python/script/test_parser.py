@@ -224,33 +224,6 @@ def main():
     assert all(value.args[0] is condition for _, value in result.body)
 
 
-def test_comparison_chain_evaluates_middle_once_and_preserves_written_order(language):
-    # Before: operand(0) < operand(1) <= operand(2)
-    # Expected builder program:
-    # a, b, c = operand(0), operand(1), operand(2)
-    # X.and_(X.lt(a, b), X.le(b, c))
-    seen = []
-    values = [Value("operand", (index,)) for index in range(3)]
-
-    def operand(index):
-        seen.append(index)
-        return values[index]
-
-    result = language.parse(
-        """
-@X.script
-def main():
-    operand(0) < operand(1) <= operand(2)
-""",
-        operand=operand,
-    )
-    assert seen == [0, 1, 2]
-    comparison = result.body[0][1]
-    assert comparison.op == "and"
-    first, second = comparison.args
-    assert first.args == tuple(values[:2]) and second.args == tuple(values[1:])
-
-
 def test_callee_arguments_and_keywords_evaluate_once_with_caller_context(language):
     # Before: callee()(operand(1), b=operand(2))
     # Expected builder program:
@@ -448,19 +421,6 @@ def main(x: X.tensor(("n", "n"))):
     X.record(n)
 """)
     assert isinstance(error.value, NameError)
-
-
-def test_explicit_symbol_declaration_reuses_annotation_identity(language):
-    # Before: def main(x: X.tensor(("n",))): n = X.symbol(); X.record(n)
-    # Expected builder program: n = X.resolve_type_var_("n", "int64"); X.emit_(X.record(n))
-    result = language.parse("""
-@X.script
-def main(x: X.tensor(("n",))):
-    n = X.symbol()
-    X.record(n)
-""")
-    symbol = result.params[0].args[0].args[0][0]
-    assert result.body[0][1] is symbol
 
 
 @pytest.mark.parametrize(

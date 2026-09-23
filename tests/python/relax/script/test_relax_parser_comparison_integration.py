@@ -35,18 +35,7 @@ def test_unmarked_host_comparison_never_calls_python_overload(operator, kind):
         calls.append(other)
         return True
 
-    setattr(
-        Host,
-        {
-            "LT": "__lt__",
-            "LE": "__le__",
-            "GT": "__gt__",
-            "GE": "__ge__",
-            "EQ": "__eq__",
-            "NE": "__ne__",
-        }[kind],
-        comparison,
-    )
+    setattr(Host, "__" + kind.lower() + "__", comparison)
     decorator = "R.function"
     statement = "return left " + operator + " right"
     with pytest.raises(TypeError, match="(PrimExpr|primitive|convert|type)"):

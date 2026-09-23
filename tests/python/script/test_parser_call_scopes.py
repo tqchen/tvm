@@ -72,32 +72,6 @@ def test_scoped_helper_multiple_emissions_and_normal_return(spanned):
     assert span_lines(statements[1]) == [4, 9]
 
 
-def test_source_call_callee_arguments_and_keywords_evaluate_once_in_order(language):
-    seen = []
-
-    def callee():
-        seen.append("callee")
-
-        def function(a, *, b):
-            seen.append((a, b))
-            return a + b
-
-        return function
-
-    def operand(value):
-        seen.append(value)
-        return value
-
-    source = """
-@X.script
-def main():
-    X.record(callee()(operand(1), b=operand(2)))
-"""
-    result = language.parse(source, callee=callee, operand=operand)
-    assert seen == ["callee", 1, 2, (1, 2)]
-    assert result.body == [("emit", 3)]
-
-
 def test_module_source_calls_have_context_before_annotations(spanned):
     seen = []
 

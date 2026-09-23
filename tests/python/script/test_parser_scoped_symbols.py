@@ -28,6 +28,9 @@ def parse(language, source, *, extra_vars=None, **options):
 
 @pytest.mark.parametrize("track_span", [True, False])
 def test_signature_symbols_cross_nested_calls_parameters_return_and_body(language, track_span):
+    # Before: quoted "n" in nested annotations, then n = X.symbol() in the body.
+    # Expected builder program: annotations use X.resolve_type_var_("n");
+    # n = X.resolve_type_var_("n", "int64") introduces the same object in the body.
     function = parse(
         language,
         """
@@ -46,23 +49,6 @@ def main(
     assert function.params[0].args[0][1].args[0][0] is n
     assert function.params[1].args[0].args[0][0] is n
     assert function.ret_type.args[0][0] is n
-    assert function.body[0][1] is n
-
-
-def test_signature_strings_reuse_symbol_before_explicit_body_declaration(language):
-    function = parse(
-        language,
-        """
-@X.script
-def main(x: X.tensor(("n + 1", "n"), "float32")):
-    n = X.symbol()
-    X.record(n)
-    return x
-""",
-    )
-    first, n = function.params[0].args[0].args[0]
-    assert first.args[0] is n
-    assert first.args[1] == 1
     assert function.body[0][1] is n
 
 

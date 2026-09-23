@@ -59,6 +59,8 @@ def parse(language, source, *, track_span=True, **captures):
 @pytest.mark.parametrize("literal_left", [True, False])
 @pytest.mark.parametrize("track_span", [True, False])
 def test_written_comparison_order(language, operator, kind, literal_left, track_span):
+    # Before: 0 < x (and each written operator/operand order).
+    # Expected builder program: X.emit_(I.at_(location, X.lt(0, x))).
     x = ir.Var("x", "int32")
     expression = f"0 {operator} x" if literal_left else f"x {operator} 0"
     actual = parse(
@@ -77,6 +79,8 @@ def test_written_comparison_order(language, operator, kind, literal_left, track_
 
 @pytest.mark.parametrize("dtype", ["int64", "uint32", "float32", "int32x4", "float32x4"])
 def test_literal_uses_ir_operand_type_and_lanes(language, dtype):
+    # Before: 0 < x, where x carries the scalar or vector dtype.
+    # Expected builder program: X.lt(0, x); native IR performs literal promotion/broadcast.
     x = ir.Var("x", dtype)
     value = parse(language, "@X.script\ndef main():\n    0 < x\n", x=x).body[0][1]
     assert isinstance(value, prim.LT)
@@ -87,6 +91,8 @@ def test_literal_uses_ir_operand_type_and_lanes(language, dtype):
 @pytest.mark.parametrize("operator,kind", OPERATORS)
 @pytest.mark.parametrize("other_kind", ["host", "primitive"])
 def test_custom_host_comparison_result_is_preserved(language, operator, kind, other_kind):
+    # Before: consume(X.constexpr(left < right)).
+    # Expected builder program: consume(left < right), preserving the Python overload result.
     class Result:
         def __bool__(self):
             raise AssertionError("custom comparison result must not be truth-tested")
@@ -169,6 +175,9 @@ def test_host_ordering_does_not_materialize_an_equality_result(language):
 
 
 def test_chain_evaluates_source_operands_once_in_order(language):
+    # Before: a() < b() <= c() != d().
+    # Expected builder program: evaluate a/b/c/d once, then X.and_(X.lt(a, b),
+    # X.le(b, c), X.ne(c, d), chain=(a, b, c, d)).
     seen = []
 
     def operand(index, value):
@@ -197,6 +206,8 @@ def main():
 
 
 def test_constexpr_keeps_python_comparison_and_chain_short_circuit(language):
+    # Before: if X.constexpr(a() < b() < invalid()): ...
+    # Expected builder program: ordinary Python if/chain; the last operand stays lazy.
     seen = []
 
     def operand(index, value):
@@ -227,6 +238,8 @@ def main():
 @pytest.mark.parametrize("operator,kind", OPERATORS)
 @pytest.mark.parametrize("dtype", ["int64", "float32", "int64x4"])
 def test_comparisons_use_native_promotion_and_broadcast(language, operator, kind, dtype):
+    # Before: x < y (and each comparison), with distinct primitive types.
+    # Expected builder program: X.lt(x, y); native IR owns the cast and broadcast.
     x, y = ir.Var("x", "int32"), ir.Var("y", dtype)
     actual = parse(
         language,
@@ -241,6 +254,8 @@ def test_comparisons_use_native_promotion_and_broadcast(language, operator, kind
 @pytest.mark.parametrize("operator,kind", [("==", prim.EQ), ("!=", prim.NE)])
 @pytest.mark.parametrize("track_span", [True, False])
 def test_symbolic_equality_reaches_typed_consumer(language, operator, kind, track_span):
+    # Before: consume(x == 0), with source tracking enabled or disabled.
+    # Expected builder program: consume(X.eq(x, 0)), with the original comparison location.
     seen = []
 
     def consume(value):
@@ -323,6 +338,8 @@ def test_host_equality_result_is_not_arbitrarily_converted(language):
     "expression", ["operand(0) == operand(1)", "operand(0) == operand(1) != operand(2)"]
 )
 def test_comparison_operands_evaluate_once_in_order(language, expression):
+    # Before: consume(a() == b()) or consume(a() == b() != c()).
+    # Expected builder program: evaluate operands once, then pass concrete EQ/And IR to consume.
     seen = []
 
     def operand(index, value):
