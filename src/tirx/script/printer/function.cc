@@ -80,8 +80,8 @@ TVM_FFI_STATIC_INIT_BLOCK() {
         std::unordered_map<const tirx::VarNode*, ExprDoc> scalar_param_docs;
         // Define scalar docs up front so a preceding Buffer parameter can render
         // a reference to a later scalar parameter.  `bound_signature_vars`
-        // separately tracks source order: the first shape expression that sees
-        // an unbound Var must be quoted because Buffer shapes are match scopes.
+        // separately tracks Python bindings in source order. Quoted shapes
+        // resolve native symbols without binding their names in Python.
         std::unordered_set<tirx::Var> bound_signature_vars;
         for (const tirx::Var& param : func->params) {
           if (!param->ty.as<tirx::BufferTypeNode>()) {
@@ -95,12 +95,9 @@ TVM_FFI_STATIC_INIT_BLOCK() {
             tirx::BufferVar buffer(var);
             std::unordered_set<tirx::Var> stringify_shape_vars;
             std::unordered_set<tirx::Var> stringify_compound_shape_vars;
-            std::unordered_set<tirx::Var> shape_vars;
             auto walk_fn = [&](const tirx::Var& shape_var) -> ffi::Expected<ffi::WalkResult> {
-              shape_vars.insert(shape_var);
               bool is_type_var = type_vars.count(shape_var.get());
-              if (!use_postponed_annotations && !bound_signature_vars.count(shape_var) &&
-                  !is_type_var) {
+              if (!bound_signature_vars.count(shape_var) && !is_type_var) {
                 stringify_shape_vars.insert(shape_var);
               }
               if (!use_postponed_annotations && is_type_var) {
@@ -116,9 +113,6 @@ TVM_FFI_STATIC_INIT_BLOCK() {
                 BufferAttn(buffer, var_p->Attr("ty"), *f, d, std::move(stringify_shape_vars),
                            std::move(stringify_compound_shape_vars));
             args.push_back(AssignDoc(lhs, std::nullopt, annotation));
-            for (const tirx::Var& shape_var : shape_vars) {
-              bound_signature_vars.insert(shape_var);
-            }
             continue;
           }
           ExprDoc a = d->AsDoc<ExprDoc>(var->ty, var_p->Attr("ty"));

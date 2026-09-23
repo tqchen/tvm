@@ -94,9 +94,7 @@ ffi::Map<ffi::String, ExprDoc> BufferAttrs(
       AccessPath e_p = shape_p->ArrayItem(i);
       bool contains_new_var = false;
       bool contains_compound_shape_var = false;
-      std::unordered_set<Var> vars_in_shape;
       auto walk_fn = [&](const Var& var) -> ffi::Expected<ffi::WalkResult> {
-        vars_in_shape.insert(var);
         contains_new_var =
             contains_new_var || !d->IsVarDefined(var) || stringify_shape_vars.count(var);
         contains_compound_shape_var =
@@ -114,11 +112,6 @@ ffi::Map<ffi::String, ExprDoc> BufferAttrs(
       results.push_back((stringify_undefined_shape && contains_new_var) || stringify_compound_expr
                             ? ExprStringDoc(result, e_p)
                             : result);
-      // A quoted shape expression defines every Var it contains.  Do not quote
-      // later dimensions merely because they reuse a Var introduced here.
-      for (const Var& var : vars_in_shape) {
-        stringify_shape_vars.erase(var);
-      }
     }
     kwargs.Set("shape", TupleDoc(results));
   }
