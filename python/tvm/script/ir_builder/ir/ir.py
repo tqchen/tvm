@@ -38,7 +38,18 @@ if TYPE_CHECKING:
 else:
 
     class meta_var:  # pylint: disable=invalid-name
-        """A value used only for TVMScript parser-time metaprogramming."""
+        """A value used only for TVMScript parser-time metaprogramming.
+
+        Assignments unwrap this object without emitting an IR binding.  The
+        shared wrapper is exposed as ``I.meta_var``; dialect namespaces may
+        provide compatibility aliases to the same implementation.
+        For Relax, this is the explicit opt-out from default primitive binding emission.
+
+        Parameters
+        ----------
+        value : Any
+            The parser-time value.
+        """
 
         def __init__(self, value: Any) -> None:
             self.value = value
@@ -48,7 +59,13 @@ else:
 
 
 def ir_module() -> IRModuleFrame:
-    """Start a ir_module frame."""
+    """Start a ir_module frame.
+
+    Returns
+    -------
+    frame: IRModuleFrame
+        The constructed frame.
+    """
     return _ffi_api.IRModule()  # type: ignore[attr-defined] # pylint: disable=no-member
 
 
@@ -143,7 +160,13 @@ def module_set_attr(
 
 
 def module_global_infos(global_infos: dict[str, list[GlobalInfo]]) -> None:
-    """Specify the global infos of the ir_module frame."""
+    """Specify the global infos of the ir_module frame.
+
+    Parameters
+    ----------
+    global_infos: Dict[str, List[GlobalInfo]]
+        The module global infos.
+    """
     if IRBuilder.is_in_scope():
         return _ffi_api.ModuleGlobalInfos(global_infos)
     # Keep native argument validation even before Python has applied the module decorator.
@@ -201,7 +224,13 @@ def lookup_global_info(name: str, index: int) -> GlobalInfo:
 
 
 def dummy_global_info() -> "DummyGlobalInfo":
-    """Create a dummy global info expression."""
+    """Create a dummy global info expression.
+
+    Returns
+    -------
+    res : DummyGlobalInfo
+        The result dummy global info.
+    """
     from tvm.relax import DummyGlobalInfo  # pylint: disable=import-outside-toplevel
 
     return DummyGlobalInfo()  # type: ignore[attr-defined] # pylint: disable=no-member

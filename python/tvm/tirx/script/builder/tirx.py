@@ -32,7 +32,13 @@ from .ir import decl_buffer, meta_class
 
 
 def _normalize_scope(scope) -> ExecScope:
-    """Normalize a scope selector to an ``ExecScope``."""
+    """Normalize a scope selector to an ``ExecScope``.
+
+    Accepts an ``ExecScope`` (passed through), a scope-name ``str``
+    (e.g. ``"warp"``, normalized via the FFI ctor / ``StringToScopeKind``),
+    or an ``int`` ``ScopeKind`` value. ``None`` resolves to the default
+    ``thread`` scope, keeping the default in one place.
+    """
     if scope is None:
         return ExecScope("thread")
     if isinstance(scope, ExecScope):
@@ -63,7 +69,10 @@ class ScopedOp:
         return self._fn(*args, scope=ExecScope("thread"), **kwargs)
 
     def _bind(self, scope: ExecScope):
-        """Return a callable that emits this op at ``scope``."""
+        """Return a callable that emits this op at ``scope``.
+
+        Used by :class:`ScopeNamespace`; not part of the user-facing surface.
+        """
         return lambda *args, **kwargs: self._fn(*args, scope=scope, **kwargs)
 
 
@@ -455,7 +464,12 @@ def cast(
     scope: ExecScope | None = None,
     **kwargs,
 ):
-    """Cast — overloaded."""
+    """Cast — overloaded.
+
+    1. ``cast(value, dtype)`` — expression-level cast: returns ``T.cast(value, dtype)``.
+       Also accepts ``cast(value, dtype=...)`` as a kwarg form.
+    2. ``cast(dst, src, workspace=..., dispatch=...)`` — buffer-level Cast operator.
+    """
     # Expression-level cast: src is a dtype (str / DataType) — emit T.cast(value, dtype).
     from tvm import tirx as _tirx
 
@@ -879,7 +893,11 @@ def max(
     scope: ExecScope | None = None,
     **kwargs,
 ):
-    """Max — overloaded."""
+    """Max — overloaded.
+
+    1. ``max(a, b)`` — expression: returns ``tirx.max(a, b)``.
+    2. ``max(dst, src, axes=, accum=)`` — reduction operator over buffers.
+    """
     from tvm import tirx as _tirx
 
     if not _is_buffer_or_region(dst) or not _is_buffer_or_region(src):
@@ -916,7 +934,11 @@ def min(
     scope: ExecScope | None = None,
     **kwargs,
 ):
-    """Min — overloaded."""
+    """Min — overloaded.
+
+    1. ``min(a, b)`` — expression: returns ``tirx.min(a, b)``.
+    2. ``min(dst, src, axes=, accum=)`` — reduction operator over buffers.
+    """
     from tvm import tirx as _tirx
 
     if not _is_buffer_or_region(dst) or not _is_buffer_or_region(src):

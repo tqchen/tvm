@@ -291,17 +291,35 @@ def arg(name: py_str, ty: Type) -> Var:
 
 
 def func_name(name: py_str) -> None:
-    """Specify the name of the last function frame."""
+    """Specify the name of the last function frame.
+
+    Parameters
+    ----------
+    name: str
+        The function name.
+    """
     return _ffi_api.FuncName(name)  # type: ignore[attr-defined] # pylint: disable=no-member
 
 
 def func_attr(attrs: dict[py_str, tvm_Object]) -> None:
-    """Specify the attrs of the last function frame."""
+    """Specify the attrs of the last function frame.
+
+    Parameters
+    ----------
+    attrs: Dict[str, Object]
+        The function attrs.
+    """
     return _ffi_api.FuncAttrs(attrs)  # type: ignore[attr-defined] # pylint: disable=no-member
 
 
 def func_ret_type(ret_ty: Type) -> None:
-    """Specify the return type of the last function frame."""
+    """Specify the return type of the last function frame.
+
+    Parameters
+    ----------
+    ret_ty: Type
+        The function return type.
+    """
     return _ffi_api.FuncRetType(ret_ty)  # type: ignore[attr-defined] # pylint: disable=no-member
 
 
@@ -311,7 +329,13 @@ def func_ret_ty(ret_ty: Type) -> None:
 
 
 def func_ret_value(value: Expr) -> None:
-    """Specify the return value of the last function frame."""
+    """Specify the return value of the last function frame.
+
+    Parameters
+    ----------
+    value: Expr
+        The function return value.
+    """
     return _ffi_api.FuncRetValue(value)  # type: ignore[attr-defined] # pylint: disable=no-member
 
 
@@ -361,12 +385,24 @@ def rewriter(rewriter_mod: IRModule | type) -> PatternMatchingRewriter:
 
 
 def dataflow() -> frame.BindingBlockFrame:
-    """Start a dataflow binding block frame."""
+    """Start a dataflow binding block frame.
+
+    Returns
+    -------
+    frame: frame.BindingBlockFrame
+        The created ir_builder Block frame.
+    """
     return _ffi_api.Dataflow()  # type: ignore[attr-defined] # pylint: disable=no-member
 
 
 def output(*vars: tuple[Var]) -> None:
-    """Expose the dataflow block output variables as global ones."""
+    """Expose the dataflow block output variables as global ones.
+
+    Parameters
+    ----------
+    vars: Tuple[Var]
+        The output variables of a dataflow block.
+    """
     return _ffi_api.DataflowBlockOutput(vars)  # type: ignore[attr-defined] # pylint: disable=no-member
 
 
@@ -620,7 +656,13 @@ def emit_with_ty(
 
 
 def SeqExpr() -> frame.SeqExprFrame:  # pylint: disable=invalid-name
-    """Create a SeqExpr frame."""
+    """Create a SeqExpr frame.
+
+    Returns
+    -------
+    res : frame.SeqExprFrame
+        The result SeqExprFrame
+    """
     return _ffi_api.SeqExpr()  # type: ignore[attr-defined] # pylint: disable=no-member
 
 
@@ -650,12 +692,24 @@ def If(condition: Expr) -> frame.IfFrame:  # pylint: disable=invalid-name
 
 
 def Then() -> frame.ThenFrame:  # pylint: disable=invalid-name
-    """Create a then frame."""
+    """Create a then frame.
+
+    Returns
+    -------
+    res : frame.ThenFrame
+        The result ThenFrame.
+    """
     return _ffi_api.Then()  # type: ignore[attr-defined] # pylint: disable=no-member
 
 
 def Else() -> frame.ElseFrame:  # pylint: disable=invalid-name
-    """Create an else frame."""
+    """Create an else frame.
+
+    Returns
+    -------
+    res : frame.ElseFrame
+        The result ElseFrame.
+    """
     return _ffi_api.Else()  # type: ignore[attr-defined] # pylint: disable=no-member
 
 

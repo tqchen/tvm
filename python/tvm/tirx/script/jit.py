@@ -39,6 +39,45 @@ def make_jit(builder):
     """Create a JIT decorator for the canonical construction namespace."""
 
     def jit(func=None, *, private=False, check_well_formed=True, is_stir=False, persistent=False):
+        """Decorator: capture the kernel and defer parsing until ``.specialize()``.
+
+        Use ``@T.jit`` (instead of ``@T.prim_func``) when the kernel takes
+        compile-time parameters annotated with ``T.constexpr`` or runtime
+        parameters that may be removed with ``T.Optional``. The resulting object
+        exposes ``.specialize(**specialization_kwargs)``, which returns a
+        ``tvm.tirx.PrimFunc``.
+
+        Example::
+
+            from __future__ import annotations
+
+            from tvm.script import tirx as T
+
+            @T.jit
+            def add(
+                A: T.Buffer((N,), "float32"),
+                B: T.Buffer((N,), "float32"),
+                *,
+                N: T.constexpr,
+            ):
+                for i in T.serial(N):
+                    B[i] = A[i] + 1.0
+
+            kernel = add.specialize(N=1024)  # returns a PrimFunc
+
+            @T.jit
+            def guarded(optional: T.Optional(T.handle), out: T.handle):
+                output = T.match_buffer(out, (1,), "int32")
+                if T.constexpr(optional is not None):
+                    value = T.match_buffer(optional, (1,), "int32")
+                    output[0] = value[0]
+                else:
+                    output[0] = 0
+
+            present = guarded.specialize()
+            absent = guarded.specialize(optional=None)
+        """
+
         def apply(function):
             from tvm.script.parser.entry import _definition_scope
 

@@ -129,7 +129,12 @@ def cast(value, dtype, span=None):
 
 
 def _current_s_tir() -> bool:
-    """Return True if the innermost enclosing PrimFuncFrame has ``s_tir=True``."""
+    """Return True if the innermost enclosing PrimFuncFrame has ``s_tir=True``.
+
+    Gates the builder's default layout fill: ``s_tir=True`` PrimFuncs leave
+    ``layout=None`` so s_tir-style passes that do not touch layout round-trip
+    cleanly. Ordinary TIRx storage scopes instead use ``TileLayout(S[shape])``.
+    """
     from tvm.script.ir_builder.base import IRBuilder  # local import to avoid cycle
 
     if not IRBuilder.is_in_scope():
@@ -439,12 +444,24 @@ def arg(name: str, obj: Var | Buffer) -> Var | Buffer:
 
 
 def func_name(name: str) -> None:
-    """The PrimFunc naming statement."""
+    """The PrimFunc naming statement.
+
+    Parameters
+    ----------
+    name : str
+        The name of the PrimFunc.
+    """
     _ffi_api.FuncName(name)  # type: ignore[attr-defined] # pylint: disable=no-member
 
 
 def func_attr(attrs: dict[str, Any]) -> None:
-    """The PrimFunc annotation statement."""
+    """The PrimFunc annotation statement.
+
+    Parameters
+    ----------
+    attrs : Dict[str, Any]
+        The annotations of the PrimFunc.
+    """
     _ffi_api.FuncAttrs(attrs)  # type: ignore[attr-defined] # pylint: disable=no-member
 
 
@@ -640,7 +657,13 @@ def device_entry() -> None:
 
 
 def elected():
-    """Stub that rejects the removed ``T.elected()`` sugar."""
+    """Stub that rejects the removed ``T.elected()`` sugar.
+
+    Write the explicit form instead::
+
+        if T.cuda.elect_sync():
+            ...                         # thread is the default scope
+    """
     raise RuntimeError(
         "T.elected() is no longer available. Write explicitly: "
         "`if T.cuda.elect_sync(): ...` (thread is the default scope)"
@@ -663,8 +686,10 @@ def scope_id(
 
 
 def cluster_id(extents: list[Expr | int] | None = None, dtype: str = "int32") -> BypassBind:
-    """Define a kernel→cluster scope id. Pass ``None`` (the default) to defer the extent; it
-    will be inferred at LowerTIRx from sibling ScopeIdDef closure.
+    """Define a kernel→cluster scope id. Pass ``None`` (the default) to defer the
+    extent; it will be inferred at LowerTIRx from sibling ScopeIdDef closure.
+
+    ``dtype`` selects the dtype of the introduced vars (``"int32"`` or ``"uint32"``).
     """
     ret = _ffi_api.ClusterId(extents, "kernel", dtype)  # type: ignore[attr-defined] # pylint: disable=no-member
     if len(ret) == 1:
@@ -675,8 +700,10 @@ def cluster_id(extents: list[Expr | int] | None = None, dtype: str = "int32") ->
 def cta_id(
     extents: list[Expr | int] | None = None, preferred=None, dtype: str = "int32"
 ) -> BypassBind:
-    """Define a kernel→cta scope id. Pass ``None`` (the default) to defer the extent; it will
-    be inferred at LowerTIRx from sibling ScopeIdDef closure.
+    """Define a kernel→cta scope id. Pass ``None`` (the default) to defer the
+    extent; it will be inferred at LowerTIRx from sibling ScopeIdDef closure.
+
+    ``dtype`` selects the dtype of the introduced vars (``"int32"`` or ``"uint32"``).
     """
     ret = _ffi_api.CtaId(extents, "kernel", preferred, dtype)  # type: ignore[attr-defined] # pylint: disable=no-member
     if len(ret) == 1:
@@ -687,8 +714,10 @@ def cta_id(
 def cta_id_in_cluster(
     extents: list[Expr | int] | None = None, preferred=None, dtype: str = "int32"
 ) -> BypassBind:
-    """Define a cluster→cta scope id. Pass ``None`` (the default) to defer the extent; it
-    will be inferred at LowerTIRx from sibling ScopeIdDef closure.
+    """Define a cluster→cta scope id. Pass ``None`` (the default) to defer the
+    extent; it will be inferred at LowerTIRx from sibling ScopeIdDef closure.
+
+    ``dtype`` selects the dtype of the introduced vars (``"int32"`` or ``"uint32"``).
     """
     ret = _ffi_api.CtaId(extents, "cluster", preferred, dtype)  # type: ignore[attr-defined] # pylint: disable=no-member
     if len(ret) == 1:
@@ -702,8 +731,10 @@ def cta_id_in_pair(dtype: str = "int32") -> BypassBind:
 
 
 def warpgroup_id(extents: list[Expr | int] | None = None, dtype: str = "int32") -> BypassBind:
-    """Define a cta→warpgroup scope id. Pass ``None`` (the default) to defer the extent; it
-    will be inferred at LowerTIRx from sibling closure.
+    """Define a cta→warpgroup scope id. Pass ``None`` (the default) to defer
+    the extent; it will be inferred at LowerTIRx from sibling closure.
+
+    ``dtype`` selects the dtype of the introduced vars (``"int32"`` or ``"uint32"``).
     """
     ret = _ffi_api.WarpgroupId(extents, "cta", dtype)  # type: ignore[attr-defined] # pylint: disable=no-member
     if len(ret) == 1:
@@ -712,8 +743,10 @@ def warpgroup_id(extents: list[Expr | int] | None = None, dtype: str = "int32") 
 
 
 def warp_id(extents: list[Expr | int] | None = None, dtype: str = "int32") -> BypassBind:
-    """Define a cta→warp scope id. Pass ``None`` (the default) to defer the extent; it will
-    be inferred at LowerTIRx from sibling closure.
+    """Define a cta→warp scope id. Pass ``None`` (the default) to defer the
+    extent; it will be inferred at LowerTIRx from sibling closure.
+
+    ``dtype`` selects the dtype of the introduced vars (``"int32"`` or ``"uint32"``).
     """
     ret = _ffi_api.WarpId(extents, "cta", dtype)  # type: ignore[attr-defined] # pylint: disable=no-member
     if len(ret) == 1:
@@ -722,8 +755,10 @@ def warp_id(extents: list[Expr | int] | None = None, dtype: str = "int32") -> By
 
 
 def warp_id_in_wg(extents: list[Expr | int] | None = None, dtype: str = "int32") -> BypassBind:
-    """Define a warpgroup→warp scope id. Pass ``None`` (the default) to defer the extent; it
-    will be inferred at LowerTIRx from sibling closure.
+    """Define a warpgroup→warp scope id. Pass ``None`` (the default) to defer
+    the extent; it will be inferred at LowerTIRx from sibling closure.
+
+    ``dtype`` selects the dtype of the introduced vars (``"int32"`` or ``"uint32"``).
     """
     ret = _ffi_api.WarpId(extents, "warpgroup", dtype)  # type: ignore[attr-defined] # pylint: disable=no-member
     if len(ret) == 1:
@@ -732,8 +767,10 @@ def warp_id_in_wg(extents: list[Expr | int] | None = None, dtype: str = "int32")
 
 
 def lane_id(extents: list[Expr | int] | None = None, dtype: str = "int32") -> BypassBind:
-    """Define a warp→thread scope id. Pass ``None`` (the default) to defer the extent; it
-    will be inferred at LowerTIRx from sibling closure.
+    """Define a warp→thread scope id. Pass ``None`` (the default) to defer the
+    extent; it will be inferred at LowerTIRx from sibling closure.
+
+    ``dtype`` selects the dtype of the introduced vars (``"int32"`` or ``"uint32"``).
     """
     ret = _ffi_api.ThreadId(extents, "warp", dtype)  # type: ignore[attr-defined] # pylint: disable=no-member
     if len(ret) == 1:
@@ -742,8 +779,10 @@ def lane_id(extents: list[Expr | int] | None = None, dtype: str = "int32") -> By
 
 
 def thread_id(extents: list[Expr | int] | None = None, dtype: str = "int32") -> BypassBind:
-    """Define a cta→thread scope id. Pass ``None`` (the default) to defer the extent; it will
-    be inferred at LowerTIRx from sibling closure.
+    """Define a cta→thread scope id. Pass ``None`` (the default) to defer the
+    extent; it will be inferred at LowerTIRx from sibling closure.
+
+    ``dtype`` selects the dtype of the introduced vars (``"int32"`` or ``"uint32"``).
     """
     ret = _ffi_api.ThreadId(extents, "cta", dtype)  # type: ignore[attr-defined] # pylint: disable=no-member
     if len(ret) == 1:
@@ -754,8 +793,10 @@ def thread_id(extents: list[Expr | int] | None = None, dtype: str = "int32") -> 
 def thread_id_in_wg(
     extents: list[Expr | int] | None = None, dtype: str = "int32"
 ) -> BypassBind:
-    """Define a warpgroup→thread scope id. Pass ``None`` (the default) to defer the extent;
-    it will be inferred at LowerTIRx from sibling closure.
+    """Define a warpgroup→thread scope id. Pass ``None`` (the default) to defer
+    the extent; it will be inferred at LowerTIRx from sibling closure.
+
+    ``dtype`` selects the dtype of the introduced vars (``"int32"`` or ``"uint32"``).
     """
     ret = _ffi_api.ThreadId(extents, "warpgroup", dtype)  # type: ignore[attr-defined] # pylint: disable=no-member
     if len(ret) == 1:
@@ -764,12 +805,24 @@ def thread_id_in_wg(
 
 
 def init() -> frame.BlockInitFrame:
-    """The block initialization statement."""
+    """The block initialization statement.
+
+    Returns
+    -------
+    res : frame.BlockInitFrame
+        The BlockInitFrame.
+    """
     return _ffi_api.Init()  # type: ignore[attr-defined] # pylint: disable=no-member
 
 
 def where(predicate: Expr | int) -> None:
-    """The block predicate statement."""
+    """The block predicate statement.
+
+    Parameters
+    ----------
+    predicate : Union[Expr, Literal[0, 1]]
+        The predicate condition.
+    """
     if isinstance(predicate, bool):
         predicate = IntImm("bool", predicate)
     if isinstance(predicate, int):
@@ -781,7 +834,13 @@ def where(predicate: Expr | int) -> None:
 
 
 def reads(*buffer_slices: list[TensorRegion | TensorLoad]) -> None:
-    """The block buffer region reading statement."""
+    """The block buffer region reading statement.
+
+    Parameters
+    ----------
+    buffer_slices : List[Union[TensorRegion, TensorLoad]]
+        The array of buffer regions to read.
+    """
     if len(buffer_slices) == 1:
         if isinstance(buffer_slices[0], tuple):
             buffer_slices = list(buffer_slices[0])
@@ -795,7 +854,13 @@ def reads(*buffer_slices: list[TensorRegion | TensorLoad]) -> None:
 
 
 def writes(*buffer_slices: list[TensorRegion | TensorLoad]) -> None:
-    """The block buffer region writing statement."""
+    """The block buffer region writing statement.
+
+    Parameters
+    ----------
+    buffer_slices : List[Union[TensorRegion, TensorLoad]]
+        The array of buffer regions to write.
+    """
     if len(buffer_slices) == 1:
         if isinstance(buffer_slices[0], tuple):
             buffer_slices = list(buffer_slices[0])
@@ -809,7 +874,13 @@ def writes(*buffer_slices: list[TensorRegion | TensorLoad]) -> None:
 
 
 def sblock_attr(attrs: dict[str, Any]) -> None:
-    """The block annotation statement (for non-tirx SBlock usage)."""
+    """The block annotation statement (for non-tirx SBlock usage).
+
+    Parameters
+    ----------
+    attrs : Dict[str, Any]
+        The annotation of the block.
+    """
     return _ffi_api.BlockAttrs(attrs)  # type: ignore[attr-defined] # pylint: disable=no-member
 
 
@@ -1533,9 +1604,12 @@ def bind(
 
 
 class LetAnnotation:
-    """Marker for explicit LetStmt. Created by T.let or T.let[type]. Usage in TVMScript: x:
-    T.let[T.int32] = expr # LetStmt with explicit type x: T.let = expr # LetStmt with
-    auto-typed RHS
+    """Marker for explicit LetStmt. Created by ``T.let`` or ``T.let[type]``.
+
+    Usage in TVMScript::
+
+        x: T.let[T.int32] = expr  # LetStmt with explicit type
+        x: T.let = expr           # LetStmt with auto-typed RHS
     """
 
     def __init__(self, type_spec=None):
@@ -1569,7 +1643,12 @@ let = LetAnnotation()  # Singleton for T.let (no subscript)
 
 
 class LocalVectorAnnotation:
-    """Marker for local vector/tensor allocation via type annotation subscript."""
+    """Marker for local vector/tensor allocation via type annotation subscript.
+
+    Created when a DtypeConstructor is subscripted, e.g. ``T.float32[N]`` or
+    ``T.float32[M, N]``. The declaration protocol recognizes this annotation
+    and allocates local storage with ``T.alloc_local(shape=..., dtype=...)``.
+    """
 
     __slots__ = ("dtype", "shape")
 
@@ -1763,12 +1842,24 @@ def If(condition: Expr) -> frame.IfFrame:  # pylint: disable=invalid-name
 
 
 def Then() -> frame.ThenFrame:  # pylint: disable=invalid-name
-    """Create a then."""
+    """Create a then.
+
+    Returns
+    -------
+    res : frame.ThenFrame
+        The result ThenFrame.
+    """
     return _ffi_api.Then()  # type: ignore[attr-defined] # pylint: disable=no-member
 
 
 def Else() -> frame.ElseFrame:  # pylint: disable=invalid-name
-    """Create an else."""
+    """Create an else.
+
+    Returns
+    -------
+    res : frame.ElseFrame
+        The result ElseFrame.
+    """
     return _ffi_api.Else()  # type: ignore[attr-defined] # pylint: disable=no-member
 
 
@@ -2361,7 +2452,19 @@ def buffer_store(
 
 
 def evaluate(value: Expr) -> BypassEmit:
-    """Emit an evaluation and return a reference to its stored statement."""
+    """Emit an evaluation and return a reference to its stored statement.
+
+    Parameters
+    ----------
+    value : Expr
+        The input expression to evaluate.
+
+    Returns
+    -------
+    result : BypassEmit
+        A receipt containing the emitted statement, so expression-statement
+        handling does not emit it again.
+    """
     if isinstance(value, str):
         value = _StringImm(value)
     if isinstance(value, bool):
@@ -2375,7 +2478,11 @@ def evaluate(value: Expr) -> BypassEmit:
 
 
 def _ffi_name_to_dtype(name: str) -> str:
-    """Convert an FFI type name to its TVM dtype string."""
+    """Convert an FFI type name to its TVM dtype string.
+
+    Examples: "Float32" -> "float32", "Int8x4" -> "int8x4",
+    "Float8E4M3" -> "float8_e4m3", "Float8E4M3B11FNUZ" -> "float8_e4m3b11fnuz".
+    """
     import re
 
     # Insert underscore before E-notation in float8 names (E3M4, E4M3, etc.)
@@ -2384,7 +2491,13 @@ def _ffi_name_to_dtype(name: str) -> str:
 
 
 def func_gen(name: str):
-    """Generate a DtypeConstructor for each Expr dtype."""
+    """Generate a DtypeConstructor for each Expr dtype.
+
+    Parameters
+    ----------
+    name: str
+        The ffi function name to call, e.g. "Float32", "Int32".
+    """
     return DtypeConstructor(name, _ffi_name_to_dtype(name))
 
 
@@ -2631,7 +2744,12 @@ def handle(
 
 
 def TensorMap() -> Var:  # pylint: disable=invalid-name
-    """Create a TIRx var that represents a CUDA tensor-map descriptor."""
+    """Create a TIRx var that represents a CUDA tensor-map descriptor.
+
+    The host/runtime ABI passes a handle to descriptor storage. CUDA kernel
+    codegen lowers this type to ``const __grid_constant__ CUtensorMap`` when it
+    appears as a kernel parameter.
+    """
     return _ffi_api.TensorMap()  # type: ignore[attr-defined] # pylint: disable=no-member
 
 
@@ -2910,7 +3028,10 @@ else:
         return cls
 
     def meta_class(cls):
-        """Decorator for utility classes used inside @T.prim_func."""
+        """Decorator for utility classes used inside @T.prim_func.
+
+        Instances of decorated classes are treated as parser meta values.
+        """
         return _install_meta_class(cls)
 
 # pylint: disable=invalid-name

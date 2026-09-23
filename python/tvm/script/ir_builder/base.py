@@ -79,7 +79,13 @@ class IRBuilderFrame(_Object):
                 _ffi_api.IRBuilderFrameExit(self)  # type: ignore[attr-defined] # pylint: disable=no-member
 
     def add_callback(self, callback: Callable[[], None]) -> None:
-        """Add a callback method invoked when exiting the with-scope."""
+        """Add a callback method invoked when exiting the with-scope.
+
+        Parameters
+        ----------
+        callback : Callable[[], None]
+            The callback method to be invoked.
+        """
         _ffi_api.IRBuilderFrameAddCallback(  # type: ignore[attr-defined] # pylint: disable=no-member
             self, callback
         )
@@ -135,12 +141,24 @@ class IRBuilder(_Object):
 
     @staticmethod
     def current() -> "IRBuilder":
-        """Get the current IRBuilder put in the with-scope."""
+        """Get the current IRBuilder put in the with-scope.
+
+        Returns
+        -------
+        builder : IRBuilder
+            The current IRBuilder.
+        """
         return _ffi_api.IRBuilderCurrent()  # type: ignore[attr-defined] # pylint: disable=no-member
 
     @staticmethod
     def is_in_scope() -> bool:
-        """See if the current thread-local scope has an IRBuilder."""
+        """See if the current thread-local scope has an IRBuilder.
+
+        Returns
+        -------
+        bool
+            Whether the current thread-local scope has an IRBuilder
+        """
         return _ffi_api.IRBuilderIsInScope()  # type: ignore[attr-defined] # pylint: disable=no-member
 
     def get(self) -> _Object:
