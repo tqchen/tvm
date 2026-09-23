@@ -27,10 +27,13 @@ tvm.script.ir_builder
 
 tvm.script.ir_builder.ir
 ************************
+The :class:`~tvm.script.ir_builder.IRBuilder` class is also available as
+``tvm.script.ir_builder.ir.IRBuilder``.
+
 .. automodule:: tvm.script.ir_builder.ir
    :members:
    :imported-members:
-   :exclude-members: GenericConst, Range, StringImm, StringType
+   :exclude-members: GenericConst, IRBuilder, Range, StringImm, StringType
 
 tvm.script.ir_builder.relax
 ***************************
