@@ -24,9 +24,9 @@ from tvm import ir as _ir
 from tvm import tirx as _tir
 from tvm.script.ir_builder.base import at as _at
 from tvm.script.ir_builder.base import source_span as _source_span
-from tvm.script.ir_builder.ir.parser_protocol import args_policy as _args_policy
-from tvm.script.ir_builder.ir.parser_protocol import constexpr as constexpr
-from tvm.script.ir_builder.ir.parser_protocol import (
+from tvm.script.parser.protocol_registry import args_policy as _args_policy
+from tvm.script.parser.protocol_registry import constexpr as constexpr
+from tvm.script.parser.protocol_registry import (
     register_type_var_decl as _register_type_var_decl,
 )
 from tvm.tirx.lang.alloc_pool import SMEMPool as SMEMPool

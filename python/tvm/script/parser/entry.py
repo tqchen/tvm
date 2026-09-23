@@ -33,9 +33,9 @@ from typing import TYPE_CHECKING, Any, TypeVar
 from tvm.ir import SourceName
 from tvm.script.ir_builder import base
 from tvm.script.ir_builder import ir as builder_ir
-from tvm.script.ir_builder.ir import parser_protocol as syntax_protocol
 
 from . import jit_support
+from . import protocol_registry as syntax_protocol
 from .inspect_source import (
     acquire_source,
     capture_annotation_bindings,
@@ -311,7 +311,7 @@ def make_decorator(
                 definition_scope = {} if deferred else capture_definition_scope(frame)
             finally:
                 del frame
-            function.__tvm_function_info__ = decorator.__tvm_function_info__
+            syntax_protocol.copy_function_info(decorator, function)
             function.__tvm_function_options__ = options
             if deferred:
                 return function

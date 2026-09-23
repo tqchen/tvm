@@ -25,8 +25,7 @@ from collections.abc import Mapping, Sequence
 from types import GetSetDescriptorType, MemberDescriptorType
 from typing import NamedTuple, NoReturn
 
-from tvm.script.ir_builder.ir import parser_protocol as protocol
-
+from . import protocol_registry as protocol
 from .call_args_policy import parse_annotation
 
 
@@ -446,7 +445,7 @@ class PrescanCollector(ast.NodeVisitor):
                 self.environment,
             )
             dtype = getattr(constructor, "__tvm_parameter_dtype__", None)
-            declaration = getattr(constructor, "__tvm_type_var_decl__", None)
+            declaration = protocol.get_type_var_decl(constructor)
             self._record_binding(
                 arg.arg,
                 arg,
@@ -537,7 +536,7 @@ class PrescanCollector(ast.NodeVisitor):
         kind: str = "ordinary",
     ) -> None:
         constructor = resolve_constructor(value, self.environment, self.bindings[self.scope])
-        if getattr(constructor, "__tvm_binding_decl__", False):
+        if protocol.is_binding_decl(constructor):
             binding_declaration = value.func
             while isinstance(binding_declaration, ast.Attribute):
                 binding_declaration = binding_declaration.value
@@ -556,7 +555,7 @@ class PrescanCollector(ast.NodeVisitor):
         elif protocol.is_direct_call(constructor):
             kind = "direct_call"
         if isinstance(target, ast.Name):
-            declaration = getattr(constructor, "__tvm_type_var_decl__", None)
+            declaration = protocol.get_type_var_decl(constructor)
             if declaration is not None and not value.args and not value.keywords:
                 self._record_binding(target.id, target, "symbol", value, declaration.dtype)
             elif getattr(self.builder, "supports_mutable_declarations", True) and (

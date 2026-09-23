@@ -29,8 +29,8 @@ from dataclasses import dataclass, field
 from types import SimpleNamespace
 
 from tvm.script.ir_builder import IRBuilder
-from tvm.script.ir_builder.ir import parser_protocol as protocol
 from tvm.script.parser import entry
+from tvm.script.parser import protocol_registry as registry
 
 
 @dataclass(eq=False)
@@ -144,7 +144,7 @@ class Language:
             annotation_value_=lambda name, value: value,
             MISSING=self.missing,
             check_well_formed_=lambda result: None,
-            constexpr=protocol.constexpr,
+            constexpr=registry.constexpr,
         )
         self.X = SimpleNamespace(
             supports_mutable_declarations=True,
@@ -174,7 +174,7 @@ class Language:
             and_=lambda *args, **kwargs: Value("and", args),
             or_=lambda *args: Value("or", args),
             not_=lambda value: Value("not", (value,)),
-            constexpr=protocol.constexpr,
+            constexpr=registry.constexpr,
             value=lambda *args: Value("value", args),
             record=self.record,
         )
@@ -187,7 +187,7 @@ class Language:
             setattr(self.X, name + "_", operation)
         self.X.script = entry.make_decorator(self.X)
 
-        @protocol.args_policy({"shape": "expr_str", "device": "global_info"}, scalar_strings=False)
+        @registry.args_policy({"shape": "expr_str", "device": "global_info"}, scalar_strings=False)
         def tensor(shape=None, dtype="float32", device=None, placement="S[0]"):
             return Value("tensor", (shape, dtype, device, placement))
 
@@ -198,8 +198,8 @@ class Language:
             return Value("cell", (value,))
 
         self.X.tensor = tensor
-        self.X.symbol = protocol.register_type_var_decl(symbol, dtype="int64")
-        self.X.cell = protocol.register_mutable_var_decl(cell)
+        self.X.symbol = registry.register_type_var_decl(symbol, dtype="int64")
+        self.X.cell = registry.register_mutable_var_decl(cell)
 
     @contextmanager
     def context(self):

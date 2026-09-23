@@ -28,6 +28,7 @@ from tvm.script import tirx as T
 from tvm.script.ir_builder import AlreadyEmitted, IRBuilder
 from tvm.script.ir_builder import ir as IB
 from tvm.script.ir_builder.ir import parser_protocol as P
+from tvm.script.parser import protocol_registry as registry
 from tvm.tirx.script import builder as TB
 from tvm.tirx.script.builder import parser_protocol as TP
 
@@ -35,12 +36,14 @@ from tvm.tirx.script.builder import parser_protocol as TP
 def test_documented_two_function_program_builds_the_same_ir():
     # The contract's complete source and builder examples must stay executable.
     blocks = re.findall(r"\.\. code:: python\n\n((?:    .*\n|\n)+)", P.__doc__)
-    assert len(blocks) == 2
+    source_blocks = [block for block in blocks if "@I.ir_module" in block]
+    builder_blocks = [block for block in blocks if "with IRBuilder()" in block]
+    assert len(source_blocks) == len(builder_blocks) == 1
     source = {"I": I, "T": T}
     # Text parse supplies retrievable source coordinates for this documentation.
-    module = tvm.script.from_source(textwrap.dedent(blocks[0]), extra_vars=source)
+    module = tvm.script.from_source(textwrap.dedent(source_blocks[0]), extra_vars=source)
     generated = {"I": IB, "X": TB, "IRBuilder": IRBuilder}
-    exec(textwrap.dedent(blocks[1]), generated)
+    exec(textwrap.dedent(builder_blocks[0]), generated)
     tvm.ir.assert_structural_equal(module, generated["result"], map_free_vars=True)
     assert not module["first"].params[0].ty.shape[0].same_as(module["second"].params[0].ty.shape[0])
 
@@ -59,7 +62,7 @@ def test_scope_category_keeps_explicit_bind_and_sequence_identity():
     function = builder.get()
     assert isinstance(function.body, tirx.Bind)
     assert function.body.var.same_as(value)
-    assert P.is_scope_var_query_or_decl(TB.bind)
+    assert registry.is_scope_var_query_or_decl(TB.bind)
 
 
 def test_scope_category_preserves_pointer_bind_identity_and_ir():
@@ -117,7 +120,7 @@ def test_direct_object_producers_keep_constructor_names_and_identities():
     produced = []
     objects = []
 
-    @P.direct_call
+    @registry.direct_call
     def record(value):
         objects.append(value)
         return value
@@ -142,10 +145,10 @@ def test_direct_object_producers_keep_constructor_names_and_identities():
     assert len(objects) == 2
     assert objects[1].var.name == "explicit"
     assert produced[0].buffer.name == "owned"
-    assert P.is_direct_call(Resources)
-    assert P.is_direct_call(TB.TileLayout)
-    assert P.is_direct_call(TB.iter_var)
-    assert P.is_direct_call(TB.TileLayout(TB.S[1]).canonicalize)
+    assert registry.is_direct_call(Resources)
+    assert registry.is_direct_call(TB.TileLayout)
+    assert registry.is_direct_call(TB.iter_var)
+    assert registry.is_direct_call(TB.TileLayout(TB.S[1]).canonicalize)
     assert function is not None
 
 
@@ -154,7 +157,7 @@ def test_source_meta_var_keeps_existing_expression_span_without_a_binding():
     existing = tirx.IntImm("int32", 7, span=span)
     observed = []
 
-    @P.direct_call
+    @registry.direct_call
     def observe(value):
         observed.append(value.span)
 
@@ -192,18 +195,18 @@ def test_result_member_registration_uses_real_callable_and_descriptor_identities
     from tvm.tirx import _buffer_view
     from tvm.tirx.buffer import _BufferMethods
 
-    assert P.get_result_members(TB.Buffer) is _BufferMethods
-    assert P.get_result_members(TB.alloc_buffer) is _BufferMethods
-    assert P.get_result_members(_BufferMethods.view) is _BufferMethods
-    assert P.get_result_members(_BufferMethods.sub) is _buffer_view.SubIndexer
-    assert P.get_result_members(_BufferMethods.tile) is _buffer_view.TileIndexer
+    assert registry.get_result_members(TB.Buffer) is _BufferMethods
+    assert registry.get_result_members(TB.alloc_buffer) is _BufferMethods
+    assert registry.get_result_members(_BufferMethods.view) is _BufferMethods
+    assert registry.get_result_members(_BufferMethods.sub) is _buffer_view.SubIndexer
+    assert registry.get_result_members(_BufferMethods.tile) is _buffer_view.TileIndexer
     for indexer in (_buffer_view.SubIndexer, _buffer_view.TileIndexer, _buffer_view.ChunkIndexer):
-        assert P.is_direct_call(indexer.__getitem__)
-        assert P.get_result_members(indexer.__getitem__) is _BufferMethods
+        assert registry.is_direct_call(indexer.__getitem__)
+        assert registry.get_result_members(indexer.__getitem__) is _BufferMethods
 
     class Unrelated:
         def view(self):
             return self
 
-    assert P.get_result_members(Unrelated.view) is None
-    assert not P.is_direct_call(Unrelated.view)
+    assert registry.get_result_members(Unrelated.view) is None
+    assert not registry.is_direct_call(Unrelated.view)

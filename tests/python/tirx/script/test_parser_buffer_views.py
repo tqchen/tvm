@@ -25,7 +25,7 @@ from tvm import ir, tirx
 from tvm.script import parser
 from tvm.script.ir_builder import IRBuilder
 from tvm.script.ir_builder import ir as I
-from tvm.script.ir_builder.ir import parser_protocol
+from tvm.script.parser import protocol_registry as registry
 from tvm.tirx import script as T
 from tvm.tirx.layout import TCol, TLane
 from tvm.tirx.script import builder as B
@@ -251,14 +251,14 @@ def test_direct_view_keeps_producer_identity_name_span_and_evaluation(
         seen.append(name)
         return value
 
-    @I.direct_call
+    @registry.direct_call
     def observe(view):
         observed.append((view, view.span))
 
     # A real bound method exercises registration lookup through __func__.
     monkeypatch.setattr(type(captured), "operation", operation, raising=False)
     bound = MethodType(operation, captured)
-    assert parser_protocol.is_direct_call(bound)
+    assert registry.is_direct_call(bound)
     result = parse(
         f"""
 @T.prim_func

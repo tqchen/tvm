@@ -23,8 +23,8 @@ import ast
 import pytest
 
 from tvm.script import ir as I
-from tvm.script.ir_builder.ir import parser_protocol as protocol
 from tvm.script.parser import entry
+from tvm.script.parser import protocol_registry as registry
 
 
 @pytest.mark.parametrize("module", [False, True])
@@ -153,12 +153,12 @@ def test_direct_and_scope_declaration_calls_preserve_identity_once(language, cou
     values = tuple(object() for _ in range(count))
     calls = []
 
-    @protocol.register_scope_var_query_or_decl
+    @registry.register_scope_var_query_or_decl
     def declared():
         calls.append("declared")
         return values[0] if count == 1 else values
 
-    @protocol.direct_call
+    @registry.direct_call
     def direct(value):
         calls.append("direct")
         return value
@@ -190,9 +190,9 @@ def test_registered_global_callee_does_not_override_lexical_shadow(language, cat
         pytest.fail("shadowed global callable executed")
 
     if category == "direct":
-        protocol.direct_call(operation)
+        registry.direct_call(operation)
     else:
-        protocol.register_scope_var_query_or_decl(operation)
+        registry.register_scope_var_query_or_decl(operation)
     result = language.parse(
         "@X.script\ndef main():\n    operation = ordinary\n"
         "    value = operation()\n    X.record(value)\n",
@@ -213,7 +213,7 @@ def test_direct_call_keeps_nested_expression_rewrites_and_call_scopes(language):
         calls.append((value, len(language.source_stack)))
         return value
 
-    @protocol.direct_call
+    @registry.direct_call
     def direct(value):
         calls.append(("direct", len(language.source_stack)))
         return value
@@ -258,7 +258,7 @@ def test_scope_declaration_reuses_symbol_spelling_but_plain_write_is_rejected(
     # Expected: declaration precedence applies; a subsequent ordinary write remains illegal.
     value = object()
 
-    @protocol.register_scope_var_query_or_decl
+    @registry.register_scope_var_query_or_decl
     def declared():
         return value
 

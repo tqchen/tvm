@@ -31,7 +31,7 @@ import linecache
 import re
 from collections.abc import Callable
 
-from tvm.script.ir_builder.ir import parser_protocol as protocol
+from . import protocol_registry as protocol
 
 
 class _LiteralParser:

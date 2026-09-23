@@ -43,8 +43,7 @@ from contextlib import contextmanager
 from types import FunctionType
 from typing import Any, NoReturn, TypeVar
 
-from tvm.script.ir_builder.ir import parser_protocol as protocol
-
+from . import protocol_registry as protocol
 from .call_args_policy import handle_call_args_policy, parse_annotation, parse_expression_string
 from .prescan import Binding, PrescanContext, resolve_constructor, resolve_syntax
 

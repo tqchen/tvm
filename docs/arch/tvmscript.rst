@@ -172,7 +172,7 @@ then lowers to operations supplied by that namespace: for example, unmarked ``if
 TIR control-flow frames in a primitive function and Relax control-flow frames in a Relax
 function. The transpiler emits these operations without implementing dialect IR semantics.
 
-``ir_builder/ir/parser_protocol.py`` records callable syntax metadata. Argument policies such
+``parser/protocol_registry.py`` owns callable syntax metadata and registration. Argument policies such
 as ``expr_str`` translate symbolic strings written directly in source expressions, while ``global_info``
 preserves a module reference for builder-side lookup. Dtype and placement strings remain
 literal. Captured or computed symbolic shapes must already contain explicit IR variables;
@@ -246,9 +246,13 @@ Generated programs use the shared ``I.at_`` and ``I.with_at_group_`` helpers to 
 locations and preserve caller/definition provenance while evaluating source calls once.
 Their implementation lives in ``ir_builder.base``. These helpers retain returned object
 identity; builders handle results that already emitted a statement or introduced a binding.
-The shared ``ir_builder.ir.parser_protocol`` module owns syntax registration, metadata
-and the documented generated builder contract. Dialect ``parser_protocol`` modules
-register their syntax and implement their construction hooks.
+The parser-owned ``parser.protocol_registry`` module defines registration APIs, metadata and
+persistent registration state. Dialect ``parser_protocol`` modules import these APIs
+directly, register their syntax and implement their construction hooks. The shared
+``ir_builder.ir.parser_protocol`` file-level documentation explains the complete
+registration and generated-builder contract; that module implements builder hooks
+without re-exporting registration APIs. For example, dialect registration imports
+``args_policy`` and ``direct_call`` from ``tvm.script.parser.protocol_registry``.
 
 Calls registered with ``direct_call`` keep their ordinary results without automatic
 binding, emission or result-span attachment. Their arguments still undergo normal

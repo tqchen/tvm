@@ -30,9 +30,9 @@ from tvm.relax.distributed import device_mesh as device_mesh
 from tvm.script.ir_builder import IRBuilder as _IRBuilder
 from tvm.script.ir_builder.base import at as _at
 from tvm.script.ir_builder.base import source_span as _source_span
-from tvm.script.ir_builder.ir.parser_protocol import args_policy as _args_policy
-from tvm.script.ir_builder.ir.parser_protocol import constexpr as constexpr
 from tvm.script.ir_builder.ir.parser_protocol import resolve_global_info_ as _lookup_global_info
+from tvm.script.parser.protocol_registry import args_policy as _args_policy
+from tvm.script.parser.protocol_registry import constexpr as constexpr
 
 from . import distributed as dist
 from . import ir as _native

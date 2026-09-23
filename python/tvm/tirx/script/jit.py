@@ -24,7 +24,7 @@ from collections.abc import Callable, Mapping
 from types import FunctionType
 from typing import Any
 
-from tvm.script.ir_builder.ir import parser_protocol as protocol
+from tvm.script.parser import protocol_registry as protocol
 from tvm.tirx import PrimFunc
 
 
@@ -100,7 +100,7 @@ def make_jit(builder: object) -> Callable[..., Any]:
                 definition_scope = capture_definition_scope(frame)
             finally:
                 del frame
-            function.__tvm_function_info__ = jit.__tvm_function_info__
+            protocol.copy_function_info(jit, function)
             function.__tvm_function_options__ = {
                 "private": private,
                 "s_tir": is_stir,

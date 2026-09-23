@@ -24,7 +24,7 @@ from tvm.script import parser
 from tvm.script import tirx as T
 from tvm.script.ir_builder import IRBuilder
 from tvm.script.ir_builder import ir as I
-from tvm.script.ir_builder.ir import parser_protocol as protocol
+from tvm.script.parser import protocol_registry as registry
 
 
 def test_global_info_selectors_use_module_map():
@@ -43,7 +43,7 @@ def test_global_info_selectors_use_module_map():
 def test_annotation_class_supports_union_and_missing_type():
     # Before: X.Annotation("n") | None
     # Expected builder program: X.Annotation((X.resolve_type_var_("n"))) in a function frame.
-    @protocol.args_policy({"shape": "expr_str"}, as_type=True)
+    @registry.args_policy({"shape": "expr_str"}, as_type=True)
     def annotation(shape):
         return shape
 

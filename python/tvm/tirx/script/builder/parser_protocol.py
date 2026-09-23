@@ -427,7 +427,7 @@ def set_mutable_var_(
 
 
 def _register_declarations() -> None:
-    from tvm.script.ir_builder.ir.parser_protocol import (
+    from tvm.script.parser.protocol_registry import (
         direct_call,
         register_mutable_var_decl,
         register_result_members,

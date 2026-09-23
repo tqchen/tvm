@@ -25,19 +25,118 @@ references and results. Ordinary functions can use one ``X.function()`` entry.
 When forward references are needed, ``X.function(decl=True)`` reserves each
 signature before body entry, allowing sibling calls without another ownership
 record. Re-entering that same frame completes its body.
-This module also owns syntax metadata and registration: args_policy selects
-argument rewriting, function registration selects a builder namespace, and
-registered declaration categories choose assignment policy without inspecting IR.
-Registries hold callable identities and flat syntax facts only, never native
-frames, constructed values or per-parse environments. The parser consumes this
-contract; it is not imported here. Module setup precedes all signatures, which
-precede all bodies. Completed results are validated only after frame exit.
+Syntax registration is owned by ``tvm.script.parser.protocol_registry``. Dialects import
+its APIs directly; this file documents the complete customization contract but
+does not import or re-export those registration APIs. Registration state lives
+across parses, while PrescanContext, ModuleContext and FunctionContext only
+consume it. Callable markers stay on the registered callables. The argument
+policy table shares one immutable policy between original and adapted callable
+identities. No registry stores active frames, construction results or per-parse
+environments. Module setup precedes all signatures, which precede all bodies.
+Completed results are validated only after frame exit.
+
+A dialect selects source syntax through these registration APIs:
+
+* ``args_policy(fields, scalar_strings=True, dtype=None, as_type=False)`` marks
+  individual parameters as ``expr_str`` or ``global_info``. Positional and
+  keyword arguments use the same signature-based policy. Expression strings
+  lower through ``X.resolve_type_var_``; global-info strings use
+  ``I.resolve_global_info_``. Unmarked strings remain literal. The optional
+  opaque dtype reaches symbol resolution unchanged. Concrete arguments still
+  execute the constructor; eager expression/type adapters retain the builder's
+  MissingType and active-function behavior. Unknown policies or parameter names
+  are rejected at registration.
+* ``register_type_var_decl`` marks an omitted-value scalar declaration and its
+  optional dtype, selecting ``X.resolve_type_var_``. ``register_binding_decl``
+  marks an explicit ordinary binding that shadows outer mutable storage and
+  still uses ``X.bind_``. ``register_mutable_var_decl`` advertises call,
+  annotation or parameter positions for ``X.decl_mutable_var_``; later stores
+  use ``X.set_mutable_var_``.
+* ``register_scope_var_query_or_decl`` marks calls whose producer already owns
+  the returned variables. This declaration category precedes mutable stores;
+  ``X.scope_var_query_or_decl_`` preserves identity and performs dialect naming
+  and validation without another IR binding.
+* ``direct_call`` returns the registered callable unchanged. Source calls omit
+  automatic binding, emission, result-span attachment and the outer source-call
+  wrapper. Callee and arguments still evaluate once in order, with normal child
+  rewriting. The callable owns its effects. This differs from AlreadyEmitted,
+  whose wrapped result retains normal source-result handling.
+* ``register_result_members`` associates a producer or annotation with an
+  opaque namespace of actual member callables/descriptors. Prescan facts and
+  chained producer syntax can expose those members without evaluating a value
+  or inspecting its IR type. Each member still needs its own declaration or
+  direct-call registration; a method name alone never selects a policy.
+* ``register_function`` attaches an opaque builder namespace, copied option
+  mapping, defaults and an optional Python-body flag to a source decorator.
+  ``function_info`` reads that ``FunctionDecoratorInfo`` record. The flag keeps
+  original Python callables in module ``__pyfuncs__``; other functions lower
+  through the registered dialect's function/signature/body hooks.
+
+``get_args_policy`` reads ``ArgsPolicy`` and its ``ExprStrPolicy`` record;
+``get_type_var_decl`` reads ``DeclarationArguments``. ``is_binding_decl``,
+``is_mutable_var_decl``, ``is_scope_var_query_or_decl`` and ``is_direct_call``
+read declaration/call markers. ``copy_function_info`` shares the exact registered
+decorator record with a source function, leaving definition scope and applied
+options to the entry point. ``get_result_members`` reads member namespaces,
+normalizing bound methods and property getters. Argument, scope-query and
+direct-call readers also recognize Python bound-method identities where
+applicable. ``DeclarationArguments`` carries omitted-value parameter and dtype
+facts. These readers neither call constructors nor own native state. The shared
+``constexpr`` marker is recognized by identity for host control expressions and
+specialization annotations; dialect semantic exports refer to that same marker.
+
+For example, a dialect registers producers directly with the parser owner:
+
+.. code:: python
+
+    from tvm.script.parser.protocol_registry import (
+        args_policy,
+        direct_call,
+        register_binding_decl,
+        register_function,
+        register_mutable_var_decl,
+        register_result_members,
+        register_scope_var_query_or_decl,
+        register_type_var_decl,
+    )
+
+    register_type_var_decl(X.int32, dtype="int32")
+    register_mutable_var_decl(X.local_scalar, syntax="call")
+    register_binding_decl(X.alloc_buffer)
+    register_scope_var_query_or_decl(X.bind)
+    register_function(prim_func, X, option_map={"private": "private"})
+    register_result_members(X.Buffer, BufferMethods)
+    direct_call(BufferMethods.permute)
+
+    @args_policy({"shape": "expr_str", "device": "global_info"})
+    def tensor(shape, device=None):
+        return make_tensor(shape, device)
+
+    @direct_call
+    def identity(value):
+        return value
+
+    # Source
+    value = tensor(("n",), device="cuda:0")
+    kept = identity(value)
+    # Generated builder
+    value = X.bind_(
+        tensor((X.resolve_type_var_("n"),), device=I.resolve_global_info_("cuda:0")),
+        name="value",
+    )
+    kept = identity(value)
+
+Importing the registration module does not initialize parser entry points or
+concrete builders. Applying an expression/type argument policy requests the
+shared eager annotation adapter when needed; native frames still own all IR
+construction, symbol identity and validation. Definitions and detailed API
+docstrings remain beside the parser-owned implementation.
 
 Shared source support remains in ir_builder.base and is exported through I:
 I.at_(location, value) annotates that same object (or AlreadyEmitted.value),
 records a returned frame's deferred location, and preserves identity;
 I.with_at_group_(location, thunk) evaluates one source call inside restored
-caller/definition provenance and applies at_ before returning. I.annotation_value_
+caller/definition provenance and applies ``at_`` before returning. ``I.annotation_value_``
 converts a rewritten annotation without creating a parser owner. Locations are
 Span objects or (SourceName, start_line, start_column, end_line, end_column)
 tuples; None omits explicit attribution. Track-span disabling omits source
@@ -105,10 +204,8 @@ They specify a structural contract, without a base class or runtime dispatcher.
 from __future__ import annotations
 
 import re
-from collections.abc import Callable, Mapping, Sequence
-from inspect import signature
-from types import MappingProxyType, MethodType
-from typing import Any, NamedTuple, NoReturn, TypeVar
+from collections.abc import Sequence
+from typing import Any
 
 from tvm import ir as _ir
 
@@ -537,628 +634,6 @@ def check_well_formed_(module: _ir.IRModule) -> None:
                 tirx.analysis.verify_tirx_well_formed(function)
     except Exception as error:
         raise ValueError(f"{message}\n{error}") from error
-
-
-_Callable = TypeVar("_Callable", bound=Callable[..., Any])
-
-
-def constexpr(value: object) -> NoReturn:
-    """Mark a host control expression or a JIT specialization annotation.
-
-    Parameters
-    ----------
-    value : object
-        Source operand evaluated as ordinary Python after rewriting; never passed to
-        this marker at runtime.
-
-    Returns
-    -------
-    NoReturn
-        The marker is removed from generated execution; direct Python invocation raises
-        TypeError.
-
-    Notes
-    -----
-    No builder context or IR effects. Recognition uses callable identity, including aliases,
-    rather than name spelling or return values. The same marker can annotate a
-    specialization parameter. Host operators/control flow retain Python behavior while their
-    source calls still receive ordinary source-call instrumentation.
-
-    .. code:: python
-
-        # Source
-        if I.constexpr(enabled):
-            T.evaluate(1)
-        # Generated builder
-        if enabled:
-            X.emit_(X.evaluate(1))
-    """
-    raise TypeError("constexpr is a parser syntax marker, not a runtime operation")
-
-
-class ExprStrPolicy(NamedTuple):
-    """Immutable syntax policy for registered constructor arguments.
-
-    Parameters
-    ----------
-    fields : tuple of str
-        Parameter names whose string values represent expressions.
-    dtype : object, optional
-        Dtype spelling passed to builder symbol resolution. Default is None.
-    scalar_strings : bool, optional
-        Interpret bare strings as expressions. Default is True. Nested
-        strings in marked fields are always treated as expressions.
-
-    Notes
-    -----
-    This tuple record lives with its registered callable across transpilation
-    passes. It stores no symbols, eager results, or function-local state.
-    Dtype spellings are forwarded as builder arguments; the transpiler never
-    constructs or validates symbols. Builders retain already-declared symbol
-    identity and type. Construction enters no frame.
-    """
-
-    fields: tuple[str, ...]
-    dtype: object = None
-    scalar_strings: bool = True
-
-
-# Process-wide registry: callable identity -> immutable syntax policy. Dialect
-# imports register once; aliases share identities. No per-function entries or
-# evaluation results are cached, and transpilers only read this table.
-_ARGS_POLICIES: dict[object, ArgsPolicy] = {}
-
-
-class ArgsPolicy(NamedTuple):
-    """Immutable per-parameter policies shared by a callable and its adapter.
-
-    Parameters
-    ----------
-    fields : Mapping[str, str]
-        Immutable parameter-to-policy mapping containing expr_str/global_info.
-    expression : ExprStrPolicy
-        Expression fields, scalar-string behavior and opaque symbolic dtype.
-
-    Notes
-    -----
-    This process-wide syntax record stores no evaluated arguments, scopes,
-    frames or results. Registration copies its mappings; parses only read it.
-    """
-
-    fields: Mapping[str, str]
-    expression: ExprStrPolicy
-
-
-def get_args_policy(constructor: object) -> ArgsPolicy | None:
-    """Read argument policy metadata without evaluating a constructor.
-
-    Parameters
-    ----------
-    constructor : object
-        Resolved host callable or bound method; bound methods use their underlying
-        function identity.
-
-    Returns
-    -------
-    ArgsPolicy | None
-        Shared immutable policy, or None for unregistered/unhashable values.
-
-    Notes
-    -----
-    No builder context, IR construction or source-span changes occur. The returned policy
-    belongs to process-wide registration, not a particular parse. Custom hashing errors
-    other than TypeError propagate.
-
-    .. code:: python
-
-        # Source
-        tensor(("n",))
-        # Rewrite-time lookup; generated code receives decoded arguments
-        policy = I.get_args_policy(tensor)
-        tensor((X.resolve_type_var_("n"),))
-    """
-    if isinstance(constructor, MethodType):
-        constructor = constructor.__func__
-    try:
-        return _ARGS_POLICIES.get(constructor)
-    except TypeError:
-        return None
-
-
-def args_policy(
-    fields: Mapping[str, str],
-    *,
-    scalar_strings: bool = True,
-    dtype: object = None,
-    as_type: bool = False,
-) -> Callable[[Callable[..., Any]], Callable[..., Any]]:
-    """Register per-argument source policies without storing construction results.
-
-    Parameters
-    ----------
-    fields : mapping of str to str
-        Parameter names mapped to expr_str or global_info. Copied into immutable
-        registration data; positional and keyword calls use the same policy.
-    scalar_strings : bool, optional
-        True by default. False preserves a bare string in an expression field; nested
-        strings are still expression syntax.
-    dtype : object, optional
-        Opaque dtype passed to symbol resolution for expression strings. None (default)
-        leaves the builder default.
-    as_type : bool, optional
-        False by default. True preserves the annotation-class surface, including Python
-        type unions, while construction returns the underlying result.
-
-    Returns
-    -------
-    Callable[[Callable[..., Any]], Callable[..., Any]]
-        Decorator returning the callable or its eager annotation adapter. Original and
-        adapted identities share one argument policy.
-
-    Notes
-    -----
-    Registration enters no frame, constructs no IR and retains no per-function values.
-    Concrete arguments call the original constructor. Outside construction, unresolved
-    expression annotations yield MissingType; inside construction, unresolved expression
-    strings raise TypeError and TypeVar values use the nearest function resolver. Unknown
-    policy kinds/parameter names raise ValueError; signature/argument-binding errors
-    propagate. The adapter belongs to the builder, not parser execution.
-
-    .. code:: python
-
-        # Source
-        @I.args_policy({"shape": "expr_str", "device": "global_info"})
-        def tensor(shape, device=None):
-            ...
-        # Source
-        tensor(("n",), device="cuda:0")
-        # Generated builder
-        tensor((X.resolve_type_var_("n"),), device=I.resolve_global_info_("cuda:0"))
-    """
-    fields = dict(fields)
-    unsupported = set(fields.values()).difference(("expr_str", "global_info"))
-    if unsupported:
-        raise ValueError(f"Unknown argument policies: {sorted(unsupported)}")
-
-    def decorate(constructor: Callable[..., Any]) -> Callable[..., Any]:
-        call_signature = signature(constructor)
-        unknown = set(fields).difference(call_signature.parameters)
-        if unknown:
-            raise ValueError(f"Unknown argument policy fields: {sorted(unknown)}")
-        expression_fields = tuple(name for name, kind in fields.items() if kind == "expr_str")
-        expression = ExprStrPolicy(expression_fields, dtype, bool(scalar_strings))
-        if expression_fields or as_type:
-            # Builders own eager construction and active-frame/MissingType decisions.
-            from tvm.script.ir_builder.base import wrap_expression_constructor
-
-            result = wrap_expression_constructor(
-                constructor, call_signature, expression, as_type=as_type
-            )
-        else:
-            result = constructor
-        policy = ArgsPolicy(MappingProxyType(fields.copy()), expression)
-        _ARGS_POLICIES[constructor] = policy
-        _ARGS_POLICIES[result] = policy
-        return result
-
-    return decorate
-
-
-class DeclarationArguments(NamedTuple):
-    """Immutable metadata for scalar-constructor predeclarations.
-
-    Parameters
-    ----------
-    value_parameter : str
-        Optional value parameter whose absence denotes a declaration.
-    dtype : object, optional
-        Explicit primitive dtype metadata. Default is None.
-
-    Notes
-    -----
-    `register_type_var_decl` attaches this record to its callable. Aliases
-    and transpilation passes share it for the callable's lifetime; it stores
-    no symbols or construction results and enters no builder frame.
-    """
-
-    value_parameter: str
-    dtype: object = None
-
-
-def register_type_var_decl(
-    constructor: _Callable, *, value_parameter: str = "expr", dtype: object = None
-) -> _Callable:
-    """Mark a constructor whose omitted value argument declares a symbolic variable.
-
-    Parameters
-    ----------
-    constructor : callable
-        Constructor supporting syntax attribute assignment. Identity is retained.
-    value_parameter : str, optional
-        Value parameter whose absence means declaration; defaults to expr.
-    dtype : object, optional
-        Opaque primitive dtype, default None. A string dtype also allows prescan to
-        recognize direct zero-argument body declarations.
-
-    Returns
-    -------
-    _Callable
-        The original callable with DeclarationArguments metadata.
-
-    Notes
-    -----
-    No constructor executes and no frame is entered. Syntax predeclaration precedes
-    dependent signature shapes while original body ordering remains. Only direct declaration
-    forms are collected, not nested/effectful expressions. Aliases share callable metadata;
-    unsupported attribute assignment raises AttributeError.
-
-    .. code:: python
-
-        # Source
-        I.register_type_var_decl(T.int32, dtype="int32")
-        # Source
-        n = T.int32()
-        # Generated builder
-        n = X.resolve_type_var_("n", dtype="int32")
-    """
-    constructor.__tvm_type_var_decl__ = DeclarationArguments(value_parameter, dtype)
-    return constructor
-
-
-def register_binding_decl(constructor: _Callable) -> _Callable:
-    """Mark a call that explicitly introduces an ordinary source binding.
-
-    Parameters
-    ----------
-    constructor : callable
-        Producer supporting syntax attribute assignment.
-
-    Returns
-    -------
-    _Callable
-        The unchanged producer with its declaration marker.
-
-    Notes
-    -----
-    No evaluation, frame entry or source attachment occurs. Its assignment targets shadow an
-    outer mutable declaration instead of storing through it; ordinary dialect ``bind_`` still
-    owns result construction. Scalar and unpacked targets follow the same precedence.
-    Attribute errors propagate.
-
-    .. code:: python
-
-        # Source
-        I.register_binding_decl(make_value)
-        # Source, even if an outer x is mutable
-        x = make_value()
-        # Generated builder
-        x = X.bind_(make_value(), name="x")
-    """
-    constructor.__tvm_binding_decl__ = True
-    return constructor
-
-
-def register_mutable_var_decl(constructor: _Callable, *, syntax: str = "call") -> _Callable:
-    """Advertise explicit mutable storage declaration syntax.
-
-    Parameters
-    ----------
-    constructor : callable
-        Storage/annotation constructor supporting attribute assignment.
-    syntax : str, optional
-        One of call (default), annotation or parameter. Repeated registration adds to
-        its immutable syntax set.
-
-    Returns
-    -------
-    _Callable
-        The same callable with its mutable syntax metadata.
-
-    Notes
-    -----
-    No value is constructed, cached or inspected. Builders own storage and stores; prescan
-    reads only syntax category. Unknown syntax raises ValueError and unsupported attribute
-    assignment raises AttributeError. Declaration patterns take precedence over a prior
-    target binding.
-
-    .. code:: python
-
-        # Source
-        I.register_mutable_var_decl(T.int32, syntax="annotation")
-        # Source
-        x: T.int32 = 0
-        # Generated builder
-        x = X.decl_mutable_var_(0, ty=X.int32, name="x")
-    """
-    if syntax not in ("call", "annotation", "parameter"):
-        raise ValueError("Mutable declaration syntax must be call, annotation or parameter")
-    kinds: frozenset[str] = getattr(constructor, "__tvm_mutable_var_decl__", frozenset())
-    constructor.__tvm_mutable_var_decl__ = kinds | frozenset((syntax,))
-    return constructor
-
-
-def is_mutable_var_decl(constructor: object, *, syntax: str) -> bool:
-    """Read whether a callable advertises a mutable declaration position.
-
-    Parameters
-    ----------
-    constructor : object
-        Resolved host constructor or annotation value; it is never called.
-    syntax : str
-        Source position to test, normally call, annotation or parameter.
-
-    Returns
-    -------
-    bool
-        True exactly when the position is registered; False for absent metadata.
-
-    Notes
-    -----
-    No frame, IR effect or source attachment. This reads a callable attribute; custom
-    attribute-access errors propagate. It does not inspect constructed storage or infer
-    mutability from IR types.
-
-    .. code:: python
-
-        # Source
-        x = T.local_scalar("int32")
-        # Rewrite-time decision and generated operation
-        I.is_mutable_var_decl(T.local_scalar, syntax="call")
-        x = X.decl_mutable_var_(X.local_scalar("int32"), name="x")
-    """
-    return syntax in getattr(constructor, "__tvm_mutable_var_decl__", ())
-
-
-class FunctionDecoratorInfo(NamedTuple):
-    """Flat syntax registration for a source function decorator.
-
-    Parameters
-    ----------
-    builder : object or None
-        Opaque construction namespace, or None for ordinary Python functions.
-    option_map : dict of str to str, optional
-        Public option names mapped to builder option names. Default is None,
-        interpreted as empty. `register_function` copies supplied mappings.
-    defaults : dict of str to object, optional
-        Default builder keyword values. Default is None, interpreted as
-        empty. `register_function` copies supplied mappings.
-    python : bool, optional
-        Preserve the source body as ordinary Python. Default is False.
-
-    Notes
-    -----
-    These are the complete supported fields; no generic metadata dictionary
-    is retained. Records live with decorators across compilations. Consumers
-    must treat mappings as read-only. Records retain no frame, function
-    result, annotation result, or symbol state and enter no builder frames.
-    """
-
-    builder: object
-    option_map: dict[str, str] | None = None
-    defaults: dict[str, Any] | None = None
-    python: bool = False
-
-
-def register_function(
-    decorator: _Callable,
-    builder: object,
-    *,
-    option_map: Mapping[str, str] | None = None,
-    defaults: Mapping[str, Any] | None = None,
-    python: bool = False,
-) -> _Callable:
-    """Register a source decorator and its explicit builder options.
-
-    Parameters
-    ----------
-    decorator : callable
-        Function decorator supporting attribute assignment; retained unchanged.
-    builder : object or None
-        Opaque dialect builder namespace, or None for ordinary Python functions.
-    option_map : mapping of str to str, optional
-        Source decorator keyword names mapped to builder keyword names. None (default)
-        means empty; values are copied.
-    defaults : mapping of str to Any, optional
-        Default builder keyword values. None (default) means empty; values are copied.
-    python : bool, optional
-        False (default) requests script lowering. True preserves the original Python
-        callable/body for module.__pyfuncs__.
-
-    Returns
-    -------
-    _Callable
-        The original decorator with its flat FunctionDecoratorInfo record.
-
-    Notes
-    -----
-    No annotation, function or builder executes and no frame/span is retained. Registration
-    replaces callable metadata for its lifetime; mappings are read-only by convention.
-    Unsupported attributes or invalid mappings raise AttributeError/TypeError/ValueError.
-    These records contain syntax options, never per-parse results.
-
-    .. code:: python
-
-        # Source
-        I.register_function(prim_func, X, option_map={"private": "private"})
-        # Source
-        @prim_func(private=True)
-        def f():
-            pass
-        # Generated builder entry
-        with X.function(private=True):
-            pass
-    """
-    decorator.__tvm_function_info__ = FunctionDecoratorInfo(
-        builder, dict(option_map or {}), dict(defaults or {}), bool(python)
-    )
-    return decorator
-
-
-def function_info(decorator: object) -> FunctionDecoratorInfo | None:
-    """Read registered function-decorator metadata.
-
-    Parameters
-    ----------
-    decorator : object
-        Resolved source decorator; it is not called by this lookup.
-
-    Returns
-    -------
-    FunctionDecoratorInfo | None
-        Shared flat record, or None for an unregistered decorator.
-
-    Notes
-    -----
-    No context, construction effect or source attachment. Option mappings belong to
-    registration and must not be mutated by a parse. Custom attribute-access errors
-    propagate; unknown decorators are diagnosed by the parser consumer.
-
-    .. code:: python
-
-        # Source
-        @T.prim_func
-        def f():
-            pass
-        # Rewrite-time lookup and generated builder
-        I.function_info(T.prim_func)
-        with X.function():
-            pass
-    """
-    return getattr(decorator, "__tvm_function_info__", None)
-
-
-def register_scope_var_query_or_decl(constructor: _Callable) -> _Callable:
-    """Mark a call that already owns its scope variable or immutable declaration.
-
-    Parameters
-    ----------
-    constructor : callable
-        Scope query/declaration producer, for example a block-axis constructor, scope-ID
-        helper or T.bind.
-
-    Returns
-    -------
-    _Callable
-        The exact producer with scope_var_query_or_decl syntax metadata.
-
-    Notes
-    -----
-    Registration neither executes the producer nor stores an IR result/frame. The RHS
-    executes once; generated assignment preserves returned identities and delegates source
-    naming/validation to the dialect hook. This category precedes ordinary binding or a
-    store to an outer mutable name. Callable attribute errors propagate.
-
-    .. code:: python
-
-        # Source
-        I.register_scope_var_query_or_decl(T.bind)
-        # Source
-        x = T.bind(value)
-        # Generated builder
-        x = X.scope_var_query_or_decl_(X.bind(value), name="x")
-    """
-    constructor.__tvm_scope_var_query_or_decl__ = True
-    return constructor
-
-
-def is_scope_var_query_or_decl(constructor: object) -> bool:
-    """Read scope-query/declaration metadata from a resolved callable.
-
-    Parameters
-    ----------
-    constructor : object
-        Resolved producer or bound method; bound methods read the underlying function.
-
-    Returns
-    -------
-    bool
-        True for the registered syntax category, otherwise False.
-
-    Notes
-    -----
-    No builder context/evaluation or span handling occurs. This is syntax recognition, not a
-    runtime variable-type test; custom attribute-access errors propagate.
-
-    .. code:: python
-
-        # Source
-        x = T.bind(value)
-        # Rewrite-time decision and generated operation
-        I.is_scope_var_query_or_decl(T.bind)
-        x = X.scope_var_query_or_decl_(X.bind(value), name="x")
-    """
-    if isinstance(constructor, MethodType):
-        constructor = constructor.__func__
-    return bool(getattr(constructor, "__tvm_scope_var_query_or_decl__", False))
-
-
-def direct_call(constructor: _Callable) -> _Callable:
-    """Mark a call that owns its result without automatic source-result handling.
-
-    Parameters
-    ----------
-    constructor : callable
-        Producer, method or class supporting attribute assignment. Callable identity and
-        ordinary return values are retained.
-
-    Returns
-    -------
-    _Callable
-        The same callable; no forwarding callable or result wrapper is created.
-
-    Notes
-    -----
-    No builder context or constructor evaluation. Registered source calls omit ``bind_``, ``emit_``,
-    result ``at_`` and the outer ``with_at_group_`` wrapper. Callee/arguments still evaluate once in
-    order, and argument expressions follow their own syntax rules. The callable owns any IR
-    effects or source attribution it needs. This is separate from AlreadyEmitted, which
-    retains ordinary result-span attachment. Attribute errors propagate.
-
-    .. code:: python
-
-        # Source
-        @I.direct_call
-        def identity(value):
-            return value
-        # Source and generated Python
-        x = identity(value)
-        identity(value)
-    """
-    constructor.__tvm_direct_call__ = True
-    return constructor
-
-
-def is_direct_call(constructor: object) -> bool:
-    """Read direct-call syntax metadata without invoking the callable.
-
-    Parameters
-    ----------
-    constructor : object
-        Resolved callable, class or bound method; methods read their underlying function
-        metadata.
-
-    Returns
-    -------
-    bool
-        True if direct_call is registered, otherwise False.
-
-    Notes
-    -----
-    No frame, IR effect, naming or span attachment. Attribute-access errors propagate.
-    Recognition is by resolved callable metadata, never inferred from a constructed return
-    type or an arbitrary method spelling.
-
-    .. code:: python
-
-        # Source
-        x = I.meta_var(value)
-        # Rewrite-time decision; generated execution remains a direct call
-        I.is_direct_call(I.meta_var)
-        x = I.meta_var(value)
-    """
-    if isinstance(constructor, MethodType):
-        constructor = constructor.__func__
-    return bool(getattr(constructor, "__tvm_direct_call__", False))
 
 
 def scope_var_query_or_decl_(
@@ -2176,84 +1651,3 @@ def ne(lhs: Any, rhs: Any, *, span: _Span = None) -> _ir.Expr:
         X.ne(lhs, rhs)
     """
     raise NotImplementedError
-
-
-def register_result_members(constructor: _Callable, members: object) -> _Callable:
-    """Advertise a producer's static member namespace for syntax recognition.
-
-    Parameters
-    ----------
-    constructor : callable
-        Registered annotation or value producer. Bound methods attach metadata
-        to their underlying function; the supplied callable is returned unchanged.
-    members : object
-        Opaque namespace of actual member callables/descriptors. It describes
-        syntax available on the produced value, without describing an IR type.
-
-    Returns
-    -------
-    _Callable
-        The original producer with its member-namespace attribute.
-
-    Notes
-    -----
-    No constructor executes and no result, frame or per-parse binding is stored.
-    Parameter annotation and unambiguous declaration syntax can supply this
-    namespace from existing prescan facts. A registered member producer may
-    supply another namespace for chained views. Unknown or ambiguous aliases
-    retain their ordinary policy; spelling alone never marks a method direct.
-    Attribute-assignment errors propagate. Registration performs no source
-    attachment and does not itself mark a call as direct_call.
-
-    .. code:: python
-
-        # Registration: BufferMethods.permute is the actual registered method.
-        I.register_result_members(X.Buffer, BufferMethods)
-        I.direct_call(BufferMethods.permute)
-        # Source
-        view = A.permute(1, 0)  # A has source annotation X.Buffer(...).
-        # Generated Python preserves the producer's ordinary result.
-        view = A.permute(1, 0)
-    """
-    target = constructor.__func__ if isinstance(constructor, MethodType) else constructor
-    target.__tvm_result_members__ = members
-    return constructor
-
-
-def get_result_members(constructor: object) -> object | None:
-    """Read a producer's opaque syntax member namespace without evaluation.
-
-    Parameters
-    ----------
-    constructor : object
-        Resolved annotation/producer, bound method or property descriptor.
-        Methods use their function and properties use their getter metadata.
-
-    Returns
-    -------
-    object or None
-        Registered namespace, or None when static member information is absent.
-
-    Notes
-    -----
-    This reads syntax metadata only. It enters no frame, calls no producer and
-    inspects no constructed IR result. Metadata has callable lifetime; no
-    function-local lookup state is cached. Custom attribute-access errors
-    propagate. Member lookup still checks the actual member's direct_call or
-    declaration metadata; a namespace does not make all its methods direct.
-
-    .. code:: python
-
-        # Source
-        view = A.permute(1, 0)
-        # Rewrite-time lookup for A's registered source annotation.
-        members = I.get_result_members(X.Buffer)
-        I.is_direct_call(members.permute)
-        # Generated Python
-        view = A.permute(1, 0)
-    """
-    if isinstance(constructor, property):
-        constructor = constructor.fget
-    if isinstance(constructor, MethodType):
-        constructor = constructor.__func__
-    return getattr(constructor, "__tvm_result_members__", None)

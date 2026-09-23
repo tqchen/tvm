@@ -18,23 +18,7 @@
 """Package tvm.script.ir_builder.ir"""
 
 from tvm.ir import GenericConst, Range, StringImm, StringType
-from .parser_protocol import (
-    args_policy,
-    constexpr,
-    direct_call,
-    function_info,
-    get_args_policy,
-    get_result_members,
-    is_direct_call,
-    is_mutable_var_decl,
-    is_scope_var_query_or_decl,
-    register_binding_decl,
-    register_function,
-    register_mutable_var_decl,
-    register_result_members,
-    register_scope_var_query_or_decl,
-    register_type_var_decl,
-)
+from tvm.script.parser.protocol_registry import constexpr
 
 from ..base import IRBuilder, MISSING, annotation_value_, at_, with_at_group_, require_defined
 from .parser_protocol import check_well_formed_, module_member_, resolve_global_info_

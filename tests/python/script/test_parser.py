@@ -24,8 +24,8 @@ from types import SimpleNamespace
 import pytest
 from dummy_builder import Value
 
-from tvm.script.ir_builder.ir import parser_protocol as protocol
 from tvm.script.parser import entry
+from tvm.script.parser import protocol_registry as registry
 
 
 @pytest.mark.parametrize(
@@ -131,27 +131,27 @@ def test_policy_registration_is_immutable_and_aliases_keep_identity():
     # Before: alias = constructor; alias(shape=("n",))
     # Expected builder program: alias(shape=(X.resolve_type_var_("n"),))
     fields = {"shape": "expr_str", "device": "global_info"}
-    decorate = protocol.args_policy(fields)
+    decorate = registry.args_policy(fields)
     fields["shape"] = "global_info"
 
     def constructor(shape, device):
         return shape, device
 
     alias = decorate(constructor)
-    policy = protocol.get_args_policy(alias)
-    assert policy is protocol.get_args_policy(constructor)
+    policy = registry.get_args_policy(alias)
+    assert policy is registry.get_args_policy(constructor)
     assert dict(policy.fields) == {"shape": "expr_str", "device": "global_info"}
     with pytest.raises(TypeError):
         policy.fields["shape"] = "global_info"
-    assert protocol.get_args_policy([]) is None
-    assert protocol.get_args_policy(None) is None
+    assert registry.get_args_policy([]) is None
+    assert registry.get_args_policy(None) is None
 
-    @protocol.args_policy({"values": "expr_str"}, scalar_strings=False)
+    @registry.args_policy({"values": "expr_str"}, scalar_strings=False)
     def shorthand(values):
         return values
 
-    assert dict(protocol.get_args_policy(shorthand).fields) == {"values": "expr_str"}
-    assert protocol.get_args_policy(shorthand).expression.scalar_strings is False
+    assert dict(registry.get_args_policy(shorthand).fields) == {"values": "expr_str"}
+    assert registry.get_args_policy(shorthand).expression.scalar_strings is False
 
 
 @pytest.mark.parametrize(
@@ -165,7 +165,7 @@ def test_invalid_policy_registration_is_rejected(fields, message):
     # Before: register an unknown policy or a nonexistent constructor parameter.
     # Expected builder program: registration raises ValueError before parsing.
     with pytest.raises(ValueError, match=message):
-        protocol.args_policy(fields)(lambda shape: shape)
+        registry.args_policy(fields)(lambda shape: shape)
 
 
 @pytest.mark.parametrize("marker", ["I.constexpr", "X.constexpr"])
@@ -331,7 +331,7 @@ def test_binding_declarations_override_mutable_targets_and_unpack_once(language,
     }[target]
     calls = []
 
-    @protocol.register_binding_decl
+    @registry.register_binding_decl
     def axes():
         calls.append("axes")
         return returned
@@ -403,7 +403,7 @@ def test_shadowed_binding_declaration_alias_uses_ordinary_assignment(language, s
     # An ambient declaration policy cannot override a lexical callable binding.
     marker, calls = object(), []
 
-    @protocol.register_binding_decl
+    @registry.register_binding_decl
     def axis_alias():
         raise AssertionError("The shadowed ambient declaration must not run")
 
@@ -530,7 +530,7 @@ def test_policy_resolution_preserves_instance_and_namespace_callables(language):
     seen = []
 
     class Owner:
-        @protocol.args_policy({"shape": "expr_str"})
+        @registry.args_policy({"shape": "expr_str"})
         def constructor(self, shape):
             seen.append(shape)
             return shape
@@ -649,7 +649,7 @@ def main():
     if marker(True):
         X.record(1)
 """,
-            marker=protocol.constexpr,
+            marker=registry.constexpr,
         )
 
 
@@ -811,7 +811,7 @@ def test_non_call_expression_reads_keep_their_source_range(language, expression)
 
 @pytest.mark.parametrize("dtype", [None, "int32", "int64"])
 def test_argument_policy_preserves_expression_dtype(language, dtype):
-    @protocol.args_policy({"values": "expr_str"}, dtype=dtype)
+    @registry.args_policy({"values": "expr_str"}, dtype=dtype)
     def shape(values):
         return values
 
@@ -826,4 +826,4 @@ def main():
     assert increment.op == "add"
     assert increment.args[0] is n
     assert increment.args[1] == 1
-    assert protocol.get_args_policy(shape).expression.dtype == dtype
+    assert registry.get_args_policy(shape).expression.dtype == dtype

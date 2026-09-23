@@ -24,7 +24,7 @@ from tvm import ir
 from tvm.relax.script import builder as R
 from tvm.script.ir_builder import IRBuilder
 from tvm.script.ir_builder import ir as I
-from tvm.script.ir_builder.ir import parser_protocol as protocol
+from tvm.script.parser import protocol_registry as registry
 from tvm.tirx.script import builder as T
 
 
@@ -68,7 +68,7 @@ def test_symbol_lookup_requires_function_and_reuses_native_identity(dialect):
 def test_eager_annotations_preserve_missing_type_and_concrete_construction():
     # Before: X.Tensor(("n",)); captured_shape = (n,); X.Tensor(captured_shape)
     # Expected builder program: X.Tensor((X.resolve_type_var_("n"),)); X.Tensor(captured_shape)
-    @protocol.args_policy({"shape": "expr_str"}, scalar_strings=False)
+    @registry.args_policy({"shape": "expr_str"}, scalar_strings=False)
     def tensor(shape):
         return shape
 

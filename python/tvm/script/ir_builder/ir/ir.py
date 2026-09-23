@@ -21,11 +21,11 @@ from typing import TYPE_CHECKING, TypeVar
 
 from tvm.ir import BaseFunc, GlobalInfo, GlobalVar
 from tvm.runtime import Object as tvm_Object
+from tvm.script.parser.protocol_registry import direct_call
 
 from ..base import IRBuilder
 from . import _ffi_api
 from .frame import IRModuleFrame
-from .parser_protocol import direct_call
 
 if TYPE_CHECKING:
     from tvm.relax import DummyGlobalInfo, VDevice

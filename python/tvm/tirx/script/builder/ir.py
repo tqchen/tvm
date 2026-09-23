@@ -2890,7 +2890,7 @@ if TYPE_CHECKING:
 else:
 
     def _install_meta_class(cls):
-        from tvm.script.ir_builder.ir.parser_protocol import direct_call
+        from tvm.script.parser.protocol_registry import direct_call
 
         direct_call(cls)
         if cls.__dict__.get("_tirx_meta_class_installed", False):
