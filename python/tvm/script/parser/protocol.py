@@ -40,11 +40,6 @@ def constexpr(value: object) -> NoReturn:
     raise TypeError("constexpr is a parser syntax marker, not a runtime operation")
 
 
-def is_constexpr_marker(value: object) -> bool:
-    """Recognize the shared marker by identity without inspecting host values."""
-    return value is constexpr
-
-
 class ExprStrPolicy(NamedTuple):
     """Immutable syntax policy for registered constructor arguments.
 

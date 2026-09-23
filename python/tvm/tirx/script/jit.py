@@ -170,7 +170,7 @@ class TIRJit:
                     ann = resolve_marker(node)
                 except SyntaxError:
                     ann = None
-            if protocol.is_constexpr_marker(ann):
+            if ann is protocol.constexpr:
                 constexpr_names.add(name)
                 if param.default is not inspect.Parameter.empty:
                     constexpr_defaults[name] = param.default
