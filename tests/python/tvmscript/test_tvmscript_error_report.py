@@ -18,6 +18,7 @@
 import ast
 import inspect
 import re
+import sys
 import traceback
 
 import pytest
@@ -113,7 +114,9 @@ def test_invalid_block_function():
         with T.evaluate(0.0):  # error
             T.evaluate(1.0)
 
-    check_error(invalid_block_function, 4, TypeError)
+    # Ordinary Python reports a missing context-manager protocol differently before 3.11.
+    error_type = AttributeError if sys.version_info < (3, 11) else TypeError
+    check_error(invalid_block_function, 4, error_type)
 
 
 def test_return_not_allowed():
