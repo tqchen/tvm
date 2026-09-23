@@ -528,7 +528,7 @@ def _prepare_transpiler(
     # Give prescan its registered syntax policy before allocating injected names.
     if inspect.isfunction(source):
         tree.body[-1]._tvm_function_info = syntax_protocol.function_info(source)
-    prescan = PrescanCollector(metadata).collect(tree)
+    prescan = PrescanCollector(metadata, filename=filename).collect(tree)
     names = dict.fromkeys([*namespace, *prescan.reserved_names], 0)
 
     def fresh(prefix="_t"):
@@ -590,7 +590,6 @@ def _prepare_transpiler(
         infrastructure_name,
         span,
         fresh,
-        name_map=names,
         track_span=track_span,
         definition_scopes_name=definition_scopes_name,
         prescan=prescan,
@@ -666,9 +665,7 @@ def _build(tree, source, environment, definition_scope, filename, flags, *, trac
     transformer, namespace = _prepare_transpiler(
         tree, source, environment, definition_scope, filename, track_span=track_span
     )
-    original_name = transformer.fresh("_original")
-    namespace[original_name] = source if inspect.isclass(source) else None
-    transformed, result = transformer.program(tree, original_name, namespace)
+    transformed, result = transformer.program(tree)
     runnable = recompose_builder(
         transformed,
         source_fn=source,

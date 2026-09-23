@@ -34,7 +34,7 @@ class IRBuilderTranspiler(ast.NodeTransformer):
     """A single statement/expression visitor over the entry-owned AST.
 
     ``environment``, ``prescan``, ``filename`` and ``span`` are fixed inputs for
-    one translation. ``name_map`` is the unit-wide collision-free name allocator;
+    one translation. ``fresh`` allocates names in the entry-owned name map;
     ``bindings`` receives only injected host namespaces and helper functions.
     ``dialect_prefix``, ``current_scope``, ``host_expression`` and annotation
     substitutions are saved/restored at their lexical visitor boundaries. They
@@ -48,10 +48,9 @@ class IRBuilderTranspiler(ast.NodeTransformer):
         builder_name,
         infrastructure_name,
         span,
-        fresh=None,
+        fresh,
         *,
         prescan=None,
-        name_map=None,
         track_span=True,
         definition_scopes_name=None,
         current_scope=None,
@@ -67,8 +66,7 @@ class IRBuilderTranspiler(ast.NodeTransformer):
         self.track_span = track_span
         self.definition_scopes_name = definition_scopes_name
         # Allocation/injection last for this source unit, including nested code.
-        self.name_map = name_map if name_map is not None else dict.fromkeys(environment, 0)
-        self.fresh = fresh or self.fresh_unique_name
+        self.fresh = fresh
         self.bindings = bindings if bindings is not None else {}
         # Lexical syntax context, restored on nested function/host/annotation exit.
         self.dialect_prefix = builder_name
@@ -80,16 +78,6 @@ class IRBuilderTranspiler(ast.NodeTransformer):
         self.body_annotation_aliases = {}
         self.module_name = None
         self.module_functions = frozenset()
-
-    def fresh_unique_name(self, prefix="_t"):
-        """Reserve a generated identifier for the lifetime of this translation."""
-        counter = self.name_map.get(prefix, 0)
-        while f"{prefix}{counter}" in self.name_map:
-            counter += 1
-        name = f"{prefix}{counter}"
-        self.name_map[prefix] = counter + 1
-        self.name_map[name] = 0
-        return name
 
     def _inject(self, value, prefix="_host"):
         name = self.fresh(prefix)
@@ -177,6 +165,25 @@ class IRBuilderTranspiler(ast.NodeTransformer):
             self.host_expression = old
 
     def _resolve(self, node):
+        # Fixed namespace meanings coexist with Python lexical value bindings.
+        # A local ``range`` or callable hides the ambient binding for the whole
+        # source function, including reads before its assignment.
+        root = node
+        while isinstance(root, ast.Attribute):
+            root = root.value
+        scope = self.current_scope
+        if isinstance(root, ast.Name) and self.prescan is not None:
+            while isinstance(scope, ast.FunctionDef):
+                if any(item.name == root.id for item in self.prescan.bindings.get(scope, ())):
+                    return None
+                scope = next(
+                    (
+                        parent
+                        for parent, items in self.prescan.bindings.items()
+                        if any(item.node is scope and item.kind == "function" for item in items)
+                    ),
+                    None,
+                )
         return resolve_syntax(node, self.environment)
 
     def _constexpr_operand(self, node):
@@ -228,7 +235,11 @@ class IRBuilderTranspiler(ast.NodeTransformer):
                 ],
                 node,
             )
-        return node
+        return (
+            self._at(node, node)
+            if isinstance(node.ctx, ast.Load) and not self.host_expression
+            else node
+        )
 
     def visit_Attribute(self, node):
         # Source: Module.f; Builder: f (the same reserved native GlobalVar).
@@ -237,8 +248,13 @@ class IRBuilderTranspiler(ast.NodeTransformer):
             and node.value.id == self.module_name
             and node.attr in self.module_functions
         ):
-            return ast.copy_location(ast.Name(node.attr, node.ctx), node)
-        return self.generic_visit(node)
+            return self._at(ast.copy_location(ast.Name(node.attr, node.ctx), node), node)
+        result = self.generic_visit(node)
+        return (
+            self._at(result, node)
+            if isinstance(node.ctx, ast.Load) and not self.host_expression
+            else result
+        )
 
     def visit_Lambda(self, node):
         # Source: lambda n: n + outer; Builder: preserve the lambda's locals
@@ -280,7 +296,51 @@ class IRBuilderTranspiler(ast.NodeTransformer):
     visit_DictComp = visit_ListComp
     visit_GeneratorExp = visit_ListComp
 
-    def visit_Call(self, node):
+    def visit_Constant(self, node):
+        # Source: literal; Builder: I.at_(literal_loc, literal).
+        return node if self.host_expression else self._at(node, node)
+
+    def visit_List(self, node):
+        # Source: [a,b] / (a,b) / {a,b}; Builder: preserve the Python container
+        # and source-location every original child through this same visitor.
+        result = self.generic_visit(node)
+        return result if self.host_expression else self._at(result, node)
+
+    visit_Tuple = visit_List
+    visit_Set = visit_List
+    visit_Dict = visit_List
+
+    def visit_JoinedStr(self, node):
+        # Source: f"value={expr}"; Builder: keep literal fragments, visit expr.
+        # Python requires these fragments to remain Constant/FormattedValue.
+        for child in node.values:
+            if isinstance(child, ast.FormattedValue):
+                child.value = self.visit(child.value)
+                if child.format_spec is not None:
+                    child.format_spec = self.visit_JoinedStr(child.format_spec)
+        return node
+
+    def visit_Subscript(self, node):
+        # Source: buffer[index]; Builder: I.at_(load_loc, buffer[index]).
+        result = self.generic_visit(node)
+        if not self.host_expression and isinstance(node.ctx, ast.Load):
+            return self._at(result, node)
+        return result
+
+    def _module_owner(self, node):
+        """Recognize fixed source module aliases from existing binding records."""
+        if not isinstance(node, ast.Name):
+            return False
+        if node.id == self.module_name:
+            return True
+        records = [
+            item
+            for item in self.prescan.bindings.get(self.current_scope, ())
+            if item.name == node.id
+        ]
+        return bool(records) and all(item.kind == "module_alias" for item in records)
+
+    def visit_Call(self, node, *, callee=None):
         # Source: X.Tensor(("n",), vdevice="cuda:0")
         # Builder: X.Tensor((X.resolve_type_var_("n"),),
         #                   vdevice=I.resolve_global_info("cuda:0"))
@@ -297,11 +357,18 @@ class IRBuilderTranspiler(ast.NodeTransformer):
             isinstance(node.func, ast.Name) and node.func.id in self.module_functions
         ) or (
             isinstance(node.func, ast.Attribute)
-            and isinstance(node.func.value, ast.Name)
-            and node.func.value.id == self.module_name
+            and self._module_owner(node.func.value)
             and node.func.attr in self.module_functions
         )
-        node = self.generic_visit(node)
+        # Generated callees are already builder syntax. Only their original
+        # arguments need the main visitor; do not give injected names fake spans.
+        if callee is not None:
+            node.func = callee
+        elif not generated:
+            node.func = self.visit(node.func)
+        node.args = [self.visit(value) for value in node.args]
+        for keyword in node.keywords:
+            keyword.value = self.visit(keyword.value)
         # Source: declared_global(x, y)
         # Builder: X.call_global_var_(declared_global, [x, y])
         if global_call and not self.host_expression:
@@ -773,12 +840,17 @@ class IRBuilderTranspiler(ast.NodeTransformer):
             return self.generic_visit(node)
         if node.orelse:
             self._error(node, "A construction loop does not support an else clause")
-        iterable = node.iter
-        if isinstance(iterable, ast.Call) and self._resolve(iterable.func) is range:
-            iterable.func = ast.copy_location(
-                ast.Attribute(ast.Name(self.dialect_prefix, ast.Load()), "range_", ast.Load()),
-                iterable.func,
+        if isinstance(node.iter, ast.Call) and self._resolve(node.iter.func) is range:
+            # Normalize only the known builtin; a lexical range binding follows
+            # the ordinary source-call path. Arguments keep that one call scope.
+            iterable = self.visit_Call(
+                node.iter,
+                callee=ast.Attribute(
+                    ast.Name(self.dialect_prefix, ast.Load()), "range_", ast.Load()
+                ),
             )
+        else:
+            iterable = self.visit(node.iter)
         if isinstance(node.target, ast.Name):
             names = ast.Constant(node.target.id)
         elif isinstance(node.target, ast.Tuple | ast.List):
@@ -791,7 +863,7 @@ class IRBuilderTranspiler(ast.NodeTransformer):
             )
         else:
             self._error(node.target, "Loop targets must be names or a flat tuple of names")
-        context = self._operation("for_", [self.visit(iterable)], node, names=names)
+        context = self._operation("for_", [iterable], node, names=names)
         body = self.transform_statements(node.body)
         return ast.copy_location(
             ast.With([ast.withitem(context, node.target)], body or [ast.Pass()]), node
@@ -913,7 +985,7 @@ class IRBuilderTranspiler(ast.NodeTransformer):
             return protocol.FunctionDecoratorInfo(None, python=True), ast.Dict([], [])
         self._error(node, f"Function {node.name!r} has no registered construction kind")
 
-    def function_program(self, node, *, local=False):
+    def function_program(self, node, *, local=False, declare=True):
         """Declare one native frame and emit one body function taking that frame.
 
         Annotation aliases retain actual definition-local Python values; source
@@ -1045,19 +1117,22 @@ class IRBuilderTranspiler(ast.NodeTransformer):
             )
         for item in facts:
             if item.direct and item.dtype is not None and item.kind in ("symbol", "parameter"):
-                declaration.append(
-                    ast.copy_location(
-                        ast.Expr(
-                            self._operation(
-                                "resolve_type_var_",
-                                [ast.Constant(item.name)],
-                                item.node,
-                                dtype=ast.Constant(item.dtype),
-                            )
-                        ),
-                        item.node,
-                    )
+                symbol = self._operation(
+                    "resolve_type_var_",
+                    [ast.Constant(item.name)],
+                    item.node,
+                    dtype=ast.Constant(item.dtype),
                 )
+                if item.kind == "parameter":
+                    alias = self.fresh("_symbol")
+                    symbol_aliases[item.name] = alias
+                    declaration.append(
+                        ast.copy_location(
+                            ast.Assign([ast.Name(alias, ast.Store())], symbol), item.node
+                        )
+                    )
+                else:
+                    declaration.append(ast.copy_location(ast.Expr(symbol), item.node))
         self.annotation_aliases = {**aliases, **symbol_aliases}
         constexpr_aliases = {}
         ordered = sorted(
@@ -1142,7 +1217,9 @@ class IRBuilderTranspiler(ast.NodeTransformer):
         # Builder: with X.function(decl=True) as fn: signature
         with self._host():
             options = self.visit(options)
-        keywords = [ast.keyword(None, options), ast.keyword("decl", ast.Constant(True))]
+        keywords = [ast.keyword(None, options)]
+        if declare:
+            keywords.append(ast.keyword("decl", ast.Constant(True)))
         if local:
             keywords.append(ast.keyword("local", ast.Constant(True)))
         if self.track_span:
@@ -1153,21 +1230,21 @@ class IRBuilderTranspiler(ast.NodeTransformer):
             ),
             node,
         )
-        statements.append(
-            ast.copy_location(
-                ast.With([ast.withitem(constructor, ast.Name(frame, ast.Store()))], declaration),
-                node,
+        if declare:
+            declaration_scope = ast.With(
+                [ast.withitem(constructor, ast.Name(frame, ast.Store()))], declaration
             )
-        )
-        statements.append(
-            ast.copy_location(
-                ast.Assign(
-                    [ast.Name(node.name, ast.Store())],
-                    ast.Attribute(ast.Name(frame, ast.Load()), "reference", ast.Load()),
-                ),
-                node,
+            statements.append(ast.copy_location(declaration_scope, node))
+            reference = ast.Attribute(ast.Name(frame, ast.Load()), "reference", ast.Load())
+            statements.append(
+                ast.copy_location(ast.Assign([ast.Name(node.name, ast.Store())], reference), node)
             )
-        )
+        else:
+            # Source: a standalone nonrecursive function.
+            # Builder: fn = X.function(); build(fn) enters once for signature+body.
+            statements.append(
+                ast.copy_location(ast.Assign([ast.Name(frame, ast.Store())], constructor), node)
+            )
         # The body re-enters the exact native frame. Runtime parameter storage
         # stays native; the short iterator is consumed once by source parameters.
         iterator = self.fresh("_arguments")
@@ -1237,7 +1314,11 @@ class IRBuilderTranspiler(ast.NodeTransformer):
         body.extend(self.transform_statements(node.body))
         self.body_annotation_aliases = old_body_annotations
         resumed = ast.copy_location(
-            ast.With([ast.withitem(ast.Name(frame, ast.Load()))], body), node
+            ast.With(
+                [ast.withitem(ast.Name(frame, ast.Load()))],
+                body if declare else [*declaration, *body],
+            ),
+            node,
         )
         definition = self._definition(body_name, [frame], [resumed], node)
         if not local:
@@ -1251,11 +1332,10 @@ class IRBuilderTranspiler(ast.NodeTransformer):
         self.dialect_prefix, self.current_scope, self.annotation_aliases = old
         return statements, frame, body_name
 
-    def program(self, tree, original_name, bindings):
+    def program(self, tree):
         """Emit direct native module construction, declarations, then bodies."""
         from .entry import make_opaque_function
 
-        self.bindings = bindings
         root, prefix = tree.body[-1], tree.body[:-1]
         if not isinstance(root, ast.ClassDef | ast.FunctionDef):
             self._error(root, "Source must contain one function or module class")
@@ -1266,9 +1346,10 @@ class IRBuilderTranspiler(ast.NodeTransformer):
             self._error(root, "Duplicate function declaration")
         self.module_name = root.name if is_module else None
         self.module_functions = frozenset(item.name for item in functions)
+        declare = is_module or root in self.prescan.recursive_functions
         builder, result = self.fresh("_builder"), self.fresh("_result")
         body = []
-        for function in functions:
+        for function in functions if declare else ():
             body.append(
                 ast.copy_location(
                     ast.Assign(
@@ -1371,7 +1452,7 @@ class IRBuilderTranspiler(ast.NodeTransformer):
                 )
                 python_functions.append((function.name, host))
                 continue
-            declaration, frame, callback = self.function_program(function)
+            declaration, frame, callback = self.function_program(function, declare=declare)
             body.extend(declaration)
             definitions.append(
                 ast.copy_location(
@@ -1390,7 +1471,13 @@ class IRBuilderTranspiler(ast.NodeTransformer):
         #   result = builder.get()
         module = ast.copy_location(
             ast.With(
-                [ast.withitem(self._call(self.infrastructure_name, "ir_module", [], root))], body
+                [
+                    ast.withitem(
+                        self._call(self.infrastructure_name, "ir_module", [], root),
+                        ast.Name(root.name, ast.Store()) if is_module else None,
+                    )
+                ],
+                body,
             ),
             root,
         )
@@ -1402,7 +1489,7 @@ class IRBuilderTranspiler(ast.NodeTransformer):
                         ast.Name(builder, ast.Store()),
                     )
                 ],
-                [module],
+                [module] if declare else body,
             ),
             root,
         )

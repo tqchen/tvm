@@ -19,10 +19,10 @@
 import pytest
 
 from tvm import ir, tirx
+from tvm.script import tirx as T
 from tvm.script.ir_builder import IRBuilder
 from tvm.script.ir_builder import ir as I
 from tvm.script.ir_builder.base import BypassEmit
-from tvm.script import tirx as T
 from tvm.tirx.script.builder import ir as native
 
 

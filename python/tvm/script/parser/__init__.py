@@ -74,6 +74,11 @@ def _initialize():
         ir.ir_module = entry.ir_module
         ir.pyfunc = entry.pyfunc
         for namespace in (tir_namespace, relax_namespace, ir):
+            # Materialize declared public entry points after builder bootstrap.
+            # Source-text decorators need the same registered metadata as Python
+            # decorator lookup, including entries owned lazily by a dialect.
+            for name in vars(namespace).get("_ENTRY_EXPORTS", ()):
+                getattr(namespace, name)
             namespace.__all__ = sorted(
                 {
                     *vars(namespace).get("__all__", ()),

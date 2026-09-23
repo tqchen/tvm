@@ -79,14 +79,17 @@ class PrescanContext:
     namespaces: frozenset
     # Explicit source dataflow outputs preserve native export identity on exit.
     with_outputs: object
+    # Only source functions referencing themselves need early standalone refs.
+    recursive_functions: frozenset
 
 
 class PrescanCollector(ast.NodeVisitor):
     """Collect binding syntax once, then discard all traversal accumulators."""
 
-    def __init__(self, environment):
+    def __init__(self, environment, *, filename="<str>"):
         # Fixed lookup inputs last for this scan; never updated by assignments.
         self.environment = environment
+        self.filename = filename
         # Accumulators are frozen by collect(); no native values are stored.
         self.names = set(environment)
         self.bindings = {}
@@ -94,6 +97,10 @@ class PrescanCollector(ast.NodeVisitor):
         self.outputs = {}
         self.namespaces = set()
         self.exports = {}
+        self.recursive = set()
+        # Active source declarations, used only to recognize self references.
+        self.functions = []
+        self.module_name = None
         # Temporary lexical with-stack routes explicit output calls, then resets.
         self.regions = []
         # Lexical scope and dialect restore on function/class exit. direct marks
@@ -140,11 +147,15 @@ class PrescanCollector(ast.NodeVisitor):
             MappingProxyType(dict(self.outputs)),
             frozenset(self.namespaces),
             MappingProxyType({node: tuple(names) for node, names in self.exports.items()}),
+            frozenset(self.recursive),
         )
+
+    def _error(self, node, message):
+        raise SyntaxError(message, (self.filename, node.lineno, node.col_offset + 1, None))
 
     def _binding(self, name, node, kind="ordinary", annotation=None, dtype=None):
         if name in self.namespaces:
-            raise SyntaxError(f"Script namespace {name!r} cannot be rebound or shadowed")
+            self._error(node, f"Script namespace {name!r} cannot be rebound or shadowed")
         self.names.add(name)
         item = Binding(name, node, kind, annotation, dtype, self.direct)
         self.bindings[self.scope].append(item)
@@ -152,33 +163,39 @@ class PrescanCollector(ast.NodeVisitor):
 
     def visit_Name(self, node):
         if isinstance(node.ctx, ast.Store) and node.id in self.namespaces:
-            raise SyntaxError(f"Script namespace {node.id!r} cannot be rebound or shadowed")
+            self._error(node, f"Script namespace {node.id!r} cannot be rebound or shadowed")
         self.names.add(node.id)
+        if isinstance(node.ctx, ast.Load):
+            for function in reversed(self.functions):
+                if node.id == function.name:
+                    self.recursive.add(function)
+                    break
 
     def visit_arg(self, node):
         if node.arg in self.namespaces:
-            raise SyntaxError(f"Script namespace {node.arg!r} cannot be rebound or shadowed")
+            self._error(node, f"Script namespace {node.arg!r} cannot be rebound or shadowed")
         self.names.add(node.arg)
         self.generic_visit(node)
 
     def visit_alias(self, node):
         name = node.asname or node.name.split(".")[0]
         if isinstance(self.scope, ast.FunctionDef) and name in self.namespaces:
-            raise SyntaxError(f"Script namespace {name!r} cannot be rebound or shadowed")
+            self._error(node, f"Script namespace {name!r} cannot be rebound or shadowed")
         self.names.add(name)
 
     def visit_ClassDef(self, node):
         self.names.add(node.name)
-        old = self.scope
-        self.scope = node
+        old, old_module = self.scope, self.module_name
+        self.scope, self.module_name = node, node.name
         self.bindings[node] = []
         self.generic_visit(node)
-        self.scope = old
+        self.scope, self.module_name = old, old_module
 
     def visit_FunctionDef(self, node):
         self._binding(node.name, node, "function")
         old_scope, old_builder, old_direct = self.scope, self.builder, self.direct
         self.scope, self.direct = node, True
+        self.functions.append(node)
         original_kind = getattr(node, "_tvm_function_info", None)
         if original_kind is not None:
             self.builder = original_kind.builder
@@ -203,7 +220,8 @@ class PrescanCollector(ast.NodeVisitor):
                 arg.arg,
                 arg,
                 "mutable_parameter"
-                if protocol.is_mutable_var_decl(constructor, syntax="parameter")
+                if getattr(self.builder, "supports_mutable_declarations", True)
+                and protocol.is_mutable_var_decl(constructor, syntax="parameter")
                 else "parameter",
                 arg.annotation,
                 (declaration.dtype if declaration is not None else dtype)
@@ -218,6 +236,7 @@ class PrescanCollector(ast.NodeVisitor):
             self.visit(decorator)
         if node.returns:
             self.visit(node.returns)
+        self.functions.pop()
         self.scope, self.builder, self.direct = old_scope, old_builder, old_direct
 
     visit_AsyncFunctionDef = visit_FunctionDef
@@ -232,17 +251,24 @@ class PrescanCollector(ast.NodeVisitor):
             declaration = getattr(constructor, "__tvm_type_var_decl__", None)
             if declaration is not None and not value.args and not value.keywords:
                 self._binding(target.id, target, "symbol", value, declaration.dtype)
-            elif protocol.is_mutable_var_decl(constructor, syntax="call") or (
-                annotation is not None
-                and protocol.is_mutable_var_decl(
-                    resolve_syntax(
-                        annotation.value if isinstance(annotation, ast.Subscript) else annotation,
-                        self.environment,
-                    ),
-                    syntax="annotation",
+            elif getattr(self.builder, "supports_mutable_declarations", True) and (
+                protocol.is_mutable_var_decl(constructor, syntax="call")
+                or (
+                    annotation is not None
+                    and protocol.is_mutable_var_decl(
+                        resolve_syntax(
+                            annotation.value
+                            if isinstance(annotation, ast.Subscript)
+                            else annotation,
+                            self.environment,
+                        ),
+                        syntax="annotation",
+                    )
                 )
             ):
                 self._binding(target.id, target, "mutable", annotation)
+            elif isinstance(value, ast.Name) and value.id == self.module_name:
+                self._binding(target.id, target, "module_alias")
             else:
                 self._binding(target.id, target, annotation=annotation)
         elif isinstance(target, ast.Tuple | ast.List):
@@ -270,6 +296,7 @@ class PrescanCollector(ast.NodeVisitor):
 
     def visit_If(self, node):
         old_direct, self.direct = self.direct, False
+        self.generic_visit(node)
         marker = (
             isinstance(node.test, ast.Call)
             and isinstance(node.test.func, ast.Attribute)
@@ -287,13 +314,24 @@ class PrescanCollector(ast.NodeVisitor):
                     return last.targets[0].id
                 if isinstance(last, ast.AnnAssign) and isinstance(last.target, ast.Name):
                     return last.target.id
-                return None
+                return self.outputs.get(last)
 
             then, otherwise = ending(node.body), ending(node.orelse)
-            if then is None or then != otherwise:
-                raise SyntaxError("IR conditional branches must end with the same named output")
-            self.outputs[node] = then
-        self.generic_visit(node)
+            # Effect-only branches have no Python output. Native branch frames
+            # still reject a non-void expression used as an effect-only ending.
+            effects = bool(
+                node.body
+                and node.orelse
+                and isinstance(node.body[-1], ast.Expr)
+                and isinstance(node.orelse[-1], ast.Expr)
+            )
+            if not effects:
+                if then is None or then != otherwise:
+                    location = node.orelse[-1] if node.orelse else node
+                    self._error(
+                        location, "IR conditional branches must end with the same named output"
+                    )
+                self.outputs[node] = then
         self.direct = old_direct
 
     def visit_For(self, node):

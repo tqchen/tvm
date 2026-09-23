@@ -113,6 +113,11 @@ class Frame:
     def __getitem__(self, name):
         return self.language.functions[name]
 
+    def __getattr__(self, name):
+        if self.kind == "module" and name in self.language.references:
+            return self.language.references[name]
+        raise AttributeError(name)
+
 
 class Language:
     """One recording builder namespace X and shared infrastructure namespace I."""
@@ -131,12 +136,14 @@ class Language:
             with_at_group_=self.with_at_group,
             resolve_global_info=self.resolve_global_info,
             reserve_function=self.reserve_function,
+            module_member_=lambda name, value: value,
             require_defined=self.require_defined,
             annotation_value_=lambda name, value: value,
             MISSING=self.missing,
             constexpr=protocol.constexpr,
         )
         self.X = SimpleNamespace(
+            supports_mutable_declarations=True,
             function=lambda **kwargs: Frame(self, "function", **kwargs),
             func_name=self.func_name,
             arg=self.arg,

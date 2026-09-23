@@ -532,3 +532,157 @@ def main():
 """,
             marker=protocol.constexpr,
         )
+
+
+@pytest.mark.parametrize("recursive", [False, True])
+def test_source_function_uses_declaration_only_when_reference_is_needed(language, recursive):
+    # Before: @X.script def main(x: ...): X.record(x)  (or main(x))
+    # Expected builder program:
+    # ordinary: with X.function(): x = X.arg(...); X.emit_(X.record(x))
+    # recursive: with X.function(decl=True) as fn: X.arg(...)
+    #            with fn: X.emit_(X.call_global_var_(fn.reference, [fn.params[0]]))
+    statement = "main(x)" if recursive else "X.record(x)"
+    result = language.parse(f"@X.script\ndef main(x: X.tensor((4,))):\n    {statement}\n")
+    entries = [event for event in language.events if event[:2] == ("enter", "function")]
+    assert [event[2] for event in entries] == ([True, False] if recursive else [False])
+    assert len([event for event in language.events if event[0] == "arg"]) == 1
+    if recursive:
+        assert entries[0][3] is entries[1][3]
+        call = result.body[0][1]
+        assert call.op == "call" and call.args[0] is language.references["main"]
+        assert call.args[1] is result.params[0]
+    else:
+        assert result.body[0][1] is result.params[0]
+
+
+@pytest.mark.parametrize("alias", [False, True])
+def test_module_alias_keeps_frame_identity_and_caller_dialect(language, alias):
+    # Before: cls = Module; cls.callee(x)
+    # Expected builder program:
+    # with I.ir_module() as Module: ...
+    # cls = X.bind_(Module, name="cls"); X.emit_(X.call_global_var_(cls.callee, [x]))
+    setup, owner = ("cls = Module", "cls") if alias else ("pass", "Module")
+    result = language.parse(f"""
+@I.ir_module
+class Module:
+    @X.script
+    def caller(x: X.tensor((4,))):
+        {setup}
+        {owner}.callee(x)
+    @X.script
+    def callee(y: X.tensor((4,))):
+        X.record(y)
+""")
+    call = result["caller"].body[0][1]
+    assert call.op == "call"
+    assert call.args == (language.references["callee"], result["caller"].params[0])
+    modules = [event[3] for event in language.events if event[:2] == ("enter", "module")]
+    assert len(modules) == 1
+    if alias:
+        bound = next(event[2] for event in language.events if event[:2] == ("bind", "cls"))
+        assert bound is modules[0]
+        assert bound.callee is language.references["callee"]
+
+
+@pytest.mark.parametrize(
+    "body, line, column, message",
+    [
+        ("    X = 1\n", 3, 5, "namespace"),
+        ("    for X in range(2):\n        pass\n", 3, 9, "namespace"),
+        (
+            "    if condition:\n        y = left\n    else:\n        z = right\n",
+            6,
+            9,
+            "same named output",
+        ),
+    ],
+)
+def test_syntax_diagnostics_point_to_the_offending_binding(language, body, line, column, message):
+    # Before: X = 1; or if condition: y = left; else: z = right
+    # Expected builder program: reject the offending namespace/output binding
+    # at its original filename, line and column, before running the builder.
+    language.X.__tvm_value_if__ = True
+    with pytest.raises(Exception, match=message) as error:
+        language.parse("@X.script\ndef main():\n" + body)
+    cause = error.value.__cause__
+    assert isinstance(cause, SyntaxError)
+    assert (cause.filename, cause.lineno, cause.offset) == ("dummy.py", line, column)
+    assert f"dummy.py:{line}: SyntaxError:" in str(error.value)
+    assert f" {line} | {body.splitlines()[line - 3]}" in str(error.value)
+    assert not language.events
+
+
+def test_void_branch_statements_need_no_synthetic_named_output(language):
+    # Before: if condition: X.record(None); else: X.record(None)
+    # Expected builder program:
+    # with X.If(condition):
+    #     with X.Then(): X.emit_(X.record(None))
+    #     with X.Else(): X.emit_(X.record(None))
+    language.X.__tvm_value_if__ = True
+    result = language.parse(
+        """
+@X.script
+def main():
+    if condition:
+        X.record(None)
+    else:
+        X.record(None)
+    X.record(9)
+""",
+        condition=Value("condition"),
+    )
+    assert [value for kind, value in result.body] == [None, None, 9]
+    assert not any(event[0] == "bind" for event in language.events)
+
+
+def test_lexical_range_binding_calls_the_custom_iterator_once(language):
+    # Before: range = custom_range; for i in range(4): X.record(i)
+    # Expected builder program: range = X.bind_(custom_range, name="range")
+    # with X.for_(range(4), names="i") as i: X.emit_(X.record(i))
+    calls = []
+
+    def custom_range(extent):
+        calls.append(extent)
+        return language.X.grid(2)
+
+    result = language.parse(
+        "@X.script\ndef main():\n    range = custom_range\n"
+        "    for i in range(4):\n        X.record(i)\n",
+        custom_range=custom_range,
+    )
+    assert calls == [4]
+    variable = result.body[0][1]
+    assert variable.op == "loop" and variable.args == (2,) and variable.name == "i"
+
+
+@pytest.mark.parametrize("expression", ["value", "holder.item", "items[0]", "7"])
+def test_non_call_expression_reads_keep_their_source_range(language, expression):
+    # Before: value; holder.item; items[0]; 7
+    # Expected builder program: X.emit_(I.at_(expression_loc, expression)).
+    # Native expression identity survives; host constants stay ordinary values.
+    value, reads, located = Value("read"), [], []
+
+    class Holder:
+        @property
+        def item(self):
+            reads.append("attribute")
+            return value
+
+        def __getitem__(self, index):
+            reads.append(index)
+            return value
+
+    def at(location, result):
+        located.append(((str(location[0].name), *location[1:]), result))
+        return language.at(location, result)
+
+    language.I.at_ = at
+    holder = Holder()
+    result = language.parse(
+        f"@X.script\ndef main():\n    {expression}\n", value=value, holder=holder, items=holder
+    )
+    expected = 7 if expression == "7" else value
+    location = ("dummy.py", 3, 3, 5, 5 + len(expression))
+    assert result.body[0][1] is expected
+    assert [(loc, result) for loc, result in located if loc == location] == [(location, expected)]
+    assert reads == {"holder.item": ["attribute"], "items[0]": [0]}.get(expression, [])

@@ -20,9 +20,9 @@ import pytest
 
 import tvm
 from tvm.script import parser
+from tvm.script import tirx as T
 from tvm.script.ir_builder import IRBuilder
 from tvm.script.ir_builder.base import BypassBind
-from tvm.script import tirx as T
 
 
 @pytest.mark.parametrize(

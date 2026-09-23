@@ -1239,8 +1239,8 @@ def test_if_branch_with_match_cast():
     @R.function
     def func(A: R.Tensor([16, 16]), is_bfloat16: R.Prim("bool")):
         if is_bfloat16:
-            A = R.match_cast(A, R.Tensor([16, 16], "bfloat16"))
-            B = A.astype("float16")
+            matched = R.match_cast(A, R.Tensor([16, 16], "bfloat16"))
+            B = matched.astype("float16")
         else:
             B = R.match_cast(A, R.Tensor([16, 16], "float16"))
         return B

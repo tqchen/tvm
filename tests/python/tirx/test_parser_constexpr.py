@@ -20,8 +20,8 @@ import pytest
 
 from tvm import ir, tirx
 from tvm.script import parser
-from tvm.script.ir_builder import ir as I
 from tvm.script import tirx as T
+from tvm.script.ir_builder import ir as I
 
 
 @pytest.mark.parametrize("marker", ["I.constexpr", "T.constexpr"])
