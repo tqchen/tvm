@@ -1123,16 +1123,9 @@ class IRBuilderTranspiler(ast.NodeTransformer):
                     item.node,
                     dtype=ast.Constant(item.dtype),
                 )
-                if item.kind == "parameter":
-                    alias = self.fresh("_symbol")
-                    symbol_aliases[item.name] = alias
-                    declaration.append(
-                        ast.copy_location(
-                            ast.Assign([ast.Name(alias, ast.Store())], symbol), item.node
-                        )
-                    )
-                else:
-                    declaration.append(ast.copy_location(ast.Expr(symbol), item.node))
+                # The native map knows later scalar dtypes, but a later Python
+                # parameter name is not in annotation scope until its own arg.
+                declaration.append(ast.copy_location(ast.Expr(symbol), item.node))
         self.annotation_aliases = {**aliases, **symbol_aliases}
         constexpr_aliases = {}
         ordered = sorted(
