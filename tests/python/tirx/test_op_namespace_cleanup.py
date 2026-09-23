@@ -293,9 +293,9 @@ def test_device_intrinsic_printer_roundtrips_canonical_namespaces():
     @T.prim_func
     def device_namespaces(dst: T.handle, src: T.handle):
         A = T.match_buffer(src, (1,), "float32")
-        R = T.alloc_buffer((1,), "float32", scope="local")
+        Result = T.alloc_buffer((1,), "float32", scope="local")
         T.cuda.cta_sync()
-        T.s_tir.ldg32(R[0], 1, A[0], 0)
+        T.s_tir.ldg32(Result[0], 1, A[0], 0)
         T.metal.simd_shuffle(A[0], 0)
         T.metal.simd_shuffle_up(A[0], 1)
         T.metal.simd_shuffle_down(A[0], 1)
