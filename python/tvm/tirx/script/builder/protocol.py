@@ -22,12 +22,8 @@ from functools import partial as _partial
 from tvm import ir as _ir
 from tvm import tirx as _tir
 from tvm.script.ir_builder import IRBuilder as _IRBuilder
+from tvm.script.ir_builder import base as _base
 from tvm.script.ir_builder import ir as _I
-from tvm.script.ir_builder.base import MISSING as _MISSING
-from tvm.script.ir_builder.base import BypassBind as _BypassBind
-from tvm.script.ir_builder.base import IRBuilderFrame as _NativeFrame
-from tvm.script.ir_builder.base import _construction_span
-from tvm.script.ir_builder.base import at as _at
 
 from .. import builder as _builder
 from . import frame as _frame
@@ -37,7 +33,7 @@ from . import ir as _native
 def _name(value, name, span):
     if name is not None:
         _IRBuilder.name(name, value)
-    return _at(span, value)
+    return _base.at(span, value)
 
 
 def _enter_concise(frame):
@@ -46,7 +42,7 @@ def _enter_concise(frame):
 
 
 def bind_(
-    value=_MISSING,
+    value=_base.MISSING,
     *,
     ty=None,
     name=None,
@@ -55,7 +51,7 @@ def bind_(
     frame_value=False,
 ):
     """Construct a named binding under the active primitive function's policy."""
-    if isinstance(value, _BypassBind):
+    if isinstance(value, _base.BypassBind):
         # Scope declarations already own their native binding.  Supply only the
         # missing source name; generic bypass values retain the immediate path.
         if isinstance(value, _native._ScopeIdResult) and _ir.is_prim_var(value.value):
@@ -84,7 +80,7 @@ def bind_(
                 thread.same_as(value) for thread in frame.env_threads
             ):
                 return _name(value, name, name_span)
-    with _construction_span(span):
+    with _base._construction_span(span):
         if frame_value:
             if isinstance(value, _frame.SBlockFrame):
                 raise TypeError("A block does not introduce an as-target value")
@@ -105,7 +101,7 @@ def bind_(
         if isinstance(value, _I.meta_var):
             return value.value
         if isinstance(ty, _native.LetAnnotation):
-            if value is _MISSING:
+            if value is _base.MISSING:
                 raise ValueError("An immutable binding requires an initializer")
             value = _builder._as_expr(value)
             variable = _name(ty.as_var(rhs_dtype=value.ty), name, name_span)
@@ -117,9 +113,9 @@ def bind_(
             value = _builder._as_expr(value)
             variable = _ir.Var(name or "", annotation)
             return _name(_native.Bind(value, var=variable), name, name_span)
-        if value is _MISSING:
+        if value is _base.MISSING:
             raise ValueError("An uninitialized binding requires a scalar type annotation")
-        if isinstance(value, _NativeFrame):
+        if isinstance(value, _base.IRBuilderFrame):
             return _name(_enter_concise(value), name, name_span)
         if isinstance(value, list | tuple):
             for index, item in enumerate(value):
@@ -143,21 +139,19 @@ def bind_(
 
 def emit_(value, *, span=None):
     """Consume an expression statement, including effect-only calls."""
-    from tvm.script.ir_builder.base import BypassEmit
-
-    if isinstance(value, _BypassBind):
+    if isinstance(value, _base.BypassBind):
         # Binding bypass does not imply emission bypass. Consume the declared
         # value normally, including each result of a multi-axis declaration.
         values = value.value if isinstance(value.value, (list, tuple)) else (value.value,)
         for item in values:
             emit_(item, span=span)
         return None
-    if isinstance(value, BypassEmit):
+    if isinstance(value, _base.BypassEmit):
         return None
     if value is None or isinstance(value, str | _ir.Var):
         return
-    with _construction_span(span):
-        if isinstance(value, _NativeFrame):
+    with _base._construction_span(span):
+        if isinstance(value, _base.IRBuilderFrame):
             _enter_concise(value)
         elif hasattr(value, "frames"):
             for frame in value.frames:
@@ -170,9 +164,7 @@ def emit_(value, *, span=None):
 
 def resolve_type_var_(name, dtype=None, *, value=None, span=None):
     """Resolve a symbol using the nearest native primitive-function frame."""
-    from tvm.script.ir_builder.base import _current_function_frame
-
-    return _current_function_frame().resolve_type_var(name, dtype, value=value, span=span)
+    return _base._current_function_frame().resolve_type_var(name, dtype, value=value, span=span)
 
 
 def call_global_var_(function, args):
@@ -180,12 +172,12 @@ def call_global_var_(function, args):
     return _native._call_global(function, *args)
 
 
-def decl_mutable_var_(value=_MISSING, *, ty=None, name=None, span=None, name_span=None):
+def decl_mutable_var_(value=_base.MISSING, *, ty=None, name=None, span=None, name_span=None):
     """Name explicit scalar/vector storage and optionally initialize an annotation declaration."""
     name_span = span if name_span is None else name_span
-    with _construction_span(span):
+    with _base._construction_span(span):
         if isinstance(ty, _native.LocalVectorAnnotation):
-            if value is not _MISSING:
+            if value is not _base.MISSING:
                 raise ValueError("Vector annotation does not support an initializer")
             return _name(_native.alloc_local(ty.shape, ty.dtype), name, name_span)
         if ty is not None:
@@ -194,7 +186,7 @@ def decl_mutable_var_(value=_MISSING, *, ty=None, name=None, span=None, name_spa
             if not isinstance(annotation, _ir.PrimType) or str(annotation) == "handle":
                 raise TypeError("Mutable scalar annotations require a primitive scalar type")
             storage = _native.local_scalar(str(annotation)).scalar
-            if value is not _MISSING:
+            if value is not _base.MISSING:
                 set_mutable_var_(storage, value, span=span)
         else:
             storage = value.scalar if isinstance(value, _native.scalar_wrapper) else value
@@ -209,7 +201,7 @@ def decl_mutable_var_(value=_MISSING, *, ty=None, name=None, span=None, name_spa
 
 def set_mutable_var_(target, value, *, span=None):
     """Store through an explicitly declared handle without rebinding it."""
-    with _construction_span(span):
+    with _base._construction_span(span):
         if isinstance(target, _native.scalar_wrapper):
             target = target.scalar
         if isinstance(target, _ir.TensorLoad):
