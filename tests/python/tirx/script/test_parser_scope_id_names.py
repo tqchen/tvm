@@ -22,7 +22,6 @@ import tvm
 from tvm.script import parser
 from tvm.script import tirx as T
 from tvm.script.ir_builder import IRBuilder
-from tvm.script.ir_builder.base import BypassBind
 
 
 @pytest.mark.parametrize(
@@ -46,13 +45,13 @@ def test_anonymous_scope_name_preserves_native_declaration(constructor, args):
         with T.function():
             T.device_entry()
             result = getattr(T, constructor)(*args)
-            original = result.value
+            original = result
             assert original.name == ""
-            bound = T.bind_(result, name="source_id")
+            bound = T.scope_var_query_or_decl_(result, name="source_id")
             assert bound.same_as(original)
             assert bound.name == "source_id"
             # Reusing the declaration must not rename its existing identity.
-            assert T.bind_(result, name="alias").same_as(bound)
+            assert T.scope_var_query_or_decl_(result, name="alias").same_as(bound)
             assert bound.name == "source_id"
             T.evaluate(bound)
         function = builder.get()
@@ -83,30 +82,31 @@ def test_explicit_native_scope_name_is_retained():
     with IRBuilder(), T.function():
         T.device_entry()
         result = T.thread_id([32])
-        IRBuilder.name("native_name", result.value)
-        assert T.bind_(result, name="source_name").same_as(result.value)
-        assert result.value.name == "native_name"
-        T.evaluate(result.value)
+        IRBuilder.name("native_name", result)
+        assert T.scope_var_query_or_decl_(result, name="source_name").same_as(result)
+        assert result.name == "native_name"
+        T.evaluate(result)
 
 
-def test_generic_bypass_does_not_opt_into_source_naming():
+def test_meta_var_preserves_anonymous_native_and_python_values():
     variable = tvm.ir.Var("", "int32")
-    assert T.bind_(BypassBind(variable), name="source_name").same_as(variable)
+    assert T.meta_var(variable).same_as(variable)
     assert variable.name == ""
     value = object()
-    assert T.bind_(BypassBind(value), name="source_name") is value
+    assert T.meta_var(value) is value
 
 
 def test_scope_tuple_preserves_value_and_individual_name_opt_in():
     with IRBuilder(), T.function():
         T.device_entry()
         result = T.cta_id([2, 3])
-        values = T.bind_(result, name="ids")
-        assert values is result.value
+        values = T.scope_var_query_or_decl_(result, name="ids")
+        assert values is result
         # A tuple target supplies no individual scalar assignment names.
         assert [value.name for value in values] == ["", ""]
         x, y = T.unpack(result)
-        for wrapped, value, name in zip((x, y), values, ("bx", "by")):
-            assert T.bind_(wrapped, name=name).same_as(value)
+        for item, value, name in zip((x, y), values, ("bx", "by")):
+            assert item is value
+            assert T.scope_var_query_or_decl_(item, name=name) is value
             assert value.name == name
             T.evaluate(value)

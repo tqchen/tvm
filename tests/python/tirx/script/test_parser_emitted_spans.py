@@ -20,7 +20,7 @@ from tvm import ir, tirx
 from tvm.script import tirx as T
 from tvm.script.ir_builder import IRBuilder
 from tvm.script.ir_builder import ir as I
-from tvm.script.ir_builder.base import BypassEmit
+from tvm.script.ir_builder.base import AlreadyEmitted
 from tvm.tirx.script.builder import ir as native
 
 
@@ -37,12 +37,12 @@ def locations(value):
 def test_evaluate_receipt_annotates_stored_statement():
     with IRBuilder() as builder:
         receipt = T.evaluate(1)
-        assert isinstance(receipt, BypassEmit)
+        assert isinstance(receipt, AlreadyEmitted)
         assert I.at_(loc(3), receipt) is receipt
         T.emit(receipt)
     result = builder.get()
     assert isinstance(result, tirx.Evaluate)
-    assert result.same_as(receipt.stmt)
+    assert result.same_as(receipt.value)
     assert locations(result) == [("source.py", 3, 1, 20)]
 
 
@@ -64,7 +64,7 @@ def test_native_frame_retains_span_until_exit():
     result = builder.get()
     assert isinstance(result, tirx.For)
     assert locations(result) == [("source.py", 6, 1, 20)]
-    assert result.body.same_as(receipt.stmt)
+    assert result.body.same_as(receipt.value)
     assert locations(result.body) == [("source.py", 7, 1, 20)]
 
 

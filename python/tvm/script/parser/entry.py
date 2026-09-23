@@ -17,7 +17,6 @@
 """Source acquisition and declaration/body execution for registered builders."""
 
 from __future__ import annotations
-import __future__
 
 import ast
 import copy
@@ -25,8 +24,8 @@ import dis
 import inspect
 import linecache
 import sys
-import textwrap
-from collections.abc import Callable, Mapping
+from collections import ChainMap
+from collections.abc import Callable, Mapping, Sequence
 from functools import wraps
 from types import FrameType, FunctionType
 from typing import TYPE_CHECKING, Any, TypeVar
@@ -35,19 +34,21 @@ from tvm.error import DiagnosticError
 from tvm.ir import SourceName
 from tvm.script.ir_builder import base
 from tvm.script.ir_builder import ir as builder_ir
+from tvm.script.ir_builder.ir import parser_protocol as syntax_protocol
 
 from . import jit_support
-from . import protocol as syntax_protocol
 from .diagnostics import diagnostic_error
-from .prescan import PrescanCollector
-from .transpile import IRBuilderTranspiler
+from .inspect_source import (
+    acquire_source,
+    capture_annotation_bindings,
+    capture_definition_scope,
+    capture_lexical_bindings,
+)
+from .prescan import PrescanCollector, resolve_syntax
+from .transpile import FunctionContext, IRBuilderTranspiler, ModuleContext
 
 if TYPE_CHECKING:
-    from tvm.ir import IRModule, Span
-    from tvm.relax import ExternFunc
-    from tvm.relax.base_py_module import BasePyModule
-    from tvm.runtime import Device
-    from tvm.target import Target
+    from tvm.ir import IRModule
 
 
 _Callable = TypeVar("_Callable", bound=Callable[..., Any])
@@ -79,7 +80,7 @@ def register_namespace(alias: str, namespace: object) -> None:
     _NAMESPACES[alias] = namespace
 
 
-def _closure_values(function: FunctionType) -> dict[str, Any]:
+def _read_closure_values(function: FunctionType) -> dict[str, Any]:
     values = {}
     for name, cell in zip(function.__code__.co_freevars, function.__closure__ or ()):
         try:
@@ -90,37 +91,15 @@ def _closure_values(function: FunctionType) -> dict[str, Any]:
     return values
 
 
-def _lexical_environment(obj: FunctionType | type) -> dict[str, Any]:
+def _read_lexical_environment(obj: FunctionType | type) -> dict[str, Any]:
     """Retain Python globals and closure bindings without inspecting callers."""
     if inspect.isfunction(obj):
-        return {**obj.__globals__, **_closure_values(obj)}
+        return {**obj.__globals__, **_read_closure_values(obj)}
     module = inspect.getmodule(obj)
     return dict(vars(module)) if module is not None else {}
 
 
-def _definition_scope(frame: FrameType) -> dict[str, Any]:
-    """Snapshot immediate locals and active enclosing Python function scopes.
-
-    Postponed annotations do not necessarily create closure cells. Retain their
-    active lexical ancestors only when each caller directly owns the child's
-    code object. An unrelated caller ends this chain, even in the same file.
-    Class locals belong only to the immediate definition context; enclosing
-    classes are not Python lexical scopes. No frame survives this snapshot.
-    """
-    scopes = [dict(frame.f_locals)]
-    while frame.f_back is not None:
-        parent = frame.f_back
-        if parent.f_globals is not frame.f_globals or not any(
-            constant is frame.f_code for constant in parent.f_code.co_consts
-        ):
-            break
-        if parent.f_code.co_flags & inspect.CO_NEWLOCALS:
-            scopes.append(dict(parent.f_locals))
-        frame = parent
-    return {name: value for scope in reversed(scopes) for name, value in scope.items()}
-
-
-def recompose_builder(
+def _recompose_builder(
     translated: ast.Module,
     *,
     source_fn: str | FunctionType | type,
@@ -130,7 +109,8 @@ def recompose_builder(
     name: str,
     environment: Mapping[str, Any],
     result: str | None = None,
-    definition_scopes_name: str | None = None,
+    definition_scope_name: str | None = None,
+    body_sources: Sequence[tuple[ast.FunctionDef, str, set[str]]] = (),
 ) -> Callable[..., Any]:
     """Compile one builder callable with source lexical and annotation scopes.
 
@@ -146,27 +126,17 @@ def recompose_builder(
         if inspect.isfunction(source_fn)
         else {}
     )
-    scopes = {
-        key: {
-            **_closure_values(function),
-            **definition_scope,
-            **getattr(function, "__tvm_definition_scope__", {}),
-        }
-        for key, function in originals.items()
-    }
-    if definition_scopes_name is not None:
-        namespace[definition_scopes_name] = scopes
+    if definition_scope_name is not None:
+        namespace[definition_scope_name] = definition_scope
 
     reserved = set(namespace)
     reserved.update(node.id for node in ast.walk(translated) if isinstance(node, ast.Name))
     reserved.update(node.arg for node in ast.walk(translated) if isinstance(node, ast.arg))
-    for body in ast.walk(translated):
-        original = originals.get(getattr(body, "_tvm_source_name", None))
+    for body, source_name, retained in body_sources:
+        original = originals.get(source_name)
         if original is None:
             continue
-        retained = body._tvm_signature_names
         parameters = {argument.arg for argument in body.args.args}
-        captures = {argument.arg for argument in body.args.kwonlyargs}
         # co_names also contains attribute spellings. Only actual global
         # instructions describe a Python global binding; an attribute may have
         # the same spelling as a captured closure cell (for example C.dtype).
@@ -175,11 +145,11 @@ def recompose_builder(
             for instruction in dis.get_instructions(original)
             if instruction.opname in ("LOAD_GLOBAL", "STORE_GLOBAL", "DELETE_GLOBAL")
         }
-        global_names -= retained | captures | parameters
+        global_names -= retained | parameters
         if global_names:
             body.body.insert(0, ast.copy_location(ast.Global(sorted(global_names)), body))
-        source_closure = _closure_values(original)
-        for captured in sorted((captures | source_closure.keys()) - retained - parameters):
+        source_closure = _read_closure_values(original)
+        for captured in sorted(source_closure.keys() - retained - parameters):
             alias = f"{name}_lexical_{len(namespace)}"
             while alias in reserved:
                 alias += "_"
@@ -198,22 +168,8 @@ def recompose_builder(
                 value = getattr(builtins, captured, base.MISSING)
             namespace[alias] = value
             reference = ast.copy_location(ast.Name(alias, ast.Load()), body)
-            if captured in captures:
-                index = next(i for i, arg in enumerate(body.args.kwonlyargs) if arg.arg == captured)
-                default = body.args.kw_defaults[index]
-
-                class LexicalDefault(ast.NodeTransformer):
-                    def visit_Name(self, node: ast.Name) -> ast.Name:
-                        return (
-                            ast.copy_location(ast.Name(alias, ast.Load()), node)
-                            if node.id == captured
-                            else node
-                        )
-
-                body.args.kw_defaults[index] = LexicalDefault().visit(default)
-            else:
-                body.args.kwonlyargs.append(ast.arg(captured))
-                body.args.kw_defaults.append(reference)
+            body.args.kwonlyargs.append(ast.arg(captured))
+            body.args.kw_defaults.append(reference)
 
     if result is not None:
         location = translated.body[-1]
@@ -239,10 +195,11 @@ def recompose_builder(
         ),
         namespace,
     )
-    return namespace[name]
+    # Pop the generated callable: its globals must never own it in return.
+    return namespace.pop(name)
 
 
-def _inside_class(function: FunctionType, frame: FrameType) -> bool:
+def _is_inside_class(function: FunctionType, frame: FrameType) -> bool:
     """Defer only in the exact class frame of a registered module decorator."""
     local = frame.f_locals
     if local.get("__module__") != function.__module__ or "__qualname__" not in local:
@@ -264,17 +221,12 @@ def _inside_class(function: FunctionType, frame: FrameType) -> bool:
     if frame.f_back is not None:
         environment.update(frame.f_back.f_locals)
 
-    def resolve(expr: ast.expr) -> object:
-        if isinstance(expr, ast.Name):
-            return environment.get(expr.id)
-        if isinstance(expr, ast.Attribute):
-            return getattr(resolve(expr.value), expr.attr, None)
-        return None
-
-    from tvm.relax.script.builder.ir import rewriter
-
     return any(
-        resolve(item.func if isinstance(item, ast.Call) else item) in (ir_module, rewriter)
+        getattr(
+            resolve_syntax(item.func if isinstance(item, ast.Call) else item, environment),
+            "__tvm_module_decorator__",
+            False,
+        )
         for item in node.decorator_list
     )
 
@@ -355,8 +307,9 @@ def make_decorator(
             try:
                 if frame.f_code is decorator.__code__:
                     frame = frame.f_back
-                function.__tvm_definition_scope__ = _definition_scope(frame)
-                deferred = _inside_class(function, frame)
+                deferred = _is_inside_class(function, frame)
+                # The module root supplies one scope for all deferred members.
+                definition_scope = {} if deferred else capture_definition_scope(frame)
             finally:
                 del frame
             function.__tvm_function_info__ = decorator.__tvm_function_info__
@@ -365,6 +318,7 @@ def make_decorator(
                 return function
             result = parse(
                 function,
+                definition_scope=definition_scope,
                 check_well_formed=options.get("check_well_formed", True),
             )
             result.__name__ = function.__name__
@@ -463,17 +417,22 @@ def make_macro_decorator(
             try:
                 if frame.f_code is decorator.__code__:
                     frame = frame.f_back
-                function.__tvm_definition_scope__ = _definition_scope(frame)
+                definition_scope = capture_definition_scope(frame)
             finally:
                 del frame
-            definition_env = _lexical_environment(function)
+            definition_env = capture_lexical_bindings(function)
+            definition_scope = capture_annotation_bindings(function, definition_scope)
 
             @wraps(function)
             def invoke(*args: Any, **kwargs: Any) -> Any:
                 bound = inspect.signature(function).bind(*args, **kwargs)
                 bound.apply_defaults()
                 environment = (
-                    {**definition_env, **(_closure_values(function) if late_binding else {})}
+                    {
+                        **function.__globals__,
+                        **definition_env,
+                        **(_read_closure_values(function) if late_binding else {}),
+                    }
                     if options.get("hygienic", True)
                     else {**function.__globals__, **inspect.currentframe().f_back.f_locals}
                 )
@@ -483,6 +442,7 @@ def make_macro_decorator(
                     {**environment, **bound.arguments},
                     set(bound.arguments),
                     preserve_return=preserve_return,
+                    definition_scope=definition_scope,
                 )
 
             invoke.__tvm_construction_helper__ = (builder, options)
@@ -494,7 +454,7 @@ def make_macro_decorator(
 
 
 def pyfunc(function: _Callable) -> _Callable:
-    """Mark a Python function for opaque registration in a module.
+    """Mark an ordinary Python callable for collection in a module.
 
     Parameters
     ----------
@@ -513,8 +473,8 @@ def pyfunc(function: _Callable) -> _Callable:
 
     Notes
     -----
-    The function body remains ordinary Python. Module construction delegates
-    registration to the builder runtime. This decorator enters no frame and
+    The function body remains ordinary Python. Shared module parsing attaches
+    it to the result's ``__pyfuncs__`` mapping. This decorator enters no frame and
     preserves callable identity for the function's lifetime.
     """
     function.__tvm_python_function__ = True
@@ -522,70 +482,6 @@ def pyfunc(function: _Callable) -> _Callable:
 
 
 syntax_protocol.register_function(pyfunc, None, python=True)
-
-
-def _source_lines(
-    source: FunctionType | type, definition_source: tuple[str, int] | None
-) -> tuple[list[str], int, str | None]:
-    """Recover a class from its exact decoration site when module inspection fails."""
-    try:
-        lines, start = inspect.getsourcelines(source)
-        return lines, start, inspect.getsourcefile(source)
-    except OSError:
-        if not inspect.isclass(source) or definition_source is None:
-            raise
-        filename, lineno = definition_source
-        lines = linecache.getlines(filename)
-        # Gallery runners may execute the class in a temporary __main__ module
-        # without __file__. Its decorator still has the original code location.
-        tree = ast.parse("".join(lines), filename)
-        for node in ast.walk(tree):
-            if isinstance(node, ast.ClassDef) and node.name == source.__name__:
-                start = min([node.lineno, *(item.lineno for item in node.decorator_list)])
-                if start <= lineno <= node.lineno:
-                    return lines[start - 1 : node.end_lineno], start, filename
-        raise
-
-
-def acquire_source(
-    source: str | FunctionType | type,
-    filename: str | None = None,
-    *,
-    definition_source: tuple[str, int] | None = None,
-) -> tuple[ast.Module, str, int]:
-    """Read source into a location-preserving AST, filename and compiler flags.
-
-    Text uses ``<str>`` unless a filename is supplied. Function/class source
-    retains its original file, line and UTF-8 column offsets, including the
-    decoration-site fallback used by gallery runners. Source inspection and
-    parsing errors propagate to the caller before diagnostic conversion.
-    The returned AST is the source snapshot; entry copies it once for rewriting.
-    """
-    members = vars(source).values() if inspect.isclass(source) else (source,)
-    flags = 0
-    for member in members:
-        code = getattr(member, "__code__", None)
-        if code is not None:
-            flags |= code.co_flags & __future__.annotations.compiler_flag
-    if isinstance(source, str):
-        text = source
-        filename = filename or "<str>"
-        start, indent = 1, 0
-        linecache.cache[filename] = (len(text), None, text.splitlines(keepends=True), filename)
-    else:
-        lines, start, source_filename = _source_lines(source, definition_source)
-        text = "".join(lines)
-        filename = filename or source_filename
-        indent = len(lines[0]) - len(lines[0].lstrip())
-    tree = ast.parse(textwrap.dedent(text), filename)
-    if start != 1:
-        ast.increment_lineno(tree, start - 1)
-    if indent:
-        for node in ast.walk(tree):
-            if hasattr(node, "col_offset"):
-                node.col_offset += indent
-                node.end_col_offset += indent
-    return tree, filename, flags
 
 
 def _prepare_transpiler(
@@ -619,18 +515,17 @@ def _prepare_transpiler(
     ]
     if imports:
         exec(compile(ast.Module(imports, []), filename, "exec", dont_inherit=True), namespace)
-    metadata_environment = {**namespace, **definition_scope}
-    if inspect.isclass(source):
-        metadata_environment.update(vars(source))
-    # Namespace owners may be modules, classes or user instances with registered
-    # methods. Keep their identity for descriptor-safe static policy lookup;
-    # transpilation never evaluates or classifies ordinary lexical values.
-    metadata = dict(metadata_environment)
+    # Fixed namespace lookup references the one root definition scope directly.
+    # A class namespace has precedence, matching its source definition context.
+    metadata = ChainMap(
+        vars(source) if inspect.isclass(source) else {}, definition_scope, namespace
+    )
     # Direct decorator application may have no decorator in the inspected AST.
     # Give prescan its registered syntax policy before allocating injected names.
-    if inspect.isfunction(source):
-        tree.body[-1]._tvm_function_info = syntax_protocol.function_info(source)
-    prescan = PrescanCollector(metadata, filename=filename).collect(tree)
+    root_info = syntax_protocol.function_info(source) if inspect.isfunction(source) else None
+    prescan = PrescanCollector(metadata, filename=filename).collect(
+        tree, root_function_info=root_info
+    )
     names = dict.fromkeys([*namespace, *prescan.reserved_names], 0)
 
     def fresh(prefix: str = "_t") -> str:
@@ -646,7 +541,7 @@ def _prepare_transpiler(
     # original function. Inject its metadata and opaque option bindings only.
     if inspect.isfunction(source) and syntax_protocol.function_info(source) is not None:
         decorator_name = fresh()
-        namespace[decorator_name] = metadata[decorator_name] = source
+        namespace[decorator_name] = source
         keywords = []
         for key, value in getattr(source, "__tvm_function_options__", {}).items():
             option_name = fresh()
@@ -657,7 +552,7 @@ def _prepare_transpiler(
             ast.copy_location(ast.Call(ast.Name(decorator_name, ast.Load()), [], keywords), root)
         ]
     builder_name, infrastructure_name = fresh("_X"), fresh("_I")
-    definition_scopes_name = fresh("_definition_scopes")
+    definition_scope_name = fresh("_definition_scope")
     namespace[infrastructure_name] = builder_ir
     source_name = fresh("_source") if track_span else None
     if track_span:
@@ -685,18 +580,25 @@ def _prepare_transpiler(
         )
         return ast.copy_location(location, node)
 
-    transformer = IRBuilderTranspiler(
+    context = ModuleContext(
         filename,
         metadata,
-        builder_name,
         infrastructure_name,
         span,
         fresh,
         track_span=track_span,
-        definition_scopes_name=definition_scopes_name,
+        definition_scope=definition_scope,
+        definition_scope_name=definition_scope_name,
+        source_functions=(
+            {key: value for key, value in vars(source).items() if inspect.isfunction(value)}
+            if inspect.isclass(source)
+            else {}
+        ),
         prescan=prescan,
         bindings=namespace,
-        **options,
+    )
+    transformer = IRBuilderTranspiler(
+        context, FunctionContext(options.pop("current_scope", None), builder_name), **options
     )
     return transformer, namespace
 
@@ -708,6 +610,7 @@ def _run_statements(
     bound_names: set[str],
     *,
     preserve_return: bool = False,
+    definition_scope: Mapping[str, Any] | None = None,
 ) -> Any:
     """Execute a macro body in its caller's active builder frames.
 
@@ -718,7 +621,7 @@ def _run_statements(
     """
     tree, filename, flags = acquire_source(source)
     tree = copy.deepcopy(tree)
-    definition_scope = getattr(source, "__tvm_definition_scope__", {})
+    definition_scope = {} if definition_scope is None else definition_scope
     transformer, namespace = _prepare_transpiler(
         tree,
         source,
@@ -728,11 +631,11 @@ def _run_statements(
         preserve_return=preserve_return,
         current_scope=tree.body[-1],
     )
-    namespace[transformer.dialect_prefix] = builder
+    namespace[transformer.function.dialect_prefix] = builder
     node = tree.body[-1]
     statements = transformer.transform_statements(node.body)
     names = sorted(name for name in bound_names if name in namespace)
-    helper_name = transformer.fresh("_macro")
+    helper_name = transformer.module.fresh("_macro")
     helper = ast.copy_location(
         ast.FunctionDef(
             helper_name,
@@ -751,10 +654,11 @@ def _run_statements(
     )
     if "type_params" in ast.FunctionDef._fields:
         helper.type_params = []
-    runnable = recompose_builder(
+    runnable = _recompose_builder(
         ast.Module([helper], []),
         source_fn=source,
-        definition_scope=definition_scope,
+        definition_scope=transformer.module.definition_scope,
+        body_sources=transformer.module.body_sources,
         filename=filename,
         flags=flags,
         name=helper_name,
@@ -763,67 +667,13 @@ def _run_statements(
     return runnable(*(namespace[name] for name in names))
 
 
-def _build(
-    tree: ast.Module,
-    source: str | FunctionType | type,
-    environment: Mapping[str, Any],
-    definition_scope: Mapping[str, Any],
-    filename: str,
-    flags: int,
-    *,
-    track_span: bool,
-) -> Any:
-    """Translate an owned AST and execute its direct native builder program.
-
-    Source expressions and annotations execute only in the generated program.
-    Recomposition restores the source's body and annotation scopes, then Python
-    compilation retains its original file and full AST ranges. Injected bindings
-    and name allocation live only for this invocation.
-    """
-    transformer, namespace = _prepare_transpiler(
-        tree, source, environment, definition_scope, filename, track_span=track_span
-    )
-    transformed, result = transformer.program(tree)
-    runnable = recompose_builder(
-        transformed,
-        source_fn=source,
-        definition_scope=definition_scope,
-        definition_scopes_name=transformer.definition_scopes_name,
-        filename=filename,
-        flags=flags,
-        name=transformer.fresh("_builder"),
-        environment=namespace,
-        result=result,
-    )
-    return runnable()
-
-
-def make_opaque_function(
-    name: str,
-    function: Callable[..., Any],
-    source: str,
-    location: tuple[SourceName, int, int, int, int] | Span | None = None,
-) -> ExternFunc:
-    """Represent a Python module member without executing its body."""
-    from tvm import relax
-
-    return relax.ExternFunc(name, span=base.source_span(location)).with_attrs(
-        {
-            "is_pyfunc": True,
-            "function_type": "python",
-            "python_function_name": name,
-            "python_source": source,
-            "python_packed_func": function,
-        }
-    )
-
-
 def parse(
     source: str | FunctionType | type,
     extra_vars: Mapping[str, Any] | None = None,
     *,
     filename: str | None = None,
     track_span: bool = True,
+    definition_scope: Mapping[str, Any] | None = None,
     **options: Any,
 ) -> Any:
     """Transpile and execute a source string, Python function, or Python class.
@@ -841,12 +691,14 @@ def parse(
     track_span : bool, optional
         Enable shared source metadata and IR location instrumentation.
         Default is True. False retains Python source locations only.
+    definition_scope : mapping of str to object, optional
+        Temporary definition-site bindings for annotation reconstruction. None
+        adds no external scope; parse never inspects its caller for bindings.
     **options
-        ``absent_params`` transports the legacy JIT's explicit mapping of
-        absent parameter names to None for the root function. Bare constexpr
-        annotations consume their captured bindings during builder execution.
-        Other options are accepted for entry-point compatibility; construction
-        policy comes from registered source decorators.
+        ``_specialization_bindings`` carries selected constexpr values and
+        explicit optional-parameter absence in one mapping. ``check_well_formed``
+        controls completed-result validation; construction policy otherwise
+        comes from the registered source decorators.
 
     Returns
     -------
@@ -872,21 +724,25 @@ def parse(
     definition frames are entered only during generated execution. Source
     acquisition errors propagate directly, before diagnostic conversion.
     """
-    env = {} if isinstance(source, str) else _lexical_environment(source)
+    # - Recover source and explicit lexical/definition inputs.
+    # - Copy the AST once, then collect source syntax facts.
+    # - Rewrite syntax into a builder program and recompose its lexical bindings.
+    # - Execute the private builder immediately and release temporary captures.
+    # Definition scope is a per-root input; it never replaces body globals/closures.
+    env = {} if isinstance(source, str) else _read_lexical_environment(source)
     env.update(extra_vars or {})
-    definition_scope = options.pop(
-        "_definition_scope", getattr(source, "__tvm_definition_scope__", {})
-    )
+    definition_scope = {} if definition_scope is None else definition_scope
     tree, filename, flags = acquire_source(
         source, filename, definition_source=options.pop("_definition_source", None)
     )
+    # Copy before prescan can decode annotations or rewrite the source tree.
     owned_tree = copy.deepcopy(tree)
+    _builder = None
+    definition_scope_name = None
     try:
         root = owned_tree.body[-1]
         root_name = root.name if isinstance(root, ast.FunctionDef) else None
         specialization = options.get("_specialization_bindings")
-        if specialization is None and options.get("absent_params") is not None:
-            specialization = {}
         check_well_formed = options.get("check_well_formed")
         if check_well_formed is None:
             check_well_formed = True
@@ -898,78 +754,45 @@ def parse(
                                 compile(ast.Expression(keyword.value), filename, "eval"),
                                 {**_NAMESPACES, **env},
                             )
-        with jit_support.specialization_context(root_name, specialization):
-            with jit_support.absent_parameters(root_name, options.get("absent_params")):
-                result = _build(
-                    owned_tree,
-                    source,
-                    env,
-                    definition_scope,
-                    filename,
-                    flags,
-                    track_span=track_span,
-                )
-        if check_well_formed:
-            _check_well_formed(result)
+        # Prescan and rewrite consume only the owned syntax and fixed metadata.
+        transformer, namespace = _prepare_transpiler(
+            owned_tree, source, env, definition_scope, filename, track_span=track_span
+        )
+        transformed, result_name = transformer.rewrite_module(
+            owned_tree, check_well_formed=check_well_formed
+        )
+        definition_scope_name = transformer.module.definition_scope_name
+        # Recomposition preserves original source ranges and body globals/closures.
+        _builder = _recompose_builder(
+            transformed,
+            source_fn=source,
+            definition_scope=transformer.module.definition_scope,
+            definition_scope_name=definition_scope_name,
+            body_sources=transformer.module.body_sources,
+            filename=filename,
+            flags=flags,
+            name=transformer.module.fresh("_builder"),
+            environment=namespace,
+            result=result_name,
+        )
+        # Important: do not retain _builder. Its globals and closures may keep
+        # values from the enclosing scope alive.
+        with jit_support.use_specialization(root_name, specialization):
+            result = _builder()
         return result
     except DiagnosticError:
         raise
     except Exception as error:
         raise diagnostic_error(error, filename, tree) from error
+    finally:
+        # Release temporary captures on both successful and exceptional exits.
+        if _builder is not None and definition_scope_name is not None:
+            _builder.__globals__.pop(definition_scope_name, None)
+        _builder = None
+        definition_scope = None
 
 
-def _check_well_formed(result: object) -> None:
-    """Apply the public entry point's default validation to constructed IR."""
-    from tvm import ir, relax, s_tir, tirx
-
-    message = (
-        "Program is not well-formed. If this is deliberate, set "
-        "check_well_formed=False in the top-level decorator."
-    )
-    if isinstance(result, ir.IRModule | relax.Function):
-        if not relax.analysis.check_well_formed(result):
-            raise ValueError(message)
-    if not isinstance(result, ir.IRModule | relax.Function | tirx.PrimFunc):
-        return
-    module = result if isinstance(result, ir.IRModule) else ir.IRModule.from_expr(result)
-    try:
-        s_tir.analysis.verify_well_formed(module)
-        for function in module.functions.values():
-            if isinstance(function, tirx.PrimFunc) and not function.attrs.get("s_tir", False):
-                tirx.analysis.verify_tirx_well_formed(function)
-    except Exception as error:
-        raise ValueError(f"{message}\n{error}") from error
-
-
-class _PyModuleFactory:
-    """Keep executable Python attachments on each fresh module instance."""
-
-    def __init__(self, module: IRModule, original_class: type) -> None:
-        self.ir_module: IRModule = module
-        self.original_class: type = original_class
-        self.pyfunc_methods: list[str] = list(getattr(module, "pyfuncs", {}))
-        self.__name__: str = original_class.__name__
-
-    def __call__(self, device: Device | None = None, target: Target | None = None) -> BasePyModule:
-        from tvm import cpu, ir
-        from tvm.relax.base_py_module import BasePyModule
-
-        source = self.ir_module
-        instance_module = ir.IRModule(
-            source.functions, attrs=source.attrs, global_infos=source.global_infos
-        )
-        instance = BasePyModule(instance_module, device or cpu(0), target)
-        for name in self.pyfunc_methods:
-            instance.add_python_function(name, getattr(self.original_class, name))
-        return instance
-
-    def __getattr__(self, name: str) -> Any:
-        return getattr(self.ir_module, name)
-
-
-def ir_module(
-    module: type | None = None, **options: Any
-) -> IRModule | _PyModuleFactory | Callable[[type], IRModule | _PyModuleFactory]:
+def ir_module(module: type | None = None, **options: Any) -> IRModule | Callable[[type], IRModule]:
     """Decorate a Python class with two-phase module construction.
 
     Parameters
@@ -998,31 +821,30 @@ def ir_module(
     acquisition errors and frame lifetime follow `parse`.
     """
 
-    def apply(module: type) -> IRModule | _PyModuleFactory:
+    def apply(module: type) -> IRModule:
         if not inspect.isclass(module):
             raise TypeError(f"Expect a class, but got: {module}")
         frame = inspect.currentframe().f_back
         try:
             if frame.f_code is ir_module.__code__:
                 frame = frame.f_back
-            definition_scope = _definition_scope(frame)
+            definition_scope = capture_definition_scope(frame)
             definition_source = (frame.f_code.co_filename, frame.f_lineno)
         finally:
             del frame
         result = parse(
             module,
-            _definition_scope=definition_scope,
+            definition_scope=definition_scope,
             _definition_source=definition_source,
             **options,
         )
-        from tvm.relax.base_py_module import BasePyModule
 
-        if issubclass(module, BasePyModule):
-            return _PyModuleFactory(result, module)
         result.__name__ = module.__name__
         return result
 
     return apply(module) if module is not None else apply
 
+
+ir_module.__tvm_module_decorator__ = True
 
 from_source = parse

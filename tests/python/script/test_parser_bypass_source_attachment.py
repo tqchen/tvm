@@ -14,22 +14,21 @@
 # KIND, either express or implied.  See the License for the
 # specific language governing permissions and limitations
 # under the License.
-"""Source attachment preserves common IR identity through binding bypass."""
+"""Source attachment preserves common IR identity through direct scope values."""
 
 import pytest
 
 import tvm
 from tvm.script.ir_builder import IRBuilder
 from tvm.script.ir_builder import ir as I
-from tvm.script.ir_builder.base import BypassBind
 
 
 @pytest.mark.parametrize("count", [1, 2])
-def test_bypass_source_attachment_preserves_value_identity(count):
+def test_scope_value_source_attachment_preserves_identity(count):
     span = tvm.ir.Span(tvm.ir.SourceName("scope.py"), 3, 3, 4, 25)
     with IRBuilder():
         values = tuple(tvm.ir.Var("", "int32") for _ in range(count))
-        result = BypassBind(values[0] if count == 1 else values)
+        result = values[0] if count == 1 else values
         assert I.at_(span, result) is result
         for value in values:
             assert value.span.same_as(span)

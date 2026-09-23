@@ -22,7 +22,7 @@ import tvm
 from tvm.script import parser
 from tvm.script import tirx as T
 from tvm.script.ir_builder import IRBuilder
-from tvm.script.ir_builder.base import BypassBind
+from tvm.script.ir_builder import ir as I
 
 
 @pytest.mark.parametrize(
@@ -48,7 +48,7 @@ def main():
         with T.function():
             T.func_name("main")
             T.device_entry()
-            declaration = getattr(T, constructor)(eval(extents)).value
+            declaration = getattr(T, constructor)(eval(extents))
             variables = declaration if isinstance(declaration, tuple) else (declaration,)
             with T.If(tvm.tirx.EQ(variables[0], 0)):
                 with T.Then():
@@ -75,8 +75,8 @@ def test_scope_owned_variable_does_not_replace_signature_symbol():
             signature_symbol = symbols.resolve_type_var("tx", "int32")
             T.device_entry()
             variable = T.thread_id([32])
-            bound = T.bind_(variable, name="tx")
-            assert bound.same_as(variable.value)
+            bound = T.scope_var_query_or_decl_(variable, name="tx")
+            assert bound is variable
             assert not bound.same_as(signature_symbol)
             assert symbols.resolve_type_var("tx").same_as(signature_symbol)
             T.evaluate(bound)
@@ -93,14 +93,32 @@ def test_unowned_anonymous_declarations_still_reuse_function_symbols():
 
 
 @pytest.mark.parametrize("dialect", ["tirx", "relax"])
-def test_bypass_bind_returns_exact_value_before_any_binding_policy(dialect):
+def test_meta_var_keeps_python_payload_identity_in_each_dialect(dialect):
     from importlib import import_module
 
-    builder = import_module(f"tvm.{dialect}.script.builder")
+    namespace = import_module(f"tvm.{dialect}.script")
     value = object()
-    # No builder or symbol frame is active. Neither an annotation nor a previous
-    # binding may cause ordinary binding logic to inspect the wrapped value.
-    assert builder.bind_(BypassBind(value), name="x", ty=object()) is value
+    # The shared identity call also works without a builder context.
+    assert I.meta_var(value) is value
+    observed = []
+
+    def observe(result):
+        observed.append(result)
+
+    decorator = "prim_func" if dialect == "tirx" else "function"
+    tail = "X.evaluate(0)" if dialect == "tirx" else "return X.const(0)"
+    parser.parse(
+        f"""
+@X.{decorator}
+def main():
+    kept = I.meta_var(payload)
+    I.meta_var(observe(kept))
+    {tail}
+""",
+        extra_vars={"X": namespace, "I": I, "payload": value, "observe": observe},
+    )
+    assert len(observed) == 1
+    assert observed[0] is value
 
 
 def test_scope_tuple_assignment_returns_native_values():
@@ -108,13 +126,14 @@ def test_scope_tuple_assignment_returns_native_values():
         with T.function():
             T.device_entry()
             result = T.cta_id([2, 3])
-            assert isinstance(result, BypassBind)
-            values = T.bind_(result, name="ids")
-            assert values is result.value
+            assert isinstance(result, tuple)
+            values = T.scope_var_query_or_decl_(result, name="ids")
+            assert values is result
             unpacked = T.unpack(result)
-            for variable, item in zip(values, unpacked):
-                assert isinstance(item, BypassBind)
-                assert T.bind_(item, name="axis").same_as(variable)
+            assert unpacked is result
+            for index, (variable, item) in enumerate(zip(values, unpacked)):
+                assert isinstance(item, tvm.ir.Var)
+                assert T.scope_var_query_or_decl_(item, name=f"axis_{index}") is variable
                 T.evaluate(variable)
 
 
@@ -154,13 +173,14 @@ def main():
         ("thread_id_in_wg", ([128],)),
     ],
 )
-def test_all_scope_id_helpers_opt_into_bypass(constructor, args):
+def test_all_scope_id_helpers_return_the_native_declared_variable(constructor, args):
     with IRBuilder() as builder:
         with T.function():
             T.device_entry()
             result = getattr(T, constructor)(*args)
-            assert isinstance(result, BypassBind)
-            value = T.bind_(result, name="id")
+            assert isinstance(result, tvm.ir.Var)
+            value = T.scope_var_query_or_decl_(result, name="id")
+            assert value is result
             T.evaluate(value)
         function = builder.get()
     declaration, use = function.body.body.seq
@@ -178,7 +198,7 @@ def test_standalone_scope_ids_direct(extents, emitter):
         function = builder.get()
     declaration = function.body.body
     assert isinstance(declaration, tvm.tirx.ScopeIdDefStmt)
-    values = result.value if isinstance(result.value, tuple) else (result.value,)
+    values = result if isinstance(result, tuple) else (result,)
     for declared, value in zip(getattr(declaration, "def").def_ids, values):
         assert declared.same_as(value)
 
@@ -205,11 +225,11 @@ def main():
 
 @pytest.mark.parametrize("emitter", [T.emit, T.emit_])
 @pytest.mark.parametrize("tuple_value", [False, True])
-def test_binding_bypass_does_not_suppress_value_emission(emitter, tuple_value):
+def test_scalar_and_tuple_values_emit_without_binding_wrappers(emitter, tuple_value):
     with IRBuilder() as builder:
         with T.function():
             values = (tvm.tirx.IntImm("int32", 7), tvm.tirx.IntImm("int32", 9))
-            emitter(BypassBind(values if tuple_value else values[0]))
+            emitter(values if tuple_value else values[0])
         function = builder.get()
     statements = function.body.seq if tuple_value else [function.body]
     assert [statement.value.value for statement in statements] == ([7, 9] if tuple_value else [7])

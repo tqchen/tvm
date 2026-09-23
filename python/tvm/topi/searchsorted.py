@@ -106,7 +106,7 @@ def searchsorted(sorted_sequence, values, right=False, out_dtype="int64"):
             values = T.buffer_proxy(values)
             indices = T.buffer_proxy(indices)
 
-            with T.parallel(0, num_search) as i:
+            with T.parallel(0, num_search) as (i,):
                 if len(sorted_sequence_shape) == 1:
                     sequence_offset = 0
                 else:

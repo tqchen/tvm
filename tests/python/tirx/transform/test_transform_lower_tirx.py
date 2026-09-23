@@ -21,7 +21,7 @@ import tvm_ffi
 import tvm
 import tvm.testing
 from tvm.script import tirx as T
-from tvm.script.parser.protocol import register_mutable_var_decl
+from tvm.script.ir_builder.ir.parser_protocol import register_mutable_var_decl
 from tvm.script.tirx import tile as Tx
 from tvm.tirx.function import PrimFunc
 from tvm.tirx.layout import laneid, warpid, wg_local_layout

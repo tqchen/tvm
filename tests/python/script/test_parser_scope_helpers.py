@@ -86,13 +86,13 @@ def test_lexical_helpers_are_defined_and_called_inside_frames(
     # The requested structure is with frame: def body(): ...; body().
     # Observe the actual transpiled program and still execute its normal path.
     programs = []
-    original = entry.recompose_builder
+    original = entry._recompose_builder
 
     def capture(translated, **kwargs):
         programs.append(copy.deepcopy(translated))
         return original(translated, **kwargs)
 
-    monkeypatch.setattr(entry, "recompose_builder", capture)
+    monkeypatch.setattr(entry, "_recompose_builder", capture)
     language.parse(source)
     assert len(programs) == 1
     tree = programs[0]
@@ -173,14 +173,14 @@ def test_zero_argument_helper_retains_real_closure_defaults(language, monkeypatc
     token = object()
     X = language.X
     helpers = []
-    original = entry.recompose_builder
+    original = entry._recompose_builder
 
     def capture(translated, **kwargs):
         result = original(translated, **kwargs)
-        helpers.extend(node for node in ast.walk(translated) if hasattr(node, "_tvm_source_name"))
+        helpers.extend(node for node, _, _ in kwargs["body_sources"])
         return result
 
-    monkeypatch.setattr(entry, "recompose_builder", capture)
+    monkeypatch.setattr(entry, "_recompose_builder", capture)
 
     @X.script
     def main(x: X.tensor((4,))):

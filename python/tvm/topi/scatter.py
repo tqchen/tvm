@@ -118,11 +118,11 @@ def scatter_nd(data, indices, updates, mode):
 
         with IRBuilder() as ib:
             with T.seq_scope():
-                with T.serial(0, fused_shape) as i:
+                with T.serial(0, fused_shape) as (i,):
                     out[i] = data[i]
 
-                with T.serial(0, fused_indices_dimension) as i:
-                    with T.parallel(0, fused_updates_dimension) as j:
+                with T.serial(0, fused_indices_dimension) as (i,):
+                    with T.parallel(0, fused_updates_dimension) as (j,):
                         offset = fused_updates_dimension
                         index = j  # This is x_M, .. x_{N-1} part of the index into out.
                         # Build up the indices[0, y_0, ..], .. indices[M-1, y_0, ..] part

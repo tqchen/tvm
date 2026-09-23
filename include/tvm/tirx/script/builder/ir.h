@@ -212,15 +212,14 @@ void BlockAttrs(ffi::Map<ffi::String, ffi::Any> attrs);
  * \param offset_factor The factor of elem_offset field.
  * \param layout The layout of the buffer.
  * \param allocated_addr The allocated address of the buffer. Might be multi-dimensional.
- * \return The allocated buffer or the AllocBufferFrame if the function is called under
- * T.prim_func(tirx=True).
+ * \return The buffer attached to its enclosing block or function allocation list.
  */
-ffi::Variant<BufferVar, AllocBufferFrame> SBlockAllocBuffer(
-    ffi::Array<PrimExpr> shape, PrimType dtype = PrimType::Float(32),
-    ffi::Optional<Expr> data = std::nullopt, ffi::Array<PrimExpr> strides = {},
-    PrimExpr elem_offset = PrimExpr(), ffi::String storage_scope = "", int align = -1,
-    int offset_factor = 0, ffi::Optional<Layout> layout = std::nullopt,
-    ffi::Array<PrimExpr> allocated_addr = {});
+BufferVar SBlockAllocBuffer(ffi::Array<PrimExpr> shape, PrimType dtype = PrimType::Float(32),
+                            ffi::Optional<Expr> data = std::nullopt,
+                            ffi::Array<PrimExpr> strides = {}, PrimExpr elem_offset = PrimExpr(),
+                            ffi::String storage_scope = "", int align = -1, int offset_factor = 0,
+                            ffi::Optional<Layout> layout = std::nullopt,
+                            ffi::Array<PrimExpr> allocated_addr = {});
 
 namespace axis {
 

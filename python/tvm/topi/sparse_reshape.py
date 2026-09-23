@@ -108,7 +108,7 @@ def sparse_reshape(
 
             # Cumulative Reverse Exclusive Multiply
             multipliers[prev_shape_size - 1] = Cast(new_shape_ptr.dtype, 1)
-            with T.serial(0, prev_shape_size - 1) as i_:
+            with T.serial(0, prev_shape_size - 1) as (i_,):
                 i = i_ + 1
                 multipliers[prev_shape_size - 1 - i] = (
                     prev_shape[prev_shape_size - i] * multipliers[prev_shape_size - i]
@@ -116,13 +116,13 @@ def sparse_reshape(
                 total_ele[0] *= prev_shape[prev_shape_size - i]
 
             division_total_ele[0] = Cast(new_shape_ptr.dtype, 1)
-            with T.serial(0, new_shape_size) as i:
+            with T.serial(0, new_shape_size) as (i,):
                 with T.If(new_shape[i] != -1):
                     with T.Then():
                         division_total_ele[0] *= new_shape[i]
 
             # Compute true output shape (replace negative ones)
-            with T.serial(0, new_shape_size) as i:
+            with T.serial(0, new_shape_size) as (i,):
                 with T.If(new_shape[i] == -1):
                     with T.Then():
                         out_new_shape[i] = Cast(
@@ -135,7 +135,7 @@ def sparse_reshape(
             equal_shape[0] = True
             with T.If(prev_shape_size == new_shape_size):
                 with T.Then():
-                    with T.serial(0, prev_shape_size) as i:
+                    with T.serial(0, prev_shape_size) as (i,):
                         with T.If(prev_shape[i] != out_new_shape[i]):
                             with T.Then():
                                 equal_shape[0] = False
@@ -145,32 +145,32 @@ def sparse_reshape(
             # Return same inputs if shapes are equal
             with T.If(equal_shape[0]):
                 with T.Then():
-                    with T.parallel(0, sparse_indices_ptr.shape[0]) as i:
-                        with T.serial(0, sparse_indices_ptr.shape[1]) as j:
+                    with T.parallel(0, sparse_indices_ptr.shape[0]) as (i,):
+                        with T.serial(0, sparse_indices_ptr.shape[1]) as (j,):
                             new_sparse_indices[i, j] = sparse_indices[i, j]
 
                 # Else compute new_sparse_indices
                 with T.Else():
                     dividers[new_shape_size - 1] = Cast(new_shape_ptr.dtype, 1)
-                    with T.serial(0, new_shape_size - 1) as i_:
+                    with T.serial(0, new_shape_size - 1) as (i_,):
                         i = i_ + 1
                         dividers[new_shape_size - 1 - i] = (
                             dividers[new_shape_size - i] * out_new_shape[new_shape_size - i]
                         )
 
-                    with T.parallel(0, sparse_indices_ptr.shape[0]) as i:
+                    with T.parallel(0, sparse_indices_ptr.shape[0]) as (i,):
                         flattened_indices[i] = Cast(new_shape_ptr.dtype, 0)
-                        with T.serial(0, sparse_indices_ptr.shape[1]) as j:
+                        with T.serial(0, sparse_indices_ptr.shape[1]) as (j,):
                             flattened_indices[i] += sparse_indices[i, j] * multipliers[j]
 
-                    with T.parallel(0, new_sparse_indices_ptr.shape[0]) as i:
+                    with T.parallel(0, new_sparse_indices_ptr.shape[0]) as (i,):
                         current_element_buf = T.alloc_buffer(
                             [1], new_shape_ptr.dtype, scope="local"
                         )
                         current_element = T.buffer_proxy(current_element_buf)
                         current_element[0] = flattened_indices[i]
 
-                        with T.serial(0, new_sparse_indices_ptr.shape[1]) as j:
+                        with T.serial(0, new_sparse_indices_ptr.shape[1]) as (j,):
                             new_sparse_indices[i, j] = Cast(
                                 sparse_indices_ptr.dtype,
                                 floordiv(current_element[0], dividers[j]),

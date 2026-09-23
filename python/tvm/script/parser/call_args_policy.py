@@ -31,7 +31,7 @@ import linecache
 import re
 from collections.abc import Callable
 
-from . import protocol
+from tvm.script.ir_builder.ir import parser_protocol as protocol
 
 
 class _LiteralParser:
@@ -39,7 +39,7 @@ class _LiteralParser:
     def __init__(self, filename: str) -> None:
         self.filename: str = filename
 
-    def _string_expression(self, node: ast.Constant) -> ast.expr:
+    def _parse_string_expression(self, node: ast.Constant) -> ast.expr:
         try:
             expression = ast.parse(node.value, mode="eval").body
         except SyntaxError as error:
@@ -51,7 +51,7 @@ class _LiteralParser:
         # source bytes. Generated call wrappers copy these four mapped fields.
         source = "".join(linecache.getlines(self.filename))
         literal = ast.get_source_segment(source, node) if source else None
-        positions = self._literal_positions(literal, node) if literal else None
+        positions = self._read_literal_positions(literal, node) if literal else None
         lines = node.value.splitlines(keepends=True)
         for inner in ast.walk(expression):
             if not hasattr(inner, "lineno"):
@@ -75,7 +75,9 @@ class _LiteralParser:
         return expression
 
     @staticmethod
-    def _literal_positions(literal: str, node: ast.Constant) -> dict[int, tuple[int, int]] | None:
+    def _read_literal_positions(
+        literal: str, node: ast.Constant
+    ) -> dict[int, tuple[int, int]] | None:
         """Map decoded expression byte offsets back through the literal's escapes."""
         match = re.match("(?i:([rub]*))([\"'])", literal)
         if match is None:
@@ -119,89 +121,31 @@ class _LiteralParser:
 def parse_annotation(node: ast.expr, filename: str) -> ast.expr:
     """Decode a quoted whole annotation without interpreting its Python names."""
     if isinstance(node, ast.Constant) and isinstance(node.value, str):
-        return _LiteralParser(filename)._string_expression(node)
+        return _LiteralParser(filename)._parse_string_expression(node)
     return node
 
 
 def handle_call_args_policy(
-    node: ast.Call, resolve: Callable[[ast.expr], object], infrastructure: str, filename: str
-) -> ast.Call:
-    """Normalize this call's marked literal arguments before normal visitation.
+    node: ast.Call, resolve: Callable[[ast.expr], object]
+) -> tuple[protocol.ArgsPolicy, list[str]] | None:
+    """Select source-argument policy before the main visitor traverses children.
 
-    This local preorder step neither visits ordinary arguments nor copies the
-    owned tree. The main visitor handles the normalized children exactly once.
-    String-derived names carry syntax provenance until ``visit_Name`` emits the
-    dialect's symbol lookup; they never introduce Python bindings.
+    Unmatched calls need no normalization. The returned positional names and
+    syntax policy guide that same visitor; no generated nodes are inserted into
+    an unvisited tree and no per-node provenance markers are needed.
     """
     constructor = resolve(node.func)
     policy = protocol.get_args_policy(constructor)
     if policy is None:
-        return node
-    literals = _LiteralParser(filename)
-
-    class Symbols(ast.NodeTransformer):
-        # Only the newly parsed argument string is visited here. This is literal
-        # normalization, not a second pass over source expressions.
-        def visit_Attribute(self, current: ast.Attribute) -> ast.Attribute:
-            if resolve(current.value) is not None:
-                return current
-            return self.generic_visit(current)
-
-        def visit_Call(self, current: ast.Call) -> ast.Call:
-            if resolve(current.func) is None:
-                current.func = self.visit(current.func)
-            current.args = [self.visit(value) for value in current.args]
-            for keyword in current.keywords:
-                keyword.value = self.visit(keyword.value)
-            return current
-
-        def visit_Name(self, current: ast.Name) -> ast.Name:
-            current._tvm_quoted_symbol = policy.expression.dtype
-            return current
-
-    def expression_field(current: ast.expr, nested: bool = False) -> ast.expr:
-        if isinstance(current, ast.Tuple | ast.List):
-            current.elts = [expression_field(value, True) for value in current.elts]
-        elif isinstance(current, ast.Constant) and isinstance(current.value, str):
-            if nested or policy.expression.scalar_strings:
-                return Symbols().visit(literals._string_expression(current))
-        return current
-
-    def argument(current: ast.expr, name: str | None) -> ast.expr:
-        kind = policy.fields.get(name)
-        if kind == "expr_str":
-            return expression_field(current)
-        if (
-            kind == "global_info"
-            and isinstance(current, ast.Constant)
-            and isinstance(current.value, str)
-        ):
-            # Source: X.Tensor(shape, vdevice="cuda:1")
-            # Builder: X.Tensor(shape, vdevice=I.resolve_global_info("cuda:1"))
-            result = ast.copy_location(
-                ast.Call(
-                    ast.Attribute(
-                        ast.Name(infrastructure, ast.Load()), "resolve_global_info", ast.Load()
-                    ),
-                    [current],
-                    [],
-                ),
-                current,
-            )
-            result._tvm_intrinsic = True
-            return result
-        return current
-
+        return None
     parameters = [
-        p.name
-        for p in inspect.signature(constructor).parameters.values()
-        if p.kind in (p.POSITIONAL_ONLY, p.POSITIONAL_OR_KEYWORD)
+        parameter.name
+        for parameter in inspect.signature(constructor).parameters.values()
+        if parameter.kind in (parameter.POSITIONAL_ONLY, parameter.POSITIONAL_OR_KEYWORD)
     ]
-    known_position = True
-    for index, value in enumerate(node.args):
-        known_position = known_position and not isinstance(value, ast.Starred)
-        name = parameters[index] if known_position and index < len(parameters) else None
-        node.args[index] = argument(value, name)
-    for keyword in node.keywords:
-        keyword.value = argument(keyword.value, keyword.arg)
-    return node
+    return policy, parameters
+
+
+def parse_expression_string(node: ast.Constant, filename: str) -> ast.expr:
+    """Decode one policy-marked string, preserving its physical source ranges."""
+    return _LiteralParser(filename)._parse_string_expression(node)

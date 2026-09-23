@@ -292,7 +292,7 @@ def get_sme_transpose_interleave_2svlx2svl_fp32_intrin(cols, rows):
                     T.writes(A_t[0:SVF2, 0:SVF2])
 
                     # Load rows of the input matrix
-                    with T.serial(0, SVF) as slice_idx:
+                    with T.serial(0, SVF) as (slice_idx,):
                         for sub_tile_idx in range(0, sub_tile_count):
                             row_offset = SVF if sub_tile_idx >= (sub_tile_count // 2) else 0
                             col_offset = SVF if sub_tile_idx % 2 else 0
@@ -315,7 +315,7 @@ def get_sme_transpose_interleave_2svlx2svl_fp32_intrin(cols, rows):
                             )
 
                     # Store columns to the output matrix
-                    with T.serial(0, SVF) as slice_idx:
+                    with T.serial(0, SVF) as (slice_idx,):
                         for sub_tile_idx in range(0, sub_tile_count):
                             col_offset = SVF if sub_tile_idx >= (sub_tile_count // 2) else 0
                             row_offset = SVF if sub_tile_idx % 2 else 0
@@ -424,7 +424,7 @@ def get_sme_transpose_interleave_block2_2svl_fp16_intrin():
                     T.writes(A_t[0:SVF, 0:SVF2])
 
                     # Load rows of the input matrix
-                    with T.serial(SVF // 2) as slice_idx:
+                    with T.serial(SVF // 2) as (slice_idx,):
                         for sub_tile_idx in range(2):
                             offset = slice_idx * A.strides[0] + (SVF * A.strides[0] * sub_tile_idx)
                             input_ptr = A.access_ptr("r", offset=offset)
@@ -451,7 +451,7 @@ def get_sme_transpose_interleave_block2_2svl_fp16_intrin():
                             )
 
                     # Store columns to the output matrix
-                    with T.serial(SVF // 2) as slice_idx:
+                    with T.serial(SVF // 2) as (slice_idx,):
                         for sub_tile_idx in range(2):
                             offset = slice_idx * 2 * A_t.strides[0] + (SVF * sub_tile_idx)
                             output_ptr = A_t.access_ptr("w", offset=offset)
@@ -632,7 +632,7 @@ def get_sme_gemm_interleaved_mopa_2svlx2svl_intrin(M, K, in_dtype):
 
                     # Iterate over the reduction axis applying outer product and accumulate
                     rows_per_iter = 1 if in_dtype == "float32" else 2
-                    with T.serial(T.ceildiv(K, rows_per_iter)) as k:
+                    with T.serial(T.ceildiv(K, rows_per_iter)) as (k,):
                         k_row = k * rows_per_iter
                         in_dtype_svf = tirx.get_vscale_expr(in_dtype)
 
@@ -694,7 +694,7 @@ def get_sme_gemm_interleaved_mopa_2svlx2svl_intrin(M, K, in_dtype):
                             )
 
                     # Store the accumulated tile results
-                    with T.serial(SVF) as slice_idx:
+                    with T.serial(SVF) as (slice_idx,):
                         for sub_tile_idx in range(sub_tile_count):
                             vert_offset = SVF if sub_tile_idx >= (sub_tile_count // 2) else 0
                             horiz_offset = SVF if sub_tile_idx % 2 else 0

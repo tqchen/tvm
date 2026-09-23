@@ -129,11 +129,13 @@ TVM_DLL tvm::Var EmitVarBinding(const tvm::relax::VarBinding& binding);
 /*! \brief Emit a binding with separate statement and variable-name ranges. */
 TVM_DLL tvm::Var EmitWithSpan(const tvm::relax::Expr& value,
                               const ffi::Optional<tvm::Type>& annotate_ty,
-                              const ffi::Optional<Span>& name_span);
+                              const ffi::Optional<Span>& name_span,
+                              const ffi::Optional<Span>& span = std::nullopt);
 
 /*! \brief Emit a match cast with separate statement and variable-name ranges. */
 TVM_DLL tvm::Var EmitMatchCastWithSpan(const tvm::relax::Expr& value, const tvm::Type& ty,
-                                       const ffi::Optional<Span>& name_span);
+                                       const ffi::Optional<Span>& name_span,
+                                       const ffi::Optional<Span>& span = std::nullopt);
 
 ///////////////////////////// If Then Else /////////////////////////////
 

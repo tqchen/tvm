@@ -24,24 +24,24 @@ from tvm import ir
 from tvm.relax.script import builder as R
 from tvm.script.ir_builder import IRBuilder
 from tvm.script.ir_builder import ir as I
-from tvm.script.parser import protocol
+from tvm.script.ir_builder.ir import parser_protocol as protocol
 from tvm.tirx.script import builder as T
 
 
 def test_global_info_requires_module_and_keeps_objects():
     # Before: X.Tensor((4,), "float32", vdevice="cuda:1")
-    # Expected builder program: X.Tensor((4,), "float32", I.resolve_global_info("cuda:1"))
+    # Expected builder program: X.Tensor((4,), "float32", I.resolve_global_info_("cuda:1"))
     # Without an enclosing module, a string lookup reports a missing context.
     marker = object()
-    assert I.resolve_global_info(marker) is marker
+    assert I.resolve_global_info_(marker) is marker
     for active_builder in (False, True):
         if active_builder:
             with IRBuilder(), T.function():
                 with pytest.raises(ValueError, match="module"):
-                    I.resolve_global_info("mesh[0]")
+                    I.resolve_global_info_("mesh[0]")
         else:
             with pytest.raises(ValueError, match="module"):
-                I.resolve_global_info("cuda:1")
+                I.resolve_global_info_("cuda:1")
 
 
 @pytest.mark.parametrize("dialect", [T])

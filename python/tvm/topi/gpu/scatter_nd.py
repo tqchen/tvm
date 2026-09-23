@@ -86,7 +86,7 @@ def scatter_nd(data, indices, updates, mode):
                     j = bx_scat * max_threads + tx_scat
                     with T.If(j < fused_updates_dimension):
                         with T.Then():
-                            with T.serial(0, fused_indices_dimension) as i:
+                            with T.serial(0, fused_indices_dimension) as (i,):
                                 offset = fused_updates_dimension
                                 index = j  # x_M, .. x_{N-1} part of the index into out.
                                 # Build up the indices[0, y_0, ..], ..,

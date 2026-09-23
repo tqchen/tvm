@@ -29,7 +29,8 @@ from dataclasses import dataclass, field
 from types import SimpleNamespace
 
 from tvm.script.ir_builder import IRBuilder
-from tvm.script.parser import entry, protocol
+from tvm.script.ir_builder.ir import parser_protocol as protocol
+from tvm.script.parser import entry
 
 
 @dataclass(eq=False)
@@ -85,9 +86,7 @@ class Frame:
             names = self.names
             names = (names,) if isinstance(names, str) else names
             variables = [Value("loop", (bound,), name) for name, bound in zip(names, self.values)]
-            return (
-                variables[0] if isinstance(self.names, str) and len(variables) == 1 else variables
-            )
+            return variables
         return self
 
     def __exit__(self, error_type, error, traceback):
@@ -138,12 +137,13 @@ class Language:
             ir_module=lambda: Frame(self, "module"),
             at_=self.at,
             with_at_group_=self.with_at_group,
-            resolve_global_info=self.resolve_global_info,
+            resolve_global_info_=self.resolve_global_info,
             reserve_function=self.reserve_function,
             module_member_=lambda name, value: value,
             require_defined=self.require_defined,
             annotation_value_=lambda name, value: value,
             MISSING=self.missing,
+            check_well_formed_=lambda result: None,
             constexpr=protocol.constexpr,
         )
         self.X = SimpleNamespace(
@@ -156,6 +156,8 @@ class Language:
             return_=lambda value, **kwargs: self.func_ret_value(value),
             resolve_type_var_=self.resolve_type_var,
             bind_=self.bind,
+            check_well_formed_=lambda result: None,
+            scope_var_query_or_decl_=lambda value, **kwargs: value,
             emit_=self.emit,
             decl_mutable_var_=self.decl_mutable,
             set_mutable_var_=self.set_mutable,
@@ -164,6 +166,7 @@ class Language:
             grid=lambda *bounds: Frame(self, "for", values=bounds),
             for_=self.for_frame,
             If=lambda condition, **kwargs: Frame(self, "if", values=(condition,)),
+            if_=lambda condition, **kwargs: Frame(self, "if", values=(condition,)),
             Then=lambda **kwargs: Frame(self, "then"),
             Else=lambda **kwargs: Frame(self, "else"),
             While=lambda condition, **kwargs: Frame(self, "while", values=(condition,)),

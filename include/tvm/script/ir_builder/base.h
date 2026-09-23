@@ -64,6 +64,8 @@ namespace ir_builder {
  */
 class IRBuilderFrameNode : public ffi::Object {
  public:
+  /*! \brief Capture the source-call context when this frame is constructed. */
+  IRBuilderFrameNode();
   /*! \brief A list of callbacks used when exiting the frame. */
   std::vector<ffi::TypedFunction<void()>> callbacks;
   /*! \brief Source context retained until this frame constructs its result. */
@@ -209,9 +211,11 @@ class IRBuilderNode : public ffi::Object {
   /*! \brief Pop the innermost frontend source span. */
   void PopSourceSpan();
   /*! \brief Return the normalized active source span, including expansion history. */
-  Span GetCurrentSourceSpan() const;
+  Span GetCurrentSourceSpan(Span location = Span()) const;
   /*! \brief Compose active source context onto a supported node or construction frame. */
   ffi::ObjectRef SetCurrentSourceSpan(ffi::ObjectRef obj) const;
+  /*! \brief Attach an explicit location composed with the active source-call context. */
+  ffi::ObjectRef SetSourceSpan(ffi::ObjectRef obj, Span span) const;
 };
 
 /*!

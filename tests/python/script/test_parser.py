@@ -24,7 +24,8 @@ from types import SimpleNamespace
 import pytest
 from dummy_builder import Value
 
-from tvm.script.parser import entry, protocol
+from tvm.script.ir_builder.ir import parser_protocol as protocol
+from tvm.script.parser import entry
 
 
 @pytest.mark.parametrize(
@@ -42,7 +43,7 @@ def test_argument_policies_reuse_symbols_and_resolve_only_marked_literals(
     # Before: x: X.tensor(("n + 1", "n"), "float32", "cuda:1")
     # Expected builder program:
     # X.arg("x", X.tensor((X.resolve_type_var_("n") + 1, X.resolve_type_var_("n")),
-    #                     "float32", I.resolve_global_info("cuda:1")))
+    #                     "float32", I.resolve_global_info_("cuda:1")))
     device = object()
     language.global_infos["cuda:1"] = device
     annotation = f"X.tensor({arguments})"
@@ -96,7 +97,7 @@ def main():
 def test_nested_policy_and_starred_calls_are_evaluated_once(language):
     # Before: outer(X.tensor(("n",), device="mesh[0]")); collect(*values, other=3)
     # Expected builder program: outer(X.tensor((X.resolve_type_var_("n"),),
-    #                             device=I.resolve_global_info("mesh[0]")))
+    #                             device=I.resolve_global_info_("mesh[0]")))
     seen = []
     mesh = object()
     language.global_infos["mesh[0]"] = mesh
@@ -486,7 +487,9 @@ def main():
     assert result.body[0][1] == 15
 
 
-@pytest.mark.parametrize("target, bounds, names", [("i", "4", "i"), ("i, j", "4, 5", ("i", "j"))])
+@pytest.mark.parametrize(
+    "target, bounds, names", [("i", "4", ("i",)), ("i, j", "4, 5", ("i", "j"))]
+)
 def test_loop_targets_configure_the_entered_frame(language, target, bounds, names):
     # Before: for i, j in X.grid(4, 5): X.record(i)
     # Expected builder program:
@@ -503,16 +506,16 @@ def main():
 
 
 def test_actual_decorator_preserves_annotation_definition_and_body_scopes(language):
-    # Before: def outer(extent): @X.script def f(x: X.tensor((extent,))): extent = 2
+    # Before: def outer(extent): @X.script def f(x: X.tensor((extent,))): local_extent = 2
     # Expected builder program:
-    # X.arg("x", X.tensor((definition_extent,))); extent = X.bind_(2, name="extent")
+    # X.arg("x", X.tensor((definition_extent,))); local_extent = X.bind_(2, name="local_extent")
     X = language.X
 
     def outer(extent):
         @X.script
         def main(x: X.tensor((extent,))):
-            extent = 2
-            X.record(extent)
+            local_extent = 2
+            X.record(local_extent)
 
         return main
 
@@ -676,7 +679,7 @@ def test_module_alias_keeps_frame_identity_and_caller_dialect(language, alias):
     # Before: cls = Module; cls.callee(x)
     # Expected builder program:
     # with I.ir_module() as Module: ...
-    # cls = X.bind_(Module, name="cls"); X.emit_(X.call_global_var_(cls.callee, [x]))
+    # cls = Module; X.emit_(X.call_global_var_(cls.callee, [x]))
     setup, owner = ("cls = Module", "cls") if alias else ("pass", "Module")
     result = language.parse(f"""
 @I.ir_module
@@ -695,9 +698,8 @@ class Module:
     modules = [event[3] for event in language.events if event[:2] == ("enter", "module")]
     assert len(modules) == 1
     if alias:
-        bound = next(event[2] for event in language.events if event[:2] == ("bind", "cls"))
-        assert bound is modules[0]
-        assert bound.callee is language.references["callee"]
+        assert not any(event[:2] == ("bind", "cls") for event in language.events)
+        assert modules[0].callee is language.references["callee"]
 
 
 @pytest.mark.parametrize(

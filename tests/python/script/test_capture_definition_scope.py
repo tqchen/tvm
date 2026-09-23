@@ -40,15 +40,15 @@ def jit_namespace(language):
 def _delayed(n, decorator, X):
     @decorator
     def function(output: X.tensor((n,), "int32")):
-        n = 2
-        X.record(n + VALUE)
+        local_n = 2
+        X.record(local_n + VALUE)
 
     return function
 
 
 @pytest.mark.parametrize("factory", [False, True])
 def test_reused_eager_decorator_captures_application_scope(factory, language):
-    # Before: a reused plain/factory decorator is applied where n=4, before body n=2.
+    # Before: a reused plain/factory decorator is applied where n=4, before body local_n=2.
     # Expected builder: X.arg receives extent 4 from application scope.
     X = language.X
     decorator = X.script() if factory else X.script

@@ -36,10 +36,6 @@ namespace relax {
 /*! \brief The base ir_builder frame for the relax dialect. */
 class RelaxFrameNode : public IRBuilderFrameNode {
  public:
-  /*! \brief Source range captured when this frame is entered. */
-  Span span;
-
-  void EnterWithScope() override;
   static void RegisterReflection() {
     namespace refl = tvm::ffi::reflection;
     refl::ObjectDef<RelaxFrameNode>();

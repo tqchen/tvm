@@ -275,8 +275,9 @@ tvm::Var EmitVarBinding(const tvm::relax::VarBinding& binding) {
 
 namespace {
 
-tvm::Var RecordBindingSpan(tvm::Var var, const ffi::Optional<Span>& name_span) {
-  Span span = IRBuilder::Current()->GetCurrentSourceSpan();
+tvm::Var RecordBindingSpan(tvm::Var var, const ffi::Optional<Span>& name_span,
+                           const ffi::Optional<Span>& statement_span) {
+  Span span = IRBuilder::Current()->GetCurrentSourceSpan(statement_span.value_or(Span()));
   if (span.defined()) {
     CheckBindingBlockFrameExistAndUnended()->binding_spans.Set(var, span);
   }
@@ -287,13 +288,14 @@ tvm::Var RecordBindingSpan(tvm::Var var, const ffi::Optional<Span>& name_span) {
 }  // namespace
 
 tvm::Var EmitWithSpan(const tvm::relax::Expr& value, const ffi::Optional<tvm::Type>& annotate_ty,
-                      const ffi::Optional<Span>& name_span) {
-  return RecordBindingSpan(Emit(value, annotate_ty), name_span);
+                      const ffi::Optional<Span>& name_span, const ffi::Optional<Span>& span) {
+  return RecordBindingSpan(Emit(value, annotate_ty), name_span, span);
 }
 
 tvm::Var EmitMatchCastWithSpan(const tvm::relax::Expr& value, const tvm::Type& ty,
-                               const ffi::Optional<Span>& name_span) {
-  return RecordBindingSpan(EmitMatchCast(value, ty), name_span);
+                               const ffi::Optional<Span>& name_span,
+                               const ffi::Optional<Span>& span) {
+  return RecordBindingSpan(EmitMatchCast(value, ty), name_span, span);
 }
 
 TVM_FFI_STATIC_INIT_BLOCK() {

@@ -43,7 +43,7 @@ def _calc_adjacent_diff_ir(data, output, binop=tirx.Sub):
     with IRBuilder() as ib:
         data_ptr = T.buffer_proxy(data)
         output_ptr = T.buffer_proxy(output)
-        with T.parallel(0, data.shape[0]) as i:
+        with T.parallel(0, data.shape[0]) as (i,):
             with T.If(i == 0):
                 with T.Then():
                     output_ptr[0] = 0

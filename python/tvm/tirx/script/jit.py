@@ -16,29 +16,39 @@
 # under the License.
 """Lazy JIT specialization; validation and caches stay outside transpilation."""
 
+from __future__ import annotations
+
 import ast
 import inspect
-from collections.abc import Callable
+from collections.abc import Callable, Mapping
+from types import FunctionType
 from typing import Any
 
-from tvm.script.parser import protocol
+from tvm.script.ir_builder.ir import parser_protocol as protocol
 from tvm.tirx import PrimFunc
 
 
 class OptionalAnnotation:
     """Retain the runtime annotation of a removable JIT parameter."""
 
-    def __init__(self, annotation):
+    def __init__(self, annotation: Any) -> None:
         self.annotation = annotation
 
-    def __tvm_optional_annotation__(self):
+    def __tvm_optional_annotation__(self) -> Any:
         return self.annotation
 
 
-def make_jit(builder):
+def make_jit(builder: object) -> Callable[..., Any]:
     """Create a JIT decorator for the canonical construction namespace."""
 
-    def jit(func=None, *, private=False, check_well_formed=True, is_stir=False, persistent=False):
+    def jit(
+        func: FunctionType | None = None,
+        *,
+        private: bool = False,
+        check_well_formed: bool = True,
+        is_stir: bool = False,
+        persistent: bool = False,
+    ) -> TIRJit | Callable[[FunctionType], TIRJit]:
         """Decorator: capture the kernel and defer parsing until ``.specialize()``.
 
         Use ``@T.jit`` (instead of ``@T.prim_func``) when the kernel takes
@@ -78,8 +88,8 @@ def make_jit(builder):
             absent = guarded.specialize(optional=None)
         """
 
-        def apply(function):
-            from tvm.script.parser.entry import _definition_scope
+        def apply(function: FunctionType) -> TIRJit:
+            from tvm.script.parser.inspect_source import capture_definition_scope
 
             if not inspect.isfunction(function):
                 raise TypeError(f"Expect a function, but got: {function}")
@@ -87,7 +97,7 @@ def make_jit(builder):
             try:
                 if frame.f_code is jit.__code__:
                     frame = frame.f_back
-                function.__tvm_definition_scope__ = _definition_scope(frame)
+                definition_scope = capture_definition_scope(frame)
             finally:
                 del frame
             function.__tvm_function_info__ = jit.__tvm_function_info__
@@ -96,7 +106,14 @@ def make_jit(builder):
                 "s_tir": is_stir,
                 "persistent": persistent,
             }
-            return TIRJit(function, check_well_formed, is_stir, persistent, private)
+            return TIRJit(
+                function,
+                check_well_formed,
+                is_stir,
+                persistent,
+                private,
+                definition_scope=definition_scope,
+            )
 
         return apply(func) if func is not None else apply
 
@@ -122,13 +139,18 @@ class TIRJit:
 
     def __init__(
         self,
-        func: Callable,
+        func: FunctionType,
         check_well_formed: bool = True,
         is_stir: bool = False,
         persistent: bool = False,
         private: bool = False,
+        *,
+        definition_scope: Mapping[str, Any] | None = None,
     ) -> None:
-        from tvm.script.parser.entry import _lexical_environment
+        from tvm.script.parser.inspect_source import (
+            capture_annotation_bindings,
+            capture_lexical_bindings,
+        )
 
         self.func = func
         self.check_well_formed = check_well_formed
@@ -137,23 +159,20 @@ class TIRJit:
         self.private = private  # pylint: disable=unused-private-member
         # Resolved closure vars (computed once; the function itself is the
         # capture point, so this never changes between specializations).
-        self._closure_vars: dict[str, Any] = _lexical_environment(func)
-        self._definition_scope = dict(getattr(func, "__tvm_definition_scope__", {}))
+        self._closure_vars: dict[str, Any] = capture_lexical_bindings(func)
+        # JIT deliberately retains only names read by deferred annotations.
+        # A new temporary builder is created for every uncached specialization.
+        self._definition_scope: dict[str, Any] = capture_annotation_bindings(
+            func, definition_scope or {}
+        )
         # Detect which params are marked T.constexpr or T.Optional. With PEP 563
         # (``from __future__ import annotations``), each annotation is a
         # string. Resolve only marker names; annotation constructors execute
         # later in the generated declaration's builder context.
         raw_anns = getattr(func, "__annotations__", {}) or {}
-        annotation_scope = {**self._closure_vars, **self._definition_scope}
+        annotation_scope = {**func.__globals__, **self._closure_vars, **self._definition_scope}
 
-        def resolve_marker(node):
-            if isinstance(node, ast.Name):
-                return annotation_scope.get(node.id)
-            if isinstance(node, ast.Attribute):
-                return inspect.getattr_static(resolve_marker(node.value), node.attr, None)
-            if isinstance(node, ast.Call) and resolve_marker(node.func) is OptionalAnnotation:
-                return OptionalAnnotation
-            return None
+        from tvm.script.parser.prescan import resolve_syntax
 
         sig = inspect.signature(func)
         constexpr_names: set[str] = set()
@@ -167,7 +186,11 @@ class TIRJit:
                     node = ast.parse(ann, mode="eval").body
                     if isinstance(node, ast.Constant) and isinstance(node.value, str):
                         node = ast.parse(node.value, mode="eval").body
-                    ann = resolve_marker(node)
+                    ann = resolve_syntax(
+                        node.func if isinstance(node, ast.Call) else node, annotation_scope
+                    )
+                    if isinstance(node, ast.Call) and ann is not OptionalAnnotation:
+                        ann = None
                 except SyntaxError:
                     ann = None
             if ann is protocol.constexpr:
@@ -179,9 +202,9 @@ class TIRJit:
         self.constexpr_names: frozenset[str] = frozenset(constexpr_names)
         self.constexpr_defaults: dict[str, Any] = constexpr_defaults
         self.optional_names: frozenset[str] = frozenset(optional_names)
-        self._cache: dict[tuple, PrimFunc] = {}
+        self._cache: dict[tuple[tuple[str, type, Any], ...], PrimFunc] = {}
 
-    def specialize(self, **specialization_kwargs) -> PrimFunc:
+    def specialize(self, **specialization_kwargs: Any) -> PrimFunc:
         """Build a PrimFunc by binding constexprs and absent optional params.
 
         Parameters
@@ -218,11 +241,8 @@ class TIRJit:
                 f"pass actual tensors when calling the compiled kernel (got: {invalid_optional!r})"
             )
 
-        supplied_constexprs = {
-            name: specialization_kwargs[name]
-            for name in self.constexpr_names & specialization_kwargs.keys()
-        }
-        effective = {**self.constexpr_defaults, **supplied_constexprs}
+        # One selection contains constexprs and explicit optional None values.
+        effective = {**self.constexpr_defaults, **specialization_kwargs}
         missing = self.constexpr_names - effective.keys()
         if missing:
             raise TypeError(
@@ -230,11 +250,9 @@ class TIRJit:
                 f"(no default provided): {sorted(missing)}"
             )
 
-        absent_params = {name: None for name in self.optional_names & specialization_kwargs.keys()}
         try:
-            cache_key = (
-                tuple((name, type(value), value) for name, value in sorted(effective.items())),
-                tuple(sorted(absent_params)),
+            cache_key = tuple(
+                (name, type(value), value) for name, value in sorted(effective.items())
             )
             cached = self._cache.get(cache_key)
         except TypeError as err:
@@ -248,8 +266,8 @@ class TIRJit:
         prim_func = parse(
             self.func,
             self._closure_vars,
-            _definition_scope=self._definition_scope,
-            _specialization_bindings={**effective, **absent_params},
+            definition_scope=self._definition_scope,
+            _specialization_bindings=effective,
             check_well_formed=self.check_well_formed,
         )
         setattr(prim_func, "__name__", self.func.__name__)

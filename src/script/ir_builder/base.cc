@@ -127,6 +127,10 @@ TVM_FFI_STATIC_INIT_BLOCK() {
   IRBuilderNode::RegisterReflection();
 }
 
+IRBuilderFrameNode::IRBuilderFrameNode() {
+  if (IRBuilder::IsInScope()) source_span = IRBuilder::Current()->GetCurrentSourceSpan();
+}
+
 void IRBuilderFrameNode::EnterWithScope() {
   IRBuilder::Current()->frames.push_back(ffi::GetRef<IRBuilderFrame>(this));
 }
@@ -165,17 +169,22 @@ void IRBuilderNode::PopSourceSpan() {
   source_spans.pop_back();
 }
 
-Span IRBuilderNode::GetCurrentSourceSpan() const {
+Span IRBuilderNode::GetCurrentSourceSpan(Span location) const {
   std::vector<Span> normalized;
   normalized.reserve(source_spans.size());
   for (const Span& span : source_spans) {
     AppendNormalizedSpan(span, &normalized);
   }
+  AppendNormalizedSpan(location, &normalized);
   return NormalizedSpan(normalized);
 }
 
 ffi::ObjectRef IRBuilderNode::SetCurrentSourceSpan(ffi::ObjectRef obj) const {
-  Span span = GetCurrentSourceSpan();
+  return SetSourceSpan(std::move(obj), Span());
+}
+
+ffi::ObjectRef IRBuilderNode::SetSourceSpan(ffi::ObjectRef obj, Span span) const {
+  span = ComposeSpan(GetCurrentSourceSpan(), span);
   if (span.defined()) {
     if (const auto* expr = obj.as<ExprNode>()) {
       expr->span = ComposeSpan(span, expr->span);
@@ -256,6 +265,7 @@ TVM_FFI_STATIC_INIT_BLOCK() {
       .def_method("script.ir_builder.IRBuilderPopSourceSpan", &IRBuilderNode::PopSourceSpan)
       .def_method("script.ir_builder.IRBuilderSetCurrentSourceSpan",
                   &IRBuilderNode::SetCurrentSourceSpan)
+      .def_method("script.ir_builder.IRBuilderSetSourceSpan", &IRBuilderNode::SetSourceSpan)
       .def("script.ir_builder.IRBuilderName", IRBuilder::Name<ffi::ObjectRef>);
 }
 

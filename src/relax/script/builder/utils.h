@@ -131,7 +131,7 @@ inline tvm::relax::SeqExpr GetSeqExprForBranch(const SeqExprFrame& frame, ffi::S
                            ? tvm::relax::DataflowBlock(last_block_bindings, last_block->span)
                            : tvm::relax::BindingBlock(last_block_bindings, last_block->span));
 
-  return tvm::relax::SeqExpr(new_blocks, body, frame->span);
+  return tvm::relax::SeqExpr(new_blocks, body, frame->source_span);
 }
 
 }  // namespace relax

@@ -38,11 +38,11 @@ from tvm_ffi.core import String
 from tvm import DataType, ir
 from tvm import tirx as tir
 from tvm.ir import Call, TensorLoad, Type, is_prim_expr
-from tvm.ir.base import deprecated
 from tvm.ir import register_op_attr as _register_op_attr
+from tvm.ir.base import deprecated
 from tvm.ir.prim import _ffi_api as _prim_ffi_api
 from tvm.runtime import convert
-from tvm.script.ir_builder.base import BypassBind, BypassEmit, IRBuilder
+from tvm.script.ir_builder.base import AlreadyEmitted, IRBuilder
 from tvm.script.ir_builder.ir import meta_var
 from tvm.script.ir_builder.ir.frame import IRModuleFrame
 from tvm.target import Target
@@ -670,22 +670,23 @@ def elected():
     )
 
 
-class _ScopeIdResult(BypassBind):
-    """A native scope declaration whose anonymous scalar may take a source name."""
-
-    __slots__ = ()
-
-
 def scope_id(
     extents: list[Expr | int] | None, parent: str, cur: str, dtype: str = "int32"
-) -> BypassBind:
+) -> Var | tuple[Var, ...]:
+    """Declare scope IDs between execution levels and return their native variables.
+
+    One dimension returns a variable; multiple dimensions return a tuple in
+    declaration order. ``None`` defers extent inference to LowerTIRx.
+    """
     ret = _ffi_api.ScopeId(extents, parent, "T.scope_id", cur, dtype)  # type: ignore[attr-defined] # pylint: disable=no-member
     if len(ret) == 1:
-        return _ScopeIdResult(ret[0])
-    return _ScopeIdResult(tuple(ret))
+        return ret[0]
+    return tuple(ret)
 
 
-def cluster_id(extents: list[Expr | int] | None = None, dtype: str = "int32") -> BypassBind:
+def cluster_id(
+    extents: list[Expr | int] | None = None, dtype: str = "int32"
+) -> Var | tuple[Var, ...]:
     """Define a kernel→cluster scope id. Pass ``None`` (the default) to defer the
     extent; it will be inferred at LowerTIRx from sibling ScopeIdDef closure.
 
@@ -693,13 +694,13 @@ def cluster_id(extents: list[Expr | int] | None = None, dtype: str = "int32") ->
     """
     ret = _ffi_api.ClusterId(extents, "kernel", dtype)  # type: ignore[attr-defined] # pylint: disable=no-member
     if len(ret) == 1:
-        return _ScopeIdResult(ret[0])
-    return _ScopeIdResult(tuple(ret))
+        return ret[0]
+    return tuple(ret)
 
 
 def cta_id(
     extents: list[Expr | int] | None = None, preferred=None, dtype: str = "int32"
-) -> BypassBind:
+) -> Var | tuple[Var, ...]:
     """Define a kernel→cta scope id. Pass ``None`` (the default) to defer the
     extent; it will be inferred at LowerTIRx from sibling ScopeIdDef closure.
 
@@ -707,13 +708,13 @@ def cta_id(
     """
     ret = _ffi_api.CtaId(extents, "kernel", preferred, dtype)  # type: ignore[attr-defined] # pylint: disable=no-member
     if len(ret) == 1:
-        return _ScopeIdResult(ret[0])
-    return _ScopeIdResult(tuple(ret))
+        return ret[0]
+    return tuple(ret)
 
 
 def cta_id_in_cluster(
     extents: list[Expr | int] | None = None, preferred=None, dtype: str = "int32"
-) -> BypassBind:
+) -> Var | tuple[Var, ...]:
     """Define a cluster→cta scope id. Pass ``None`` (the default) to defer the
     extent; it will be inferred at LowerTIRx from sibling ScopeIdDef closure.
 
@@ -721,16 +722,19 @@ def cta_id_in_cluster(
     """
     ret = _ffi_api.CtaId(extents, "cluster", preferred, dtype)  # type: ignore[attr-defined] # pylint: disable=no-member
     if len(ret) == 1:
-        return _ScopeIdResult(ret[0])
-    return _ScopeIdResult(tuple(ret))
+        return ret[0]
+    return tuple(ret)
 
 
-def cta_id_in_pair(dtype: str = "int32") -> BypassBind:
+def cta_id_in_pair(dtype: str = "int32") -> Var:
+    """Return the native CTA index within its two-CTA pair."""
     ret = _ffi_api.CtaIdInPair(dtype)  # type: ignore[attr-defined] # pylint: disable=no-member
-    return _ScopeIdResult(ret[0])
+    return ret[0]
 
 
-def warpgroup_id(extents: list[Expr | int] | None = None, dtype: str = "int32") -> BypassBind:
+def warpgroup_id(
+    extents: list[Expr | int] | None = None, dtype: str = "int32"
+) -> Var | tuple[Var, ...]:
     """Define a cta→warpgroup scope id. Pass ``None`` (the default) to defer
     the extent; it will be inferred at LowerTIRx from sibling closure.
 
@@ -738,11 +742,11 @@ def warpgroup_id(extents: list[Expr | int] | None = None, dtype: str = "int32") 
     """
     ret = _ffi_api.WarpgroupId(extents, "cta", dtype)  # type: ignore[attr-defined] # pylint: disable=no-member
     if len(ret) == 1:
-        return _ScopeIdResult(ret[0])
-    return _ScopeIdResult(tuple(ret))
+        return ret[0]
+    return tuple(ret)
 
 
-def warp_id(extents: list[Expr | int] | None = None, dtype: str = "int32") -> BypassBind:
+def warp_id(extents: list[Expr | int] | None = None, dtype: str = "int32") -> Var | tuple[Var, ...]:
     """Define a cta→warp scope id. Pass ``None`` (the default) to defer the
     extent; it will be inferred at LowerTIRx from sibling closure.
 
@@ -750,11 +754,13 @@ def warp_id(extents: list[Expr | int] | None = None, dtype: str = "int32") -> By
     """
     ret = _ffi_api.WarpId(extents, "cta", dtype)  # type: ignore[attr-defined] # pylint: disable=no-member
     if len(ret) == 1:
-        return _ScopeIdResult(ret[0])
-    return _ScopeIdResult(tuple(ret))
+        return ret[0]
+    return tuple(ret)
 
 
-def warp_id_in_wg(extents: list[Expr | int] | None = None, dtype: str = "int32") -> BypassBind:
+def warp_id_in_wg(
+    extents: list[Expr | int] | None = None, dtype: str = "int32"
+) -> Var | tuple[Var, ...]:
     """Define a warpgroup→warp scope id. Pass ``None`` (the default) to defer
     the extent; it will be inferred at LowerTIRx from sibling closure.
 
@@ -762,11 +768,11 @@ def warp_id_in_wg(extents: list[Expr | int] | None = None, dtype: str = "int32")
     """
     ret = _ffi_api.WarpId(extents, "warpgroup", dtype)  # type: ignore[attr-defined] # pylint: disable=no-member
     if len(ret) == 1:
-        return _ScopeIdResult(ret[0])
-    return _ScopeIdResult(tuple(ret))
+        return ret[0]
+    return tuple(ret)
 
 
-def lane_id(extents: list[Expr | int] | None = None, dtype: str = "int32") -> BypassBind:
+def lane_id(extents: list[Expr | int] | None = None, dtype: str = "int32") -> Var | tuple[Var, ...]:
     """Define a warp→thread scope id. Pass ``None`` (the default) to defer the
     extent; it will be inferred at LowerTIRx from sibling closure.
 
@@ -774,11 +780,13 @@ def lane_id(extents: list[Expr | int] | None = None, dtype: str = "int32") -> By
     """
     ret = _ffi_api.ThreadId(extents, "warp", dtype)  # type: ignore[attr-defined] # pylint: disable=no-member
     if len(ret) == 1:
-        return _ScopeIdResult(ret[0])
-    return _ScopeIdResult(tuple(ret))
+        return ret[0]
+    return tuple(ret)
 
 
-def thread_id(extents: list[Expr | int] | None = None, dtype: str = "int32") -> BypassBind:
+def thread_id(
+    extents: list[Expr | int] | None = None, dtype: str = "int32"
+) -> Var | tuple[Var, ...]:
     """Define a cta→thread scope id. Pass ``None`` (the default) to defer the
     extent; it will be inferred at LowerTIRx from sibling closure.
 
@@ -786,13 +794,13 @@ def thread_id(extents: list[Expr | int] | None = None, dtype: str = "int32") -> 
     """
     ret = _ffi_api.ThreadId(extents, "cta", dtype)  # type: ignore[attr-defined] # pylint: disable=no-member
     if len(ret) == 1:
-        return _ScopeIdResult(ret[0])
-    return _ScopeIdResult(tuple(ret))
+        return ret[0]
+    return tuple(ret)
 
 
 def thread_id_in_wg(
     extents: list[Expr | int] | None = None, dtype: str = "int32"
-) -> BypassBind:
+) -> Var | tuple[Var, ...]:
     """Define a warpgroup→thread scope id. Pass ``None`` (the default) to defer
     the extent; it will be inferred at LowerTIRx from sibling closure.
 
@@ -800,8 +808,8 @@ def thread_id_in_wg(
     """
     ret = _ffi_api.ThreadId(extents, "warpgroup", dtype)  # type: ignore[attr-defined] # pylint: disable=no-member
     if len(ret) == 1:
-        return _ScopeIdResult(ret[0])
-    return _ScopeIdResult(tuple(ret))
+        return ret[0]
+    return tuple(ret)
 
 
 def init() -> frame.BlockInitFrame:
@@ -1052,7 +1060,7 @@ def sblock_alloc_buffer(
         allocated_addr = []
     if not isinstance(allocated_addr, list | tuple):
         allocated_addr = [allocated_addr]
-    alloc_frame = _ffi_api.SBlockAllocBuffer(  # type: ignore[attr-defined] # pylint: disable=no-member
+    buf = _ffi_api.SBlockAllocBuffer(  # type: ignore[attr-defined] # pylint: disable=no-member
         shape,
         dtype,
         data,
@@ -1064,11 +1072,6 @@ def sblock_alloc_buffer(
         _get_layout(layout, shape, scope),
         allocated_addr,
     )
-    if isinstance(alloc_frame, frame.AllocBufferFrame):
-        alloc_frame.add_callback(partial(alloc_frame.__exit__, None, None, None))
-        buf = alloc_frame.__enter__()
-    else:
-        buf = alloc_frame
     _record_meta_resource(buf, skip_frames=2)
     return buf
 
@@ -1598,18 +1601,18 @@ def bind(
     type_annotation: Type | None = None,  # pylint: disable=redefined-outer-name
     *,
     var: Var | None = None,  # pylint: disable=redefined-outer-name
-) -> BypassBind:
-    """Create an immutable binding whose identity survives ordinary assignment."""
-    return BypassBind(Bind(value, type_annotation, var=var))
+) -> Var:
+    """Create an immutable binding and return its native variable directly."""
+    return Bind(value, type_annotation, var=var)
 
 
 class LetAnnotation:
-    """Marker for explicit LetStmt. Created by ``T.let`` or ``T.let[type]``.
+    """Marker for an immutable Bind, created by ``T.let`` or ``T.let[type]``.
 
     Usage in TVMScript::
 
-        x: T.let[T.int32] = expr  # LetStmt with explicit type
-        x: T.let = expr           # LetStmt with auto-typed RHS
+        x: T.let[T.int32] = expr  # Bind with an explicit type
+        x: T.let = expr          # Bind with an inferred RHS type
     """
 
     def __init__(self, type_spec=None):
@@ -1687,39 +1690,6 @@ class DtypeConstructor:
 
     def __repr__(self):
         return f"DtypeConstructor({self._dtype_str!r})"
-
-
-def allocate(
-    extents: list[Expr],
-    dtype: str,
-    scope: str = "global",
-    condition: Expr = None,
-    annotations=None,
-) -> frame.AllocateFrame:
-    """Allocate node.
-
-    Parameters
-    ----------
-    extents : List[Expr]
-        The extents of the allocate.
-
-    dtype : str
-        The data type of the buffer.
-
-    scope : str
-        The storage scope.
-
-    condition : Expr
-        The condition.
-
-    annotations: Optional[Mapping[str, Object]]
-        Additional annotation hints.
-    """
-    if isinstance(condition, bool):
-        condition = IntImm("bool", condition)
-    return _ffi_api.Allocate(  # type: ignore[attr-defined] # pylint: disable=no-member
-        extents, dtype, scope, condition, annotations
-    )
 
 
 def attr(
@@ -2184,16 +2154,6 @@ def _is_meta_class_instance(value: Any) -> bool:
     return getattr(type(value), "_is_meta_class", False)
 
 
-def _sanitize_meta_name_part(value: Any, fallback: str) -> str:
-    if isinstance(value, str) and value.isidentifier():
-        return value
-    if isinstance(value, str):
-        sanitized = "".join(c if c.isalnum() or c == "_" else "_" for c in value)
-        if sanitized and sanitized[0].isalpha():
-            return sanitized
-    return fallback
-
-
 def _meta_resource_for_value(value: Any) -> Any | None:
     if isinstance(value, scalar_wrapper):
         return value.scalar.source
@@ -2202,67 +2162,6 @@ def _meta_resource_for_value(value: Any) -> Any | None:
     if is_buffer_var(value):
         return value
     return None
-
-
-def _resource_in(resource: Any, resources: list[Any]) -> bool:
-    return any(_same_meta_resource(resource, other) for other in resources)
-
-
-def _name_meta_value(
-    prefix: str,
-    value: Any,
-    visited: set[int] | None = None,
-    owned_resources: list[Any] | None = None,
-    named_resources: list[Any] | None = None,
-) -> None:
-    if visited is None:
-        visited = set()
-    if named_resources is None:
-        named_resources = []
-    obj_id = id(value)
-    if obj_id in visited:
-        return
-    visited.add(obj_id)
-
-    resource = _meta_resource_for_value(value)
-    if resource is not None:
-        if owned_resources is not None and not _resource_in(resource, owned_resources):
-            return
-        if _resource_in(resource, named_resources):
-            return
-        IRBuilder.name(prefix, resource)
-        named_resources.append(resource)
-        return
-    if isinstance(value, ir.Var | IterVar):
-        if owned_resources is not None:
-            return
-        IRBuilder.name(prefix, value)
-        return
-    if _is_meta_class_instance(value):
-        existing_prefix = getattr(value, "_tirx_meta_name", None)
-        if existing_prefix is not None and existing_prefix != prefix:
-            return
-        object.__setattr__(value, "_tirx_meta_name", prefix)
-        instance_owned_resources = getattr(value, "_tirx_meta_owned_resources", [])
-        for field_name, field_value in vars(value).items():
-            if field_name.startswith("_tirx_"):
-                continue
-            _name_meta_value(
-                f"{prefix}_{field_name}",
-                field_value,
-                visited,
-                instance_owned_resources,
-                named_resources,
-            )
-        return
-    if isinstance(value, list | tuple):
-        for i, item in enumerate(value):
-            _name_meta_value(f"{prefix}_{i}", item, visited, owned_resources, named_resources)
-        return
-    if isinstance(value, dict):
-        for i, (key, item) in enumerate(value.items()):
-            part = _sanitize_meta_name_part(key, f"item{i}")
-            _name_meta_value(f"{prefix}_{part}", item, visited, owned_resources, named_resources)
 
 
 def _same_meta_resource(lhs: Any, rhs: Any) -> bool:
@@ -2345,11 +2244,6 @@ def _validate_meta_construction_scope(scope: _MetaConstructionScope) -> None:
     if missing:
         raise ValueError(_format_unowned_meta_resource_error(scope.cls, missing[0], len(missing)))
     object.__setattr__(scope.instance, "_tirx_meta_owned_resources", created_resources)
-
-
-def name_meta_class_value(prefix: str, value: Any) -> None:
-    """Name all TIR resources owned by a meta_class instance."""
-    _name_meta_value(prefix, value)
 
 
 def launch_thread(
@@ -2451,7 +2345,7 @@ def buffer_store(
     )
 
 
-def evaluate(value: Expr) -> BypassEmit:
+def evaluate(value: Expr) -> AlreadyEmitted[tir.Stmt]:
     """Emit an evaluation and return a reference to its stored statement.
 
     Parameters
@@ -2461,7 +2355,7 @@ def evaluate(value: Expr) -> BypassEmit:
 
     Returns
     -------
-    result : BypassEmit
+    result : AlreadyEmitted[Stmt]
         A receipt containing the emitted statement, so expression-statement
         handling does not emit it again.
     """
@@ -2474,7 +2368,7 @@ def evaluate(value: Expr) -> BypassEmit:
             "T.evaluate does not accept TensorRegion values; "
             "construct a BufferLoad with explicit indices"
         )
-    return BypassEmit(_ffi_api.Evaluate(value))  # type: ignore[attr-defined] # pylint: disable=no-member
+    return AlreadyEmitted(_ffi_api.Evaluate(value))  # type: ignore[attr-defined] # pylint: disable=no-member
 
 
 def _ffi_name_to_dtype(name: str) -> str:
@@ -2996,6 +2890,9 @@ if TYPE_CHECKING:
 else:
 
     def _install_meta_class(cls):
+        from tvm.script.ir_builder.ir.parser_protocol import direct_call
+
+        direct_call(cls)
         if cls.__dict__.get("_tirx_meta_class_installed", False):
             cls._is_meta_class = True
             return cls

@@ -20,8 +20,6 @@
 import builtins as _python
 import numbers as _numbers
 
-import tvm_ffi as _ffi
-
 from tvm import ir as _ir
 from tvm import relax as _relax
 from tvm import tirx as _tir
@@ -30,33 +28,54 @@ from tvm.relax.distributed import DTensorType as _DTensorType
 from tvm.relax.distributed import Placement as _Placement
 from tvm.relax.distributed import device_mesh as device_mesh
 from tvm.script.ir_builder import IRBuilder as _IRBuilder
-from tvm.script.ir_builder import ir as _I
-from tvm.script.ir_builder.base import BypassBind as _BypassBind
-from tvm.script.ir_builder.base import _construction_span, _return_annotation
 from tvm.script.ir_builder.base import at as _at
 from tvm.script.ir_builder.base import source_span as _source_span
-from tvm.script.ir_builder.ir.protocol import resolve_global_info as _lookup_global_info
-from tvm.script.parser.protocol import args_policy as _args_policy
-from tvm.script.parser.protocol import constexpr as constexpr
+from tvm.script.ir_builder.ir.parser_protocol import args_policy as _args_policy
+from tvm.script.ir_builder.ir.parser_protocol import constexpr as constexpr
+from tvm.script.ir_builder.ir.parser_protocol import resolve_global_info_ as _lookup_global_info
 
-from . import _ffi_api
 from . import distributed as dist
-from . import frame as _frame
 from . import ir as _native
-from .comparison import eq as eq
-from .comparison import ge as ge
-from .comparison import gt as gt
-from .comparison import le as le
-from .comparison import lt as lt
-from .comparison import ne as ne
 from .distributed.ir import _lookup_device_mesh
 from .ir import *
-from .protocol import bind_ as bind_
-from .protocol import call_global_var_ as call_global_var_
-from .protocol import decl_mutable_var_ as decl_mutable_var_
-from .protocol import emit_ as emit_
-from .protocol import resolve_type_var_ as resolve_type_var_
-from .protocol import set_mutable_var_ as set_mutable_var_
+from .parser_protocol import Else as Else
+from .parser_protocol import Then as Then
+from .parser_protocol import While as While
+from .parser_protocol import and_ as and_
+from .parser_protocol import arg as arg
+from .parser_protocol import assert_ as assert_
+from .parser_protocol import bind_ as bind_
+from .parser_protocol import break_ as break_
+from .parser_protocol import call_global_var_ as call_global_var_
+from .parser_protocol import check_well_formed_ as check_well_formed_
+from .parser_protocol import continue_ as continue_
+from .parser_protocol import decl_mutable_var_ as decl_mutable_var_
+from .parser_protocol import emit_ as emit_
+from .parser_protocol import eq as eq
+from .parser_protocol import for_ as for_
+from .parser_protocol import func_name as func_name
+from .parser_protocol import func_ret_type as func_ret_type
+from .parser_protocol import function as function
+from .parser_protocol import ge as ge
+from .parser_protocol import gt as gt
+from .parser_protocol import if_ as if_
+from .parser_protocol import if_then_else_ as if_then_else_
+from .parser_protocol import le as le
+from .parser_protocol import lt as lt
+from .parser_protocol import ne as ne
+from .parser_protocol import not_ as not_
+from .parser_protocol import or_ as or_
+from .parser_protocol import range_ as range_
+from .parser_protocol import resolve_type_var_ as resolve_type_var_
+from .parser_protocol import return_ as return_
+from .parser_protocol import scope_var_query_or_decl_ as scope_var_query_or_decl_
+from .parser_protocol import set_mutable_var_ as set_mutable_var_
+from .parser_protocol import setattr as setattr
+from .parser_protocol import setitem as setitem
+from .parser_protocol import unpack as unpack
+
+If = if_
+For = for_
 
 # Syntax capability: mutable declaration policies apply only in this dialect.
 supports_mutable_declarations = False
@@ -168,81 +187,6 @@ def type_var(name, *, dtype=None, span=None):
     return _ir.Var(name, "int64" if dtype is None else dtype, _source_span(span))
 
 
-def function(is_pure=True, is_private=False, *, decl=False, local=False, reference=None, span=None):
-    """Start a function frame.
-
-    Parameters
-    ----------
-    is_pure: bool
-        Whether the function is annotated as pure.
-
-    is_private : bool
-        Whether the function is annotated as private.
-
-    decl : bool, optional
-        Collect a signature and retain this frame for a later body entry.
-    local : bool, optional
-        Whether to define a local function instead of a module function.
-    reference : Var, optional
-        The declared function variable required when local is True.
-    span : Span or source location, optional
-        Source location attached to the function frame.
-
-    Returns
-    -------
-    frame : context manager
-        Construction context for the native frame, retaining source metadata.
-    """
-    if decl:
-        return _at(span, _ffi_api.DeclFunction(is_pure, is_private, local))
-    if local:
-        if reference is None:
-            raise ValueError("A local function requires its declared reference")
-        return _at(span, _ffi_api.LocalFunction(is_pure, reference))
-    return _at(span, _native.function(is_pure, is_private))
-
-
-def arg(name, ty, *, span=None):
-    """Add a parameter to the last function frame.
-
-    Parameters
-    ----------
-    name: str
-        The name of the parameter.
-    ty : Type, Var or callable
-        The parameter type or an existing variable. An existing variable
-        retains its native identity; callable type annotations are resolved
-        before creating the parameter.
-
-    span : Span or source location, optional
-        Source location attached to the constructed IR.
-
-    Returns
-    -------
-    var: Var
-        The created or retained function parameter variable.
-    """
-    with _construction_span(span):
-        if not isinstance(ty, _ir.Var):
-            ty = _type(ty)
-        if isinstance(ty, _ir.PrimType) or _ir.is_prim_var(ty):
-            ty = resolve_type_var_(name, ty, span=span)
-        if isinstance(ty, _ir.Var):
-            return _ffi_api.ArgVar(name, ty)
-        return _at(span, _native.arg(name, _type(ty)))
-
-
-def func_ret_type(ret_ty):
-    """Set the active function signature return type.
-
-    Parameters
-    ----------
-    ret_ty : Type
-        The function return type.
-    """
-    return _native.func_ret_type(_type(_return_annotation(ret_ty)))
-
-
 func_ret_ty = func_ret_type
 
 
@@ -262,59 +206,6 @@ def dataflow(*, span=None):
     return _at(span, _native.dataflow())
 
 
-def If(condition, *, span=None):
-    """Create an if frame.
-
-    Parameters
-    ----------
-    condition : Expr
-
-        The condition of if statement, executes the true branch if the
-        condition is true, otherwise jump into the false branch.
-
-    span : Span or source location, optional
-        Source location attached to the constructed IR.
-
-    Returns
-    -------
-    frame : context manager
-        Construction context for the native frame, retaining source metadata.
-    """
-    return _at(span, _native.If(condition))
-
-
-def Then(*, span=None):
-    """Create the true branch of the active conditional.
-
-    Parameters
-    ----------
-    span : Span or source location, optional
-        Source location attached to the constructed IR.
-
-    Returns
-    -------
-    res : frame.ThenFrame
-        The constructed frame, retaining source metadata.
-    """
-    return _at(span, _native.Then())
-
-
-def Else(*, span=None):
-    """Create the false branch of the active conditional.
-
-    Parameters
-    ----------
-    span : Span or source location, optional
-        Source location attached to the constructed IR.
-
-    Returns
-    -------
-    res : frame.ElseFrame
-        The constructed frame, retaining source metadata.
-    """
-    return _at(span, _native.Else())
-
-
 def _value(value, ty=None):
     if isinstance(value, _python.tuple):
         return _relax.utils.convert_to_expr(value)
@@ -325,59 +216,12 @@ def _value(value, ty=None):
     return value
 
 
-def return_(value=None, *, span=None):
-    """Record a function result without exiting Python construction."""
-    with _construction_span(span):
-        if value is None:
-            value = _relax.Tuple([])
-        _native.func_ret_value(_value(value))
-
-
 def match_cast(value, ty, *, span=None):
     """Construct a match-cast descriptor for ``bind_`` to consume."""
     if value is None:
         raise ValueError("The match-cast value cannot be None")
     ty = _type(ty)
     return _relax.MatchCast(_ir.Var("", ty), _value(value), ty, _source_span(span))
-
-
-def unpack(value):
-    """Project an IR tuple with known arity or preserve host iteration."""
-    if isinstance(value, _BypassBind):
-        return _python.tuple(_BypassBind(item) for item in unpack(value.value))
-    if isinstance(value, _relax.Tuple):
-        return _python.tuple(value.fields)
-    if isinstance(value, _relax.Expr) and isinstance(value.ty, _ir.TupleType):
-        return _python.tuple(_relax.TupleGetItem(value, i) for i in range(len(value.ty.fields)))
-    return value
-
-
-def assert_(condition, message="", *, span=None):
-    """Emit a runtime assertion with construction-time diagnostic text."""
-    if not isinstance(message, _python.str):
-        raise TypeError("An assertion message must be construction-time text")
-    with _construction_span(span):
-        emit_(_at(span, _native.assert_op(condition, format=message)), span=span)
-
-
-def For(*args, span=None, **kwargs):
-    """Reject imperative for loops in the Relax expression dialect."""
-    raise TypeError("Relax does not support imperative for loops")
-
-
-def break_(*, span=None):
-    """Reject break in the Relax expression dialect."""
-    raise TypeError("Relax does not support break")
-
-
-def continue_(*, span=None):
-    """Reject continue in the Relax expression dialect."""
-    raise TypeError("Relax does not support continue")
-
-
-def setitem(target, index, value, *, span=None):
-    """Reject indexed assignment in the Relax expression dialect."""
-    raise TypeError("Relax does not support indexed assignment")
 
 
 __all__ = [
@@ -387,7 +231,10 @@ __all__ = [
     "DTensor",
     "For",
     "for_",
+    "if_",
+    "check_well_formed_",
     "resolve_type_var_",
+    "scope_var_query_or_decl_",
     "call_global_var_",
     "decl_mutable_var_",
     "set_mutable_var_",
@@ -466,56 +313,6 @@ def select(condition, true_value, false_value):
 
 
 __all__ += ["logical_and", "logical_not", "logical_or", "select"]
-
-
-for_ = For
-
-
-def if_then_else_(condition, true_value, false_value):
-    """Construct scalar conditional evaluation from eagerly constructed operands."""
-    if isinstance(condition, _ffi.ObjectConvertible):
-        condition = condition.asobject()
-    if not isinstance(condition, _ir.Expr):
-        return true_value if condition else false_value
-    true_value = (
-        true_value.asobject() if isinstance(true_value, _ffi.ObjectConvertible) else true_value
-    )
-    false_value = (
-        false_value.asobject() if isinstance(false_value, _ffi.ObjectConvertible) else false_value
-    )
-    if _ir.is_prim_expr(condition) and all(
-        _ir.is_prim_expr(value)
-        if isinstance(value, _ir.Expr)
-        else isinstance(value, _numbers.Number)
-        for value in (true_value, false_value)
-    ):
-        return _tir.if_then_else(condition, true_value, false_value)
-    return _relax.If(condition, _value(true_value), _value(false_value))
-
-
-def _chain_binding(variable, value, body):
-    if _ir.is_prim_expr(value) and _ir.is_prim_expr(body):
-        return _tir.Let(variable, value, body)
-    return _relax.SeqExpr([_relax.BindingBlock([_relax.VarBinding(variable, value)])], body)
-
-
-def and_(*values, chain=None):
-    """Construct the dialect's logical conjunction from evaluated values."""
-    if chain is not None:
-        from tvm.tirx.script.builder.comparison import _comparison_chain
-
-        return _comparison_chain(values, chain, and_, _chain_binding)
-    return logical_and(*values)
-
-
-def or_(*values):
-    """Construct the dialect's logical disjunction from evaluated values."""
-    return logical_or(*values)
-
-
-def not_(value):
-    """Negate a host or IR boolean without coercing IR to Python bool."""
-    return logical_not(value)
 
 
 __all__ += ["and_", "if_then_else_", "not_", "or_"]

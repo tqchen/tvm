@@ -47,8 +47,8 @@ def test_range_annotations_match_direct_builder(bounds):
                     *(int(value) for value in bounds.split(",")),
                     annotations={"pragma_1": "str_value", "pragma_2": 1, "pragma_3": 0.0},
                 ),
-                names="i",
-            ) as index:
+                names=("i",),
+            ) as (index,):
                 T.buffer_store(buffer, 0.0, [index])
     result = parser.parse(source)
     ir.assert_structural_equal(builder.get(), result)
@@ -88,15 +88,16 @@ def main(A: T.Buffer((16,), "float32")):
 def test_range_returns_native_frame_and_preserves_annotations():
     # Before: for i in range(4, annotations={"pragma_test": 3}): X.evaluate(i)
     # Expected builder program:
-    # with X.for_(X.range_(4, annotations={"pragma_test": 3}), names="i") as i:
+    # with X.for_(X.range_(4, annotations={"pragma_test": 3}), names=("i",)) as (i,):
     #     X.emit_(X.evaluate(i))
     from tvm.tirx.script.builder.frame import ForFrame
 
     with IRBuilder() as builder:
         frame = T.range_(4, annotations={"pragma_test": 3})
         assert isinstance(frame, ForFrame)
-        assert T.for_(frame, names="i") is frame
-        with frame as index:
+        assert T.for_(frame, names=("i",)) is frame
+        assert frame.vars[0].name == "i"
+        with frame as (index,):
             T.evaluate(index)
     loop = builder.get()
     assert loop.annotations["pragma_test"] == 3

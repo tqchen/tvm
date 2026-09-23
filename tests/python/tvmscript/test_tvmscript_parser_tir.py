@@ -429,7 +429,7 @@ def test_tir_dynamic_for_loop():
     @T.prim_func(private=True, s_tir=True)
     def starred(a: T.handle) -> None:
         A = T.match_buffer(a, [128, *dims], "int32")
-        for iters in T.grid(*A.shape):
+        for (*iters,) in T.grid(*A.shape):
             A[iters] = T.int32(1)
 
     @T.prim_func(private=True, s_tir=True)

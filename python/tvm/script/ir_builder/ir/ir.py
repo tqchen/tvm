@@ -17,7 +17,7 @@
 """Package tvm.script.ir_builder.ir.ir"""
 
 import inspect
-from typing import TYPE_CHECKING, Any, TypeVar
+from typing import TYPE_CHECKING, TypeVar
 
 from tvm.ir import BaseFunc, GlobalInfo, GlobalVar
 from tvm.runtime import Object as tvm_Object
@@ -25,37 +25,36 @@ from tvm.runtime import Object as tvm_Object
 from ..base import IRBuilder
 from . import _ffi_api
 from .frame import IRModuleFrame
+from .parser_protocol import direct_call
 
 if TYPE_CHECKING:
     from tvm.relax import DummyGlobalInfo, VDevice
 
-    T = TypeVar("T")
+T = TypeVar("T")
 
-    def meta_var(value: T) -> T:
-        """Mark a value for parser-time metaprogramming."""
-        return value
 
-else:
+@direct_call
+def meta_var(value: T) -> T:
+    """Return a Python metadata value without binding, naming or relocating it.
 
-    class meta_var:  # pylint: disable=invalid-name
-        """A value used only for TVMScript parser-time metaprogramming.
+    Parameters
+    ----------
+    value : T
+        Any host or IR object, including an unpackable sequence.
 
-        Assignments unwrap this object without emitting an IR binding.  The
-        shared wrapper is exposed as ``I.meta_var``; dialect namespaces may
-        provide compatibility aliases to the same implementation.
-        For Relax, this is the explicit opt-out from default primitive binding emission.
+    Returns
+    -------
+    T
+        The exact input object. No frame is required, no IR is emitted, and
+        existing names and source locations are retained.
 
-        Parameters
-        ----------
-        value : Any
-            The parser-time value.
-        """
+    .. code:: python
 
-        def __init__(self, value: Any) -> None:
-            self.value = value
-
-        def __iter__(self):
-            return (meta_var(item) for item in self.value)
+        # Source and generated Python (direct_call suppresses result handling)
+        value = I.meta_var(existing_value)
+        a, b = I.meta_var((left, right))
+    """
+    return value
 
 
 def ir_module() -> IRModuleFrame:

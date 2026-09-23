@@ -184,7 +184,7 @@ def scaled_copy(A: T.Buffer((16,), "int32"), B: T.Buffer((16,), "int32")):
         B[i] = A[i] * 3
 """)
     captures = {"N": 16, "SCALE": 3}
-    result = parser.parse(source, extra_vars=captures, absent_params={})
+    result = parser.parse(source, extra_vars=captures, _specialization_bindings={})
     tvm.ir.assert_structural_equal(expected, result)
     assert len(result.params) == 2
 
@@ -217,7 +217,7 @@ def expected(a: T.handle, out_h: T.handle):
     out[0] = A[0]
 """
     )
-    options = {"absent_params": {"a": None} if absent else {}}
+    options = {"_specialization_bindings": {"a": None} if absent else {}}
     result = parser.parse(source, **options)
     tvm.ir.assert_structural_equal(parser.parse(expected_source), result)
     assert len(result.params) == (1 if absent else 2)
@@ -251,17 +251,22 @@ def kernel(a: T.Optional(annotation())):
     T.evaluate(1)
 """
     with pytest.raises(tvm.error.DiagnosticError, match="missing_call"):
-        parser.parse(source, extra_vars={"annotation": annotation}, absent_params={"a": None})
+        parser.parse(
+            source, extra_vars={"annotation": annotation}, _specialization_bindings={"a": None}
+        )
     assert calls == []
     result = parser.parse("@T.prim_func\ndef kernel(a: T.handle):\n    T.evaluate(1)\n")
     assert len(result.params) == 1
 
 
-def test_explicit_absence_rejects_non_absent_values():
-    with pytest.raises(tvm.error.DiagnosticError, match="absent_params values must be None"):
-        parser.parse(
-            "@T.prim_func\ndef kernel(a: T.handle):\n    T.evaluate(1)\n", absent_params={"a": 1}
-        )
+def test_optional_selection_rejects_non_absent_values():
+    # JIT owns optional-argument validation; the parser transports one selected mapping.
+    @T.jit
+    def kernel(a: T.Optional(T.handle)):
+        T.evaluate(1)
+
+    with pytest.raises(TypeError, match="T.Optional parameters only accept None"):
+        kernel.specialize(a=1)
 
 
 def test_reentrant_same_name_parse_cannot_inherit_jit_bindings():
@@ -295,7 +300,9 @@ def kernel(a: T.Optional(T.handle)):
     T.evaluate(1)
 """
     result = parser.parse(
-        source, extra_vars={"construct_nested": construct_nested}, absent_params={"a": None}
+        source,
+        extra_vars={"construct_nested": construct_nested},
+        _specialization_bindings={"a": None},
     )
     assert len(result.params) == 0
     assert nested_counts == [1]

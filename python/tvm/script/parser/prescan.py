@@ -21,21 +21,94 @@ from __future__ import annotations
 import ast
 import builtins
 import inspect
-from collections.abc import Mapping
-from dataclasses import dataclass
-from types import GetSetDescriptorType, MappingProxyType, MemberDescriptorType
-from typing import NoReturn
+from collections.abc import Mapping, Sequence
+from types import GetSetDescriptorType, MemberDescriptorType
+from typing import NamedTuple, NoReturn
 
-from . import protocol
+from tvm.script.ir_builder.ir import parser_protocol as protocol
+
+from .call_args_policy import parse_annotation
 
 
-def resolve_syntax(node: ast.AST | None, environment: Mapping[str, object]) -> object:
+def collect_annotation_free_names(
+    node: ast.expr, bound: set[str] | None = None
+) -> dict[str, ast.Name]:
+    """Find annotation reads, respecting Python lambda/comprehension binders.
+
+    The returned nodes retain the introduction locations for diagnostics and
+    supply the names needed by temporary/deferred definition capture.
+    """
+    bound = set() if bound is None else bound
+    if isinstance(node, ast.Name):
+        return {node.id: node} if isinstance(node.ctx, ast.Load) and node.id not in bound else {}
+    if isinstance(node, ast.Lambda):
+        # -------------------- Pattern --------------------
+        # Python source:
+        #     lambda n=outer: shape(n)
+        #
+        # Builder:
+        #     lambda n=captured_outer: shape(n)
+        # -------------------------------------------------
+        # Only outer is free; n belongs to the lambda.
+        arguments = [*node.args.posonlyargs, *node.args.args, *node.args.kwonlyargs]
+        if node.args.vararg:
+            arguments.append(node.args.vararg)
+        if node.args.kwarg:
+            arguments.append(node.args.kwarg)
+        result: dict[str, ast.Name] = {}
+        for value in [*node.args.defaults, *node.args.kw_defaults]:
+            if value is not None:
+                result.update(collect_annotation_free_names(value, bound))
+        result.update(
+            collect_annotation_free_names(node.body, bound | {arg.arg for arg in arguments})
+        )
+        return result
+    if isinstance(node, ast.ListComp | ast.SetComp | ast.DictComp | ast.GeneratorExp):
+        # -------------------- Pattern --------------------
+        # Python source:
+        #     tuple(n for n in shape)
+        #
+        # Builder:
+        #     tuple(n for n in captured_shape)
+        # -------------------------------------------------
+        # Only shape is free; n belongs to the comprehension.
+        result = {}
+        local = set(bound)
+        for generator in node.generators:
+            result.update(collect_annotation_free_names(generator.iter, local))
+            local.update(
+                item.id for item in ast.walk(generator.target) if isinstance(item, ast.Name)
+            )
+            for condition in generator.ifs:
+                result.update(collect_annotation_free_names(condition, local))
+        values = [node.key, node.value] if isinstance(node, ast.DictComp) else [node.elt]
+        for value in values:
+            result.update(collect_annotation_free_names(value, local))
+        return result
+    result = {}
+    for child in ast.iter_child_nodes(node):
+        if isinstance(child, ast.expr):
+            result.update(collect_annotation_free_names(child, bound))
+        elif isinstance(child, ast.keyword):
+            result.update(collect_annotation_free_names(child.value, bound))
+    return result
+
+
+def resolve_syntax(
+    node: ast.AST | None,
+    environment: Mapping[str, object],
+    bindings: Sequence[Binding] = (),
+) -> object:
     """Read fixed namespace metadata without executing source descriptors."""
     if isinstance(node, ast.Name):
+        if any(item.name == node.id for item in bindings):
+            return None
         return environment.get(node.id, getattr(builtins, node.id, None))
     if not isinstance(node, ast.Attribute):
         return None
-    owner = resolve_syntax(node.value, environment)
+    owner = resolve_syntax(node.value, environment, bindings)
+    if owner is None:
+        owner = read_result_members(node.value, environment, bindings)
     if owner is None:
         return None
     value = inspect.getattr_static(owner, node.attr, None)
@@ -52,8 +125,35 @@ def resolve_syntax(node: ast.AST | None, environment: Mapping[str, object]) -> o
     return None if hasattr(type(value), "__get__") else value
 
 
-@dataclass(frozen=True)
-class Binding:
+def read_result_members(
+    node: ast.AST | None, environment: Mapping[str, object], bindings: Sequence[Binding]
+) -> object | None:
+    """Read registered producer metadata, without evaluating or tracking source values."""
+    if isinstance(node, ast.Name):
+        matches = [item for item in bindings if item.name == node.id]
+        return matches[0].members if len(matches) == 1 else None
+    constructor = resolve_constructor(node, environment, bindings)
+    if constructor is None and isinstance(node, ast.Attribute):
+        owner = read_result_members(node.value, environment, bindings)
+        if owner is not None:
+            # Properties supply only registered fget metadata; never invoke them.
+            constructor = inspect.getattr_static(owner, node.attr, None)
+    return protocol.get_result_members(constructor)
+
+
+def resolve_constructor(
+    node: ast.AST | None, environment: Mapping[str, object], bindings: Sequence[Binding] = ()
+) -> object:
+    """Recognize actual registered call/getitem identities from source syntax."""
+    if isinstance(node, ast.Call):
+        return resolve_syntax(node.func, environment, bindings)
+    if isinstance(node, ast.Subscript):
+        members = read_result_members(node.value, environment, bindings)
+        return inspect.getattr_static(members, "__getitem__", None) if members is not None else None
+    return None
+
+
+class Binding(NamedTuple):
     """A source binding site, retained through rewriting without value state."""
 
     name: str
@@ -64,29 +164,43 @@ class Binding:
     direct: bool = False
     # Original callee root; assignment dispatch checks completed lexical bindings.
     declaration_root: ast.expr | None = None
+    # Opaque metadata selected from a declared annotation/producer before AST rewriting.
+    # It is a fixed callable namespace, never an inferred runtime value or flow map.
+    members: object = None
 
 
-@dataclass(frozen=True)
 class PrescanContext:
-    """Read-only syntax facts; nodes refer to the entry-owned AST.
+    """Temporary syntax facts consumed read-only; all nodes belong to entry's AST."""
 
-    ``reserved_names`` seeds name allocation for the complete translation.
-    ``bindings`` preserves each lexical scope's declaration order. ``sites``
-    selects the assignment rewrite for a source target. ``mutable_names`` is a
-    derived index of those bindings, not independently updated name state.
-    ``conditional_outputs`` supplies the one explicit native-frame result name.
-    """
-
-    reserved_names: frozenset[str]
-    bindings: Mapping[ast.AST | None, tuple[Binding, ...]]
-    sites: Mapping[ast.AST, Binding]
-    mutable_names: Mapping[ast.AST | None, frozenset[str]]
-    conditional_outputs: Mapping[ast.stmt, str]
-    namespaces: frozenset[str]
-    # Explicit source dataflow outputs preserve native export identity on exit.
-    with_outputs: Mapping[ast.With, tuple[str, ...]]
-    # Only source functions referencing themselves need early standalone refs.
-    recursive_functions: frozenset[ast.FunctionDef | ast.AsyncFunctionDef]
+    def __init__(
+        self,
+        reserved_names: set[str],
+        bindings: dict[ast.AST | None, list[Binding]],
+        sites: dict[ast.AST, Binding],
+        conditional_outputs: dict[ast.stmt, str],
+        namespaces: set[str],
+        with_outputs: dict[ast.With, list[str]],
+        recursive_functions: set[ast.FunctionDef | ast.AsyncFunctionDef],
+    ) -> None:
+        # Source and entry names seed the translation's hygienic allocator.
+        self.reserved_names = reserved_names
+        # Source-ordered declarations per lexical scope drive signature and body lowering.
+        self.bindings = bindings
+        # A target's source node selects its declaration/assignment rewrite.
+        self.sites = sites
+        # Derived once from declarations; no independent flow-sensitive value state.
+        self.mutable_names = {
+            scope: {item.name for item in items if item.kind in ("mutable", "mutable_parameter")}
+            for scope, items in bindings.items()
+        }
+        # Matching branch endings name a value-producing conditional's native result.
+        self.conditional_outputs = conditional_outputs
+        # Fixed entry namespaces cannot be rebound in any source scope.
+        self.namespaces = namespaces
+        # Explicit dataflow output syntax selects exports after that with-region exits.
+        self.with_outputs = with_outputs
+        # Only self-referencing standalone functions require declaration before body.
+        self.recursive_functions = recursive_functions
 
 
 class PrescanCollector(ast.NodeVisitor):
@@ -96,7 +210,7 @@ class PrescanCollector(ast.NodeVisitor):
         # Fixed lookup inputs last for this scan; never updated by assignments.
         self.environment: Mapping[str, object] = environment
         self.filename: str = filename
-        # Accumulators are frozen by collect(); no native values are stored.
+        # Accumulators pass to the temporary context; rewriting does not mutate them.
         self.names: set[str] = set(environment)
         self.bindings: dict[ast.AST | None, list[Binding]] = {}
         self.sites: dict[ast.AST, Binding] = {}
@@ -115,8 +229,10 @@ class PrescanCollector(ast.NodeVisitor):
         self.builder: object = None
         self.direct: bool = False
 
-    def collect(self, tree: ast.Module) -> PrescanContext:
-        """Scan the owned tree and return immutable facts for its rewrite."""
+    def collect(
+        self, tree: ast.Module, *, root_function_info: protocol.FunctionDecoratorInfo | None = None
+    ) -> PrescanContext:
+        """Collect reserved names, scoped declarations and region-result syntax."""
         # Decorator roots establish namespace meaning for this translation.
         for node in ast.walk(tree):
             if isinstance(node, ast.FunctionDef):
@@ -137,29 +253,34 @@ class PrescanCollector(ast.NodeVisitor):
                 self.namespaces.add(name)
         self.scope = tree
         self.bindings[tree] = []
+        # A directly applied decorator has no corresponding decorator AST.
+        # Supply its builder as a phase input, not an attachment on the tree.
+        self.builder = root_function_info.builder if root_function_info is not None else None
         self.visit(tree)
         return PrescanContext(
-            frozenset(self.names),
-            MappingProxyType({scope: tuple(items) for scope, items in self.bindings.items()}),
-            MappingProxyType(dict(self.sites)),
-            MappingProxyType(
-                {
-                    scope: frozenset(
-                        item.name for item in items if item.kind in ("mutable", "mutable_parameter")
-                    )
-                    for scope, items in self.bindings.items()
-                }
-            ),
-            MappingProxyType(dict(self.outputs)),
-            frozenset(self.namespaces),
-            MappingProxyType({node: tuple(names) for node, names in self.exports.items()}),
-            frozenset(self.recursive),
+            self.names,
+            self.bindings,
+            self.sites,
+            self.outputs,
+            self.namespaces,
+            self.exports,
+            self.recursive,
         )
 
-    def _error(self, node: ast.AST, message: str) -> NoReturn:
-        raise SyntaxError(message, (self.filename, node.lineno, node.col_offset + 1, None))
+    def _raise_error(self, node: ast.AST, message: str) -> NoReturn:
+        raise SyntaxError(
+            message,
+            (
+                self.filename,
+                node.lineno,
+                node.col_offset + 1,
+                None,
+                node.end_lineno,
+                node.end_col_offset + 1,
+            ),
+        )
 
-    def _binding(
+    def _record_binding(
         self,
         name: str,
         node: ast.AST,
@@ -168,17 +289,39 @@ class PrescanCollector(ast.NodeVisitor):
         dtype: object = None,
         *,
         declaration_root: ast.expr | None = None,
+        value: ast.expr | None = None,
     ) -> None:
         if name in self.namespaces:
-            self._error(node, f"Script namespace {name!r} cannot be rebound or shadowed")
+            self._raise_error(node, f"Script namespace {name!r} cannot be rebound or shadowed")
         self.names.add(name)
-        item = Binding(name, node, kind, annotation, dtype, self.direct, declaration_root)
+        facts = self.bindings[self.scope]
+        members = read_result_members(value, self.environment, facts)
+        if members is None and annotation is not None:
+            constructor = (
+                annotation.func
+                if isinstance(annotation, ast.Call)
+                else annotation.value
+                if isinstance(annotation, ast.Subscript)
+                else annotation
+            )
+            members = protocol.get_result_members(
+                resolve_syntax(constructor, self.environment, facts)
+            )
+        item = Binding(name, node, kind, annotation, dtype, self.direct, declaration_root, members)
         self.bindings[self.scope].append(item)
         self.sites[node] = item
 
     def visit_Name(self, node: ast.Name) -> None:
+        # -------------------- Pattern --------------------
+        # Python source:
+        #     value = f()
+        #
+        # Builder:
+        #     value = X.bind_(f(), name="value")
+        # -------------------------------------------------
+        # Reserve source names and recognize self references before lowering.
         if isinstance(node.ctx, ast.Store) and node.id in self.namespaces:
-            self._error(node, f"Script namespace {node.id!r} cannot be rebound or shadowed")
+            self._raise_error(node, f"Script namespace {node.id!r} cannot be rebound or shadowed")
         self.names.add(node.id)
         if isinstance(node.ctx, ast.Load):
             for function in reversed(self.functions):
@@ -187,18 +330,48 @@ class PrescanCollector(ast.NodeVisitor):
                     break
 
     def visit_arg(self, node: ast.arg) -> None:
+        # -------------------- Pattern --------------------
+        # Python source:
+        #     def f(x: ty):
+        #         body(x)
+        #
+        # Builder:
+        #     x = X.arg("x", ty)
+        # -------------------------------------------------
+        # Parameter names cannot shadow registered namespaces.
         if node.arg in self.namespaces:
-            self._error(node, f"Script namespace {node.arg!r} cannot be rebound or shadowed")
+            self._raise_error(node, f"Script namespace {node.arg!r} cannot be rebound or shadowed")
         self.names.add(node.arg)
         self.generic_visit(node)
 
     def visit_alias(self, node: ast.alias) -> None:
+        # -------------------- Pattern --------------------
+        # Python source:
+        #     import module as alias
+        #
+        # Builder:
+        #     import module as alias
+        # -------------------------------------------------
+        # Reserve the imported Python name.
         name = node.asname or node.name.split(".")[0]
         if isinstance(self.scope, ast.FunctionDef) and name in self.namespaces:
-            self._error(node, f"Script namespace {name!r} cannot be rebound or shadowed")
+            self._raise_error(node, f"Script namespace {name!r} cannot be rebound or shadowed")
         self.names.add(name)
 
     def visit_ClassDef(self, node: ast.ClassDef) -> None:
+        # -------------------- Pattern --------------------
+        # Python source:
+        #     class Module:
+        #         @X.function
+        #         def f():
+        #             body()
+        #
+        # Builder:
+        #     with I.ir_module():
+        #         with X.function(decl=True):
+        #             X.func_name("f")
+        # -------------------------------------------------
+        # Class host bindings and members share one lexical scope.
         self.names.add(node.name)
         old, old_module = self.scope, self.module_name
         self.scope, self.module_name = node, node.name
@@ -207,13 +380,21 @@ class PrescanCollector(ast.NodeVisitor):
         self.scope, self.module_name = old, old_module
 
     def visit_FunctionDef(self, node: ast.FunctionDef | ast.AsyncFunctionDef) -> None:
-        self._binding(node.name, node, "function")
+        # -------------------- Pattern --------------------
+        # Python source:
+        #     def f(x: ty):
+        #         body(x)
+        #
+        # Builder:
+        #     with X.function(decl=True):
+        #         X.func_name("f")
+        #         x = X.arg("x", ty)
+        # -------------------------------------------------
+        # Collect this function separately from its enclosing scope.
+        self._record_binding(node.name, node, "function")
         old_scope, old_builder, old_direct = self.scope, self.builder, self.direct
         self.scope, self.direct = node, True
         self.functions.append(node)
-        original_kind = getattr(node, "_tvm_function_info", None)
-        if original_kind is not None:
-            self.builder = original_kind.builder
         self.bindings[node] = []
         for decorator in node.decorator_list:
             target = decorator.func if isinstance(decorator, ast.Call) else decorator
@@ -222,16 +403,36 @@ class PrescanCollector(ast.NodeVisitor):
                 self.builder = kind.builder
                 break
         for parameter in getattr(node, "type_params", ()):
-            self._binding(parameter.name, parameter, "symbol", dtype="int64")
+            # -------------------- Pattern --------------------
+            # Python source:
+            #     def f[n]():
+            #         body(n)
+            #
+            # Builder:
+            #     n = X.resolve_type_var_("n")
+            # -------------------------------------------------
+            self._record_binding(parameter.name, parameter, "symbol", dtype="int64")
         for arg in [*node.args.posonlyargs, *node.args.args, *node.args.kwonlyargs]:
-            annotation = arg.annotation
+            # -------------------- Pattern --------------------
+            # Python source:
+            #     def f(x: X.int32, tensor: X.Tensor(shape)):
+            #         body(x, tensor)
+            #
+            # Builder:
+            #     x = X.arg("x", X.int32)
+            #     tensor = X.arg("tensor", X.Tensor(shape))
+            # -------------------------------------------------
+            # Registered annotation metadata distinguishes mutable parameters
+            # without evaluating types.
+            annotation = parse_annotation(arg.annotation, self.filename) if arg.annotation else None
+            arg.annotation = annotation
             constructor = resolve_syntax(
                 annotation.func if isinstance(annotation, ast.Call) else annotation,
                 self.environment,
             )
             dtype = getattr(constructor, "__tvm_parameter_dtype__", None)
             declaration = getattr(constructor, "__tvm_type_var_decl__", None)
-            self._binding(
+            self._record_binding(
                 arg.arg,
                 arg,
                 "mutable_parameter"
@@ -250,31 +451,99 @@ class PrescanCollector(ast.NodeVisitor):
         for decorator in node.decorator_list:
             self.visit(decorator)
         if node.returns:
+            node.returns = parse_annotation(node.returns, self.filename)
             self.visit(node.returns)
+        self._validate_symbols(node)
         self.functions.pop()
         self.scope, self.builder, self.direct = old_scope, old_builder, old_direct
 
     visit_AsyncFunctionDef = visit_FunctionDef
 
-    def _target(
+    def _validate_symbols(self, node: ast.FunctionDef | ast.AsyncFunctionDef) -> None:
+        """Reject ordinary writes after symbolic introduction in this function."""
+        facts = self.bindings[node]
+        # Mutable storage and loop/parameter names retain their existing assignment
+        # rules. Annotation lambda/comprehension binders are handled by free-name lookup.
+        assignable = {
+            item.name
+            for item in facts
+            if item.kind in ("parameter", "mutable_parameter", "mutable", "loop")
+        }
+        annotations = [item.annotation for item in facts if item.annotation is not None]
+        if node.returns is not None:
+            annotations.append(node.returns)
+        # This temporary diagnostic index is derived from existing source facts;
+        # it is not retained in the prescan result or used as value state.
+        origins: dict[str, ast.AST] = {}
+        for annotation in annotations:
+            for name, annotation_origin in collect_annotation_free_names(annotation).items():
+                # A prior body target makes this a local annotation operand,
+                # not a free symbolic introduction. Explicit symbols below
+                # still establish their own origin and reject ordinary writes.
+                bound_in_body = any(
+                    item.name == name
+                    and isinstance(item.node, ast.Name)
+                    and (item.node.lineno, item.node.col_offset)
+                    < (annotation_origin.lineno, annotation_origin.col_offset)
+                    for item in facts
+                )
+                if name not in assignable and name not in self.namespaces and not bound_in_body:
+                    previous = origins.get(name)
+                    if previous is None or annotation_origin.lineno < previous.lineno:
+                        origins[name] = annotation_origin
+        for item in facts:
+            if item.kind == "symbol":
+                origin = origins.get(item.name)
+                if origin is None or item.node.lineno < origin.lineno:
+                    origins[item.name] = item.node
+        for item in facts:
+            # Explicit symbol/scope declarations are not ordinary writes. Native
+            # frames retain declaration identity and validate scoped axis reuse.
+            if item.kind in ("symbol", "scope_var_query_or_decl") or item.name in assignable:
+                continue
+            origin = origins.get(item.name)
+            if origin is not None and (item.node.lineno, item.node.col_offset) > (
+                origin.lineno,
+                origin.col_offset,
+            ):
+                self._raise_error(
+                    item.node,
+                    f"Symbolic variable {item.name!r} cannot be reassigned; "
+                    f"introduced at line {origin.lineno}",
+                )
+
+    def _collect_target(
         self,
         target: ast.expr,
         value: ast.expr | None = None,
         annotation: ast.expr | None = None,
         *,
         binding_declaration: ast.expr | None = None,
+        kind: str = "ordinary",
     ) -> None:
-        constructor = (
-            resolve_syntax(value.func, self.environment) if isinstance(value, ast.Call) else None
-        )
+        constructor = resolve_constructor(value, self.environment, self.bindings[self.scope])
         if getattr(constructor, "__tvm_binding_decl__", False):
             binding_declaration = value.func
             while isinstance(binding_declaration, ast.Attribute):
                 binding_declaration = binding_declaration.value
+        # -------------------- Pattern --------------------
+        # Python source:
+        #     tid = X.thread_id()
+        #     x = I.meta_var(value)
+        #
+        # Builder:
+        #     tid = X.scope_var_query_or_decl_(X.thread_id(), name="tid")
+        #     x = I.meta_var(value)
+        # -------------------------------------------------
+        # Registered identity-preserving categories also apply to destructured targets.
+        if protocol.is_scope_var_query_or_decl(constructor):
+            kind = "scope_var_query_or_decl"
+        elif protocol.is_direct_call(constructor):
+            kind = "direct_call"
         if isinstance(target, ast.Name):
             declaration = getattr(constructor, "__tvm_type_var_decl__", None)
             if declaration is not None and not value.args and not value.keywords:
-                self._binding(target.id, target, "symbol", value, declaration.dtype)
+                self._record_binding(target.id, target, "symbol", value, declaration.dtype)
             elif getattr(self.builder, "supports_mutable_declarations", True) and (
                 protocol.is_mutable_var_decl(constructor, syntax="call")
                 or (
@@ -290,19 +559,35 @@ class PrescanCollector(ast.NodeVisitor):
                     )
                 )
             ):
-                self._binding(target.id, target, "mutable", annotation)
+                self._record_binding(target.id, target, "mutable", annotation)
+            elif kind in ("scope_var_query_or_decl", "direct_call"):
+                self._record_binding(target.id, target, kind, annotation, value=value)
             elif binding_declaration is not None:
-                self._binding(
+                self._record_binding(
                     target.id,
                     target,
                     "binding_declaration",
                     annotation,
                     declaration_root=binding_declaration,
+                    value=value,
                 )
             elif isinstance(value, ast.Name) and value.id == self.module_name:
-                self._binding(target.id, target, "module_alias")
+                self._record_binding(target.id, target, "module_alias")
+            elif isinstance(value, ast.Name) and any(
+                item.name == value.id and item.kind == "module_alias"
+                for item in self.bindings[self.scope]
+            ):
+                # -------------------- Pattern --------------------
+                # Python source:
+                #     second_alias = first_alias
+                #
+                # Builder:
+                #     second_alias = first_alias
+                # -------------------------------------------------
+                # Preserve the active module frame identity.
+                self._record_binding(target.id, target, "module_alias")
             else:
-                self._binding(target.id, target, annotation=annotation)
+                self._record_binding(target.id, target, kind, annotation=annotation, value=value)
         elif isinstance(target, ast.Tuple | ast.List):
             values = (
                 value.elts
@@ -311,23 +596,68 @@ class PrescanCollector(ast.NodeVisitor):
             )
             for child, rhs in zip(target.elts, values):
                 # One declaration call may return several already-owned values.
-                self._target(child, rhs, binding_declaration=binding_declaration)
+                self._collect_target(child, rhs, binding_declaration=binding_declaration, kind=kind)
         elif isinstance(target, ast.Starred):
-            self._target(target.value, binding_declaration=binding_declaration)
+            self._collect_target(target.value, binding_declaration=binding_declaration, kind=kind)
         self.visit(target)
 
     def visit_Assign(self, node: ast.Assign) -> None:
+        # -------------------- Pattern --------------------
+        # Python source:
+        #     x = rhs
+        #
+        # Builder:
+        #     x = X.bind_(rhs, name="x")
+        # -------------------------------------------------
+        # Classify lexical targets in source order, including nested destructuring.
         for target in node.targets:
-            self._target(target, node.value)
+            self._collect_target(target, node.value)
         self.visit(node.value)
 
     def visit_AnnAssign(self, node: ast.AnnAssign) -> None:
-        self._target(node.target, node.value, node.annotation)
+        # -------------------- Pattern --------------------
+        # Python source:
+        #     x: annotation = rhs
+        #
+        # Builder:
+        #     x = X.bind_(rhs, ty=annotation, name="x")
+        # -------------------------------------------------
+        # Retain decoded annotation syntax and its declaration location.
+        node.annotation = parse_annotation(node.annotation, self.filename)
+        self._collect_target(node.target, node.value, node.annotation)
         self.visit(node.annotation)
         if node.value:
             self.visit(node.value)
 
+    def visit_AugAssign(self, node: ast.AugAssign) -> None:
+        # -------------------- Pattern --------------------
+        # Python source:
+        #     n += value
+        #
+        # Builder:
+        #     X.set_mutable_var_(n, n + value)
+        # -------------------------------------------------
+        # A name update is a write for symbolic-reassignment diagnostics too.
+        self._collect_target(node.target)
+        self.visit(node.value)
+
     def visit_If(self, node: ast.If) -> None:
+        # -------------------- Pattern --------------------
+        # Python source:
+        #     if condition:
+        #         y = a
+        #     else:
+        #         y = b
+        #
+        # Builder:
+        #     with X.if_(condition) as frame:
+        #         with X.Then():
+        #             y = X.bind_(a, name="y")
+        #         with X.Else():
+        #             y = X.bind_(b, name="y")
+        #     y = frame.var
+        # -------------------------------------------------
+        # Record matching branch outputs; lexical helpers are assembled during rewriting.
         old_direct, self.direct = self.direct, False
         self.generic_visit(node)
         marker = (
@@ -361,38 +691,80 @@ class PrescanCollector(ast.NodeVisitor):
             if not effects:
                 if then is None or then != otherwise:
                     location = node.orelse[-1] if node.orelse else node
-                    self._error(
+                    self._raise_error(
                         location, "IR conditional branches must end with the same named output"
                     )
                 self.outputs[node] = then
         self.direct = old_direct
 
     def visit_For(self, node: ast.For) -> None:
+        # -------------------- Pattern --------------------
+        # Python source:
+        #     for i in values:
+        #         body(i)
+        #
+        # Builder:
+        #     with X.for_(values, names=("i",)) as (i,):
+        #         X.emit_(body(i))
+        # -------------------------------------------------
+        # Loop binders remain assignable and are never signature declarations.
         old_direct, self.direct = self.direct, False
-        self._target(node.target)
+        self._collect_target(node.target, kind="loop")
         self.visit(node.iter)
         for statement in node.body + node.orelse:
             self.visit(statement)
         self.direct = old_direct
 
     def visit_While(self, node: ast.While) -> None:
+        # -------------------- Pattern --------------------
+        # Python source:
+        #     while condition:
+        #         body()
+        #
+        # Builder:
+        #     with X.While(condition):
+        #         X.emit_(body())
+        # -------------------------------------------------
+        # Declarations inside this region are conditional.
         old_direct, self.direct = self.direct, False
         self.generic_visit(node)
         self.direct = old_direct
 
     def visit_With(self, node: ast.With) -> None:
+        # -------------------- Pattern --------------------
+        # Python source:
+        #     with frame as value:
+        #         body(value)
+        #
+        # Builder:
+        #     with frame as entered:
+        #         value = X.bind_(entered, name="value", frame_value=True)
+        #         X.emit_(body(value))
+        # -------------------------------------------------
+        # Collect targets and explicit region outputs.
         old_direct, self.direct = self.direct, False
         self.regions.append(node)
         for item in node.items:
             self.visit(item.context_expr)
             if item.optional_vars:
-                self._target(item.optional_vars)
+                self._collect_target(item.optional_vars)
         for statement in node.body:
             self.visit(statement)
         self.regions.pop()
         self.direct = old_direct
 
     def visit_Call(self, node: ast.Call) -> None:
+        # -------------------- Pattern --------------------
+        # Python source:
+        #     with X.dataflow():
+        #         X.output(x, y)
+        #
+        # Builder:
+        #     with X.dataflow() as frame:
+        #         X.output(x, y)
+        #     x, y = frame.output_vars
+        # -------------------------------------------------
+        # The enclosing region owns these exported names.
         if self.regions and isinstance(node.func, ast.Attribute) and node.func.attr == "output":
             output = getattr(self.builder, "output", None)
             if output is not None and resolve_syntax(node.func, self.environment) is output:

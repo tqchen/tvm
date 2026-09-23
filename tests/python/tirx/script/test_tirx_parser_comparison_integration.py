@@ -177,7 +177,7 @@ def test_backend_predicate_materializes_equality(kind, source):
             if kind == "store":
                 dst = T.arg("dst", T.Buffer((2,), "uint32"))
             T.device_entry()
-            tx = T.thread_id([32]).value
+            tx = T.thread_id([32])
             predicate = tirx.EQ(tx, 0)
             if kind == "store":
                 T.emit_(

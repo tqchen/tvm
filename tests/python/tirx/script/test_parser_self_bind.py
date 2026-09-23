@@ -23,7 +23,6 @@ from tvm.script import parser
 from tvm.script import tirx as T
 from tvm.script.ir_builder import IRBuilder
 from tvm.script.ir_builder import tirx as imperative
-from tvm.script.ir_builder.base import BypassBind
 from tvm.tirx.script.builder import ir as native
 
 
@@ -52,12 +51,13 @@ def test_self_bind_preserves_native_identity_and_name(constant, explicit_name):
             expression = 10 if constant else x + 1
             variable = tvm.ir.Var("immutable", "int32") if explicit_name else None
             result = T.bind(expression, var=variable)
-            assert isinstance(result, BypassBind)
-            original_name = result.value.name
-            # Bypass precedes annotation, rebinding, and symbol resolution policy.
-            assigned = T.bind_(result, name="assigned", ty=object())
-            assert assigned is result.value
-            assert assigned.name == original_name
+            assert isinstance(result, tvm.ir.Var)
+            original_name = result.name
+            # Declaration naming preserves the native variable and never resolves
+            # a same-named signature symbol or introduces another IR binding.
+            assigned = T.scope_var_query_or_decl_(result, name="assigned")
+            assert assigned is result
+            assert assigned.name == (original_name or "assigned")
             if variable is not None:
                 assert assigned.same_as(variable)
                 assert assigned.name == "immutable"

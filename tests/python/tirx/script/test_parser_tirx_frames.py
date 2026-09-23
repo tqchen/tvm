@@ -58,15 +58,15 @@ def test_function_declaration_reentry_reuses_parameters_symbols_and_reference(di
 @pytest.mark.parametrize("dialect", [T])
 def test_module_alias_is_the_native_frame_and_lookup_keeps_reference(dialect):
     # Before: cls = Module; cls.callee
-    # Expected builder program: cls = X.bind_(Module, name="cls")
-    # The binding returns the same module frame and its plain native GlobalVar.
+    # Expected builder program: cls = Module
+    # The shared alias keeps the same module frame and its plain native GlobalVar.
     with IRBuilder() as builder, I.ir_module() as module:
         with dialect.function(decl=True) as function:
             dialect.func_name("callee")
             annotation = T.int32() if dialect is T else R.Tensor((4,), "float32")
             argument = dialect.arg("x", annotation)
         depth = len(builder.frames)
-        alias = dialect.bind_(module, name="cls")
+        alias = module
         assert alias is module
         assert len(builder.frames) == depth
         assert alias.callee.same_as(function.reference)
@@ -92,28 +92,48 @@ def test_module_member_calls_use_the_callers_native_dialect(
 ):
     # Before: cls = Module; return cls.callee(x)
     # Expected builder program:
-    # cls = X.bind_(Module, name="cls")
+    # cls = Module
     # X.return_(X.call_global_var_(cls.callee, [x]))
     calls = []
+    aliases = []
     original = dialect.call_global_var_
+    original_bind = dialect.bind_
 
     def call(reference, arguments):
         calls.append((reference, arguments))
         return original(reference, arguments)
 
+    def bind(value, **kwargs):
+        assert not isinstance(value, I.IRModuleFrame)
+        return original_bind(value, **kwargs)
+
+    def observe_alias(value):
+        active_modules = [
+            frame for frame in IRBuilder.current().frames if isinstance(frame, I.IRModuleFrame)
+        ]
+        assert len(active_modules) == 1
+        assert value.same_as(active_modules[0])
+        aliases.append(value)
+
     monkeypatch.setattr(dialect, "call_global_var_", call)
+    monkeypatch.setattr(dialect, "bind_", bind)
     setup, owner = ("cls = Module", "cls") if alias else ("pass", "Module")
-    module = parser.parse(f"""
+    module = parser.parse(
+        f"""
 @I.ir_module
 class Module:
     @{decorator}
     def caller({parameter}: {annotation}) -> {annotation}:
         {setup}
+        observe_alias({owner})
         return {owner}.callee({parameter})
     @{decorator}
     def callee(y: {annotation}) -> {annotation}:
         return y
-""")
+""",
+        extra_vars={"observe_alias": observe_alias},
+    )
+    assert len(aliases) == 1
     assert len(calls) == 1
     reference, arguments = calls[0]
     assert reference.same_as(module.get_global_var("callee"))
@@ -137,7 +157,9 @@ def test_native_grid_names_and_unpacking_preserve_entered_variables(names, expec
         frame = T.grid(2, 3, 4)
         assert isinstance(frame, ForFrame)
         assert T.for_(frame, names=names) is frame
+        assert [variable.name for variable in frame.vars] == expected
         with frame as variables:
+            assert variables.same_as(frame.vars)
             assert [variable.name for variable in variables] == expected
             for variable in variables:
                 T.evaluate(variable)
@@ -158,7 +180,9 @@ def test_singleton_tuple_loop_target_keeps_sequence_shape():
     # Expected builder program: with X.for_(X.grid(4), names=("i",)) as (i,): ...
     with IRBuilder() as builder:
         frame = T.for_(T.grid(4), names=("i",))
+        assert frame.vars[0].name == "i"
         with frame as variables:
+            assert variables.same_as(frame.vars)
             assert len(variables) == 1
             T.evaluate(variables[0])
     assert builder.get().loop_var.same_as(variables[0])

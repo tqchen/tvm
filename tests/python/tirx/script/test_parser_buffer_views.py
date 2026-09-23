@@ -16,12 +16,17 @@
 # under the License.
 """Shared buffer views construct native IR through the new builder."""
 
+from functools import wraps
+from types import MethodType
+
 import pytest
 
 from tvm import ir, tirx
 from tvm.error import DiagnosticError
 from tvm.script import parser
 from tvm.script.ir_builder import IRBuilder
+from tvm.script.ir_builder import ir as I
+from tvm.script.ir_builder.ir import parser_protocol
 from tvm.tirx import script as T
 from tvm.tirx.layout import TCol, TLane
 from tvm.tirx.script import builder as B
@@ -211,3 +216,88 @@ def main(A: T.Buffer((4, 4), "float32")):
     )
     declaration = assert_alias(result, (16,), physical_index=1)
     ir.assert_structural_equal(declaration.data, result.params[0].data)
+
+
+@pytest.mark.parametrize("callee", ["captured.operation", "operation"])
+@pytest.mark.parametrize(
+    "method,arguments,index,shape,physical_index",
+    [
+        ("view", 'mark("shape", 16)', "0", (16,), 1),
+        ("permute", 'mark("first", 1), mark("second", 0)', "0, 0", (4, 4), 5),
+        ("rearrange", 'mark("pattern", "a b -> b a")', "0, 0", (4, 4), 5),
+        ("local", 'mark("shape", 16)', "0", (16,), 1),
+    ],
+)
+def test_direct_view_keeps_producer_identity_name_span_and_evaluation(
+    monkeypatch, callee, method, arguments, index, shape, physical_index
+):
+    # Source: renamed = captured.operation(mark(...)); renamed[...] = 0
+    # Builder: renamed = captured.operation(mark(...)); X.buffer_store(...)
+    # The native producer owns the view name/span; assignment does not bind it.
+    captured = B.Buffer((4, 4), "float32")
+    original = getattr(captured, method).__func__
+    seen = []
+    produced = []
+    observed = []
+
+    @wraps(original)
+    def operation(buffer, *args, **kwargs):
+        seen.append("producer")
+        result = original(buffer, *args, **kwargs)
+        result = I.at_(("producer.py", 7, 7, 2, 19), result)
+        produced.append((result, result.name, result.span))
+        return result
+
+    def mark(name, value):
+        seen.append(name)
+        return value
+
+    @I.direct_call
+    def observe(view):
+        observed.append((view, view.span))
+
+    # A real bound method exercises registration lookup through __func__.
+    monkeypatch.setattr(type(captured), "operation", operation, raising=False)
+    bound = MethodType(operation, captured)
+    assert parser_protocol.is_direct_call(bound)
+    result = parse(
+        f"""
+@T.prim_func
+def main(A: captured):
+    renamed = {callee}({arguments})
+    observe(renamed)
+    renamed[{index}] = 0
+""",
+        captured=captured,
+        operation=bound,
+        mark=mark,
+        observe=observe,
+    )
+    expected_arguments = {
+        "view": ["shape"],
+        "permute": ["first", "second"],
+        "rearrange": ["pattern"],
+        "local": ["shape"],
+    }
+    assert seen == [*expected_arguments[method], "producer"]
+    assert len(produced) == 1
+    view, producer_name, producer_span = produced[0]
+    assert producer_name != "renamed"
+    assert view.name == producer_name
+    assert len(observed) == 1
+    observed_view, observed_span = observed[0]
+    assert observed_view.same_as(view)
+    assert observed_span.same_as(producer_span)
+    assert observed_span.source_name.name == "producer.py"
+    assert (observed_span.line, observed_span.column, observed_span.end_column) == (7, 2, 19)
+    # A later ordinary use still receives that use's source location.
+    assert not view.span.same_as(producer_span)
+    assert isinstance(view.span, ir.SequentialSpan)
+    assert any(
+        span.line == 6 and span.source_name.name != "producer.py" for span in view.span.spans
+    )
+    assert any(span.same_as(producer_span) for span in view.span.spans)
+    declaration = assert_alias(result, shape, physical_index=physical_index)
+    assert declaration.buffer.same_as(view)
+    assert statements(result)[-1].buffer.same_as(view)
+    assert not any(isinstance(node, tirx.Bind) for node in statements(result))

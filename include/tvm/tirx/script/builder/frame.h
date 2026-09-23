@@ -275,11 +275,9 @@ class ForFrameNode : public TIRFrameNode {
    */
   using FMakeForLoop = ffi::TypedFunction<tvm::tirx::Stmt(
       ffi::Array<tvm::tirx::Var> loop_vars, ffi::Array<Range> loop_extents,
-      ffi::Array<ffi::Optional<PrimExpr>> loop_steps, tvm::tirx::Stmt loop_body)>;
+      ffi::Array<ffi::Optional<PrimExpr>> loop_steps, tvm::tirx::Stmt loop_body, Span span)>;
   /*! \brief The loop variable. */
   ffi::Array<tvm::tirx::Var> vars;
-  /*! \brief Source target: absent, one name, or an array for tuple/starred unpacking. */
-  ffi::Any names;
   /*! \brief The domains of iteration. */
   ffi::Array<Range> doms;
   /*! \brief The optional steps of iteration. */
@@ -290,7 +288,6 @@ class ForFrameNode : public TIRFrameNode {
   static void RegisterReflection() {
     namespace refl = tvm::ffi::reflection;
     refl::ObjectDef<ForFrameNode>()
-        .def_rw("names", &ForFrameNode::names)
         .def_ro("vars", &ForFrameNode::vars)
         .def_ro("doms", &ForFrameNode::doms);
     // `f_make_for_loop` is not registered as it's not visited.
@@ -298,10 +295,9 @@ class ForFrameNode : public TIRFrameNode {
   TVM_FFI_DECLARE_OBJECT_INFO_FINAL("script.ir_builder.tirx.ForFrame", ForFrameNode, TIRFrameNode);
 
  public:
-  /*!
-   * \brief The method called when exiting RAII scope.
-   * \sa tvm::support::With
-   */
+  /*! \brief Apply source target names before entry, preserving variable identity. */
+  void SetNames(ffi::Optional<ffi::Variant<ffi::String, ffi::Array<ffi::String>>> names);
+  /*! \brief Construct the loop nest with this frame's stored source location. */
   void ExitWithScope() final;
 };
 
@@ -651,33 +647,6 @@ class DeclBufferFrame : public TIRFrame {
     TVM_FFI_ICHECK(data != nullptr);
   }
   TVM_FFI_DEFINE_OBJECT_REF_METHODS_NOTNULLABLE(DeclBufferFrame, TIRFrame, DeclBufferFrameNode);
-};
-
-class AllocBufferFrameNode : public TIRFrameNode {
- public:
-  /*! \brief The allocated buffer. */
-  tvm::tirx::BufferVar buffer;
-
-  static void RegisterReflection() {
-    namespace refl = tvm::ffi::reflection;
-    refl::ObjectDef<AllocBufferFrameNode>().def_ro("buffer", &AllocBufferFrameNode::buffer);
-  }
-
-  TVM_FFI_DECLARE_OBJECT_INFO_FINAL("script.ir_builder.tirx.AllocBufferFrame", AllocBufferFrameNode,
-                                    TIRFrameNode);
-
- public:
-  void ExitWithScope() final;
-};
-
-class AllocBufferFrame : public TIRFrame {
- public:
-  explicit AllocBufferFrame(ffi::ObjectPtr<AllocBufferFrameNode> data)
-      : TIRFrame(ffi::UnsafeInit{}) {
-    TVM_FFI_ICHECK(data != nullptr);
-    data_ = std::move(data);
-  }
-  TVM_FFI_DEFINE_OBJECT_REF_METHODS_NOTNULLABLE(AllocBufferFrame, TIRFrame, AllocBufferFrameNode);
 };
 
 /*!

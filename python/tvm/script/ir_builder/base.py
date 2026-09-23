@@ -19,7 +19,7 @@
 from collections.abc import Callable
 from contextlib import contextmanager, nullcontext
 from functools import wraps
-from typing import Any, TypeVar
+from typing import Any, Generic, TypeVar
 
 from tvm_ffi import register_object as _register_object
 
@@ -68,15 +68,21 @@ class IRBuilderFrame(_Object):
     """
 
     def __enter__(self) -> "IRBuilderFrame":
-        with _construction_span(self.source_span):
+        try:
             _ffi_api.IRBuilderFrameEnter(self)  # type: ignore[attr-defined] # pylint: disable=no-member
+        except Exception as error:
+            _attach_diagnostic_span(error, self.source_span)
+            raise
         return self
 
     def __exit__(self, exc_type, exc_value, trace) -> None:  # pylint: disable=unused-argument
         if exc_type is None and exc_value is None:
             # Do not execute `FrameExit` if the with scope exits because of exceptions
-            with _construction_span(self.source_span):
+            try:
                 _ffi_api.IRBuilderFrameExit(self)  # type: ignore[attr-defined] # pylint: disable=no-member
+            except Exception as error:
+                _attach_diagnostic_span(error, self.source_span)
+                raise
 
     def add_callback(self, callback: Callable[[], None]) -> None:
         """Add a callback method invoked when exiting the with-scope.
@@ -243,9 +249,11 @@ class _Missing:
 MISSING = _Missing()
 
 
-def source_span(location):
+def source_span(
+    location: ir.Span | tuple[str | ir.SourceName, int, int, int, int] | None,
+) -> ir.Span | None:
     """Materialize a source range without retaining source-unit state."""
-    if location is None or isinstance(location, (ir.Span, ir.SequentialSpan)):
+    if location is None or isinstance(location, ir.Span | ir.SequentialSpan):
         return location
     source_name, line, end_line, column, end_column = location
     if isinstance(source_name, str):
@@ -253,53 +261,32 @@ def source_span(location):
     return ir.Span(source_name, line, end_line, column, end_column)
 
 
-@contextmanager
-def _construction_span(span):
-    """Apply a builder operation's span through the existing native span stack."""
-    if span is None:
-        yield
-        return
-    span = source_span(span)
-    context = (
-        IRBuilder.current().with_source_span(span)
-        if span is not None and IRBuilder.is_in_scope()
-        else nullcontext()
-    )
-    try:
-        with context:
-            yield
-    except Exception as error:
-        if span is not None and not hasattr(error, "__tvm_script_location__"):
-            diagnostic_span = span.spans[-1] if isinstance(span, ir.SequentialSpan) else span
-            error.__tvm_script_location__ = (
-                str(diagnostic_span.source_name.name),
-                diagnostic_span.line,
-                diagnostic_span.end_line,
-                diagnostic_span.column,
-                diagnostic_span.end_column,
-            )
-        raise
+def _attach_diagnostic_span(error: Exception, span: ir.Span | None) -> None:
+    """Retain an operation's explicit location without opening a source scope."""
+    if span is not None and not hasattr(error, "__tvm_script_location__"):
+        diagnostic_span = span.spans[-1] if isinstance(span, ir.SequentialSpan) else span
+        error.__tvm_script_location__ = (
+            str(diagnostic_span.source_name.name),
+            diagnostic_span.line,
+            diagnostic_span.end_line,
+            diagnostic_span.column,
+            diagnostic_span.end_column,
+        )
 
 
-class BypassBind:
-    """Carry an already-constructed value through assignment without binding it."""
+_T = TypeVar("_T")
+
+
+class AlreadyEmitted(Generic[_T]):
+    """Hold the exact emitted value; location handling preserves this receipt."""
 
     __slots__ = ("value",)
 
-    def __init__(self, value):
+    def __init__(self, value: _T) -> None:
         self.value = value
 
 
-class BypassEmit:
-    """Reference an already-emitted statement without emitting it again."""
-
-    __slots__ = ("stmt",)
-
-    def __init__(self, stmt):
-        self.stmt = stmt
-
-
-def at(span, value):
+def at(span: ir.Span | tuple[str | ir.SourceName, int, int, int, int] | None, value: _T) -> _T:
     """Attach source context to the same IR node, emission receipt, or frame.
 
     Native mutation annotates the statement held by the builder itself.  Keep
@@ -308,17 +295,11 @@ def at(span, value):
     """
     if span is None or not IRBuilder.is_in_scope():
         return value
-    target = value.stmt if isinstance(value, BypassEmit) else value
-    if isinstance(target, BypassBind):
-        if isinstance(target.value, (list, tuple)):
-            for item in target.value:
-                at(span, item)
-        else:
-            at(span, target.value)
-        return value
-    if isinstance(target, _Object):
-        with _construction_span(span):
-            IRBuilder.current()._set_current_source_span(target)
+    target = value.value if isinstance(value, AlreadyEmitted) else value
+    targets = target if isinstance(target, list | tuple) else (target,)
+    for item in targets:
+        if isinstance(item, _Object):
+            _ffi_api.IRBuilderSetSourceSpan(IRBuilder.current(), item, source_span(span))
     return value
 
 
@@ -329,10 +310,23 @@ def require_defined(value, name):
     return value
 
 
-def with_at_group_(location, thunk):
+def with_at_group_(
+    location: ir.Span | tuple[str | ir.SourceName, int, int, int, int] | None,
+    thunk: Callable[[], _T],
+) -> _T:
     """Evaluate a source call exactly once under its location and retain its result."""
-    with _construction_span(location):
-        return at(location, thunk())
+    span = source_span(location)
+    context = (
+        IRBuilder.current().with_source_span(span)
+        if span is not None and IRBuilder.is_in_scope()
+        else nullcontext()
+    )
+    try:
+        with context:
+            return at(location, thunk())
+    except Exception as error:
+        _attach_diagnostic_span(error, span)
+        raise
 
 
 at_ = at

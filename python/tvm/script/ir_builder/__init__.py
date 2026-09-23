@@ -19,7 +19,7 @@
 import importlib
 from typing import Any
 
-from .base import IRBuilder
+from .base import AlreadyEmitted, IRBuilder
 
 
 def __getattr__(name: str) -> Any:

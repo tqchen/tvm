@@ -85,7 +85,6 @@ TVM_FFI_STATIC_INIT_BLOCK() {
   ThenFrameNode::RegisterReflection();
   ElseFrameNode::RegisterReflection();
   DeclBufferFrameNode::RegisterReflection();
-  AllocBufferFrameNode::RegisterReflection();
   HintFrameNode::RegisterReflection();
 }
 
@@ -181,7 +180,7 @@ void PrimFuncFrameNode::ExitWithScope() {
       /*body=*/body,
       /*ret_type=*/ret_type.value_or(TupleType::Empty()),
       /*attrs=*/attrs.defined() ? DictAttrs(attrs) : DictAttrs(),
-      /*span=*/IRBuilder::Current()->GetCurrentSourceSpan());
+      /*span=*/source_span);
   if (!is_declaration) {
     func = tvm::tirx::ScriptComplete(func, effective_root_alloc_buffers, s_tir);
   }
@@ -233,16 +232,17 @@ void SBlockFrameNode::ExitWithScope() {
   }
   tvm::s_tir::SBlock block(iter_vars, reads.value_or(ffi::Array<tvm::TensorRegion>()),
                            writes.value_or(ffi::Array<tvm::TensorRegion>()), name, AsStmt(stmts),
-                           init, tir_alloc_buffers, match_buffers, attrs, tvm::Span());
+                           init, tir_alloc_buffers, match_buffers, attrs, source_span);
   if (no_realize) {
     TVM_FFI_CHECK(iter_values.empty(), ValueError)
         << "Block bindings are not allowed when `no_realize=True`";
     TVM_FFI_CHECK(!predicate.has_value(), ValueError)
         << "`T.where` is not allowed when `no_realize=True`";
-    AddToParent(block);
+    AddToParent(block, source_span);
   } else {
-    AddToParent(
-        tvm::s_tir::SBlockRealize(iter_values, predicate.value_or(IntImm::Bool(true)), block));
+    AddToParent(tvm::s_tir::SBlockRealize(iter_values, predicate.value_or(IntImm::Bool(true)),
+                                          block, source_span),
+                source_span);
   }
 }
 
@@ -262,36 +262,86 @@ void BlockInitFrameNode::ExitWithScope() {
 
 void ForFrameNode::ExitWithScope() {
   TIRFrameNode::ExitWithScope();
-  AddToParent(this->f_make_for_loop(vars, doms, steps, AsStmt(stmts)));
+  AddToParent(this->f_make_for_loop(vars, doms, steps, AsStmt(stmts), source_span), source_span);
+}
+
+void ForFrameNode::SetNames(
+    ffi::Optional<ffi::Variant<ffi::String, ffi::Array<ffi::String>>> names) {
+  if (!names.has_value()) return;
+  if (IRBuilder::IsInScope()) {
+    for (const IRBuilderFrame& frame : IRBuilder::Current()->frames) {
+      TVM_FFI_CHECK(frame.get() != this, ValueError)
+          << "Loop names must be configured before entering the frame";
+    }
+  }
+  std::vector<ffi::String> targets;
+  if (auto name = names.value().as<ffi::String>()) {
+    for (size_t i = 0; i < vars.size(); ++i) {
+      targets.push_back(vars.size() == 1 ? name.value() : name.value() + "_" + std::to_string(i));
+    }
+  } else {
+    auto source_names = names.value().as<ffi::Array<ffi::String>>().value();
+    bool expanded = false;
+    for (const ffi::String& name : source_names) {
+      if (!name.empty() && name.data()[0] == '*') {
+        TVM_FFI_CHECK(!expanded && name.size() > 1, ValueError)
+            << "A loop target may contain only one named starred target";
+        expanded = true;
+        int count = static_cast<int>(vars.size()) - static_cast<int>(source_names.size()) + 1;
+        TVM_FFI_CHECK(count >= 0, ValueError)
+            << "Loop target count differs from iteration dimensions";
+        for (int i = 0; i < count; ++i) {
+          targets.push_back(std::string(name).substr(1) + "_" + std::to_string(i));
+        }
+      } else {
+        targets.push_back(name);
+      }
+    }
+  }
+  TVM_FFI_CHECK(targets.size() == vars.size(), ValueError)
+      << "Loop target count differs from iteration dimensions";
+  for (size_t i = 0; i < targets.size(); ++i) {
+    TVM_FFI_CHECK(!targets[i].empty(), ValueError) << "Loop variable names must be nonempty";
+  }
+  for (size_t i = 0; i < targets.size(); ++i) {
+    const_cast<tvm::VarNode*>(vars[i].get())->name = targets[i];
+  }
+}
+
+TVM_FFI_STATIC_INIT_BLOCK() {
+  tvm::ffi::reflection::GlobalDef().def_method("script.ir_builder.tirx.ForFrameSetNames",
+                                               &ForFrameNode::SetNames);
 }
 
 void AssertFrameNode::ExitWithScope() {
   TIRFrameNode::ExitWithScope();
   if (stmts.empty()) {
-    AddToParent(tvm::tirx::AssertStmt(condition, error_kind, message_parts));
+    AddToParent(tvm::tirx::AssertStmt(condition, error_kind, message_parts, source_span),
+                source_span);
   } else {
     ffi::Array<tvm::tirx::Stmt> seq;
-    seq.push_back(tvm::tirx::AssertStmt(condition, error_kind, message_parts));
+    seq.push_back(tvm::tirx::AssertStmt(condition, error_kind, message_parts, source_span));
     for (const auto& stmt : stmts) {
       seq.push_back(stmt);
     }
-    AddToParent(tvm::tirx::SeqStmt(seq));
+    AddToParent(tvm::tirx::SeqStmt(seq, source_span), source_span);
   }
 }
 
 void LaunchThreadFrameNode::ExitWithScope() {
   TIRFrameNode::ExitWithScope();
-  AddToParent(tvm::tirx::AttrStmt(iter_var, attr_key, extent, AsStmt(stmts)));
+  AddToParent(tvm::tirx::AttrStmt(iter_var, attr_key, extent, AsStmt(stmts), source_span),
+              source_span);
 }
 
 void AttrFrameNode::ExitWithScope() {
   TIRFrameNode::ExitWithScope();
-  AddToParent(tvm::tirx::AttrStmt(node, attr_key, value, AsStmt(stmts)));
+  AddToParent(tvm::tirx::AttrStmt(node, attr_key, value, AsStmt(stmts), source_span), source_span);
 }
 
 void WhileFrameNode::ExitWithScope() {
   TIRFrameNode::ExitWithScope();
-  AddToParent(tvm::tirx::While(condition, AsStmt(stmts)));
+  AddToParent(tvm::tirx::While(condition, AsStmt(stmts), source_span), source_span);
 }
 
 void IfFrameNode::ExitWithScope() {
@@ -304,8 +354,10 @@ void IfFrameNode::ExitWithScope() {
     TVM_FFI_THROW(InternalError) << "IfThenElse frame should have at least one then branch";
   }
   AddToParent(tvm::tirx::IfThenElse(
-      condition, AsStmt(then_stmts.value()),
-      else_stmts.has_value() ? AsStmt(else_stmts.value()) : tvm::tirx::Stmt(nullptr)));
+                  condition, AsStmt(then_stmts.value()),
+                  else_stmts.has_value() ? AsStmt(else_stmts.value()) : tvm::tirx::Stmt(nullptr),
+                  source_span),
+              source_span);
 }
 
 void ThenFrameNode::EnterWithScope() {
@@ -342,16 +394,15 @@ void ElseFrameNode::ExitWithScope() {
 void DeclBufferFrameNode::ExitWithScope() {
   TIRFrameNode::ExitWithScope();
   if (allocated) {
-    AddToParent(tvm::tirx::SeqStmt::Flatten(tvm::tirx::DeclBuffer(buffer, data), AsStmt(stmts)));
+    AddToParent(tvm::tirx::SeqStmt::Flatten(tvm::tirx::DeclBuffer(buffer, data, source_span),
+                                            AsStmt(stmts)),
+                source_span);
   } else {
     // data is undefined in `decl_buffer(...)`, lower to `alloc_buffer(...)`.
-    AddToParent(tvm::tirx::SeqStmt::Flatten(tvm::tirx::AllocBuffer(buffer), AsStmt(stmts)));
+    AddToParent(
+        tvm::tirx::SeqStmt::Flatten(tvm::tirx::AllocBuffer(buffer, {}, source_span), AsStmt(stmts)),
+        source_span);
   }
-}
-
-void AllocBufferFrameNode::ExitWithScope() {
-  TIRFrameNode::ExitWithScope();
-  AddToParent(tvm::tirx::SeqStmt::Flatten(tvm::tirx::AllocBuffer(buffer), AsStmt(stmts)));
 }
 
 void HintFrameNode::ExitWithScope() {
@@ -364,7 +415,9 @@ void HintFrameNode::ExitWithScope() {
   for (const auto& [k, v] : attrs) {
     full_attrs.Set(k, v);
   }
-  AddToParent(tvm::tirx::AttrStmt(full_attrs, "tirx_hint", IntImm::Int32(1), AsStmt(stmts)));
+  AddToParent(
+      tvm::tirx::AttrStmt(full_attrs, "tirx_hint", IntImm::Int32(1), AsStmt(stmts), source_span),
+      source_span);
 }
 
 }  // namespace tirx

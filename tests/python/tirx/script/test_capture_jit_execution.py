@@ -31,8 +31,8 @@ VALUE = 1
 def _delayed(n, decorator):
     @decorator
     def function(output: T.Buffer((n,), "int32")):
-        n = 2
-        output[0] = n + VALUE
+        offset = 2
+        output[0] = offset + VALUE
 
     return function
 

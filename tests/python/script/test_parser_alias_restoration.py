@@ -47,21 +47,20 @@ def test_failed_visitor_restores_later_name_and_body_annotation(language, source
     transformer, namespace = entry._prepare_transpiler(
         tree, setup, {"X": language.X}, {}, filename, track_span=False
     )
-    outer, body = object(), object()
-    namespace.update(_outer_value=outer, _body_value=body)
+    outer = object()
+    namespace.update(_outer_value=outer)
     aliases = {"outer": "_outer_value"}
-    body_aliases = {"outer": "_body_value"}
-    transformer.annotation_aliases = aliases
-    transformer.body_annotation_aliases = body_aliases
-    previous_scope = transformer.current_scope
-    previous_dialect = transformer.dialect_prefix
+    transformer.function.annotation_aliases = aliases
+    transformer.annotation_expression = True
+    previous_scope = transformer.function.current_scope
+    previous_dialect = transformer.function.dialect_prefix
     failing = ast.parse(source, mode="eval").body if expression else ast.parse(source).body[0]
 
     with pytest.raises(SyntaxError, match="Unsupported expression: NamedExpr"):
         transformer.visit(failing)
 
     # Check the observable rewrite after failure, rather than the manager alone:
-    # ordinary reads use the caller's alias, body annotations use its other map.
+    # restored annotation mode and body annotations use the same caller alias map.
     reference = transformer.visit(ast.parse("outer", mode="eval").body)
     assert (
         eval(
@@ -77,9 +76,9 @@ def test_failed_visitor_restores_later_name_and_body_annotation(language, source
             compile(ast.fix_missing_locations(ast.Expression(annotation)), filename, "eval"),
             namespace,
         )
-        is body
+        is outer
     )
-    assert transformer.annotation_aliases is aliases
-    assert transformer.body_annotation_aliases is body_aliases
-    assert transformer.current_scope is previous_scope
-    assert transformer.dialect_prefix == previous_dialect
+    assert transformer.function.annotation_aliases is aliases
+    assert transformer.annotation_expression is True
+    assert transformer.function.current_scope is previous_scope
+    assert transformer.function.dialect_prefix == previous_dialect

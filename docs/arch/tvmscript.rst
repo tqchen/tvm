@@ -188,22 +188,28 @@ The public entry points include ``tvm.script.parse`` and ``tvm.script.from_sourc
 
 1. **Acquire source and context**: the frontend accepts a function, class, or source string,
    obtains its Python AST, and retains source locations. Decorators capture the definition
-   context; source-string callers can supply external bindings through ``extra_vars``.
+   context temporarily through ``definition_scope``; source-string callers can supply
+   external bindings through ``extra_vars``. Source inspection belongs to
+   ``parser.inspect_source``.
 2. **Prescan and translate syntax**: entry copies the source AST once. One
    ``PrescanCollector`` produces read-only ``PrescanContext`` facts for reserved names,
    scoped declarations and conditional outputs. ``IRBuilderTranspiler`` rewrites that owned
    tree with the standard Python AST visitor, using fixed namespace metadata and registered
    argument policies. Name allocation avoids collisions with user identifiers.
-3. **Compose the callable**: the single frontend helper ``recompose_builder`` compiles the
-   generated program with the source's globals, closure bindings, and retained annotation
-   context.
+3. **Compose the callable**: the private frontend helper ``_recompose_builder`` compiles
+   the generated program with the source's globals, closure bindings, and necessary
+   annotation context. Explicit temporary phase inputs connect generated helpers to
+   their source functions; the original source AST is unchanged.
 4. **Execute construction**: the callable enters native builder frames and reconstructs
    declarations and annotations in their required context. When forward declarations are
-   needed, it declares the signatures first and calls one body-builder function with each
-   retained native function frame. Re-entry uses the existing parameters instead of adding
-   them again. Native frames own module references, results and function-local symbols.
-5. **Return IR**: the frontend extracts the constructed object and performs the requested
-   validation; public parsing validates well-formedness by default.
+   needed, it declares all signatures first. Inside each retained native function frame,
+   it defines and calls a lexical body helper without an explicit frame argument. Re-entry
+   uses the existing parameters instead of adding them again. Native frames own module
+   references, results and function-local symbols.
+5. **Validate and return IR**: generated code calls the dialect's
+   ``X.check_well_formed_`` for a completed function or the shared
+   ``I.check_well_formed_`` for a completed module. Public parsing validates by default.
+   Parsing owns execution and releases its temporary builder and captures afterward.
 
 Definition and symbol scopes
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -226,15 +232,22 @@ DSL expression strings such as ``R.Tensor(("n", 4), "float32")`` use
 ``type_var_map``. Repeated names refer to the same symbol across parameters, return
 annotations and the body. Quoted lookup does not introduce a Python name; an explicit
 symbol declaration does. A Python name in ``R.Tensor((n, 4), ...)`` follows its source
-lexical scope. Module global-info references use ``I.resolve_global_info`` against the
+lexical scope. Module global-info references use ``I.resolve_global_info_`` against the
 active native module frame's existing map.
 
 Generated programs use the shared ``I.at_`` and ``I.with_at_group_`` helpers to attach
 locations and preserve caller/definition provenance while evaluating source calls once.
 Their implementation lives in ``ir_builder.base``. These helpers retain returned object
 identity; builders handle results that already emitted a statement or introduced a binding.
-The shared ``ir_builder.ir.protocol`` module documents the generated builder contract,
-while ``parser.protocol`` owns syntax registration.
+The shared ``ir_builder.ir.parser_protocol`` module owns syntax registration, metadata
+and the documented generated builder contract. Dialect ``parser_protocol`` modules
+register their syntax and implement their construction hooks.
+
+Calls registered with ``direct_call`` keep their ordinary results without automatic
+binding, emission or result-span attachment. Their arguments still undergo normal
+translation. For example, ``I.meta_var(value)`` preserves the exact value and its span.
+Self-emitting builders instead return ``AlreadyEmitted[T]`` so ordinary source-location
+handling can annotate the emitted object while avoiding a second emission.
 
 Explicit host control flow
 ~~~~~~~~~~~~~~~~~~~~~~~~~~

@@ -63,14 +63,14 @@ def test_relax_validation_can_be_explicitly_disabled():
 
 
 def test_python_module_factory_and_attached_function_execute():
-    @I.ir_module
+    @R.py_module
     class Module(BasePyModule):
         @I.pyfunc
         def twice(value):
             return value * 2
 
     assert callable(Module)
-    assert Module.pyfuncs["twice"](3) == 6
+    assert Module.__pyfuncs__["twice"](3) == 6
     instance = Module(tvm.cpu())
     assert isinstance(instance, BasePyModule)
     assert instance.twice(4) == 8

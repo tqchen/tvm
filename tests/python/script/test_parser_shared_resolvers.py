@@ -24,20 +24,20 @@ from tvm.script import parser
 from tvm.script import tirx as T
 from tvm.script.ir_builder import IRBuilder
 from tvm.script.ir_builder import ir as I
-from tvm.script.parser import protocol
+from tvm.script.ir_builder.ir import parser_protocol as protocol
 
 
 def test_global_info_selectors_use_module_map():
     # Before: X.Tensor((4,), "float32", vdevice="cuda:1")
-    # Expected builder program: I.resolve_global_info("cuda:1") is mod.global_infos["vdevice"][2]
+    # Expected builder program: I.resolve_global_info_("cuda:1") is mod.global_infos["vdevice"][2]
     with IRBuilder(), I.ir_module() as module:
         devices = [I.vdevice("llvm"), I.vdevice("cuda"), I.vdevice("cuda", 1)]
         I.module_global_infos({"vdevice": devices, "other": [I.dummy_global_info()]})
         for spelling, index in (("cuda:1", 2), ("vdevice[1]", 1), ("cuda", 1)):
-            resolved = I.resolve_global_info(spelling)
+            resolved = I.resolve_global_info_(spelling)
             assert resolved.__chandle__() == devices[index].__chandle__()
             assert resolved.__chandle__() == module.global_infos["vdevice"][index].__chandle__()
-        assert I.resolve_global_info("other[0]") is not None
+        assert I.resolve_global_info_("other[0]") is not None
 
 
 def test_annotation_class_supports_union_and_missing_type():

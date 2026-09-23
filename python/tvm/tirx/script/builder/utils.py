@@ -92,9 +92,9 @@ def seq_scope():
     .. code-block:: python
 
         with IRBuilder() as ib:
-            with T.serial(0, 10) as i:
+            with T.serial(0, 10) as (i,):
                 T.evaluate(i)
-            with T.serial(0, 5) as j:  # This would fail!
+            with T.serial(0, 5) as (j,):  # This would fail!
                 T.evaluate(j)
 
     With seq_scope, multiple consecutive statements work:
@@ -103,9 +103,9 @@ def seq_scope():
 
         with IRBuilder() as ib:
             with seq_scope():
-                with T.serial(0, 10) as i:
+                with T.serial(0, 10) as (i,):
                     T.evaluate(i)
-                with T.serial(0, 5) as j:
+                with T.serial(0, 5) as (j,):
                     T.evaluate(j)
             result = ib.get()
     """
