@@ -1265,13 +1265,13 @@ def func():
     with pytest.raises(tvm.error.DiagnosticError):
         from_source(src_ptr)
 
-    # 4. Bare assignment to new variable creates scalar — round-trip
+    # 4. An explicit mutable scalar declaration retains updates — round-trip
     # fmt: off
     @T.prim_func
     def test_bare_assign():
         T.device_entry()
         tid = T.launch_thread("threadIdx.x", 128)
-        x = tid + T.int32(1)
+        x: T.int32 = tid + T.int32(1)
         x = x + T.int32(2)
         T.evaluate(x)
         # fmt: on
