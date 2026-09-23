@@ -374,11 +374,41 @@ def rewriter(rewriter_mod: IRModule | type) -> PatternMatchingRewriter:
         A rewriter object, which can be applied either to a Relax
         function or to an entire IRModule.
 
+    Notes
+    -----
+    Class members are parsed together after the class body completes. Their
+    annotations use the decorator's original definition scope, which is released
+    after parsing. An existing IRModule is used directly.
+
     """
     if not isinstance(rewriter_mod, IRModule):
-        rewriter_mod = tvm.script.ir_module(rewriter_mod)
+        from tvm.script.parser.entry import parse
+        from tvm.script.parser.inspect_source import capture_definition_scope
+
+        if not inspect.isclass(rewriter_mod):
+            raise TypeError(f"Expect a class, but got: {rewriter_mod}")
+        frame = inspect.currentframe().f_back
+        try:
+            definition_scope = capture_definition_scope(frame)
+            definition_source = (frame.f_code.co_filename, frame.f_lineno)
+        finally:
+            del frame
+        try:
+            module = parse(
+                rewriter_mod,
+                definition_scope=definition_scope,
+                _definition_source=definition_source,
+            )
+        finally:
+            del definition_scope
+        module.__name__ = rewriter_mod.__name__
+        rewriter_mod = module
 
     return PatternMatchingRewriter.from_module(rewriter_mod)
+
+
+# Member decorators defer to the same shared module construction boundary.
+rewriter.__tvm_module_decorator__ = True
 
 
 ############################# BindingBlock ##############################
