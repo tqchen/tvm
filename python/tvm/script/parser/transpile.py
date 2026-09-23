@@ -242,6 +242,10 @@ class IRBuilderTranspiler(ast.NodeTransformer):
         )
 
     def visit_Attribute(self, node):
+        # A normalized protocol callee is already builder syntax, with no source
+        # child expressions to transform or locations to invent.
+        if getattr(node, "_tvm_intrinsic", False):
+            return node
         # Source: Module.f; Builder: f (the same reserved native GlobalVar).
         if (
             isinstance(node.value, ast.Name)
@@ -360,15 +364,13 @@ class IRBuilderTranspiler(ast.NodeTransformer):
             and self._module_owner(node.func.value)
             and node.func.attr in self.module_functions
         )
-        # Generated callees are already builder syntax. Only their original
-        # arguments need the main visitor; do not give injected names fake spans.
+        # Normalized callees are already builder syntax. Mark only that
+        # attribute so generic_visit still handles every original argument once.
         if callee is not None:
             node.func = callee
-        elif not generated:
-            node.func = self.visit(node.func)
-        node.args = [self.visit(value) for value in node.args]
-        for keyword in node.keywords:
-            keyword.value = self.visit(keyword.value)
+        if callee is not None or generated:
+            node.func._tvm_intrinsic = True
+        node = self.generic_visit(node)
         # Source: declared_global(x, y)
         # Builder: X.call_global_var_(declared_global, [x, y])
         if global_call and not self.host_expression:
