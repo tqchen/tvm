@@ -2482,7 +2482,7 @@ def test_conv2d_int8_tensorcore():
         b314 = sch.get_sblock(name="conv2d_nhwc_o_init", func_name="main")
         sch.unannotate(block_or_loop=b314, ann_key="meta_schedule.auto_tensorize")
         sch.tensorize(block_or_loop=b314, tensor_intrin="wmma_fill_16x16x16_s32")
-        b315 = sch.get_sblock(name="pad_temp_reindex_shared_wmma.matrix_a_o", func_name="main")
+        b315 = sch.get_sblock(name=sch.get(b158).name_hint, func_name="main")
         sch.unannotate(block_or_loop=b315, ann_key="meta_schedule.auto_tensorize")
         sch.tensorize(block_or_loop=b315, tensor_intrin="wmma_load_16x16x16_s8_a_shared")
         b316 = sch.get_sblock(name="p1_reindex_shared_wmma.matrix_b_o", func_name="main")
@@ -2491,9 +2491,7 @@ def test_conv2d_int8_tensorcore():
         b317 = sch.get_sblock(name="conv2d_nhwc_o_update", func_name="main")
         sch.unannotate(block_or_loop=b317, ann_key="meta_schedule.auto_tensorize")
         sch.tensorize(block_or_loop=b317, tensor_intrin="wmma_sync_16x16x16_s8s8s32_trans")
-        b318 = sch.get_sblock(
-            name="conv2d_nhwc_reindex_shared_wmma.accumulator_o", func_name="main"
-        )
+        b318 = sch.get_sblock(name=sch.get(b104).name_hint, func_name="main")
         sch.unannotate(block_or_loop=b318, ann_key="meta_schedule.auto_tensorize")
         sch.tensorize(block_or_loop=b318, tensor_intrin="wmma_store_16x16x16_s32_shared")
 
