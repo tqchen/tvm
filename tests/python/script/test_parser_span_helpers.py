@@ -41,12 +41,6 @@ def test_at_preserves_native_expression_identity():
         assert locations(value) == [("source.py", 4, 1, 20)]
 
 
-@pytest.mark.parametrize("value", [None, 3, "python", object()])
-def test_at_preserves_python_values(value):
-    with IRBuilder():
-        assert I.at_(loc(5), value) is value
-
-
 def test_enclosing_locations_collapse_without_losing_definition():
     with IRBuilder():
         value = prim.IntImm("int32", 1)
@@ -81,7 +75,6 @@ def test_span_entry_reuses_fixed_metadata_with_each_dynamic_caller():
     definition_span = base.source_span(loc(8, "definition.py"))
     definition = base.SpanEntry(definition_span)
     assert definition.span is definition_span
-    assert not hasattr(definition, "__dict__")
     with IRBuilder():
         for line in (2, 5):
             caller = base.SpanEntry(base.source_span(loc(line, "caller.py")))
@@ -94,6 +87,27 @@ def test_span_entry_reuses_fixed_metadata_with_each_dynamic_caller():
         fresh = definition(prim.IntImm("int32", 9))
         assert locations(fresh) == [("definition.py", 8, 1, 20)]
     assert definition.span is definition_span
+
+    # An assignment keeps construction context without restamping its result.
+    from tvm.tirx.script import builder as T
+
+    producer_span = base.source_span(loc(12, "producer.py"))
+    kept = ir.Var("producer", "int32", producer_span)
+    emitted = []
+    with IRBuilder() as builder:
+
+        def construct():
+            emitted.append(T.evaluate(definition(prim.IntImm("int32", 4))).value)
+            return kept
+
+        assert caller.ctx(construct, attach_result=False) is kept
+    assert kept.span.same_as(producer_span) and kept.name == "producer"
+    assert len(emitted) == 1 and builder.get().same_as(emitted[0])
+    assert locations(emitted[0]) == [("caller.py", 5, 1, 20)]
+    assert locations(emitted[0].value) == [
+        ("caller.py", 5, 1, 20),
+        ("definition.py", 8, 1, 20),
+    ]
 
 
 @pytest.mark.parametrize("existing_definition", [False, True])
@@ -155,7 +169,7 @@ def test_native_loop_keeps_entered_variables_and_stored_span_at_exit(producer, d
                 definition(frame) if names is None else T.for_(frame, names=names, span=definition)
             )
 
-        frame = caller.ctx(construct)
+        frame = caller.ctx(construct, attach_result=False)
         assert len(created) == 1
         variables = frame.vars
         expected_names = created[0][2] if names is None else ["i", "tail_0"][:dimensions]
@@ -195,7 +209,7 @@ def test_span_entry_restores_context_after_original_exception():
 
     with IRBuilder():
         with pytest.raises(ValueError) as caught:
-            caller.ctx(lambda: definition.ctx(fail))
+            caller.ctx(lambda: definition.ctx(fail, attach_result=False))
         assert caught.value is failure
         assert calls == [True]
         fresh = definition(prim.IntImm("int32", 1))

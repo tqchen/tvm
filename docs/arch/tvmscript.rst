@@ -177,18 +177,24 @@ as ``expr_str`` translate symbolic strings written directly in source expression
 preserves a module reference for builder-side lookup. Dtype and placement strings remain
 literal. Captured or computed symbolic shapes must already contain explicit IR variables;
 the parser does not interpret expression strings found inside captured values.
-Registration keeps the original callable unchanged and stores syntax facts in registry
-dictionaries. Bound methods and property getters use their underlying callable identity;
-lookup never evaluates a property. Explicit syntax registrations own the callable and its
-policy for the registry's lifetime. Metadata copied onto temporary source functions uses
-separate storage that releases with those functions and their closures.
-The registry selects a call's argument policy before traversal;
+Registration keeps syntax facts in simple dictionaries keyed by canonical namespace paths.
+Known namespace aliases normalize to the registered path; ordinary captured callables,
+local aliases, methods and closures execute as Python without marker inference. The
+dictionaries retain no source functions or parse captures. Dialects own their namespace
+exports, entry points and aliases and register them with the generic parser.
+The registry selects a call's argument policy before traversal and reuses positional
+parameter names computed once at registration;
 ``parser/expr_str_handling.py`` decodes annotation/expression strings and maps their
 escaped, multiline and UTF-8 source ranges. The main visitor rewrites the decoded syntax.
 
 Assignments become binding operations, standalone expressions become emission operations,
-and loops and scopes become builder contexts. Concrete binding, type checking, comparison
-construction, and frame finalization belong to the builders. Ordinary host calls and
+and loops and scopes become builder contexts. An ordinary assignment passes its evaluated
+RHS and a separate ``value_span`` to ``bind_``, without first stamping the returned value.
+The binding target has its own span. TIRx preserves returned Vars, including BufferVars,
+and ordinary metadata objects; other expressions follow the dialect's binding rules.
+Construction still runs in the source context, and nested expressions retain their locations.
+Concrete binding, type checking, comparison construction, and frame finalization belong to
+the builders. Ordinary host calls and
 operator overloads execute as part of the generated Python program.
 
 Loop frames create their named variables during construction. Entering a frame returns
@@ -273,25 +279,48 @@ Generated hooks receive entries explicitly: ``X.for_(X.range_(3), names="i", spa
 and ``X.emit_(value, span=_S[j])`` own their result locations. A callable registered with
 ``result_span`` promises that its complete IR effect is represented by its returned node
 or emission receipt, allowing result attachment without a construction context. Opaque
-helpers still require ``.ctx`` to locate internal effects. This policy does not change
-binding or emission behavior.
+helpers still require ``.ctx`` to locate internal effects. At an ordinary assignment boundary,
+``.ctx(..., attach_result=False)`` preserves construction context while leaving the returned
+value's attribution to ``bind_`` through its separate ``value_span``.
 The parser-owned ``parser.protocol_registry`` module defines registration APIs, metadata and
 persistent registration state. Dialects apply these policies beside concrete definitions,
 constructor creation or necessary exposure sites, without namespace scans or bulk
 registration inventories. Dialect ``parser_protocol`` modules implement construction hooks. The shared
-``ir_builder.ir.parser_protocol`` file-level documentation explains the complete
-registration and generated-builder contract; that module implements builder hooks
-without re-exporting registration APIs. For example, dialect registration imports
-``args_policy`` and ``direct_call`` from ``tvm.script.parser.protocol_registry``.
-Scope-variable and block-axis producers, including explicit ``T.bind``, are direct calls:
-assignment keeps their returned objects and explicit producer names without another
-binding, emission, result-span attachment or assignment-derived naming hook.
+``ir_builder.ir.parser_protocol`` documents the detailed builder-hook contract and links
+to the registry for special syntax policies. Dialect hooks retain typed signatures and
+document only their specific behavior. For example, dialects import ``args_policy``
+from ``tvm.script.parser.protocol_registry`` to register literal argument policies.
 
-Calls registered with ``direct_call`` keep their ordinary results without automatic
-binding, emission or result-span attachment. Their arguments still undergo normal
-translation. For example, ``I.meta_var(value)`` preserves the exact value and its span.
-Self-emitting builders instead return ``AlreadyEmitted[T]`` so ordinary source-location
-handling can annotate the emitted object while avoiding a second emission.
+Ordinary assignments pass returned values to ``bind_``. TIRx Vars keep their exact identity,
+producer names and spans, including scope variables, block axes and explicit ``T.bind``
+results. This behavior belongs to the builder's value handling and requires no parser
+producer classification. Self-emitting builders return ``AlreadyEmitted[T]`` so
+source-location handling can annotate the emitted object without emitting it twice.
+Layout, meta_class and view results likewise follow dialect value handling for assignment
+and standalone statements. Unsupported host values still fail under the dialect's emission
+rules. Expression-facing thread APIs return native Vars; IterVar remains native metadata.
+
+Simple comparison chains such as ``0 < i < 10`` lower to
+``X.and_(X.lt_(0, i), X.lt_(i, 10))``. Only names and numeric literals, including signed
+literals, are supported in a chain. Complex chain operands fail with a source-located
+syntax error before they evaluate. Single comparisons retain general operands, and the
+explicit constexpr boundary retains Python comparison semantics.
+
+A bare loop target receives the native entry result: ``for iters in T.grid(m, n)`` binds
+the original variable sequence, while ``for i in T.serial(n)`` binds one Var. Explicit
+tuple, list and starred targets unpack the native frame's stable ``vars`` field.
+
+Function decorators pass their construction namespace and options explicitly to parsing.
+Generated ``X.function_(**options)`` creates the frame; the dialect hook owns option defaults.
+Declaration creates stable references before function bodies; generated code reads the
+native ``global_var`` or ``local_var`` field directly, without a separate reservation pass.
+There is no function-registration record or copied source-function metadata. The root
+retains ``pyfunc`` behavior and original Python callables for module assembly.
+
+Completed modules use generic root coordination over dialect-owned validation hooks.
+Each dialect checks its members and cross-function requirements against the whole module,
+including captured members. Shared GlobalInfo construction and lookup belong to ``tvm.ir``;
+existing Relax class exports and serialized type keys remain compatible.
 
 Each parse rewrites the fresh AST returned by source acquisition directly, without
 copying or reparsing it. Ordinary functions construct arguments directly and bind their

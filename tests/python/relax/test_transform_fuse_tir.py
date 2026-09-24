@@ -2397,7 +2397,7 @@ def test_primitive_scalar_parameter_preserves_identity():
                     y[vi] = x[0] + p
 
         @R.function(private=True)
-        def fused(x: R.Tensor((4,), "int64"), p: R.Prim("int64")) -> R.Tensor((1,), "int64"):
+        def fused(x: R.Tensor((4,), "int64"), p: T.int64) -> R.Tensor((1,), "int64"):
             R.func_attr({"Primitive": True})
             cls = Before
             out = R.call_tir(
@@ -2408,7 +2408,7 @@ def test_primitive_scalar_parameter_preserves_identity():
             return out
 
         @R.function
-        def main(x: R.Tensor((4,), "int64"), p: R.Prim("int64")) -> R.Tensor((1,), "int64"):
+        def main(x: R.Tensor((4,), "int64"), p: T.int64) -> R.Tensor((1,), "int64"):
             cls = Before
             out = cls.fused(x, p)
             return out
@@ -2429,7 +2429,7 @@ def test_inplace_argument_after_primitive_scalar():
                     x[vi] = x[vi] + p
 
         @R.function(private=True)
-        def fused(p: R.Prim("int64"), x: R.Tensor((4,), "int64")) -> R.Tensor((4,), "int64"):
+        def fused(p: T.int64, x: R.Tensor((4,), "int64")) -> R.Tensor((4,), "int64"):
             R.func_attr({"Primitive": True})
             cls = Before
             out = R.call_tir_inplace(
@@ -2441,7 +2441,7 @@ def test_inplace_argument_after_primitive_scalar():
             return out
 
         @R.function
-        def main(p: R.Prim("int64"), x: R.Tensor((4,), "int64")) -> R.Tensor((4,), "int64"):
+        def main(p: T.int64, x: R.Tensor((4,), "int64")) -> R.Tensor((4,), "int64"):
             cls = Before
             out = cls.fused(p, x)
             return out

@@ -24,7 +24,6 @@ from ..base import IRBuilder, MISSING, annotation_value_, at_, with_at_group_, r
 from .parser_protocol import check_well_formed_, module_member_, resolve_global_info_
 from .frame import IRModuleFrame
 from .ir import (
-    reserve_function,
     decl_function,
     def_function,
     ir_module,

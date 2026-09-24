@@ -100,10 +100,6 @@ def make_jit(builder: object) -> Callable[..., Any]:
                 definition_scope = capture_definition_scope(frame)
             finally:
                 del frame
-            protocol.copy_function_info(jit, function)
-            protocol.register_function_options(
-                function, {"private": private, "s_tir": is_stir, "persistent": persistent}
-            )
             return TIRJit(
                 function,
                 check_well_formed,
@@ -111,15 +107,12 @@ def make_jit(builder: object) -> Callable[..., Any]:
                 persistent,
                 private,
                 definition_scope=definition_scope,
+                builder=builder,
             )
 
         return apply(func) if func is not None else apply
 
-    return protocol.register_function(
-        jit,
-        builder,
-        option_map={"private": "private", "is_stir": "s_tir", "persistent": "persistent"},
-    )
+    return jit
 
 
 class TIRJit:
@@ -144,12 +137,14 @@ class TIRJit:
         private: bool = False,
         *,
         definition_scope: Mapping[str, Any] | None = None,
+        builder: object | None = None,
     ) -> None:
         from tvm.script.parser.inspect_source import (
             capture_annotation_bindings,
             capture_lexical_bindings,
         )
 
+        self.builder = builder
         self.func = func
         self.check_well_formed = check_well_formed
         self.is_stir = is_stir
@@ -170,7 +165,7 @@ class TIRJit:
         raw_anns = getattr(func, "__annotations__", {}) or {}
         annotation_scope = {**func.__globals__, **self._closure_vars, **self._definition_scope}
 
-        from tvm.script.parser.prescan import resolve_syntax
+        from tvm.script.parser.prescan import resolve_namespace_value
 
         sig = inspect.signature(func)
         constexpr_names: set[str] = set()
@@ -184,7 +179,7 @@ class TIRJit:
                     node = ast.parse(ann, mode="eval").body
                     if isinstance(node, ast.Constant) and isinstance(node.value, str):
                         node = ast.parse(node.value, mode="eval").body
-                    ann = resolve_syntax(
+                    ann = resolve_namespace_value(
                         node.func if isinstance(node, ast.Call) else node, annotation_scope
                     )
                     if isinstance(node, ast.Call) and ann is not OptionalAnnotation:
@@ -261,10 +256,20 @@ class TIRJit:
         if cached is not None:
             return cached
 
+        if self.builder is None:
+            from tvm.tirx.script import builder
+        else:
+            builder = self.builder
         prim_func = parse(
             self.func,
             self._closure_vars,
             definition_scope=self._definition_scope,
+            root_builder=builder,
+            root_function_options={
+                "private": self.private,
+                "s_tir": self.is_stir,
+                "persistent": self.persistent,
+            },
             _specialization_bindings=effective,
             check_well_formed=self.check_well_formed,
         )

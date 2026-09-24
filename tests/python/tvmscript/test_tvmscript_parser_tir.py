@@ -374,12 +374,14 @@ def test_tir_macro_in_class():
     def func_no_macro(a: T.handle):
         A = T.match_buffer(a, [128, 128])
         local_a = T.sblock_alloc_buffer([128, 128])
-        for i, j in T.grid(128, 128):
+        N, M = local_a.shape
+        for i, j in T.grid(N, M):
             with T.sblock("update"):
                 vi, vj = T.axis.remap("SS", [i, j])
                 local_a[vi, vj] = A[vi, vj]
         local_b = T.sblock_alloc_buffer([128, 128])
-        for i, j in T.grid(128, 128):
+        N, M = local_b.shape
+        for i, j in T.grid(N, M):
             with T.sblock("update"):
                 vi, vj = T.axis.remap("SS", [i, j])
                 local_b[vi, vj] = local_a[vi, vj]

@@ -221,7 +221,7 @@ def test_invalid_loop_var():
 
 def test_inconsistent_grid():
     def inconsistent_grid(A: T.Buffer(16)) -> None:
-        for i in T.grid(16, 16):  # error: one target cannot unpack two loop variables
+        for (i,) in T.grid(16, 16):  # error: one explicit target cannot unpack two variables
             T.evaluate(A[i])
 
     check_error(inconsistent_grid, 2, ValueError)

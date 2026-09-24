@@ -177,7 +177,7 @@ def test_take_infer_ty_scalar_tensor_index():
 def test_take_infer_ty_prim_value_index():
     bb = relax.BlockBuilder()
     x0 = relax.Var("x", R.Tensor((4, 10), "float32"))
-    idx = relax.Var("idx", R.Prim("int64"))
+    idx = relax.Var("idx", tvm.ir.PrimType("int64"))
 
     _check_inference(bb, relax.op.take(x0, idx, axis=0), relax.TensorType([10], "float32"))
     _check_inference(bb, relax.op.take(x0, idx, axis=1), relax.TensorType([4], "float32"))

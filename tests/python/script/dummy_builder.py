@@ -78,7 +78,8 @@ class Frame:
         self.function = Function() if kind == "function" else None
         self.params = []
         self.type_var_map = {}
-        self.reference = Value("global", (self,))
+        self.global_var = Value("global", (self,))
+        self.local_var = Value("local", (self,))
         self.result = None
         self.branches = []
         self.names = None
@@ -138,8 +139,8 @@ class RecordingSpanEntry:
     def __call__(self, value):
         return self.language.I.at_(self.location, value)
 
-    def ctx(self, thunk):
-        return self.language.I.with_at_group_(self.location, thunk)
+    def ctx(self, thunk, *, attach_result=True):
+        return self.language.I.with_at_group_(self.location, thunk, attach_result=attach_result)
 
 
 class Language:
@@ -158,7 +159,6 @@ class Language:
             at_=self.at,
             with_at_group_=self.with_at_group,
             resolve_global_info_=self.resolve_global_info,
-            reserve_function=self.reserve_function,
             module_member_=lambda name, value: value,
             require_defined=self.require_defined,
             annotation_value_=lambda name, value: value,
@@ -168,7 +168,7 @@ class Language:
         )
         self.X = SimpleNamespace(
             supports_mutable_declarations=True,
-            function=lambda **kwargs: Frame(self, "function", **kwargs),
+            function_=lambda **kwargs: Frame(self, "function", **kwargs),
             func_name=self.func_name,
             arg=self.arg,
             func_ret_type=self.func_ret_type,
@@ -178,8 +178,8 @@ class Language:
             bind_=self.bind,
             check_well_formed_=lambda result: None,
             emit_=self.emit,
-            decl_mutable_var_=self.decl_mutable,
-            set_mutable_var_=self.set_mutable,
+            decl_mutable_cell_=self.decl_mutable,
+            set_mutable_cell_=self.set_mutable,
             call_global_var_=lambda function, args: Value("call", (function, *args)),
             range_=lambda *bounds, **kwargs: Frame(self, "for", values=(bounds,)),
             grid=lambda *bounds: Frame(self, "for", values=bounds),
@@ -202,11 +202,15 @@ class Language:
             def operation(*args, name=name):
                 return Value(name, args)
 
-            setattr(self.X, name, operation)
             setattr(self.X, name + "_", operation)
-        self.X.script = entry.make_decorator(self.X)
+        entry.register_namespace("X", self.X)
+        self.X.script = registry.declaration_kind("X.script", "function")(
+            entry.make_decorator(self.X)
+        )
 
-        @registry.args_policy({"shape": "expr_str", "device": "global_info"}, scalar_strings=False)
+        @registry.args_policy(
+            "X.tensor", {"shape": "expr_str", "device": "global_info"}, scalar_strings=False
+        )
         def tensor(shape=None, dtype="float32", device=None, placement="S[0]"):
             return Value("tensor", (shape, dtype, device, placement))
 
@@ -217,8 +221,8 @@ class Language:
             return Value("cell", (value,))
 
         self.X.tensor = tensor
-        self.X.symbol = registry.register_type_var_decl(symbol, dtype="int64")
-        self.X.cell = registry.register_mutable_var_decl(cell)
+        self.X.symbol = registry.register_type_var_decl("X.symbol", symbol, dtype="int64")
+        self.X.cell = registry.mutable_cell_decl("X.cell")(cell)
 
     @contextmanager
     def context(self):
@@ -231,9 +235,6 @@ class Language:
     def frame(self):
         return next(frame for frame in reversed(self.stack) if frame.kind == "function")
 
-    def reserve_function(self, name):
-        return self.references.setdefault(name, Value("global", (name,)))
-
     def require_defined(self, value, name):
         if value is self.missing:
             raise NameError(name)
@@ -241,7 +242,7 @@ class Language:
 
     def func_name(self, name):
         self.frame().function.name = name
-        self.frame().reference = self.references.setdefault(name, Value("global", (name,)))
+        self.frame().global_var = self.references.setdefault(name, Value("global", (name,)))
         self.events.append(("name", name))
 
     def arg(self, name, annotation, *, span=None, **kwargs):
@@ -298,7 +299,12 @@ class Language:
     def for_frame(self, frame, *, names=None, span=None, **kwargs):
         frame.names = names
         if names is not None:
-            names = (names,) if isinstance(names, str) else names
+            if isinstance(names, str):
+                names = (
+                    (names,)
+                    if len(frame.vars) == 1
+                    else [f"{names}_{index}" for index in range(len(frame.vars))]
+                )
             expanded = []
             for name in names:
                 if name.startswith("*"):
@@ -319,12 +325,15 @@ class Language:
             value.span = tuple([*self.source_stack, location])
         return value
 
-    def with_at_group(self, location, thunk):
+    def with_at_group(self, location, thunk, *, attach_result=True):
         self.source_stack.append(location)
         try:
-            return self.at(location, thunk())
+            value = thunk()
+            return self.at(location, value) if attach_result else value
         finally:
             self.source_stack.pop()
 
     def parse(self, source, **captures):
-        return entry.parse(source, extra_vars={"X": self.X, **captures}, filename="dummy.py")
+        return entry.parse(
+            source, extra_vars={"X": self.X, **captures}, filename="dummy.py", root_builder=self.X
+        )

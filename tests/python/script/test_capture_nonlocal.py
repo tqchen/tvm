@@ -53,8 +53,8 @@ def test_nonlocal_declaration_preserves_captured_values(
     # Expected builder: preserve annotation/value, return identity, and caller captures.
     captures = {"X": language.X, **captured}
     original_captures = dict(captures)
-    expected = entry.parse(expected_source, extra_vars={"X": language.X})
-    actual = entry.parse(source, extra_vars=captures)
+    expected = entry.parse(expected_source, extra_vars={"X": language.X}, root_builder=language.X)
+    actual = entry.parse(source, extra_vars=captures, root_builder=language.X)
     assert actual.name == expected.name
     assert len(actual.params) == len(expected.params)
     if actual.params:

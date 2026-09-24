@@ -18,13 +18,11 @@
 
 import pytest
 
-import tvm
 from tvm import ir
 from tvm.script import parser
 from tvm.script import tirx as T
 from tvm.script.ir_builder import IRBuilder
 from tvm.script.ir_builder import ir as I
-from tvm.script.parser import protocol_registry as registry
 
 
 def test_global_info_selectors_use_module_map():
@@ -40,28 +38,6 @@ def test_global_info_selectors_use_module_map():
         assert I.resolve_global_info_("other[0]") is not None
 
 
-def test_annotation_class_supports_union_and_missing_type():
-    # Before: X.Annotation("n") | None
-    # Expected builder program: X.Annotation((X.resolve_type_var_("n"))) in a function frame.
-    @registry.args_policy({"shape": "expr_str"}, as_type=True)
-    def annotation(shape):
-        return shape
-
-    assert isinstance(annotation, type)
-    assert annotation | None
-    assert annotation(16) == 16
-    assert annotation("n").is_missing()
-
-
-@pytest.mark.parametrize("name", ["Range", "StringType", "StringImm", "GenericConst"])
-def test_shared_ir_constructor_identity(name):
-    # Initialize the source namespace before inspecting its shared constructors.
-    parse = parser.parse
-    assert callable(parse)
-    assert getattr(I, name) is getattr(tvm.ir, name)
-    assert getattr(parser.I, name) is getattr(tvm.ir, name)
-
-
 def test_module_string_constants_keep_common_constructor_values():
     actual = parser.parse("""
 @I.ir_module
@@ -75,9 +51,7 @@ class Module:
     assert isinstance(actual.attrs["type"], ir.StringType)
 
 
-def test_dialect_marker_is_same_protocol_identity():
-    assert T.constexpr is I.constexpr
-
+def test_constexpr_uses_registered_namespace_in_source():
     class Ordinary:
         constexpr = T.int32
 
@@ -87,7 +61,7 @@ def test_dialect_marker_is_same_protocol_identity():
     )
     assert len(ordinary.params) == 1 and ordinary.params[0].ty.dtype == "int32"
     with pytest.raises(TypeError, match="requires a specialization binding"):
-        parser.parse(source, extra_vars={"annotation": I.constexpr})
+        parser.parse(source.replace("annotation", "I.constexpr"))
 
 
 @pytest.mark.parametrize("dialect_name", ["tirx", "relax"])
@@ -101,20 +75,20 @@ def test_native_function_reentry_retains_its_symbol_map_and_reference(dialect_na
     with IRBuilder() as builder, I.ir_module() as module:
         with pytest.raises(ValueError, match="function"):
             dialect.resolve_type_var_("n")
-        with dialect.function(decl=True) as frame:
+        with dialect.function_(decl=True) as frame:
             dialect.func_name("identity")
             n = dialect.resolve_type_var_("n")
             annotation = B.Buffer((n,), "float32") if dialect is B else R.Tensor((n,), "float32")
             parameter = dialect.arg("x", annotation)
             assert frame.type_var_map["n"].same_as(n)
             assert builder.frames[-1].same_as(frame)
-        reference = frame.reference
+        reference = frame.global_var
         assert module.identity.same_as(reference)
         with frame:
             assert dialect.resolve_type_var_("n").same_as(n)
             assert frame.params[0].same_as(parameter)
             # A separate nested build must resolve its own same-spelling symbol.
-            with IRBuilder(), dialect.function() as nested:
+            with IRBuilder(), dialect.function_() as nested:
                 inner_n = dialect.resolve_type_var_("n")
                 assert not inner_n.same_as(n)
                 assert nested.type_var_map["n"].same_as(inner_n)
@@ -127,7 +101,7 @@ def test_native_function_reentry_retains_its_symbol_map_and_reference(dialect_na
                 B.evaluate(parameter[0])
             else:
                 R.func_ret_value(parameter)
-        assert frame.reference.same_as(reference)
+        assert frame.global_var.same_as(reference)
         assert frame.function.params[0].same_as(parameter)
     assert builder.get().get_global_var("identity").same_as(reference)
     assert builder.get()["identity"].params[0].same_as(parameter)

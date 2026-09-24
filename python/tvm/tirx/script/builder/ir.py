@@ -45,11 +45,9 @@ from tvm.runtime import convert
 from tvm.script.ir_builder.base import AlreadyEmitted, IRBuilder
 from tvm.script.ir_builder.ir import meta_var
 from tvm.script.ir_builder.ir.frame import IRModuleFrame
-from tvm.script.parser.protocol_registry import direct_call as _direct_call
 from tvm.script.parser.protocol_registry import (
-    register_mutable_var_decl as _register_mutable_var_decl,
+    mutable_cell_decl as _mutable_cell_decl,
 )
-from tvm.script.parser.protocol_registry import register_result_members as _register_result_members
 from tvm.script.parser.protocol_registry import register_type_var_decl as _register_type_var_decl
 from tvm.target import Target
 
@@ -57,7 +55,6 @@ from tvm.target import Target
 from tvm.target.codegen import llvm_lookup_intrinsic_id
 from tvm.tirx import Buffer, Expr, IndexMap, is_buffer_var, type_annotation
 from tvm.tirx import op as _tir_op
-from tvm.tirx.buffer import _BufferMethods
 from tvm.tirx.exec_scope import ExecScope, ScopeIdDef, Var
 
 # import tirx.expr for direct ir construction to pass structural_equal comparison
@@ -308,7 +305,6 @@ def block_name_suffix_context(block_suffix: str):
         _block_name_suffix.value = old_suffix
 
 
-@partial(_register_result_members, members=_BufferMethods)
 def buffer(
     shape: list[Expr] | tuple[Expr] | Expr | Integral,
     dtype: str = "float32",
@@ -503,8 +499,7 @@ def Tuple(*fields: Type) -> Type:  # pylint: disable=invalid-name
     return ir.TupleType(normalized_fields)
 
 
-@_register_mutable_var_decl
-@partial(_register_result_members, members=_BufferMethods)
+@_mutable_cell_decl("T.match_buffer")
 def match_buffer(
     param: Var | TensorLoad | TensorRegion,
     shape: list[Expr] | tuple[Expr] | Expr | Integral = None,
@@ -680,7 +675,6 @@ def elected():
     )
 
 
-@_direct_call
 def scope_id(
     extents: list[Expr | int] | None, parent: str, cur: str, dtype: str = "int32"
 ) -> Var | tuple[Var, ...]:
@@ -695,7 +689,6 @@ def scope_id(
     return tuple(ret)
 
 
-@_direct_call
 def cluster_id(
     extents: list[Expr | int] | None = None, dtype: str = "int32"
 ) -> Var | tuple[Var, ...]:
@@ -710,7 +703,6 @@ def cluster_id(
     return tuple(ret)
 
 
-@_direct_call
 def cta_id(
     extents: list[Expr | int] | None = None, preferred=None, dtype: str = "int32"
 ) -> Var | tuple[Var, ...]:
@@ -725,7 +717,6 @@ def cta_id(
     return tuple(ret)
 
 
-@_direct_call
 def cta_id_in_cluster(
     extents: list[Expr | int] | None = None, preferred=None, dtype: str = "int32"
 ) -> Var | tuple[Var, ...]:
@@ -740,14 +731,12 @@ def cta_id_in_cluster(
     return tuple(ret)
 
 
-@_direct_call
 def cta_id_in_pair(dtype: str = "int32") -> Var:
     """Return the native CTA index within its two-CTA pair."""
     ret = _ffi_api.CtaIdInPair(dtype)  # type: ignore[attr-defined] # pylint: disable=no-member
     return ret[0]
 
 
-@_direct_call
 def warpgroup_id(
     extents: list[Expr | int] | None = None, dtype: str = "int32"
 ) -> Var | tuple[Var, ...]:
@@ -762,7 +751,6 @@ def warpgroup_id(
     return tuple(ret)
 
 
-@_direct_call
 def warp_id(extents: list[Expr | int] | None = None, dtype: str = "int32") -> Var | tuple[Var, ...]:
     """Define a cta→warp scope id. Pass ``None`` (the default) to defer the
     extent; it will be inferred at LowerTIRx from sibling closure.
@@ -775,7 +763,6 @@ def warp_id(extents: list[Expr | int] | None = None, dtype: str = "int32") -> Va
     return tuple(ret)
 
 
-@_direct_call
 def warp_id_in_wg(
     extents: list[Expr | int] | None = None, dtype: str = "int32"
 ) -> Var | tuple[Var, ...]:
@@ -790,7 +777,6 @@ def warp_id_in_wg(
     return tuple(ret)
 
 
-@_direct_call
 def lane_id(extents: list[Expr | int] | None = None, dtype: str = "int32") -> Var | tuple[Var, ...]:
     """Define a warp→thread scope id. Pass ``None`` (the default) to defer the
     extent; it will be inferred at LowerTIRx from sibling closure.
@@ -803,7 +789,6 @@ def lane_id(extents: list[Expr | int] | None = None, dtype: str = "int32") -> Va
     return tuple(ret)
 
 
-@_direct_call
 def thread_id(
     extents: list[Expr | int] | None = None, dtype: str = "int32"
 ) -> Var | tuple[Var, ...]:
@@ -818,7 +803,6 @@ def thread_id(
     return tuple(ret)
 
 
-@_direct_call
 def thread_id_in_wg(
     extents: list[Expr | int] | None = None, dtype: str = "int32"
 ) -> Var | tuple[Var, ...]:
@@ -913,8 +897,7 @@ def sblock_attr(attrs: dict[str, Any]) -> None:
     return _ffi_api.BlockAttrs(attrs)  # type: ignore[attr-defined] # pylint: disable=no-member
 
 
-@_register_mutable_var_decl
-@partial(_register_result_members, members=_BufferMethods)
+@_mutable_cell_decl("T.alloc_buffer")
 def alloc_buffer(
     shape: list[Expr] | tuple[Expr] | Expr | Integral,
     dtype: str = "float32",
@@ -1130,7 +1113,6 @@ class axis:  # pylint: disable=invalid-name
     """The axis class"""
 
     @staticmethod
-    @_direct_call
     def spatial(
         dom: ir.Range | list[Expr] | tuple[Expr],
         binding: Expr,
@@ -1159,7 +1141,6 @@ class axis:  # pylint: disable=invalid-name
         )
 
     @staticmethod
-    @_direct_call
     def reduce(
         dom: ir.Range | list[Expr] | tuple[Expr],
         binding: Expr,
@@ -1188,7 +1169,6 @@ class axis:  # pylint: disable=invalid-name
         )
 
     @staticmethod
-    @_direct_call
     def scan(
         dom: ir.Range | list[Expr] | tuple[Expr],
         binding: Expr,
@@ -1217,7 +1197,6 @@ class axis:  # pylint: disable=invalid-name
         )
 
     @staticmethod
-    @_direct_call
     def opaque(
         dom: ir.Range | list[Expr] | tuple[Expr],
         binding: Expr,
@@ -1246,7 +1225,6 @@ class axis:  # pylint: disable=invalid-name
         )
 
     @staticmethod
-    @_direct_call
     def remap(kinds: str, bindings: list[Expr], dtype: str = "int32") -> list[Var] | Var:
         """The block axis remapping function.
 
@@ -1579,7 +1557,6 @@ def Assert(condition: Expr, message, error_kind: str = "RuntimeError") -> frame.
     return _ffi_api.Assert(condition, error_kind, message)  # type: ignore[attr-defined] # pylint: disable=no-member
 
 
-@_direct_call
 def Bind(  # pylint: disable=invalid-name
     value: Expr,
     type_annotation: Type | None = None,  # pylint: disable=redefined-outer-name
@@ -1625,7 +1602,6 @@ def Let(  # pylint: disable=invalid-name
     return tir.Let(var, value, expr)
 
 
-@_direct_call
 def bind(
     value: Expr,
     type_annotation: Type | None = None,  # pylint: disable=redefined-outer-name
@@ -1675,7 +1651,7 @@ class LetAnnotation:
 let = LetAnnotation()  # Singleton for T.let (no subscript)
 
 
-@partial(_register_mutable_var_decl, syntax="annotation")
+@_mutable_cell_decl("T.LocalVectorAnnotation", syntax="annotation")
 class LocalVectorAnnotation:
     """Marker for local vector/tensor allocation via type annotation subscript.
 
@@ -1864,8 +1840,7 @@ def Else() -> frame.ElseFrame:  # pylint: disable=invalid-name
     return _ffi_api.Else()  # type: ignore[attr-defined] # pylint: disable=no-member
 
 
-@_register_mutable_var_decl
-@partial(_register_result_members, members=_BufferMethods)
+@_mutable_cell_decl("T.decl_buffer")
 def decl_buffer(
     shape,
     dtype="float32",
@@ -1951,12 +1926,10 @@ def decl_buffer(
 
 
 alloc_shared = functools.partial(alloc_buffer, scope="shared")
-_register_mutable_var_decl(alloc_shared)
-_register_result_members(alloc_shared, _BufferMethods)
+_mutable_cell_decl("T.alloc_shared")(alloc_shared)
 alloc_local = functools.partial(alloc_buffer, scope="local")
-_register_mutable_var_decl(alloc_local)
-_register_result_members(alloc_local, _BufferMethods)
-smem = alloc_shared
+_mutable_cell_decl("T.alloc_local")(alloc_local)
+smem = _mutable_cell_decl("T.smem")(alloc_shared)
 tmem = functools.partial(alloc_buffer, scope="tmem")
 
 
@@ -2147,7 +2120,7 @@ else:
             return ~self.scalar
 
 
-@_register_mutable_var_decl
+@_mutable_cell_decl("T.alloc_scalar")
 def alloc_scalar(dtype: str = "float32", scope: str = "global") -> TensorLoad:
     """Allocate a zero-dimensional buffer (scalar)."""
     buf = alloc_buffer(shape=(1,), dtype=dtype, scope=scope, layout=TileLayout(S[1]))
@@ -2158,7 +2131,7 @@ def alloc_scalar(dtype: str = "float32", scope: str = "global") -> TensorLoad:
     return scalar_wrapper(scalar)
 
 
-@_register_mutable_var_decl
+@_mutable_cell_decl("T.decl_scalar")
 def decl_scalar(dtype, data, scope, elem_offset=None, byte_offset=None) -> TensorLoad:
     """Declare a zero-dimensional buffer (scalar) from a pointer."""
     buf = decl_buffer(
@@ -2179,13 +2152,13 @@ def decl_scalar(dtype, data, scope, elem_offset=None, byte_offset=None) -> Tenso
     return scalar_wrapper(scalar)
 
 
-@_register_mutable_var_decl
+@_mutable_cell_decl("T.shared_scalar")
 def shared_scalar(dtype: str = "float32") -> TensorLoad:
     """Allocate a zero-dimensional buffer in shared memory."""
     return alloc_scalar(dtype=dtype, scope="shared")
 
 
-@_register_mutable_var_decl
+@_mutable_cell_decl("T.local_scalar")
 def local_scalar(dtype: str = "float32") -> TensorLoad:
     """Allocate a zero-dimensional buffer in local memory."""
     return alloc_scalar(dtype=dtype, scope="local")
@@ -2288,14 +2261,14 @@ def _validate_meta_construction_scope(scope: _MetaConstructionScope) -> None:
 
 
 def launch_thread(
-    thread: IterVar | str,  # pylint: disable=redefined-outer-name
+    thread: Var | str,  # pylint: disable=redefined-outer-name
     extent: Expr,
 ) -> frame.LaunchThreadFrame:
     """Launch a thread.
 
     Parameters
     ----------
-    thread : Union[IterVar, str]
+    thread : Union[Var, str]
         The iteration variable.
 
     extent : Expr
@@ -2322,8 +2295,7 @@ def launch_thread(
     return _ffi_api.LaunchThread(thread, extent)  # type: ignore[attr-defined] # pylint: disable=no-member
 
 
-@_direct_call
-def env_thread(thread_tag: str, dtype: str = "int32") -> IterVar:
+def env_thread(thread_tag: str, dtype: str = "int32") -> Var:
     """Bind a var to thread env
 
     Parameters
@@ -2336,8 +2308,8 @@ def env_thread(thread_tag: str, dtype: str = "int32") -> IterVar:
 
     Returns
     -------
-    res : IterVar
-        The result iteration variable gets bound to the thread env.
+    res : Var
+        The thread variable; native function state retains its iteration metadata.
 
     """
     return _ffi_api.EnvThread(thread_tag, dtype)  # type: ignore[attr-defined] # pylint: disable=no-member
@@ -2436,8 +2408,8 @@ def func_gen(name: str):
     """
     dtype = _ffi_name_to_dtype(name)
     constructor = DtypeConstructor(name, dtype)
-    _register_type_var_decl(constructor, dtype=dtype)
-    _register_mutable_var_decl(constructor, syntax="annotation")
+    _register_type_var_decl(f"T.{dtype}", constructor, dtype=dtype)
+    _mutable_cell_decl(f"T.{dtype}", syntax="annotation")(constructor)
     return constructor
 
 
@@ -2625,18 +2597,30 @@ float4_e2m1fnx64 = func_gen("Float4E2M1FNx64")
 bfloat16 = func_gen("BFloat16")
 
 # Shorthand aliases
-f16 = float16
-f32 = float32
-f64 = float64
-bf16 = bfloat16
-i8 = int8
-i16 = int16
-i32 = int32
-i64 = int64
-u8 = uint8
-u16 = uint16
-u32 = uint32
-u64 = uint64
+f16 = _register_type_var_decl("T.f16", float16, dtype="float16")
+_mutable_cell_decl("T.f16", syntax="annotation")(f16)
+f32 = _register_type_var_decl("T.f32", float32, dtype="float32")
+_mutable_cell_decl("T.f32", syntax="annotation")(f32)
+f64 = _register_type_var_decl("T.f64", float64, dtype="float64")
+_mutable_cell_decl("T.f64", syntax="annotation")(f64)
+bf16 = _register_type_var_decl("T.bf16", bfloat16, dtype="bfloat16")
+_mutable_cell_decl("T.bf16", syntax="annotation")(bf16)
+i8 = _register_type_var_decl("T.i8", int8, dtype="int8")
+_mutable_cell_decl("T.i8", syntax="annotation")(i8)
+i16 = _register_type_var_decl("T.i16", int16, dtype="int16")
+_mutable_cell_decl("T.i16", syntax="annotation")(i16)
+i32 = _register_type_var_decl("T.i32", int32, dtype="int32")
+_mutable_cell_decl("T.i32", syntax="annotation")(i32)
+i64 = _register_type_var_decl("T.i64", int64, dtype="int64")
+_mutable_cell_decl("T.i64", syntax="annotation")(i64)
+u8 = _register_type_var_decl("T.u8", uint8, dtype="uint8")
+_mutable_cell_decl("T.u8", syntax="annotation")(u8)
+u16 = _register_type_var_decl("T.u16", uint16, dtype="uint16")
+_mutable_cell_decl("T.u16", syntax="annotation")(u16)
+u32 = _register_type_var_decl("T.u32", uint32, dtype="uint32")
+_mutable_cell_decl("T.u32", syntax="annotation")(u32)
+u64 = _register_type_var_decl("T.u64", uint64, dtype="uint64")
+_mutable_cell_decl("T.u64", syntax="annotation")(u64)
 # pylint: enable=invalid-name
 
 
@@ -2806,7 +2790,6 @@ def max(a: Expr, b: Expr) -> Expr:  # pylint: disable=redefined-builtin
     return _ffi_api.max(a, b)  # type: ignore[attr-defined] # pylint: disable=no-member
 
 
-@_direct_call
 def iter_var(v: Var | str, dom: ir.Range, iter_type: str, thread_tag: str) -> IterVar:
     """The iteration variable.
 
@@ -2937,9 +2920,6 @@ if TYPE_CHECKING:
 else:
 
     def _install_meta_class(cls):
-        from tvm.script.parser.protocol_registry import direct_call
-
-        direct_call(cls)
         if cls.__dict__.get("_tirx_meta_class_installed", False):
             cls._is_meta_class = True
             return cls

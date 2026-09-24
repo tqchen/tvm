@@ -22,7 +22,7 @@ from dummy_builder import Function
 
 from tvm import ir
 from tvm.script import ir as I
-from tvm.script.parser import entry
+from tvm.script.parser import entry, protocol_registry
 from tvm.script.parser.inspect_source import Source
 from tvm.tirx.script.jit import make_jit
 
@@ -99,7 +99,7 @@ def test_source_and_ir_call_spans_use_one_based_columns(spanned_language, entryp
     if entrypoint == "source":
         program = '@X.script\ndef direct():\n    X.evaluate(X.call_extern("int32", "direct"))\n'
         source = Source(program)
-        function = entry.parse(program, extra_vars={"X": X})
+        function = entry.parse(program, extra_vars={"X": X}, root_builder=spanned_language.X)
     else:
         source = Source(direct)
         function = X.script(direct)
@@ -130,7 +130,7 @@ def main():
     calls = [main.body[0].value, outer.body[0].value, inner.body[0].value.args[0]]
     expected = [_position(source.to_span(call)) for call in calls]
     assert [position[1] for position in expected] == [5, 5, 16]
-    function = entry.parse(text, extra_vars={"X": X})
+    function = entry.parse(text, extra_vars={"X": X}, root_builder=spanned_language.X)
     span = function.body[0][1].span
     assert isinstance(span, ir.SequentialSpan)
     assert [_position(item) for item in span.spans] == expected
@@ -194,7 +194,7 @@ def test_macro_capture_policy_remains_explicit(language, hygienic, expected, mon
     # Before: macro captures MACRO_VALUE=2; the global changes to 1 before invocation.
     # Expected builder: hygienic macro records 2; caller-environment macro records 1.
     X = language.X
-    X.macro = entry.make_macro_decorator(X)
+    X.macro = protocol_registry.declaration_kind("X.macro", "helper")(entry.make_macro_decorator(X))
     monkeypatch.setitem(globals(), "X", X)
     monkeypatch.setitem(globals(), "MACRO_VALUE", 2)
 

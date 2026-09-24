@@ -25,13 +25,12 @@ from tvm import ir as _ir
 from tvm import tirx as _tir
 from tvm.script.ir_builder.base import at as _at
 from tvm.script.ir_builder.base import source_span as _source_span
+from tvm.script.parser.protocol_registry import ARGS_POLICIES as _ARGS_POLICIES
 from tvm.script.parser.protocol_registry import args_policy as _args_policy
 from tvm.script.parser.protocol_registry import constexpr as constexpr
 from tvm.script.parser.protocol_registry import (
-    register_mutable_var_decl as _register_mutable_var_decl,
+    mutable_cell_decl as _mutable_cell_decl,
 )
-from tvm.script.parser.protocol_registry import register_result_members as _register_result_members
-from tvm.tirx.buffer import _BufferMethods
 from tvm.tirx.lang.alloc_pool import SMEMPool as SMEMPool
 from tvm.tirx.lang.alloc_pool import TMEMPool as TMEMPool
 
@@ -40,40 +39,42 @@ from . import tirx as tile
 from .ir import *
 from .ir import Bind as bind
 from .ir import boolean as bool  # pylint: disable=redefined-builtin
-from .parser_protocol import Else as Else
-from .parser_protocol import Then as Then
-from .parser_protocol import While as While
-from .parser_protocol import and_ as and_
-from .parser_protocol import arg as arg
-from .parser_protocol import assert_ as assert_
-from .parser_protocol import bind_ as bind_
-from .parser_protocol import break_ as break_
-from .parser_protocol import call_global_var_ as call_global_var_
-from .parser_protocol import check_well_formed_ as check_well_formed_
-from .parser_protocol import continue_ as continue_
-from .parser_protocol import decl_mutable_var_ as decl_mutable_var_
-from .parser_protocol import emit_ as emit_
-from .parser_protocol import eq as eq
-from .parser_protocol import for_ as for_
-from .parser_protocol import func_name as func_name
-from .parser_protocol import func_ret_type as func_ret_type
-from .parser_protocol import function as function
-from .parser_protocol import ge as ge
-from .parser_protocol import gt as gt
-from .parser_protocol import if_ as if_
-from .parser_protocol import if_then_else_ as if_then_else_
-from .parser_protocol import le as le
-from .parser_protocol import lt as lt
-from .parser_protocol import ne as ne
-from .parser_protocol import not_ as not_
-from .parser_protocol import or_ as or_
-from .parser_protocol import range_ as range_
-from .parser_protocol import resolve_type_var_ as resolve_type_var_
-from .parser_protocol import return_ as return_
-from .parser_protocol import set_mutable_var_ as set_mutable_var_
-from .parser_protocol import setattr as setattr
-from .parser_protocol import setitem as setitem
-from .parser_protocol import unpack as unpack
+from .parser_protocol import (
+    Else,
+    Then,
+    While,
+    and_,
+    arg,
+    assert_,
+    bind_,
+    break_,
+    call_global_var_,
+    check_well_formed_,
+    continue_,
+    decl_mutable_cell_,
+    emit_,
+    eq_,
+    for_,
+    func_name,
+    func_ret_type,
+    function_,
+    ge_,
+    gt_,
+    if_,
+    if_then_else_,
+    le_,
+    lt_,
+    ne_,
+    not_,
+    or_,
+    range_,
+    resolve_type_var_,
+    return_,
+    set_mutable_cell_,
+    setattr,
+    setitem,
+    unpack,
+)
 from .tirx import cluster as cluster
 from .tirx import cta as cta
 from .tirx import thread as thread
@@ -98,9 +99,9 @@ def type_var(name, *, dtype=None, span=None):
     return _ir.Var(name, "int64" if dtype is None else dtype, _source_span(span))
 
 
-@_partial(_register_mutable_var_decl, syntax="parameter")
-@_partial(_register_result_members, members=_BufferMethods)
+@_mutable_cell_decl("T.Buffer", syntax="parameter")
 @_args_policy(
+    "T.Buffer",
     {
         "shape": "expr_str",
         "strides": "expr_str",
@@ -193,7 +194,8 @@ def Buffer(
     )
 
 
-buffer = Buffer
+buffer = _mutable_cell_decl("T.buffer", syntax="parameter")(Buffer)
+_ARGS_POLICIES["T.buffer"] = _ARGS_POLICIES["T.Buffer"]
 
 
 def Ptr(dtype, storage_scope="global", *, span=None):
@@ -267,34 +269,34 @@ def grid(*extents, dtype=None):
     return _native.grid(*extents, dtype=dtype)
 
 
-@_register_mutable_var_decl
+@_mutable_cell_decl("T.alloc_scalar")
 def alloc_scalar(dtype="float32", scope="global"):
     """Allocate scalar storage and return its load expression."""
     value = _native.alloc_scalar(dtype, scope)
     return value.scalar if isinstance(value, _native.scalar_wrapper) else value
 
 
-@_register_mutable_var_decl
+@_mutable_cell_decl("T.local_scalar")
 def local_scalar(dtype="float32"):
     """Allocate scalar storage in local memory."""
     return alloc_scalar(dtype, "local")
 
 
-@_register_mutable_var_decl
+@_mutable_cell_decl("T.shared_scalar")
 def shared_scalar(dtype="float32"):
     """Allocate scalar storage in shared memory."""
     return alloc_scalar(dtype, "shared")
 
 
-@_register_mutable_var_decl
-@_partial(_register_result_members, members=_BufferMethods)
+@_mutable_cell_decl("T.match_buffer")
 @_args_policy(
+    "T.match_buffer",
     {
         "shape": "expr_str",
         "strides": "expr_str",
         "elem_offset": "expr_str",
         "allocated_addr": "expr_str",
-    }
+    },
 )
 @_wraps(_native.match_buffer)
 def match_buffer(*args, **kwargs):

@@ -1264,7 +1264,7 @@ def test_dataflow_inside_branch():
         def main(
             x: R.Tensor([1024, 1024], "float16"),
             w: R.Tensor([1024, 1024], "float16"),
-            transpose_weights: R.Prim("bool"),
+            transpose_weights: T.bool,
         ):
             if transpose_weights:
                 with R.dataflow():
@@ -1285,7 +1285,7 @@ def test_dataflow_inside_branch():
         def main(
             x: R.Tensor([1024, 1024], "float16"),
             w: R.Tensor([1024, 1024], "float16"),
-            transpose_weights: R.Prim("bool"),
+            transpose_weights: T.bool,
         ):
             cls = Expected
             if transpose_weights:

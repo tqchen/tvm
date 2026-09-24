@@ -288,19 +288,19 @@ def test_func_call():
             for i, j, k in T.grid(16, 16, 16):
                 with T.sblock("C"):
                     i, j, k = T.axis.remap("SSR", [i, j, k])
-                    thread_id_C, local_id_C = T.meta_var(shared_16x16_to_ldmatrix_32x8_layout(i, j))
-                    thread_id_A, local_id_A = T.meta_var(shared_16x16_to_ldmatrix_32x8_layout(i, k))
-                    thread_id_B, local_id_B = T.meta_var(shared_16x16_to_ldmatrix_32x8_layout(k, j))
+                    indices_C = shared_16x16_to_ldmatrix_32x8_layout(i, j)
+                    indices_A = shared_16x16_to_ldmatrix_32x8_layout(i, k)
+                    indices_B = shared_16x16_to_ldmatrix_32x8_layout(k, j)
 
                     T.reads(
-                        C[thread_id_C, local_id_C],
-                        A[thread_id_A, local_id_A],
-                        B[thread_id_B, local_id_B],
+                        C[indices_C[0], indices_C[1]],
+                        A[indices_A[0], indices_A[1]],
+                        B[indices_B[0], indices_B[1]],
                     )
-                    T.writes(C[thread_id_C, local_id_C])
+                    T.writes(C[indices_C[0], indices_C[1]])
 
-                    C[thread_id_C, local_id_C] += (
-                        A[thread_id_A, local_id_A] * B[thread_id_B, local_id_B]
+                    C[indices_C[0], indices_C[1]] += (
+                        A[indices_A[0], indices_A[1]] * B[indices_B[0], indices_B[1]]
                     )
 
     @T.prim_func(s_tir=True)

@@ -19,10 +19,9 @@
 from __future__ import annotations
 
 import ast
-import builtins
 import inspect
 from collections.abc import Mapping, Sequence
-from types import GetSetDescriptorType, MemberDescriptorType
+from types import ModuleType
 from typing import NamedTuple, NoReturn
 
 from . import protocol_registry as protocol
@@ -93,63 +92,62 @@ def collect_annotation_free_names(
     return result
 
 
-def resolve_syntax(
+def resolve_namespace_key(
     node: ast.AST | None,
     environment: Mapping[str, object],
     bindings: Sequence[Binding] = (),
-) -> object:
-    """Read fixed namespace metadata without executing source descriptors."""
-    if isinstance(node, ast.Name):
-        if any(item.name == node.id for item in bindings):
+) -> str | None:
+    """Normalize a fixed namespace alias, without resolving its members or receivers."""
+    from . import _NAMESPACES
+
+    parts = []
+    while isinstance(node, ast.Attribute):
+        parts.append(node.attr)
+        node = node.value
+    if not isinstance(node, ast.Name) or any(item.name == node.id for item in bindings):
+        return None
+    owner = environment.get(node.id)
+    parts.reverse()
+    key = None
+    for index in range(len(parts) + 1):
+        for alias, namespace in _NAMESPACES.items():
+            if owner is namespace:
+                key = ".".join([alias, *parts[index:]])
+                break
+        if index == len(parts) or not issubclass(type(owner), ModuleType):
+            break
+        # A qualified import may lead to a registered namespace. Only module
+        # dictionaries are traversed; receivers and lazy descriptors stay opaque.
+        owner = vars(owner).get(parts[index])
+    return key
+
+
+def resolve_namespace_value(node: ast.AST | None, environment: Mapping[str, object]) -> object:
+    """Read configuration from an explicitly registered namespace, never a receiver."""
+    from . import _NAMESPACES
+
+    key = resolve_namespace_key(node, environment)
+    if key is None:
+        return None
+    root, *parts = key.split(".")
+    value = _NAMESPACES[root]
+    for part in parts:
+        try:
+            value = vars(value).get(part)
+        except TypeError:
             return None
-        return environment.get(node.id, getattr(builtins, node.id, None))
-    if not isinstance(node, ast.Attribute):
-        return None
-    owner = resolve_syntax(node.value, environment, bindings)
-    if owner is None:
-        owner = read_result_members(node.value, environment, bindings)
-    if owner is None:
-        return None
-    value = inspect.getattr_static(owner, node.attr, None)
-    if isinstance(value, staticmethod):
-        return value.__func__
-    if inspect.isfunction(value):
-        if inspect.ismodule(owner) or inspect.isclass(owner):
-            return value
-        dictionary = inspect.getattr_static(owner, "__dict__", None)
-        if isinstance(dictionary, GetSetDescriptorType | MemberDescriptorType):
-            if node.attr in dictionary.__get__(owner):
-                return value
-        return value.__get__(owner)
-    return None if hasattr(type(value), "__get__") else value
-
-
-def read_result_members(
-    node: ast.AST | None, environment: Mapping[str, object], bindings: Sequence[Binding]
-) -> object | None:
-    """Read registered producer metadata, without evaluating or tracking source values."""
-    if isinstance(node, ast.Name):
-        matches = [item for item in bindings if item.name == node.id]
-        return matches[0].members if len(matches) == 1 else None
-    constructor = resolve_constructor(node, environment, bindings)
-    if constructor is None and isinstance(node, ast.Attribute):
-        owner = read_result_members(node.value, environment, bindings)
-        if owner is not None:
-            # Properties supply only registered fget metadata; never invoke them.
-            constructor = inspect.getattr_static(owner, node.attr, None)
-    return protocol.get_result_members(constructor)
+    return value
 
 
 def resolve_constructor(
     node: ast.AST | None, environment: Mapping[str, object], bindings: Sequence[Binding] = ()
-) -> object:
-    """Recognize actual registered call/getitem identities from source syntax."""
-    if isinstance(node, ast.Call):
-        return resolve_syntax(node.func, environment, bindings)
-    if isinstance(node, ast.Subscript):
-        members = read_result_members(node.value, environment, bindings)
-        return inspect.getattr_static(members, "__getitem__", None) if members is not None else None
-    return None
+) -> str | None:
+    """Read only a fixed-namespace source call's canonical policy key."""
+    return (
+        resolve_namespace_key(node.func, environment, bindings)
+        if isinstance(node, ast.Call)
+        else None
+    )
 
 
 class Binding(NamedTuple):
@@ -161,11 +159,6 @@ class Binding(NamedTuple):
     annotation: ast.expr | None = None
     dtype: object = None
     direct: bool = False
-    # Original callee root; assignment dispatch checks completed lexical bindings.
-    declaration_root: ast.expr | None = None
-    # Opaque metadata selected from a declared annotation/producer before AST rewriting.
-    # It is a fixed callable namespace, never an inferred runtime value or flow map.
-    members: object = None
 
 
 class PrescanContext:
@@ -241,33 +234,19 @@ class PrescanCollector(ast.NodeVisitor):
         self.builder: object = None
         self.direct: bool = False
 
-    def collect(
-        self, tree: ast.Module, *, root_function_info: protocol.FunctionDecoratorInfo | None = None
-    ) -> PrescanContext:
+    def collect(self, tree: ast.Module, *, root_builder: object | None = None) -> PrescanContext:
         """Collect reserved names, scoped declarations and region-result syntax."""
-        # Decorator roots establish namespace meaning for this translation.
-        for node in ast.walk(tree):
-            if isinstance(node, ast.FunctionDef):
-                for decorator in node.decorator_list:
-                    target = decorator.func if isinstance(decorator, ast.Call) else decorator
-                    if protocol.function_info(resolve_syntax(target, self.environment)):
-                        while isinstance(target, ast.Attribute):
-                            target = target.value
-                        if isinstance(target, ast.Name):
-                            self.namespaces.add(target.id)
-        for name, value in self.environment.items():
-            if inspect.ismodule(value) and (
-                value.__name__.startswith("tvm.script.ir_builder")
-                or value.__name__ == "tvm.script.parser.ir"
-                or value.__name__.startswith("tvm.tirx.script")
-                or value.__name__.startswith("tvm.relax.script")
-            ):
-                self.namespaces.add(name)
+        # Only registered namespace objects establish fixed source aliases.
+        self.namespaces.update(
+            name
+            for name in self.environment
+            if resolve_namespace_key(ast.Name(name, ast.Load()), self.environment) is not None
+        )
         self.scope = tree
         self.bindings[tree] = []
         # A directly applied decorator has no corresponding decorator AST.
         # Supply its builder as a phase input, not an attachment on the tree.
-        self.builder = root_function_info.builder if root_function_info is not None else None
+        self.builder = root_builder
         self.visit(tree)
         # Transfer the completed collections directly. Consumers keep the facts, not
         # this collector, and do not mutate the collections during AST rewriting.
@@ -301,27 +280,11 @@ class PrescanCollector(ast.NodeVisitor):
         kind: str = "ordinary",
         annotation: ast.expr | None = None,
         dtype: object = None,
-        *,
-        declaration_root: ast.expr | None = None,
-        value: ast.expr | None = None,
     ) -> None:
         if name in self.namespaces:
             self._raise_error(node, f"Script namespace {name!r} cannot be rebound or shadowed")
         self.names.add(name)
-        facts = self.bindings[self.scope]
-        members = read_result_members(value, self.environment, facts)
-        if members is None and annotation is not None:
-            constructor = (
-                annotation.func
-                if isinstance(annotation, ast.Call)
-                else annotation.value
-                if isinstance(annotation, ast.Subscript)
-                else annotation
-            )
-            members = protocol.get_result_members(
-                resolve_syntax(constructor, self.environment, facts)
-            )
-        item = Binding(name, node, kind, annotation, dtype, self.direct, declaration_root, members)
+        item = Binding(name, node, kind, annotation, dtype, self.direct)
         self.bindings[self.scope].append(item)
         self.sites[node] = item
 
@@ -382,7 +345,7 @@ class PrescanCollector(ast.NodeVisitor):
         #
         # Builder:
         #     with I.ir_module():
-        #         with X.function(decl=True):
+        #         with X.function_(decl=True):
         #             X.func_name("f")
         # -------------------------------------------------
         # Class host bindings and members share one lexical scope.
@@ -400,7 +363,7 @@ class PrescanCollector(ast.NodeVisitor):
         #         body(x)
         #
         # Builder:
-        #     with X.function(decl=True):
+        #     with X.function_(decl=True):
         #         X.func_name("f")
         #         x = X.arg("x", ty)
         # -------------------------------------------------
@@ -412,10 +375,15 @@ class PrescanCollector(ast.NodeVisitor):
         self.bindings[node] = []
         for decorator in node.decorator_list:
             target = decorator.func if isinstance(decorator, ast.Call) else decorator
-            kind = protocol.function_info(resolve_syntax(target, self.environment))
-            if kind is not None:
-                self.builder = kind.builder
-                break
+            if (
+                isinstance(target, ast.Attribute)
+                and protocol.DECLARATION_KIND.get(resolve_namespace_key(target, self.environment))
+                == "function"
+            ):
+                namespace = resolve_namespace_value(target.value, self.environment)
+                if namespace is not None:
+                    self.builder = namespace
+                    break
         for parameter in getattr(node, "type_params", ()):
             # -------------------- Pattern --------------------
             # Python source:
@@ -440,24 +408,21 @@ class PrescanCollector(ast.NodeVisitor):
             # without evaluating types.
             annotation = parse_annotation(arg.annotation, self.filename) if arg.annotation else None
             arg.annotation = annotation
-            constructor = resolve_syntax(
+            constructor = resolve_namespace_key(
                 annotation.func if isinstance(annotation, ast.Call) else annotation,
                 self.environment,
             )
-            dtype = protocol.get_parameter_dtype(constructor)
-            declaration = protocol.get_type_var_decl(constructor)
+            dtype = protocol.TYPE_VAR_DECL.get(constructor)
             self._record_binding(
                 arg.arg,
                 arg,
                 "mutable_parameter"
                 if inspect.getattr_static(self.builder, "supports_mutable_declarations", True)
                 is True
-                and protocol.is_mutable_var_decl(constructor, syntax="parameter")
+                and "parameter" in protocol.MUTABLE_CELL_DECL.get(constructor, ())
                 else "parameter",
                 arg.annotation,
-                (declaration.dtype if declaration is not None else dtype)
-                if not isinstance(annotation, ast.Call)
-                else None,
+                dtype if not isinstance(annotation, ast.Call) else None,
             )
         for statement in node.body:
             self.visit(statement)
@@ -512,9 +477,8 @@ class PrescanCollector(ast.NodeVisitor):
                 if origin is None or item.node.lineno < origin.lineno:
                     origins[item.name] = item.node
         for item in facts:
-            # Explicit symbols and direct producers are not ordinary IR bindings.
-            # Producers retain their own returned identity and naming.
-            if item.kind in ("symbol", "direct_call") or item.name in assignable:
+            # Explicit declarations and mutable updates are not symbol rebindings.
+            if item.kind == "symbol" or item.name in assignable:
                 continue
             origin = origins.get(item.name)
             if origin is not None and (item.node.lineno, item.node.col_offset) > (
@@ -533,57 +497,30 @@ class PrescanCollector(ast.NodeVisitor):
         value: ast.expr | None = None,
         annotation: ast.expr | None = None,
         *,
-        binding_declaration: ast.expr | None = None,
         kind: str = "ordinary",
     ) -> None:
         constructor = resolve_constructor(value, self.environment, self.bindings[self.scope])
-        if protocol.is_binding_decl(constructor):
-            binding_declaration = value.func
-            while isinstance(binding_declaration, ast.Attribute):
-                binding_declaration = binding_declaration.value
-        # -------------------- Pattern --------------------
-        # Python source:
-        #     tid = X.thread_id()
-        #     x = I.meta_var(value)
-        #
-        # Builder:
-        #     tid = X.thread_id()
-        #     x = I.meta_var(value)
-        # -------------------------------------------------
-        # Direct producers also preserve identity in destructured targets.
-        if protocol.is_direct_call(constructor):
-            kind = "direct_call"
         if isinstance(target, ast.Name):
-            declaration = protocol.get_type_var_decl(constructor)
-            if declaration is not None and not value.args and not value.keywords:
-                self._record_binding(target.id, target, "symbol", value, declaration.dtype)
+            dtype = protocol.TYPE_VAR_DECL.get(constructor)
+            if constructor in protocol.TYPE_VAR_DECL and not value.args and not value.keywords:
+                self._record_binding(target.id, target, "symbol", value, dtype)
             elif getattr(self.builder, "supports_mutable_declarations", True) and (
-                protocol.is_mutable_var_decl(constructor, syntax="call")
+                "call" in protocol.MUTABLE_CELL_DECL.get(constructor, ())
                 or (
                     annotation is not None
-                    and protocol.is_mutable_var_decl(
-                        resolve_syntax(
+                    and "annotation"
+                    in protocol.MUTABLE_CELL_DECL.get(
+                        resolve_namespace_key(
                             annotation.value
                             if isinstance(annotation, ast.Subscript)
                             else annotation,
                             self.environment,
                         ),
-                        syntax="annotation",
+                        (),
                     )
                 )
             ):
                 self._record_binding(target.id, target, "mutable", annotation)
-            elif kind == "direct_call":
-                self._record_binding(target.id, target, kind, annotation, value=value)
-            elif binding_declaration is not None:
-                self._record_binding(
-                    target.id,
-                    target,
-                    "binding_declaration",
-                    annotation,
-                    declaration_root=binding_declaration,
-                    value=value,
-                )
             elif isinstance(value, ast.Name) and value.id == self.module_name:
                 self._record_binding(target.id, target, "module_alias")
             elif isinstance(value, ast.Name) and any(
@@ -600,7 +537,7 @@ class PrescanCollector(ast.NodeVisitor):
                 # Preserve the active module frame identity.
                 self._record_binding(target.id, target, "module_alias")
             else:
-                self._record_binding(target.id, target, kind, annotation=annotation, value=value)
+                self._record_binding(target.id, target, kind, annotation=annotation)
         elif isinstance(target, ast.Tuple | ast.List):
             values = (
                 value.elts
@@ -609,9 +546,9 @@ class PrescanCollector(ast.NodeVisitor):
             )
             for child, rhs in zip(target.elts, values):
                 # One declaration call may return several already-owned values.
-                self._collect_target(child, rhs, binding_declaration=binding_declaration, kind=kind)
+                self._collect_target(child, rhs, kind=kind)
         elif isinstance(target, ast.Starred):
-            self._collect_target(target.value, binding_declaration=binding_declaration, kind=kind)
+            self._collect_target(target.value, kind=kind)
         self.visit(target)
 
     def visit_Assign(self, node: ast.Assign) -> None:
@@ -648,7 +585,7 @@ class PrescanCollector(ast.NodeVisitor):
         #     n += value
         #
         # Builder:
-        #     X.set_mutable_var_(n, n + value)
+        #     X.set_mutable_cell_(n, n + value)
         # -------------------------------------------------
         # A name update is a write for symbolic-reassignment diagnostics too.
         self._collect_target(node.target)
@@ -779,8 +716,13 @@ class PrescanCollector(ast.NodeVisitor):
         # -------------------------------------------------
         # The enclosing region owns these exported names.
         if self.regions and isinstance(node.func, ast.Attribute) and node.func.attr == "output":
-            output = getattr(self.builder, "output", None)
-            if output is not None and resolve_syntax(node.func, self.environment) is output:
+            namespace = resolve_namespace_value(node.func.value, self.environment)
+            if (
+                namespace is not None
+                and self.builder is not None
+                and vars(namespace).get("output") is vars(self.builder).get("output")
+                and vars(namespace).get("output") is not None
+            ):
                 names = [arg.id for arg in node.args if isinstance(arg, ast.Name)]
                 self.exports.setdefault(self.regions[-1], []).extend(names)
         self.generic_visit(node)

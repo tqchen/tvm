@@ -164,7 +164,7 @@ def copy_dsmem_impl(op_call: TilePrimitiveCall, sctx: DispatchContext) -> PrimFu
                     T.cast(remote_mbar, "uint32"),
                 )
         else:
-            for (*loop_vars,) in T.grid(*outer_extents):
+            for loop_vars in T.grid(*outer_extents):
                 src_elem_offset, dst_elem_offset = T.meta_var(compute_offsets(loop_vars))
 
                 src_buf_w = T.decl_buffer(

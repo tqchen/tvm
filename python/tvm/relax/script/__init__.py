@@ -21,8 +21,10 @@ from __future__ import annotations
 import ast as _ast
 import importlib as _importlib
 import inspect as _inspect
+import sys as _sys
 from collections.abc import Callable as _Callable
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING
+from typing import Any as _Any
 
 from tvm.script.parser.protocol_registry import module_decorator as _module_decorator
 
@@ -33,18 +35,49 @@ if TYPE_CHECKING:
     from tvm.target import Target
 
 
-def __getattr__(name):
+_initialized = False
+_initializing = False
+
+
+def _initialize() -> None:
+    global _initialized, _initializing
+    if _initialized or _initializing:
+        return
+    _initializing = True
+    try:
+        from tvm.script.parser import entry, register_namespace
+        from tvm.script.parser.protocol_registry import declaration_kind
+
+        from . import builder
+
+        globals().update(
+            (name, value) for name, value in vars(builder).items() if not name.startswith("_")
+        )
+        globals()["__tvm_value_if__"] = builder.__tvm_value_if__
+        globals()["function"] = declaration_kind("R.function", "function")(
+            entry.make_decorator(builder)
+        )
+        globals()["macro"] = declaration_kind("R.macro", "helper")(
+            entry.make_macro_decorator(builder, preserve_return=True)
+        )
+        namespace = _sys.modules[__name__]
+        register_namespace("R", namespace)
+        register_namespace("relax", namespace)
+        globals()["__all__"] = sorted(name for name in globals() if not name.startswith("_"))
+        _initialized = True
+    finally:
+        _initializing = False
+
+
+def __getattr__(name: str) -> _Any:
     if name in ("builder", "tile"):
         return _importlib.import_module(__name__ + "." + name)
     if name.startswith("_") and name != "__all__":
         raise AttributeError(name)
-    from tvm.script import parser as _parser
-
-    _parser._initialize()
+    _initialize()
     if name in globals():
         return globals()[name]
-    builder = _importlib.import_module(__name__ + ".builder")
-    return getattr(builder, name)
+    return getattr(_importlib.import_module(__name__ + ".builder"), name)
 
 
 class _PyModuleFactory:
@@ -68,12 +101,12 @@ class _PyModuleFactory:
             instance.add_python_function(name, function)
         return instance
 
-    def __getattr__(self, name: str) -> Any:
+    def __getattr__(self, name: str) -> _Any:
         return getattr(self.ir_module, name)
 
 
 def py_module(
-    module: type | None = None, **options: Any
+    module: type | None = None, **options: _Any
 ) -> IRModule | _PyModuleFactory | _Callable[[type], IRModule | _PyModuleFactory]:
     """Parse a class and attach executable Relax Python-function metadata.
 
@@ -83,7 +116,7 @@ def py_module(
         Class containing registered script functions and ``I.pyfunc`` members.
         None, the default, returns a decorator. Python bodies are retained as
         their original callables and are not executed during construction.
-    **options : Any
+    **options : _Any
         Options forwarded once to shared ``parse``, including
         ``check_well_formed`` (True by default) and ``track_span`` (True).
 
@@ -182,4 +215,4 @@ def py_module(
 
 
 # Member decorators may defer to this shared-parser entry without importing Relax.
-_module_decorator(py_module)
+_module_decorator("R.py_module")(py_module)

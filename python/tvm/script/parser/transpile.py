@@ -45,7 +45,7 @@ from typing import Any, NoReturn, TypeVar
 
 from . import protocol_registry as protocol
 from .expr_str_handling import parse_annotation, parse_expression_string
-from .prescan import Binding, PrescanContext, resolve_constructor, resolve_syntax
+from .prescan import Binding, PrescanContext, resolve_namespace_key, resolve_namespace_value
 
 _Node = TypeVar("_Node", bound=ast.AST)
 
@@ -68,13 +68,15 @@ class ModuleContext:
         span: Callable[[ast.AST], ast.expr],
         fresh: Callable[[str], str],
         *,
-        prescan: PrescanContext | None,
+        prescan: PrescanContext,
         track_span: bool,
         specialize: bool = False,
         definition_scope: Mapping[str, Any],
         definition_scope_name: str | None,
         source_functions: Mapping[str, FunctionType],
         bindings: dict[str, Any],
+        root_builder: object | None = None,
+        root_function_options: Mapping[str, Any] | None = None,
     ) -> None:
         # Fixed source filename used by rewrite diagnostics.
         self.filename = filename
@@ -101,6 +103,9 @@ class ModuleContext:
         self.fresh = fresh
         # Shared injected values accumulate into generated globals until entry cleanup.
         self.bindings = bindings
+        # Explicit standalone decorator inputs, borrowed only through this parse.
+        self.root_builder = root_builder
+        self.root_function_options = root_function_options
         # rewrite_module sets the root class name, or None for a standalone function.
         # Reference rewrites use it to recognize lexical module aliases.
         self.module_name: str | None = None
@@ -160,6 +165,9 @@ class IRBuilderTranspiler(ast.NodeTransformer):
         # Only this expression's result is already located by its enclosing emit_.
         # Child operations retain their locations; restore the borrowed node on exit.
         self.emitted_expression: ast.expr | None = None
+        # An ordinary binding owns this RHS's attachment through value_span;
+        # nested operations still receive their own locations and call contexts.
+        self.binding_expression: ast.expr | None = None
 
     def _inject(self, value: object, prefix: str = "_host") -> ast.Name:
         name = self.module.fresh(prefix)
@@ -186,6 +194,7 @@ class IRBuilderTranspiler(ast.NodeTransformer):
         if not self.module.track_span:
             keywords.pop("span", None)
             keywords.pop("name_span", None)
+            keywords.pop("value_span", None)
         return ast.copy_location(
             ast.Call(
                 ast.Attribute(ast.Name(namespace, ast.Load()), member, ast.Load()),
@@ -208,7 +217,11 @@ class IRBuilderTranspiler(ast.NodeTransformer):
         )
 
     def _attach_span(self, value: ast.expr, node: ast.AST) -> ast.expr:
-        if not self.module.track_span or node is self.emitted_expression:
+        if (
+            not self.module.track_span
+            or node is self.emitted_expression
+            or node is self.binding_expression
+        ):
             return value
         # _S[i](value)
         return ast.copy_location(ast.Call(self.module.span(node), [value], []), node)
@@ -296,36 +309,35 @@ class IRBuilderTranspiler(ast.NodeTransformer):
         finally:
             self.annotation_expression = previous
 
-    def _resolve(self, node: ast.AST | None) -> object:
-        # Fixed namespace meanings coexist with Python lexical value bindings.
-        # A local ``range`` or callable hides the ambient binding for the whole
-        # source function, including reads before its assignment.
+    def _binding_facts(self) -> list[Binding]:
+        """Read existing lexical bindings from the innermost source scope outward."""
         scope = self.function.current_scope
         facts: list[Binding] = []
-        if self.module.prescan is not None:
-            while isinstance(scope, ast.FunctionDef):
-                current = self.module.prescan.bindings.get(scope, ())
-                hidden = {item.name for item in facts}
-                facts.extend(item for item in current if item.name not in hidden)
-                scope = next(
-                    (
-                        parent
-                        for parent, items in self.module.prescan.bindings.items()
-                        if any(item.node is scope and item.kind == "function" for item in items)
-                    ),
-                    None,
-                )
-        return resolve_syntax(node, self.module.environment, facts)
+        while isinstance(scope, ast.FunctionDef):
+            current = self.module.prescan.bindings.get(scope, ())
+            hidden = {item.name for item in facts}
+            facts.extend(item for item in current if item.name not in hidden)
+            scope = next(
+                (
+                    parent
+                    for parent, items in self.module.prescan.bindings.items()
+                    if any(item.node is scope and item.kind == "function" for item in items)
+                ),
+                None,
+            )
+        return facts
 
-    def _resolve_constructor(self, node: ast.expr) -> object:
-        if isinstance(node, ast.Call):
-            return self._resolve(node.func)
-        facts = (
-            self.module.prescan.bindings.get(self.function.current_scope, ())
-            if self.module.prescan
-            else ()
+    def _resolve(self, node: ast.AST | None) -> str | None:
+        """Recognize fixed namespace syntax, leaving all other Python values opaque."""
+        return resolve_namespace_key(node, self.module.environment, self._binding_facts())
+
+    def _is_builtin(self, node: ast.AST, value: object) -> bool:
+        """Respect ordinary lexical/global shadowing of a builtin spelling."""
+        return (
+            isinstance(node, ast.Name)
+            and not any(item.name == node.id for item in self._binding_facts())
+            and self.module.environment.get(node.id, getattr(builtins, node.id, None)) is value
         )
-        return resolve_constructor(node, self.module.environment, facts)
 
     def _read_constexpr_operand(self, node: ast.expr) -> ast.expr | None:
         # -------------------- Pattern --------------------
@@ -340,10 +352,7 @@ class IRBuilderTranspiler(ast.NodeTransformer):
             return None
         if node.func.attr != "constexpr" or not isinstance(node.func.value, ast.Name):
             return None
-        if (
-            self.module.prescan is not None
-            and node.func.value.id not in self.module.prescan.namespaces
-        ):
+        if node.func.value.id not in self.module.prescan.namespaces:
             return None
         if len(node.args) != 1 or node.keywords or isinstance(node.args[0], ast.Starred):
             self._raise_error(node, "constexpr expects exactly one controlling value")
@@ -382,7 +391,7 @@ class IRBuilderTranspiler(ast.NodeTransformer):
         # Definition substitutions apply only within annotation syntax.
         # A preceding body target is already a Python binding (including symbols).
         # Consult its existing prescan location, without a second body-alias map.
-        if self.annotation_expression and self.module.prescan is not None:
+        if self.annotation_expression:
             if any(
                 item.name == node.id
                 and isinstance(item.node, ast.Name)
@@ -431,11 +440,7 @@ class IRBuilderTranspiler(ast.NodeTransformer):
         root = node
         while isinstance(root, ast.Attribute):
             root = root.value
-        fixed_namespace = (
-            isinstance(root, ast.Name)
-            and self.module.prescan is not None
-            and root.id in self.module.prescan.namespaces
-        )
+        fixed_namespace = isinstance(root, ast.Name) and root.id in self.module.prescan.namespaces
         result = self.generic_visit(node)
         return (
             self._attach_span(result, node)
@@ -548,14 +553,11 @@ class IRBuilderTranspiler(ast.NodeTransformer):
         # Builder:
         #     _S[i](buffer[index])
         # -------------------------------------------------
-        # Registered direct indexers retain their own result identity and source policy.
-        direct = protocol.is_direct_call(self._resolve_constructor(node))
         node.value = self.visit(node.value)
         node.slice = self._rewrite_index(node.slice)
-        result = node
-        if not direct and not self.bypass_ast_rewrite and isinstance(node.ctx, ast.Load):
-            return self._attach_span(result, node)
-        return result
+        if not self.bypass_ast_rewrite and isinstance(node.ctx, ast.Load):
+            return self._attach_span(node, node)
+        return node
 
     def _is_module_owner(self, node: ast.expr) -> bool:
         """Recognize fixed source module aliases from existing binding records."""
@@ -645,6 +647,7 @@ class IRBuilderTranspiler(ast.NodeTransformer):
         # Builder:
         #     X.Tensor((X.resolve_type_var_("n"),), vdevice=I.resolve_global_info_("cuda:0"))
         # -------------------------------------------------
+        binding_value = node is self.binding_expression
         marker = self._read_constexpr_operand(node)
         if marker is not None:
             with self._bypass_rewrite():
@@ -655,7 +658,6 @@ class IRBuilderTranspiler(ast.NodeTransformer):
             else protocol.handle_call_args_policy(node, self._resolve)
         )
         constructor = self._resolve(node.func)
-        direct = protocol.is_direct_call(constructor)
         global_call = (
             isinstance(node.func, ast.Name) and node.func.id in self.module.module_functions
         ) or (
@@ -672,10 +674,9 @@ class IRBuilderTranspiler(ast.NodeTransformer):
             else:
                 node.func = self._visit_direct_operand(node.func)
         if selected is None:
-            visit_operand = self._visit_direct_operand if direct else self.visit
-            node.args = [visit_operand(value) for value in node.args]
+            node.args = [self.visit(value) for value in node.args]
             for keyword in node.keywords:
-                keyword.value = visit_operand(keyword.value)
+                keyword.value = self.visit(keyword.value)
         else:
             policy, parameters = selected
             known_position = True
@@ -714,16 +715,16 @@ class IRBuilderTranspiler(ast.NodeTransformer):
         # Builder:
         #     _S[i].ctx(lambda: f(a))
         # -------------------------------------------------
-        # Registered direct calls omit this outer wrapper; nested calls keep their own scopes.
-        if self.module.track_span and not direct and callee is None:
-            if protocol.is_result_span(constructor):
-                return self._attach_span(node, node)
+        # Calls retain their construction context; bind_ owns ordinary RHS attribution.
+        if self.module.track_span and callee is None:
+            if protocol.RESULT_SPAN.get(constructor, False):
+                return node if binding_value else self._attach_span(node, node)
             # _S[i].ctx(lambda: callee(*args, **keywords))
             return ast.copy_location(
                 ast.Call(
                     ast.Attribute(self.module.span(node), "ctx", ast.Load()),
                     [self._create_lambda([], node)],
-                    [],
+                    [ast.keyword("attach_result", ast.Constant(False))] if binding_value else [],
                 ),
                 node,
             )
@@ -829,12 +830,12 @@ class IRBuilderTranspiler(ast.NodeTransformer):
         self, left: ast.expr, operation: ast.cmpop, right: ast.expr, node: ast.AST
     ) -> ast.expr:
         operations = {
-            ast.Lt: "lt",
-            ast.LtE: "le",
-            ast.Gt: "gt",
-            ast.GtE: "ge",
-            ast.Eq: "eq",
-            ast.NotEq: "ne",
+            ast.Lt: "lt_",
+            ast.LtE: "le_",
+            ast.Gt: "gt_",
+            ast.GtE: "ge_",
+            ast.Eq: "eq_",
+            ast.NotEq: "ne_",
         }
         if type(operation) in operations:
             return self._call(
@@ -845,40 +846,37 @@ class IRBuilderTranspiler(ast.NodeTransformer):
     def visit_Compare(self, node: ast.Compare) -> ast.expr:
         # -------------------- Pattern --------------------
         # Python source:
-        #     a < b < c
+        #     0 < i < 10
         #
         # Builder:
-        #     (lambda x, y, z: X.and_(X.lt(x, y), X.lt(y, z), chain=(x, y, z)))(a, b, c)
+        #     X.and_(X.lt_(0, i), X.lt_(i, 10))
         # -------------------------------------------------
-        # Written operands evaluate once; native builders bind shared IR uses.
+        # Only names and numeric literals may be repeated in a simple chain.
         if self.bypass_ast_rewrite:
             return self.generic_visit(node)
-        if len(node.ops) == 1:
-            result = self._create_comparison(
-                self.visit(node.left), node.ops[0], self.visit(node.comparators[0]), node
-            )
-        else:
-            operands = [node.left, *node.comparators]
-            names = [self.module.fresh("_operand") for _ in operands]
-            comparisons = [
-                self._create_comparison(
-                    ast.Name(lhs, ast.Load()), op, ast.Name(rhs, ast.Load()), node
-                )
-                for lhs, op, rhs in zip(names, node.ops, names[1:])
-            ]
-            value = self._call(
-                self.function.dialect_prefix,
-                "and_",
-                comparisons,
-                node,
-                chain=ast.Tuple([ast.Name(name, ast.Load()) for name in names], ast.Load()),
-            )
-            result = ast.copy_location(
-                ast.Call(
-                    self._create_lambda(names, value), [self.visit(value) for value in operands], []
-                ),
-                node,
-            )
+        operands = [node.left, *node.comparators]
+        if len(node.ops) > 1:
+            for operand in operands:
+                numeric = operand
+                if isinstance(numeric, ast.UnaryOp) and isinstance(numeric.op, ast.UAdd | ast.USub):
+                    numeric = numeric.operand
+                if not isinstance(operand, ast.Name) and not (
+                    isinstance(numeric, ast.Constant)
+                    and type(numeric.value) in (int, float, complex)
+                ):
+                    self._raise_error(
+                        operand, "Comparison chains support only names and numeric literals"
+                    )
+        values = [self.visit(operand) for operand in operands]
+        comparisons = [
+            self._create_comparison(left, operation, right, node)
+            for left, operation, right in zip(values, node.ops, values[1:])
+        ]
+        result = (
+            comparisons[0]
+            if len(comparisons) == 1
+            else self._call(self.function.dialect_prefix, "and_", comparisons, node)
+        )
         return self._attach_span(result, node)
 
     def visit_NamedExpr(self, node: ast.NamedExpr) -> NoReturn:
@@ -931,14 +929,34 @@ class IRBuilderTranspiler(ast.NodeTransformer):
             )
         return self.visit(node)
 
-    def _read_call_kind(self, value: ast.expr | None) -> str | None:
-        """Classify the original RHS against completed lexical binding facts."""
-        if not isinstance(value, ast.Call | ast.Subscript):
-            return None
-        constructor = self._resolve_constructor(value)
-        if protocol.is_direct_call(constructor):
-            return "direct_call"
-        return "ordinary"
+    def _binding_kind(self, target: ast.Name, *, frame_value: bool = False) -> str:
+        """Select the declaration/store/binding operation from existing syntax facts."""
+        if frame_value:
+            return "ordinary"
+        site = self.module.prescan.sites.get(target)
+        kind = site.kind if site is not None else "ordinary"
+        if kind in ("symbol", "mutable", "module_alias"):
+            return kind
+        mutable = self.module.prescan.mutable_names.get(self.function.current_scope, ())
+        return "mutable_update" if target.id in mutable else "ordinary"
+
+    def _uses_ordinary_binding(self, target: ast.expr) -> bool:
+        """Test assignment targets without evaluating or inspecting their RHS values."""
+        if isinstance(target, ast.Name):
+            return self._binding_kind(target) == "ordinary"
+        if isinstance(target, ast.Starred):
+            return self._uses_ordinary_binding(target.value)
+        if isinstance(target, ast.Tuple | ast.List):
+            return any(self._uses_ordinary_binding(item) for item in target.elts)
+        return False
+
+    def _rewrite_assignment_value(self, node: ast.expr, *, ordinary: bool) -> ast.expr:
+        """Leave ordinary RHS attachment to bind_ while preserving nested instrumentation."""
+        previous, self.binding_expression = self.binding_expression, node if ordinary else None
+        try:
+            return self.visit(node)
+        finally:
+            self.binding_expression = previous
 
     def _bind(
         self,
@@ -948,22 +966,12 @@ class IRBuilderTranspiler(ast.NodeTransformer):
         *,
         ty: ast.expr | None = None,
         frame_value: bool = False,
-        call_kind: str | None = None,
+        value_span: ast.expr | None = None,
     ) -> list[ast.stmt]:
         # Declaration syntax has precedence; no previous/existence tracking.
         if isinstance(target, ast.Name):
-            site = self.module.prescan.sites.get(target) if self.module.prescan else None
-            kind = site.kind if site is not None else "ordinary"
-            if call_kind is not None and kind in ("ordinary", "direct_call"):
-                kind = call_kind
-            binding_declaration = kind == "binding_declaration" and (
-                self._resolve(site.declaration_root) is not None
-            )
-            mutable = (
-                self.module.prescan.mutable_names.get(self.function.current_scope, ())
-                if self.module.prescan
-                else ()
-            )
+            site = self.module.prescan.sites.get(target)
+            kind = self._binding_kind(target, frame_value=frame_value)
             keywords = {"name": ast.Constant(target.id)}
             if ty is not None:
                 keywords["ty"] = ty
@@ -989,44 +997,38 @@ class IRBuilderTranspiler(ast.NodeTransformer):
                 #     x = X.local_scalar(initial)
                 #
                 # Builder:
-                #     x = X.decl_mutable_var_(X.local_scalar(initial), name="x")
+                #     x = X.decl_mutable_cell_(X.local_scalar(initial), name="x")
                 # -------------------------------------------------
                 value = self._call_dialect(
-                    "decl_mutable_var_",
+                    "decl_mutable_cell_",
                     [value],
                     statement,
                     name_span=self.module.span(target),
                     **keywords,
                 )
-            elif kind in ("direct_call", "module_alias") and not frame_value:
+            elif kind == "module_alias" and not frame_value:
                 # -------------------- Pattern --------------------
                 # Python source:
-                #     i = X.axis.spatial(extent, value)
-                #     x = X.bind(value)
-                #     value = I.meta_var(x)
                 #     alias = Module
                 #
                 # Builder:
-                #     i = X.axis.spatial(extent, value)
-                #     x = X.bind(value)
-                #     value = I.meta_var(x)
                 #     alias = Module
                 # -------------------------------------------------
                 pass
-            elif target.id in mutable and not binding_declaration and not frame_value:
+            elif kind == "mutable_update":
                 # -------------------- Pattern --------------------
                 # Python source:
                 #     x = value
                 #
                 # Builder:
-                #     X.set_mutable_var_(x, value)
+                #     X.set_mutable_cell_(x, value)
                 # -------------------------------------------------
                 # The prescan identifies x as mutable.
                 return [
                     ast.copy_location(
                         ast.Expr(
                             self._call_dialect(
-                                "set_mutable_var_",
+                                "set_mutable_cell_",
                                 [ast.Name(target.id, ast.Load()), value],
                                 statement,
                             )
@@ -1040,10 +1042,16 @@ class IRBuilderTranspiler(ast.NodeTransformer):
                 #     y = value
                 #
                 # Builder:
-                #     y = X.bind_(value, name="y")
+                #     y = X.bind_(value, name="y", span=target_span, value_span=rhs_span)
                 # -------------------------------------------------
-                value = self._call_dialect(
-                    "bind_", [value], statement, name_span=self.module.span(target), **keywords
+                if value_span is not None:
+                    keywords["value_span"] = value_span
+                value = (
+                    self._call_dialect(
+                        "bind_", [value], statement, name_span=self.module.span(target), **keywords
+                    )
+                    if frame_value
+                    else self._call_dialect("bind_", [value], target, **keywords)
                 )
             if frame_value:
                 # Binding an entered frame originates at the source as-target;
@@ -1111,7 +1119,7 @@ class IRBuilderTranspiler(ast.NodeTransformer):
                         ast.Name(name, ast.Load()),
                         statement,
                         frame_value=frame_value,
-                        call_kind=call_kind,
+                        value_span=value_span,
                     )
                 )
             return result
@@ -1130,17 +1138,31 @@ class IRBuilderTranspiler(ast.NodeTransformer):
         # -------------------------------------------------
         if self.bypass_ast_rewrite:
             return self.generic_visit(node)
-        call_kind = self._read_call_kind(node.value)
+        ordinary = any(self._uses_ordinary_binding(target) for target in node.targets)
+        value_span = self.module.span(node.value) if ordinary else None
         if len(node.targets) == 1 and isinstance(node.targets[0], ast.Name):
             target = node.targets[0]
-            site = self.module.prescan.sites.get(target) if self.module.prescan else None
-            value = ast.Constant(None) if site and site.kind == "symbol" else self.visit(node.value)
-            return self._bind(target, value, node, call_kind=call_kind)
+            site = self.module.prescan.sites.get(target)
+            value = (
+                ast.Constant(None)
+                if site and site.kind == "symbol"
+                else self._rewrite_assignment_value(node.value, ordinary=ordinary)
+            )
+            return self._bind(target, value, node, value_span=value_span)
         temporary = self.module.fresh("_value")
-        result: list[ast.stmt] = [self._assign(temporary, self.visit(node.value), node)]
+        result: list[ast.stmt] = [
+            self._assign(
+                temporary, self._rewrite_assignment_value(node.value, ordinary=ordinary), node
+            )
+        ]
         for target in node.targets:
             result.extend(
-                self._bind(target, ast.Name(temporary, ast.Load()), node, call_kind=call_kind)
+                self._bind(
+                    target,
+                    ast.Name(temporary, ast.Load()),
+                    node,
+                    value_span=value_span,
+                )
             )
         return result
 
@@ -1150,31 +1172,24 @@ class IRBuilderTranspiler(ast.NodeTransformer):
         #     x: X.int32 = value
         #
         # Builder:
-        #     x = X.decl_mutable_var_(value, ty=X.int32, name="x")
+        #     x = X.decl_mutable_cell_(value, ty=X.int32, name="x")
         # -------------------------------------------------
         if self.bypass_ast_rewrite:
             return self.generic_visit(node)
         if not isinstance(node.target, ast.Name):
             self._raise_error(node.target, "An annotated binding requires a name")
-        call_kind = self._read_call_kind(node.value)
+        ordinary = self._uses_ordinary_binding(node.target)
+        value_span = self.module.span(node.value) if ordinary and node.value else None
         value = (
-            self.visit(node.value)
+            self._rewrite_assignment_value(node.value, ordinary=ordinary)
             if node.value
             else ast.Attribute(
                 ast.Name(self.module.infrastructure_name, ast.Load()), "MISSING", ast.Load()
             )
         )
-        site = self.module.prescan.sites.get(node.target) if self.module.prescan else None
-        if call_kind == "direct_call" and (
-            site is None or site.kind in ("ordinary", "direct_call")
-        ):
-            # value: annotation() = direct(payload) -> value = direct(payload)
-            # This category owns its result; discarded annotation syntax must
-            # not allocate entries or acquire a runtime evaluation path.
-            return self._bind(node.target, value, node, call_kind=call_kind)
         with self._rewrite_annotation():
             annotation = self.visit(parse_annotation(node.annotation, self.module.filename))
-        return self._bind(node.target, value, node, ty=annotation, call_kind=call_kind)
+        return self._bind(node.target, value, node, ty=annotation, value_span=value_span)
 
     def visit_AugAssign(self, node: ast.AugAssign) -> ast.AugAssign | list[ast.stmt]:
         key: ast.expr
@@ -1198,6 +1213,8 @@ class IRBuilderTranspiler(ast.NodeTransformer):
                 ast.BinOp(ast.Name(node.target.id, ast.Load()), node.op, self.visit(node.value)),
                 node,
             )
+            if self._uses_ordinary_binding(node.target):
+                return self._bind(node.target, value, node, value_span=self.module.span(node))
             return self._bind(node.target, self._attach_span(value, node), node)
         if not isinstance(node.target, ast.Subscript | ast.Attribute):
             self._raise_error(
@@ -1240,15 +1257,6 @@ class IRBuilderTranspiler(ast.NodeTransformer):
         # -------------------------------------------------
         if self.bypass_ast_rewrite:
             return self.generic_visit(node)
-        if protocol.is_direct_call(self._resolve_constructor(node.value)):
-            # -------------------- Pattern --------------------
-            # Python source:
-            #     I.meta_var(value)
-            #
-            # Builder:
-            #     I.meta_var(value)
-            # -------------------------------------------------
-            return ast.copy_location(ast.Expr(self.visit(node.value)), node)
         previous, self.emitted_expression = self.emitted_expression, node.value
         try:
             value = self.visit(node.value)
@@ -1409,7 +1417,7 @@ class IRBuilderTranspiler(ast.NodeTransformer):
                 node,
             )
         ]
-        output = self.module.prescan.conditional_outputs.get(node) if self.module.prescan else None
+        output = self.module.prescan.conditional_outputs.get(node)
         if output is not None:
             result.append(
                 self._assign(
@@ -1431,14 +1439,14 @@ class IRBuilderTranspiler(ast.NodeTransformer):
         #         X.emit_(body(i, tail))
         #
         # A scalar source target uses ordinary entry directly:
-        #     with X.for_(X.grid(n), names=("i",)) as i:
+        #     with X.for_(X.grid(n), names="i") as i:
         #         X.emit_(body(i))
         # -------------------------------------------------
         if self.bypass_ast_rewrite:
             return self.generic_visit(node)
         if node.orelse:
             self._raise_error(node, "A construction loop does not support an else clause")
-        if isinstance(node.iter, ast.Call) and self._resolve(node.iter.func) is range:
+        if isinstance(node.iter, ast.Call) and self._is_builtin(node.iter.func, range):
             # Normalize only the known builtin; a lexical range binding follows
             # the ordinary source-call path. Arguments keep that one call scope.
             iterable = self.visit_Call(
@@ -1450,7 +1458,7 @@ class IRBuilderTranspiler(ast.NodeTransformer):
         else:
             iterable = self.visit(node.iter)
         if isinstance(node.target, ast.Name):
-            names: ast.expr = ast.Tuple([ast.Constant(node.target.id)], ast.Load())
+            names: ast.expr = ast.Constant(node.target.id)
         elif isinstance(node.target, ast.Tuple | ast.List):
             names = ast.Tuple(
                 [
@@ -1537,7 +1545,7 @@ class IRBuilderTranspiler(ast.NodeTransformer):
             initial = self._bind(
                 item.optional_vars, ast.Name(entered, ast.Load()), node, frame_value=True
             )
-        outputs = self.module.prescan.with_outputs.get(node, ()) if self.module.prescan else ()
+        outputs = self.module.prescan.with_outputs.get(node, ())
         context = self.visit(item.context_expr)
         translated_body = initial + self.transform_statements(body) or [ast.Pass()]
         if not outputs:
@@ -1581,9 +1589,9 @@ class IRBuilderTranspiler(ast.NodeTransformer):
         #         body()
         #
         # Builder:
-        #     with X.function(decl=True, local=True) as frame:
+        #     with X.function_(decl=True, local=True) as frame:
         #         X.func_name("nested")
-        #     nested = frame.reference
+        #     nested = frame.local_var
         #     with frame:
         #         def build():
         #             X.emit_(body())
@@ -1592,7 +1600,7 @@ class IRBuilderTranspiler(ast.NodeTransformer):
         if self.bypass_ast_rewrite:
             return node
         kind, _ = self.read_function_metadata(node, allow_python=True)
-        if kind.python:
+        if kind is None:
             return node
         declaration, _, body = self.create_function_builder_fragments(node, local_function=True)
         return [*declaration, body]
@@ -1625,37 +1633,46 @@ class IRBuilderTranspiler(ast.NodeTransformer):
 
     def read_function_metadata(
         self, node: ast.FunctionDef, *, allow_python: bool = False
-    ) -> tuple[protocol.FunctionDecoratorInfo, ast.Dict]:
-        """Read registered decorator options without evaluating source values."""
+    ) -> tuple[object | None, ast.Dict]:
+        """Use the supplied builder or a fixed decorator namespace with explicit options."""
+        if self.module.root_builder is not None and self.function.current_scope is None:
+            values = self.module.root_function_options or {}
+            return self.module.root_builder, ast.copy_location(
+                ast.Dict(
+                    [ast.Constant(key) for key in values],
+                    [self._inject(value) for value in values.values()],
+                ),
+                node,
+            )
         for decorator in node.decorator_list:
             target = decorator.func if isinstance(decorator, ast.Call) else decorator
-            kind = protocol.function_info(self._resolve(target))
-            if kind is None:
+            key = self._resolve(target)
+            if key is None:
                 continue
-            values: dict[str, ast.expr] = {
-                key: ast.Constant(value) for key, value in (kind.defaults or {}).items()
-            }
-            expansions = []
+            kind = protocol.DECLARATION_KIND.get(key)
+            if kind == "helper":
+                return None, ast.Dict([], [])
+            if kind != "function":
+                continue
+            namespace = (
+                resolve_namespace_value(target.value, self.module.environment)
+                if isinstance(target, ast.Attribute)
+                else None
+            )
+            if namespace is None:
+                continue
+            keys, values = [], []
             if isinstance(decorator, ast.Call):
                 if decorator.args:
                     self._raise_error(decorator, "Function decorators accept keyword options only")
                 for keyword in decorator.keywords:
-                    if keyword.arg is None:
-                        expansions.append(keyword.value)
-                    elif keyword.arg != "check_well_formed":
-                        values[(kind.option_map or {}).get(keyword.arg, keyword.arg)] = (
-                            keyword.value
-                        )
-            return kind, ast.copy_location(
-                ast.Dict(
-                    [ast.Constant(key) for key in values] + [None] * len(expansions),
-                    list(values.values()) + expansions,
-                ),
-                node,
-            )
+                    if keyword.arg != "check_well_formed":
+                        keys.append(ast.Constant(keyword.arg) if keyword.arg is not None else None)
+                        values.append(keyword.value)
+            return namespace, ast.copy_location(ast.Dict(keys, values), node)
         if allow_python:
-            return protocol.FunctionDecoratorInfo(None, python=True), ast.Dict([], [])
-        self._raise_error(node, f"Function {node.name!r} has no registered construction kind")
+            return None, ast.Dict([], [])
+        self._raise_error(node, f"Function {node.name!r} has no construction namespace")
 
     def _read_function_annotations(
         self, node: ast.FunctionDef, parameters: list[ast.arg], facts: list[Binding]
@@ -1804,7 +1821,7 @@ class IRBuilderTranspiler(ast.NodeTransformer):
             if not isinstance(parameter, getattr(ast, "TypeVar", ())):
                 self._raise_error(parameter, "Only scalar type parameters are supported")
             bound = getattr(parameter, "bound", None)
-            if bound is not None and self._resolve(bound) is not int:
+            if bound is not None and not self._is_builtin(bound, int):
                 self._raise_error(parameter, "A symbolic type parameter bound must be int")
             if getattr(parameter, "default_value", None) is not None:
                 self._raise_error(parameter, "A symbolic type parameter cannot have a default")
@@ -1856,7 +1873,7 @@ class IRBuilderTranspiler(ast.NodeTransformer):
 
     def _is_constexpr_annotation(self, annotation: ast.expr | None) -> bool:
         """Recognize the registered marker identity, including ordinary aliases."""
-        return self._resolve(annotation) is protocol.constexpr
+        return resolve_namespace_value(annotation, self.module.environment) is protocol.constexpr
 
     def _rewrite_parameters(
         self,
@@ -1948,10 +1965,10 @@ class IRBuilderTranspiler(ast.NodeTransformer):
         #         body(x)
         #
         # Builder:
-        #     with X.function(decl=True) as frame:
+        #     with X.function_(decl=True) as frame:
         #         X.func_name("f")
         #         parameter = X.arg("x", X.int32)
-        #     f = frame.reference
+        #     f = frame.global_var
         # -------------------------------------------------
         keywords = [ast.keyword(None, options)]
         if split_declare:
@@ -1963,7 +1980,7 @@ class IRBuilderTranspiler(ast.NodeTransformer):
         constructor = ast.copy_location(
             ast.Call(
                 ast.Attribute(
-                    ast.Name(self.function.dialect_prefix, ast.Load()), "function", ast.Load()
+                    ast.Name(self.function.dialect_prefix, ast.Load()), "function_", ast.Load()
                 ),
                 [],
                 keywords,
@@ -1974,7 +1991,11 @@ class IRBuilderTranspiler(ast.NodeTransformer):
             declaration_scope = ast.With(
                 [ast.withitem(constructor, ast.Name(frame, ast.Store()))], declaration
             )
-            reference = ast.Attribute(ast.Name(frame, ast.Load()), "reference", ast.Load())
+            reference = ast.Attribute(
+                ast.Name(frame, ast.Load()),
+                "local_var" if local_function else "global_var",
+                ast.Load(),
+            )
             return [
                 ast.copy_location(declaration_scope, node),
                 self._assign(node.name, reference, node),
@@ -2069,7 +2090,7 @@ class IRBuilderTranspiler(ast.NodeTransformer):
         """
         kind, options = self.read_function_metadata(node)
         builder = self.module.fresh("_X")
-        self.module.bindings[builder] = kind.builder
+        self.module.bindings[builder] = kind
         frame, body_name = self.module.fresh("_fn"), self.module.fresh("_build")
         # Keep the shared module context, but activate fresh lexical state for this
         # function. Saving its caller locally avoids a context ownership back-reference.
@@ -2080,7 +2101,7 @@ class IRBuilderTranspiler(ast.NodeTransformer):
                 parameters = [*node.args.posonlyargs, *node.args.args, *node.args.kwonlyargs]
                 if node.args.vararg or node.args.kwarg:
                     self._raise_error(node, "IR signatures require ordinary named parameters")
-                facts = self.module.prescan.bindings.get(node, []) if self.module.prescan else []
+                facts = self.module.prescan.bindings.get(node, [])
                 annotations, returns, definition_aliases = self._read_function_annotations(
                     node, parameters, facts
                 )
@@ -2203,26 +2224,11 @@ class IRBuilderTranspiler(ast.NodeTransformer):
         # here. Frame names and output lists below remain local assembly values.
         self.module.module_name = root.name if is_module else None
         self.module.module_functions = frozenset(
-            item.name for item in functions if not self.read_function_metadata(item)[0].python
+            item.name for item in functions if self.read_function_metadata(item)[0] is not None
         )
         split_declare = is_module or root in self.module.prescan.recursive_functions
         builder, result = self.module.fresh("_builder"), self.module.fresh("_result")
         body: list[ast.stmt] = []
-        for function in functions if split_declare else ():
-            if self.read_function_metadata(function)[0].python:
-                continue
-            body.append(
-                self._assign(
-                    function.name,
-                    self._call(
-                        self.module.infrastructure_name,
-                        "reserve_function",
-                        [ast.Constant(function.name)],
-                        function,
-                    ),
-                    function,
-                )
-            )
         for member in members:
             if isinstance(member, ast.FunctionDef):
                 continue
@@ -2249,7 +2255,7 @@ class IRBuilderTranspiler(ast.NodeTransformer):
         definitions, frames, python_functions = [], [], []
         for function in functions:
             kind, _ = self.read_function_metadata(function)
-            if kind.python:
+            if kind is None:
                 # -------------------- Pattern --------------------
                 # Python source:
                 #     @I.pyfunc
@@ -2288,9 +2294,9 @@ class IRBuilderTranspiler(ast.NodeTransformer):
         # Builder:
         #     with IRBuilder() as builder:
         #         with I.ir_module():
-        #             with X.function(decl=True) as f_frame:
+        #             with X.function_(decl=True) as f_frame:
         #                 X.func_name("f")
-        #             with X.function(decl=True) as g_frame:
+        #             with X.function_(decl=True) as g_frame:
         #                 X.func_name("g")
         #             with f_frame:
         #                 def build_f():
@@ -2375,7 +2381,7 @@ class IRBuilderTranspiler(ast.NodeTransformer):
             namespace = (
                 self.module.infrastructure_name
                 if is_module
-                else self._inject(self.read_function_metadata(root)[0].builder, "_X").id
+                else self._inject(self.read_function_metadata(root)[0], "_X").id
             )
             translated.append(
                 ast.copy_location(

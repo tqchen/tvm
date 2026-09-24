@@ -1225,7 +1225,7 @@ def test_uint32_loop_var_and_scope_id_emit_unsigned():
     # The loop var is declared unsigned and iterates over unsigned bounds.
     assert re.search(r"for \(uint k = \(uint\)0; k < \(uint\)4;", src), src
     # The scope id is bound as an unsigned value.
-    assert re.search(r"uint tx = ", src), src
+    assert re.search(r"uint v_1 = ", src), src
 
 
 @pytest.mark.gpu

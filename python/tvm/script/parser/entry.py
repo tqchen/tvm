@@ -34,15 +34,16 @@ from tvm.script.ir_builder import base
 from tvm.script.ir_builder import ir as builder_ir
 from tvm.script.ir_builder.base import SpanEntry
 
-from . import jit_support
+from . import _NAMESPACES, _initialize, jit_support
 from . import protocol_registry as syntax_protocol
+from . import register_namespace as register_namespace
 from .inspect_source import (
     acquire_source,
     capture_annotation_bindings,
     capture_definition_scope,
     capture_lexical_bindings,
 )
-from .prescan import PrescanCollector, resolve_syntax
+from .prescan import PrescanCollector, resolve_namespace_key
 from .transpile import FunctionContext, IRBuilderTranspiler, ModuleContext
 
 if TYPE_CHECKING:
@@ -50,32 +51,6 @@ if TYPE_CHECKING:
 
 
 _Callable = TypeVar("_Callable", bound=Callable[..., Any])
-
-# Executed Python bodies and registered dialects may supply arbitrary host/IR values.
-_NAMESPACES: dict[str, object] = {}
-
-
-def register_namespace(alias: str, namespace: object) -> None:
-    """Register a host namespace for source-text entry points.
-
-    Parameters
-    ----------
-    alias : str
-        Python identifier used to refer to the namespace in source text.
-    namespace : object
-        Module or object bound to ``alias``.
-
-    Returns
-    -------
-    None
-
-    Notes
-    -----
-    Registration replaces the process-wide alias entry. Each parse copies this
-    table; existing compilations are unaffected. This operation
-    enters no builder frame.
-    """
-    _NAMESPACES[alias] = namespace
 
 
 def _read_closure_values(function: FunctionType) -> dict[str, Any]:
@@ -224,8 +199,9 @@ def _is_inside_class(function: FunctionType, frame: FrameType) -> bool:
         environment.update(frame.f_back.f_locals)
 
     return any(
-        syntax_protocol.is_module_decorator(
-            resolve_syntax(item.func if isinstance(item, ast.Call) else item, environment)
+        syntax_protocol.MODULE_DECORATOR.get(
+            resolve_namespace_key(item.func if isinstance(item, ast.Call) else item, environment),
+            False,
         )
         for item in node.decorator_list
     )
@@ -233,22 +209,13 @@ def _is_inside_class(function: FunctionType, frame: FrameType) -> bool:
 
 def make_decorator(
     builder: object,
-    *,
-    option_map: Mapping[str, str] | None = None,
-    defaults: Mapping[str, Any] | None = None,
 ) -> Callable[..., Any]:
-    """Create and register a function decorator for a construction namespace.
+    """Create a function decorator with an explicit construction namespace.
 
     Parameters
     ----------
     builder : object
         Namespace implementing the function construction protocol.
-    option_map : mapping of str to str, optional
-        Public option names mapped to builder keyword names. Default is None,
-        interpreted as an empty mapping; supplied entries are copied.
-    defaults : mapping of str to object, optional
-        Default builder keyword values. Default is None, interpreted as an
-        empty mapping; supplied entries are copied.
 
     Returns
     -------
@@ -269,10 +236,9 @@ def make_decorator(
     Standalone functions immediately transpile and execute a builder program.
     Annotations must be safe to re-evaluate: eager MissingType placeholders
     are not cached, and source annotations execute in declaration frames.
-    Construction errors propagate unchanged through `parse`. Registration
-    persists for the lifetime of the returned decorator.
+    Construction errors propagate unchanged through `parse`. Public options
+    pass directly to ``builder.function_``; the dialect hook owns their defaults.
     """
-    mapping, default_options = dict(option_map or {}), dict(defaults or {})
 
     def decorator(function: FunctionType | None = None, **options: Any) -> Any:
         """Parse a Python function into a function of the selected IR dialect.
@@ -313,13 +279,15 @@ def make_decorator(
                 definition_scope = {} if deferred else capture_definition_scope(frame)
             finally:
                 del frame
-            syntax_protocol.copy_function_info(decorator, function)
-            syntax_protocol.register_function_options(function, options)
             if deferred:
                 return function
             result = parse(
                 function,
                 definition_scope=definition_scope,
+                root_builder=builder,
+                root_function_options={
+                    key: value for key, value in options.items() if key != "check_well_formed"
+                },
                 check_well_formed=options.get("check_well_formed", True),
             )
             result.__name__ = function.__name__
@@ -327,9 +295,7 @@ def make_decorator(
 
         return apply(function) if function is not None else apply
 
-    return syntax_protocol.register_function(
-        decorator, builder, option_map=mapping, defaults=default_options
-    )
+    return decorator
 
 
 def make_macro_decorator(
@@ -453,6 +419,7 @@ def make_macro_decorator(
     return decorator
 
 
+@syntax_protocol.declaration_kind("I.pyfunc", "helper")
 def pyfunc(function: _Callable) -> _Callable:
     """Keep an ordinary Python callable for collection in a module.
 
@@ -475,9 +442,6 @@ def pyfunc(function: _Callable) -> _Callable:
     return function
 
 
-syntax_protocol.register_function(pyfunc, None, python=True)
-
-
 def _prepare_transpiler(
     tree: ast.Module,
     source: str | FunctionType | type,
@@ -487,6 +451,8 @@ def _prepare_transpiler(
     *,
     track_span: bool = True,
     specialize: bool = False,
+    root_builder: object | None = None,
+    root_function_options: Mapping[str, Any] | None = None,
     **options: Any,
 ) -> tuple[IRBuilderTranspiler, dict[str, Any]]:
     """Prescan an owned tree and inject collision-free execution bindings.
@@ -515,12 +481,9 @@ def _prepare_transpiler(
     metadata = ChainMap(
         vars(source) if inspect.isclass(source) else {}, definition_scope, namespace
     )
-    # Direct decorator application may have no decorator in the inspected AST.
-    # Give prescan its registered syntax policy before allocating injected names.
-    root_info = syntax_protocol.function_info(source) if inspect.isfunction(source) else None
-    prescan = PrescanCollector(metadata, filename=filename).collect(
-        tree, root_function_info=root_info
-    )
+    # Direct application supplies construction policy explicitly, even when the
+    # original function has no source decorator. No source-function record survives.
+    prescan = PrescanCollector(metadata, filename=filename).collect(tree, root_builder=root_builder)
     names = dict.fromkeys([*namespace, *prescan.reserved_names], 0)
 
     def fresh(prefix: str = "_t") -> str:
@@ -532,20 +495,6 @@ def _prepare_transpiler(
         names[prefix], names[name] = counter + 1, 0
         return name
 
-    # A directly applied decorator has no registered decorator syntax in its
-    # original function. Inject its metadata and opaque option bindings only.
-    if inspect.isfunction(source) and syntax_protocol.function_info(source) is not None:
-        decorator_name = fresh()
-        namespace[decorator_name] = source
-        keywords = []
-        for key, value in syntax_protocol.get_function_options(source).items():
-            option_name = fresh()
-            namespace[option_name] = value
-            keywords.append(ast.keyword(key, ast.Name(option_name, ast.Load())))
-        root = tree.body[-1]
-        root.decorator_list = [
-            ast.copy_location(ast.Call(ast.Name(decorator_name, ast.Load()), [], keywords), root)
-        ]
     builder_name, infrastructure_name = fresh("_X"), fresh("_I")
     definition_scope_name = fresh("_definition_scope")
     namespace[infrastructure_name] = builder_ir
@@ -597,6 +546,8 @@ def _prepare_transpiler(
         ),
         prescan=prescan,
         bindings=namespace,
+        root_builder=root_builder,
+        root_function_options=root_function_options,
     )
     transformer = IRBuilderTranspiler(
         context, FunctionContext(options.pop("current_scope", None), builder_name), **options
@@ -630,6 +581,7 @@ def _run_statements(
         filename,
         preserve_return=preserve_return,
         current_scope=tree.body[-1],
+        root_builder=builder,
     )
     namespace[transformer.function.dialect_prefix] = builder
     node = tree.body[-1]
@@ -675,6 +627,8 @@ def parse(
     filename: str | None = None,
     track_span: bool = True,
     definition_scope: Mapping[str, Any] | None = None,
+    root_builder: object | None = None,
+    root_function_options: Mapping[str, Any] | None = None,
     **options: Any,
 ) -> Any:
     """Transpile and execute a source string, Python function, or Python class.
@@ -695,11 +649,17 @@ def parse(
     definition_scope : mapping of str to object, optional
         Temporary definition-site bindings for annotation reconstruction. None
         adds no external scope; parse never inspects its caller for bindings.
+    root_builder : object, optional
+        Explicit dialect construction namespace for a directly applied function
+        decorator. None selects the namespace from source decorator syntax.
+    root_function_options : mapping of str to object, optional
+        Temporary public options forwarded to ``root_builder.function_``.
+        Defaults are owned by that hook; this mapping is never registered.
     **options
         ``_specialization_bindings`` carries selected constexpr values and
         explicit optional-parameter absence in one mapping. ``check_well_formed``
         controls completed-result validation; construction policy otherwise
-        comes from the registered source decorators.
+        comes from source decorators or the explicit root inputs.
 
     Returns
     -------
@@ -724,6 +684,8 @@ def parse(
     identity and traceback. Temporary captures are released even when execution
     fails.
     """
+    # Direct entry.parse callers need the same registered namespaces as public entry.
+    _initialize()
     # - Recover source and explicit lexical/definition inputs.
     # - Collect source syntax facts on this invocation's freshly acquired AST.
     # - Rewrite syntax into a builder program and recompose its lexical bindings.
@@ -762,6 +724,8 @@ def parse(
             filename,
             track_span=track_span,
             specialize=specialization is not None and root_name is not None,
+            root_builder=root_builder,
+            root_function_options=root_function_options,
         )
         transformed, result_name = transformer.rewrite_module(
             tree, check_well_formed=check_well_formed
@@ -848,6 +812,7 @@ def ir_module(module: type | None = None, **options: Any) -> IRModule | Callable
     return apply(module) if module is not None else apply
 
 
-syntax_protocol.module_decorator(ir_module)
+syntax_protocol.module_decorator("I.ir_module")(ir_module)
+syntax_protocol.module_decorator("script.ir_module")(ir_module)
 
 from_source = parse

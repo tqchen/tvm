@@ -55,7 +55,7 @@ from .expr import (
 )
 from . import prim
 from .function import BaseFunc, CallingConv
-from .global_info import GlobalInfo
+from .global_info import DummyGlobalInfo, GlobalInfo, VDevice
 from .module import IRModule
 from .op import Op, register_op_attr
 

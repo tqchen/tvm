@@ -41,10 +41,11 @@ def language(language, monkeypatch):
     language.I.with_at_group_ = base.with_at_group_
     for _, kind in OPERATORS:
         constructor = getattr(prim._ffi_api, "_Op" + kind)
-        setattr(language.X, kind.lower(), lambda lhs, rhs, make=constructor: make(lhs, rhs, None))
+        setattr(
+            language.X, kind.lower() + "_", lambda lhs, rhs, make=constructor: make(lhs, rhs, None)
+        )
 
-    def conjunction(*conditions, chain):
-        language.events.append(("chain", chain))
+    def conjunction(*conditions):
         return reduce(lambda rhs, lhs: prim.And(lhs, rhs), reversed(conditions))
 
     language.X.and_ = conjunction
@@ -57,6 +58,7 @@ def parse(language, source, *, track_span=True, **captures):
         extra_vars={"X": language.X, **captures},
         filename="comparison.py",
         track_span=track_span,
+        root_builder=language.X,
     )
 
 
@@ -65,7 +67,7 @@ def parse(language, source, *, track_span=True, **captures):
 @pytest.mark.parametrize("track_span", [True, False])
 def test_written_comparison_order(language, operator, kind, literal_left, track_span):
     # Before: 0 < x (and each written operator/operand order).
-    # Expected builder program: X.emit_(X.lt(0, x), span=_S[i]).
+    # Expected builder program: X.emit_(X.lt_(0, x), span=_S[i]).
     x = ir.Var("x", "int32")
     expression = f"0 {operator} x" if literal_left else f"x {operator} 0"
     actual = parse(
@@ -94,7 +96,7 @@ def test_written_comparison_order(language, operator, kind, literal_left, track_
 @pytest.mark.parametrize("dtype", ["int64", "uint32", "float32", "int32x4", "float32x4"])
 def test_literal_uses_ir_operand_type_and_lanes(language, dtype):
     # Before: 0 < x, where x carries the scalar or vector dtype.
-    # Expected builder program: X.lt(0, x); native IR performs literal promotion/broadcast.
+    # Expected builder program: X.lt_(0, x); native IR performs literal promotion/broadcast.
     x = ir.Var("x", dtype)
     value = parse(language, "@X.script\ndef main():\n    0 < x\n", x=x).body[0][1]
     assert isinstance(value, prim.LT)
@@ -188,35 +190,48 @@ def test_host_ordering_does_not_materialize_an_equality_result(language):
     )
 
 
-def test_chain_evaluates_source_operands_once_in_order(language):
-    # Before: a() < b() <= c() != d().
-    # Expected builder program: evaluate a/b/c/d once, then X.and_(X.lt(a, b),
-    # X.le(b, c), X.ne(c, d), chain=(a, b, c, d)).
-    seen = []
-
-    def operand(index, value):
-        seen.append(index)
-        return value
-
+def test_simple_chain_and_complex_operand_rejection(language):
+    # Simple adjacent comparisons lower directly; complex chains fail before
+    # operand evaluation. The explicit constexpr boundary stays ordinary Python.
     x, y = ir.Var("x", "int32"), ir.Var("y", "int32")
     actual = parse(
         language,
-        """
-@X.script
-def main():
-    operand(0, 0) < operand(1, x) <= operand(2, y) != operand(3, 3)
-""",
-        operand=operand,
+        "@X.script\ndef main():\n    -1 < x <= y != +3\n",
         x=x,
         y=y,
     ).body[0][1]
-    expected = prim.And(prim.LT(0, x), prim.And(prim.LE(x, y), prim.NE(y, 3)))
+    expected = prim.And(prim.LT(-1, x), prim.And(prim.LE(x, y), prim.NE(y, 3)))
     ir.assert_structural_equal(actual, expected)
-    assert seen == [0, 1, 2, 3]
-    chains = [event[1] for event in language.events if event[0] == "chain"]
-    assert len(chains) == 1
-    assert chains[0][0] == 0 and chains[0][3] == 3
-    assert chains[0][1] is x and chains[0][2] is y
+    assert actual.span.line == 3
+
+    def operand():
+        pytest.fail("unsupported chain evaluated its operand")
+
+    class Holder:
+        @property
+        def value(self):
+            return operand()
+
+        def __getitem__(self, index):
+            return operand()
+
+    for expression in (
+        "operand() < x < y",
+        "x < holder.value < y",
+        "x < holder[0] < y",
+        "x < x + 1 < y",
+    ):
+        with pytest.raises(SyntaxError, match="chain") as caught:
+            parse(
+                language,
+                f"@X.script\ndef main():\n    {expression}\n",
+                operand=operand,
+                holder=Holder(),
+                x=x,
+                y=y,
+            )
+        assert caught.value.filename == "comparison.py" and caught.value.lineno == 3
+        assert caught.value.offset >= 5
 
 
 def test_constexpr_keeps_python_comparison_and_chain_short_circuit(language):
@@ -253,7 +268,7 @@ def main():
 @pytest.mark.parametrize("dtype", ["int64", "float32", "int64x4"])
 def test_comparisons_use_native_promotion_and_broadcast(language, operator, kind, dtype):
     # Before: x < y (and each comparison), with distinct primitive types.
-    # Expected builder program: X.lt(x, y); native IR owns the cast and broadcast.
+    # Expected builder program: X.lt_(x, y); native IR owns the cast and broadcast.
     x, y = ir.Var("x", "int32"), ir.Var("y", dtype)
     actual = parse(
         language,
@@ -269,7 +284,7 @@ def test_comparisons_use_native_promotion_and_broadcast(language, operator, kind
 @pytest.mark.parametrize("track_span", [True, False])
 def test_symbolic_equality_reaches_typed_consumer(language, operator, kind, track_span):
     # Before: consume(x == 0), with source tracking enabled or disabled.
-    # Expected builder program: consume(X.eq(x, 0)), with the original comparison location.
+    # Expected builder program: consume(X.eq_(x, 0)), with the original comparison location.
     seen = []
 
     def consume(value):
@@ -348,11 +363,8 @@ def test_host_equality_result_is_not_arbitrarily_converted(language):
     assert seen[-1] is custom
 
 
-@pytest.mark.parametrize(
-    "expression", ["operand(0) == operand(1)", "operand(0) == operand(1) != operand(2)"]
-)
-def test_comparison_operands_evaluate_once_in_order(language, expression):
-    # Before: consume(a() == b()) or consume(a() == b() != c()).
+def test_comparison_operands_evaluate_once_in_order(language):
+    # Before: consume(a() == b()).
     # Expected builder program: evaluate operands once, then pass concrete EQ/And IR to consume.
     seen = []
 
@@ -365,14 +377,12 @@ def test_comparison_operands_evaluate_once_in_order(language, expression):
         assert str(value.ty) == "bool"
         return value
 
-    expression = expression.replace("operand(0)", "operand(0, value0)")
-    expression = expression.replace("operand(1)", "operand(1, value1)")
-    expression = expression.replace("operand(2)", "operand(2, value2)")
+    expression = "operand(0, value0) == operand(1, value1)"
     parse(
         language,
         "@X.script\ndef main():\n" + f"    consume({expression})\n",
         operand=operand,
         consume=consume,
-        **{f"value{i}": ir.Var(f"value{i}", "int32") for i in range(3)},
+        **{f"value{i}": ir.Var(f"value{i}", "int32") for i in range(2)},
     )
-    assert seen == ([0, 1, 2] if "!=" in expression else [0, 1])
+    assert seen == [0, 1]

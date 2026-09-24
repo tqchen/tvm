@@ -19,7 +19,6 @@
 from __future__ import annotations
 
 import ast
-from types import SimpleNamespace
 
 import pytest
 from dummy_builder import Value
@@ -127,47 +126,6 @@ def main():
     ]
 
 
-def test_policy_registration_is_immutable_and_aliases_keep_identity():
-    # Before: alias = constructor; alias(shape=("n",))
-    # Expected builder program: alias(shape=(X.resolve_type_var_("n"),))
-    fields = {"shape": "expr_str", "device": "global_info"}
-    decorate = registry.args_policy(fields)
-    fields["shape"] = "global_info"
-
-    def constructor(shape, device):
-        return shape, device
-
-    alias = decorate(constructor)
-    policy = registry.get_args_policy(alias)
-    assert policy is registry.get_args_policy(constructor)
-    assert dict(policy.fields) == {"shape": "expr_str", "device": "global_info"}
-    with pytest.raises(TypeError):
-        policy.fields["shape"] = "global_info"
-    assert registry.get_args_policy([]) is None
-    assert registry.get_args_policy(None) is None
-
-    @registry.args_policy({"values": "expr_str"}, scalar_strings=False)
-    def shorthand(values):
-        return values
-
-    assert dict(registry.get_args_policy(shorthand).fields) == {"values": "expr_str"}
-    assert registry.get_args_policy(shorthand).expression.scalar_strings is False
-
-
-@pytest.mark.parametrize(
-    "fields, message",
-    [
-        ({"shape": "vdevice"}, "Unknown argument policies"),
-        ({"missing": "expr_str"}, "Unknown argument policy fields"),
-    ],
-)
-def test_invalid_policy_registration_is_rejected(fields, message):
-    # Before: register an unknown policy or a nonexistent constructor parameter.
-    # Expected builder program: registration raises ValueError before parsing.
-    with pytest.raises(ValueError, match=message):
-        registry.args_policy(fields)(lambda shape: shape)
-
-
 @pytest.mark.parametrize("marker", ["I.constexpr", "X.constexpr"])
 def test_constexpr_is_lazy_and_executes_in_parent_scope(language, marker):
     # Before: if I.constexpr(choose()): x = 7; X.record(x)
@@ -264,8 +222,25 @@ def test_binding_and_mutation_have_distinct_operations(language):
     # Before: n = X.symbol(); x = helper(); cell = X.cell(); cell = x
     # Expected builder program:
     # n = X.resolve_type_var_("n", "int64"); x = X.bind_(helper(), name="x")
-    # cell = X.decl_mutable_var_(X.cell(), name="cell"); X.set_mutable_var_(cell, x)
-    marker = object()
+    # cell = X.decl_mutable_cell_(X.cell(), name="cell"); X.set_mutable_cell_(cell, x)
+    from dummy_builder import Value
+
+    marker = Value("producer", span=("producer",))
+    binds_with_spans, calls = [], []
+    bind = language.X.bind_
+
+    def observe_binding(value, *, span, value_span, **kwargs):
+        assert value is marker and value.span == ("producer",)
+        binds_with_spans.append((span.span, value_span.span))
+        return bind(value, **kwargs)
+
+    def helper():
+        calls.append(True)
+        assert len(language.source_stack) == 1
+        assert language.source_stack[-1][1:] == (5, 5, 9, 17)
+        return marker
+
+    language.X.bind_ = observe_binding
     result = language.parse(
         """
 @X.script
@@ -276,7 +251,7 @@ def main():
     cell = x
     X.record(x)
 """,
-        helper=lambda: marker,
+        helper=helper,
     )
     assert result.body[-1][1] is marker
     binds = [event for event in language.events if event[0] == "bind"]
@@ -285,55 +260,18 @@ def main():
     mutation = next(event for event in language.events if event[0] == "set")
     assert declaration[1] == "cell" and mutation[1] is declaration[2]
     assert mutation[2] is marker
-
-
-@pytest.mark.parametrize("callee", ["X.axes", "axis_alias"])
-@pytest.mark.parametrize("target", ["cell", "i, cell", "[i, cell]", "i, (cell, *tail)", "i, *cell"])
-def test_binding_declarations_override_mutable_targets_and_unpack_once(language, callee, target):
-    # Before: cell = X.cell(); i, cell = X.axes()
-    # Expected builder program: cell = X.decl_mutable_var_(X.cell(), name="cell")
-    # values = X.axes(); i, cell = X.unpack(values); cell = X.bind_(cell, name="cell")
-    # The declaration preserves returned identity rather than storing into the old cell.
-    marker, other = object(), object()
-    returned = {
-        "cell": marker,
-        "i, cell": (other, marker),
-        "[i, cell]": [other, marker],
-        "i, (cell, *tail)": (other, (marker, other)),
-        "i, *cell": (other, marker),
-    }[target]
-    calls = []
-
-    @registry.register_binding_decl
-    def axes():
-        calls.append("axes")
-        return returned
-
-    language.X.axes = axes
-    language.X.unpack = lambda value: value
-    language.parse(
-        f"""
-@X.script
-def main():
-    cell = X.cell()
-    {target} = {callee}()
-    X.record(cell)
-""",
-        axis_alias=axes,
-    )
-    assert calls == ["axes"]
-    assert not any(event[0] == "set" for event in language.events)
-    result = next(event[1] for event in language.events if event[0] == "record")
-    if target == "i, *cell":
-        assert len(result) == 1 and result[0] is marker
-    else:
-        assert result is marker
+    assert calls == [True] and len(binds_with_spans) == 1
+    target, rhs = binds_with_spans[0]
+    assert target.line == rhs.line == 5
+    assert (target.column, target.end_column) == (5, 6)
+    assert (rhs.column, rhs.end_column) == (9, 17)
 
 
 def test_ordinary_tuple_and_outer_branch_assignments_still_store(language):
     # Before: a = X.cell(); b = X.cell(); a, b = values(); if cond: a = first
     # Expected builder program: declare a/b; unpack values once; set a/b;
-    # with X.Then(): def branch(): X.set_mutable_var_(a, first); branch()
+    # with X.Then(): def branch(): X.set_mutable_cell_(a, first); branch()
+    # Named += uses bind_ for ordinary x and set_mutable_cell_ for declared b.
     first, second = object(), object()
     calls = []
 
@@ -342,7 +280,7 @@ def test_ordinary_tuple_and_outer_branch_assignments_still_store(language):
         return first, second
 
     language.X.unpack = lambda value: value
-    language.parse(
+    result = language.parse(
         """
 @X.script
 def main():
@@ -353,6 +291,10 @@ def main():
         a = first
     else:
         a = second
+    x = 1
+    x += 2
+    b += 3
+    X.record(x)
 """,
         values=values,
         first=first,
@@ -361,24 +303,29 @@ def main():
     declarations = {event[1]: event[2] for event in language.events if event[0] == "declare"}
     stores = [(event[1], event[2]) for event in language.events if event[0] == "set"]
     assert calls == ["values"]
-    assert stores == [
+    assert stores[:-1] == [
         (declarations["a"], first),
         (declarations["b"], second),
         (declarations["a"], first),
         (declarations["a"], second),
     ]
 
+    assert [event[2] for event in language.events if event[:2] == ("bind", "x")] == [1, 3]
+    assert result.body[-1] == ("emit", 3)
+    target, addition = stores[-1]
+    assert target is declarations["b"]
+    assert addition.op == "add" and addition.args == (target, 3)
+
 
 @pytest.mark.parametrize("scope", ["local", "parameter", "enclosing"])
-def test_shadowed_binding_declaration_alias_uses_ordinary_assignment(language, scope):
+def test_ordinary_callable_aliases_update_mutable_targets(language, scope):
     # Before: axis_alias = ordinary; cell = X.cell(); cell = axis_alias()
-    # Expected builder program: X.set_mutable_var_(cell, axis_alias()).
-    # An ambient declaration policy cannot override a lexical callable binding.
+    # Expected builder program: X.set_mutable_cell_(cell, axis_alias()).
+    # Local, parameter and enclosing Python callables all preserve ordinary stores.
     marker, calls = object(), []
 
-    @registry.register_binding_decl
     def axis_alias():
-        raise AssertionError("The shadowed ambient declaration must not run")
+        raise AssertionError("The shadowed ambient callable must not run")
 
     def ordinary():
         calls.append("ordinary")
@@ -484,6 +431,15 @@ def test_loop_targets_configure_the_entered_frame(language, target, bounds, argu
     language.parse(source, observe=observe)
     assert len(frames) == len(observed) == 1
     assert language.stack == [] and language.source_stack == []
+    if target == "i":
+        # A bare target collects the original multi-dimensional entry sequence.
+        names = ["iters_0", "iters_1"]
+        language.parse(
+            "@X.script\ndef main():\n    for iters in X.grid(4, 5):\n        observe(*iters)\n",
+            observe=observe,
+        )
+        assert len(frames) == len(observed) == 2
+        assert language.stack == [] and language.source_stack == []
     if target == "(i,)":
         failure = ValueError("loop body failure")
 
@@ -503,52 +459,41 @@ def test_actual_decorator_preserves_annotation_definition_and_body_scopes(langua
     # Expected builder program:
     # X.arg("x", X.tensor((definition_extent,))); local_extent = X.bind_(2, name="local_extent")
     X = language.X
+    calls = []
+
+    def ordinary_decorator(function):
+        calls.append("decorate")
+        return function
+
+    X.ordinary = ordinary_decorator
 
     def outer(extent):
         @X.script
         def main(x: X.tensor((extent,))):
             local_extent = 2
-            X.record(local_extent)
+
+            @X.ordinary
+            def helper():
+                calls.append("call")
+                return local_extent
+
+            X.record(helper())
 
         return main
 
     result = outer(7)
     assert result.params[0].args[0].args[0] == (7,)
     assert result.body[0][1] == 2
-
-
-def test_policy_resolution_preserves_instance_and_namespace_callables(language):
-    # Before: namespace.constructor(("n",)); instance.constructor(("n",))
-    # Expected builder program: each registered callable receives (X.resolve_type_var_("n"),).
-    seen = []
-
-    class Owner:
-        @registry.args_policy({"shape": "expr_str"})
-        def constructor(self, shape):
-            seen.append(shape)
-            return shape
-
-    owner = Owner()
-    namespace = SimpleNamespace(constructor=Owner.constructor)
-    language.parse(
-        """
-@X.script
-def main():
-    namespace.constructor(owner, ("n",))
-    owner.constructor(("n",))
-""",
-        namespace=namespace,
-        owner=owner,
-    )
-    assert len(seen) == 2 and seen[0][0] is seen[1][0]
+    assert calls == ["decorate", "call"]
+    assert [event[1] for event in language.events if event[0] == "name"] == ["main"]
 
 
 def test_module_declarations_precede_bodies_and_reuse_frames(language):
     # Before: @X.script def first(x: ...): second(x); @X.script def second(y: ...): ...
     # Expected builder program:
-    # with X.function(decl=True) as first_fn: X.arg("x", ...)
-    # with X.function(decl=True) as second_fn: X.arg("y", ...)
-    # with first_fn: X.emit_(X.call_global_var_(second_fn.reference, [first_fn.params[0]]))
+    # with X.function_(decl=True) as first_fn: X.arg("x", ...)
+    # with X.function_(decl=True) as second_fn: X.arg("y", ...)
+    # with first_fn: X.emit_(X.call_global_var_(second_fn.global_var, [first_fn.params[0]]))
     result = language.parse("""
 @I.ir_module
 class Module:
@@ -664,9 +609,9 @@ def main():
 def test_source_function_uses_declaration_only_when_reference_is_needed(language, recursive):
     # Before: @X.script def main(x: ...): X.record(x)  (or main(x))
     # Expected builder program:
-    # ordinary: with X.function(): x = X.arg(...); X.emit_(X.record(x))
-    # recursive: with X.function(decl=True) as fn: X.arg(...)
-    #            with fn: X.emit_(X.call_global_var_(fn.reference, [fn.params[0]]))
+    # ordinary: with X.function_(): x = X.arg(...); X.emit_(X.record(x))
+    # recursive: with X.function_(decl=True) as fn: X.arg(...)
+    #            with fn: X.emit_(X.call_global_var_(fn.global_var, [fn.params[0]]))
     statement = "main(x)" if recursive else "X.record(x)"
     result = language.parse(f"@X.script\ndef main(x: X.tensor((4,))):\n    {statement}\n")
     entries = [event for event in language.events if event[:2] == ("enter", "function")]
@@ -819,7 +764,7 @@ def test_non_call_expression_reads_keep_their_source_range(language, expression)
 
 @pytest.mark.parametrize("dtype", [None, "int32", "int64"])
 def test_argument_policy_preserves_expression_dtype(language, dtype):
-    @registry.args_policy({"values": "expr_str"}, dtype=dtype)
+    @registry.args_policy("X.shape", {"values": "expr_str"}, dtype=dtype)
     def shape(values):
         return values
 
@@ -834,4 +779,3 @@ def main():
     assert increment.op == "add"
     assert increment.args[0] is n
     assert increment.args[1] == 1
-    assert registry.get_args_policy(shape).expression.dtype == dtype

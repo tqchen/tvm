@@ -23,7 +23,12 @@ from tvm.script.parser import entry
 
 def parse(language, source, *, extra_vars=None, **options):
     language.X.tuple = lambda *fields: fields
-    return entry.parse(source, extra_vars={"X": language.X, **(extra_vars or {})}, **options)
+    return entry.parse(
+        source,
+        extra_vars={"X": language.X, **(extra_vars or {})},
+        **options,
+        root_builder=language.X,
+    )
 
 
 @pytest.mark.parametrize("track_span", [True, False])

@@ -14,39 +14,8 @@
 # KIND, either express or implied.  See the License for the
 # specific language governing permissions and limitations
 # under the License.
-"""Global information used by Relax."""
+"""Compatibility exports for shared IR global information."""
 
-import tvm_ffi
+from tvm.ir.global_info import DummyGlobalInfo, VDevice
 
-import tvm
-from tvm.ir import GlobalInfo
-from tvm.runtime import Device
-
-from . import _ffi_api
-
-
-@tvm_ffi.register_object("relax.DummyGlobalInfo")
-class DummyGlobalInfo(GlobalInfo):
-    """DummyGlobalInfo"""
-
-    def __init__(self) -> None:
-        self.__init_handle_by_constructor__(
-            _ffi_api.DummyGlobalInfo,
-        )
-
-
-@tvm_ffi.register_object("relax.VDevice")
-class VDevice(GlobalInfo):
-    """VDevice"""
-
-    def __init__(
-        self,
-        target=None,
-        vdevice_id: int = 0,
-        memory_scope: str = "global",
-    ) -> None:
-        if isinstance(target, dict | str):
-            target = tvm.target.Target(tvm.runtime.convert(target))
-        if isinstance(target, Device):
-            target = tvm.target.Target.from_device(target)
-        self.__init_handle_by_constructor__(_ffi_api.VDevice, target, vdevice_id, memory_scope)
+__all__ = ["DummyGlobalInfo", "VDevice"]

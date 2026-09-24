@@ -541,7 +541,7 @@ def test_prim_value_as_branch_condition(exec_mode):
     """The condition may be a Expr"""
 
     @R.function
-    def func(condition: R.Prim("bool")):
+    def func(condition: T.bool):
         if condition:
             out = R.prim_value(5)
         else:
@@ -556,7 +556,7 @@ def test_prim_value_as_branch_condition(exec_mode):
 
 
 def test_computed_prim_value_as_branch_condition(exec_mode):
-    """The R.Prim condition may be computed within the function"""
+    """The primitive scalar condition may be computed within the function"""
 
     @R.function
     def func(x: R.Tensor(["N"], "int64")):

@@ -18,7 +18,9 @@
 
 import tvm_ffi
 
-from tvm.runtime import Object
+from tvm.runtime import Device, Object, convert
+
+from . import _ffi_api
 
 
 @tvm_ffi.register_object("ir.GlobalInfo")
@@ -35,3 +37,33 @@ class GlobalInfo(Object):
     def same_as(self, other):
         """Overload with structural equality."""
         return super().__eq__(other)
+
+
+@tvm_ffi.register_object("relax.DummyGlobalInfo")
+class DummyGlobalInfo(GlobalInfo):
+    """DummyGlobalInfo"""
+
+    def __init__(self) -> None:
+        self.__init_handle_by_constructor__(
+            _ffi_api.DummyGlobalInfo,
+        )
+
+
+@tvm_ffi.register_object("relax.VDevice")
+class VDevice(GlobalInfo):
+    """VDevice"""
+
+    def __init__(
+        self,
+        target=None,
+        vdevice_id: int = 0,
+        memory_scope: str = "global",
+    ) -> None:
+        # Target loads after shared IR during package initialization.
+        from tvm.target import Target  # pylint: disable=import-outside-toplevel
+
+        if isinstance(target, dict | str):
+            target = Target(convert(target))
+        if isinstance(target, Device):
+            target = Target.from_device(target)
+        self.__init_handle_by_constructor__(_ffi_api.VDevice, target, vdevice_id, memory_scope)

@@ -543,7 +543,7 @@ def test_replace_binding_within_branch_with_duplicate_before_branch():
         def foo(
             x: R.Tensor((2, 3), dtype="float32"),
             y: R.Tensor((2, 3), dtype="float32"),
-            condition: R.Prim("bool"),
+            condition: T.bool,
         ):
             A = R.add(x, y)
             if condition:
@@ -562,7 +562,7 @@ def test_replace_binding_within_branch_with_duplicate_before_branch():
         def foo(
             x: R.Tensor((2, 3), dtype="float32"),
             y: R.Tensor((2, 3), dtype="float32"),
-            condition: R.Prim("bool"),
+            condition: T.bool,
         ):
             A = R.add(x, y)
             if condition:
@@ -587,7 +587,7 @@ def test_keep_duplicate_across_if_and_then():
         def foo(
             x: R.Tensor((2, 3), dtype="float32"),
             y: R.Tensor((2, 3), dtype="float32"),
-            condition: R.Prim("bool"),
+            condition: T.bool,
         ):
             if condition:
                 A = R.add(x, y)
@@ -611,7 +611,7 @@ def test_keep_duplicate_after_branch():
         def foo(
             x: R.Tensor((2, 3), dtype="float32"),
             y: R.Tensor((2, 3), dtype="float32"),
-            condition: R.Prim("bool"),
+            condition: T.bool,
         ):
             if condition:
                 A = R.add(x, y)

@@ -1258,7 +1258,7 @@ def test_if_branch_with_match_cast():
     """
 
     @R.function
-    def func(A: R.Tensor([16, 16]), is_bfloat16: R.Prim("bool")):
+    def func(A: R.Tensor([16, 16]), is_bfloat16: T.bool):
         if is_bfloat16:
             matched = R.match_cast(A, R.Tensor([16, 16], "bfloat16"))
             B = matched.astype("float16")
@@ -1336,19 +1336,11 @@ def test_scalar_tensor_as_branch_condition():
     tvm.ir.assert_structural_equal(if_else.cond.ty, R.Tensor([], "bool"))
 
 
-def test_prim_annotation_requires_dtype():
-    with pytest.raises(TypeError, match="missing 1 required positional argument: 'dtype'"):
-        R.Prim()
-
-    with pytest.raises(TypeError, match="unexpected keyword argument 'value'"):
-        R.Prim(value="n")
-
-
 def test_prim_value_as_branch_condition():
-    """In addition to scalar tensor, can use R.Prim condition"""
+    """In addition to scalar tensor, can use a primitive scalar condition"""
 
     @R.function
-    def func(cond: R.Prim("bool"), x: R.Tensor((1,), "float32")):
+    def func(cond: T.bool, x: R.Tensor((1,), "float32")):
         if cond:
             out = R.add(x, x)
         else:
@@ -1357,11 +1349,11 @@ def test_prim_value_as_branch_condition():
 
     if_else = func.body.blocks[0].bindings[0].value
     assert isinstance(if_else.cond, relax.Var)
-    tvm.ir.assert_structural_equal(if_else.cond.ty, R.Prim("bool"))
+    tvm.ir.assert_structural_equal(if_else.cond.ty, tvm.ir.PrimType("bool"))
 
 
 def test_computed_prim_value_as_branch_condition():
-    """The R.Prim condition may be computed within the function"""
+    """The primitive scalar condition may be computed within the function"""
 
     @R.function
     def func(x: R.Tensor(["N"], "float32")):
@@ -1376,7 +1368,7 @@ def test_computed_prim_value_as_branch_condition():
     if_else = func.body.blocks[0].bindings[0].value
     assert tvm.ir.is_prim_expr(if_else.cond)
     tvm.ir.assert_structural_equal(N % 16 == 0, if_else.cond)
-    tvm.ir.assert_structural_equal(if_else.cond.ty, R.Prim("bool"))
+    tvm.ir.assert_structural_equal(if_else.cond.ty, tvm.ir.PrimType("bool"))
 
 
 def test_tir_expr_as_branch_condition():
@@ -1419,10 +1411,10 @@ def test_scalar_tensor_as_assert_condition():
 
 
 def test_prim_value_as_assert_condition():
-    """In addition to scalar tensor, can use R.Prim condition"""
+    """In addition to scalar tensor, can use a primitive scalar condition"""
 
     @R.function(pure=False)
-    def func(cond: R.Prim("bool"), x: R.Tensor((1,), "float32")):
+    def func(cond: T.bool, x: R.Tensor((1,), "float32")):
         _ = R.assert_op(cond)
         out = R.add(x, x)
         return out
@@ -1430,11 +1422,11 @@ def test_prim_value_as_assert_condition():
     assert_op = func.body.blocks[0].bindings[0].value
     condition = assert_op.args[0]
     assert isinstance(condition, relax.Var)
-    tvm.ir.assert_structural_equal(condition.ty, R.Prim("bool"))
+    tvm.ir.assert_structural_equal(condition.ty, tvm.ir.PrimType("bool"))
 
 
 def test_computed_prim_value_as_assert_condition():
-    """The R.Prim condition may be computed within the function"""
+    """The primitive scalar condition may be computed within the function"""
 
     @R.function(pure=False)
     def func(x: R.Tensor(["N"], "float32")):
@@ -1448,7 +1440,7 @@ def test_computed_prim_value_as_assert_condition():
     condition = assert_op.args[0]
     assert tvm.ir.is_prim_expr(condition)
     tvm.ir.assert_structural_equal(N % 16 == 0, condition)
-    tvm.ir.assert_structural_equal(condition.ty, R.Prim("bool"))
+    tvm.ir.assert_structural_equal(condition.ty, tvm.ir.PrimType("bool"))
 
 
 def test_tir_expr_as_assert_condition():
@@ -1601,7 +1593,7 @@ def test_bound_prim_param_reused_in_dependent_annotations():
         """
 @R.function
 def main(
-    n: R.Prim("int64"),
+    n: T.int64,
     direct: R.Tensor([n], "float32"),
     string_direct: R.Tensor(["n"], "float32"),
     shape: R.Shape(["n"]),
@@ -1626,7 +1618,7 @@ def test_bound_prim_param_reused_in_declared_function_signature():
 @I.ir_module
 class Module:
     @R.function
-    def main(n: R.Prim("int64"), x: R.Tensor(["n + 1"], "float32")) -> R.Tensor(
+    def main(n: T.int64, x: R.Tensor(["n + 1"], "float32")) -> R.Tensor(
         ["n + 1"], "float32"
     ):
         return x
@@ -1645,7 +1637,7 @@ def test_later_prim_param_not_adopted_by_usage_first_symbol():
         tvm.script.from_source(
             """
 @R.function
-def main(x: R.Tensor(["n"], "float32"), n: R.Prim("int64")):
+def main(x: R.Tensor(["n"], "float32"), n: T.int64):
     return x
 """
         )
@@ -1656,7 +1648,7 @@ def test_non_int64_prim_param_rejected_in_shape_annotation():
         tvm.script.from_source(
             """
 @R.function
-def main(n: R.Prim("int32"), x: R.Tensor(["n"], "float32")):
+def main(n: T.int32, x: R.Tensor(["n"], "float32")):
     return x
 """
         )
@@ -1666,9 +1658,9 @@ def test_recursive_local_function_reuses_earlier_prim_param_in_signature():
     func = tvm.script.from_source(
         """
 @R.function
-def main(n: R.Prim("int64"), x: R.Tensor([n], "float32")):
+def main(n: T.int64, x: R.Tensor([n], "float32")):
     @R.function
-    def recurse(current: R.Prim("int64"), value: R.Tensor([current], "float32")) -> R.Tensor(
+    def recurse(current: T.int64, value: R.Tensor([current], "float32")) -> R.Tensor(
         [current], "float32"
     ):
         return recurse(current, value)
@@ -2444,12 +2436,12 @@ def test_primitive_assignments_emit_fresh_bindings():
     """Primitive expressions follow ordinary Relax assignment semantics."""
 
     @R.function(private=True)
-    def func(scalar: R.Prim("int64"), tensor: R.Tensor([1], "float32")):
+    def func(scalar: T.int64, tensor: R.Tensor([1], "float32")):
         alias = scalar
         arithmetic = alias + 1
-        integer: R.Prim("int32") = 2
-        floating: R.Prim("float32") = 2.5
-        boolean: R.Prim("bool") = True
+        integer: T.int32 = 2
+        floating: T.float32 = 2.5
+        boolean: T.bool = True
         compatibility = R.prim_value(arithmetic)
         tensor_alias = tensor
         return tensor_alias
@@ -2486,20 +2478,27 @@ def test_primitive_assignments_emit_fresh_bindings():
     _check(func)
 
 
-def test_shared_meta_var_skips_relax_bindings():
-    """I.meta_var and T.meta_var are one explicit parser-time escape."""
+def test_shared_meta_var_uses_ordinary_relax_bindings():
+    """Identity calls retain ordinary fresh Relax bindings and strict roundtrip."""
 
     assert I.meta_var is T.meta_var
 
     @R.function(private=True)
     def func(A: R.Tensor(["N"], "float32")):
-        N: R.Prim("int64") = T.int64()
+        N: T.int64 = T.int64()
         via_i = I.meta_var(N)
         via_t = T.meta_var(via_i)
         output = R.reshape(A, R.shape([via_t]))
         return output
 
-    assert len(func.body.blocks[0].bindings) == 1
+    bindings = func.body.blocks[0].bindings
+    assert len(bindings) == 3
+    via_i, via_t, output = bindings
+    assert via_i.value.same_as(func.params[0].ty.shape[0])
+    assert via_t.value.same_as(via_i.var)
+    assert not via_i.var.same_as(via_i.value)
+    assert not via_t.var.same_as(via_t.value)
+    assert func.body.body.same_as(output.var)
     source = func.script(show_all_ty=False)
     assert "meta_var" not in source
     _check(func)
@@ -2508,7 +2507,7 @@ def test_shared_meta_var_skips_relax_bindings():
 
         @R.function(private=True)
         def mismatched_declaration():
-            value: R.Prim("float32") = T.int64()
+            value: T.float32 = T.int64()
             return value
 
 
@@ -2516,7 +2515,7 @@ def test_primitive_if_emits_fresh_result():
     """A primitive If has a fresh Relax result and typed branch terminators."""
 
     @R.function(private=True)
-    def func(cond: R.Prim("bool"), lhs: R.Prim("int64"), rhs: R.Prim("int64")):
+    def func(cond: T.bool, lhs: T.int64, rhs: T.int64):
         if cond:
             output = lhs
         else:
@@ -2559,7 +2558,7 @@ def test_conditional_may_use_symbolic_variables_from_function_scope():
     def explicit_ty(
         A: R.Tensor(["N"], "float32"),
         B: R.Tensor(["N"], "float32"),
-        cond: R.Prim("bool"),
+        cond: T.bool,
     ) -> R.Tensor(["N"], "float32"):
         N = T.int64()
 
@@ -2574,7 +2573,7 @@ def test_conditional_may_use_symbolic_variables_from_function_scope():
     def inferred_ty(
         A: R.Tensor(["N"], "float32"),
         B: R.Tensor(["N"], "float32"),
-        cond: R.Prim("bool"),
+        cond: T.bool,
     ):
         N = T.int64()
         if cond:

@@ -839,7 +839,7 @@ def test_root_block():
 @T.prim_func(s_tir=True)
 def main():
     # with T.sblock("root"):
-    a = T.sblock_alloc_buffer((128, 128))
+    buffer = T.sblock_alloc_buffer((128, 128))
     for i, j in T.grid(128, 128):
         with T.sblock(""):
             T.reads()
@@ -1021,7 +1021,8 @@ def test_predicated_load_store():
 
 @T.prim_func(s_tir=True)
 def func(A: T.Buffer((128, 128), "float32"), B: T.Buffer((256, 256), "float32")):
-    T.masked_store(A, T.masked_load("float32x4", A, 0, T.Ramp(0, 4, 4), T.Broadcast(T.bool(False), 4)), 0, T.Ramp(0, 2, 4), T.Broadcast(T.bool(False), 4))
+    a_load: T.let[T.float32x4] = T.masked_load("float32x4", A, 0, T.Ramp(0, 4, 4), T.Broadcast(T.bool(False), 4))
+    T.masked_store(A, a_load, 0, T.Ramp(0, 2, 4), T.Broadcast(T.bool(False), 4))
     """
     _assert_print(main, expected_output)
 
@@ -1095,7 +1096,9 @@ def test_predicated_scalable_load_store():
 
 @T.prim_func(s_tir=True)
 def func(A: T.Buffer((128, 128), "float32"), B: T.Buffer((256, 256), "float32")):
-    T.masked_store(A, T.masked_load("float32xvscalex4", A, 0, T.Ramp(0, 4, T.vscale() * 4), T.get_active_lane_mask("uint1xvscalex4", 0, 13)), 0, T.Ramp(0, 2, T.vscale() * 4), T.get_active_lane_mask("uint1xvscalex4", 0, 13))
+    mask: T.let[T.uint1xvscalex4] = T.get_active_lane_mask("uint1xvscalex4", 0, 13)
+    a_load: T.let[T.float32xvscalex4] = T.masked_load("float32xvscalex4", A, 0, T.Ramp(0, 4, T.vscale() * 4), mask)
+    T.masked_store(A, a_load, 0, T.Ramp(0, 2, T.vscale() * 4), mask)
     """
     _assert_print(main, expected_output)
 

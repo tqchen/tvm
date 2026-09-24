@@ -17,23 +17,18 @@
 """Package tvm.script.ir_builder.ir.ir"""
 
 import inspect
-from typing import TYPE_CHECKING, TypeVar
+from typing import TypeVar
 
-from tvm.ir import BaseFunc, GlobalInfo, GlobalVar
+from tvm.ir import BaseFunc, DummyGlobalInfo, GlobalInfo, GlobalVar, VDevice
 from tvm.runtime import Object as tvm_Object
-from tvm.script.parser.protocol_registry import direct_call
 
 from ..base import IRBuilder
 from . import _ffi_api
 from .frame import IRModuleFrame
 
-if TYPE_CHECKING:
-    from tvm.relax import DummyGlobalInfo, VDevice
-
 T = TypeVar("T")
 
 
-@direct_call
 def meta_var(value: T) -> T:
     """Return a Python metadata value without binding, naming or relocating it.
 
@@ -50,7 +45,7 @@ def meta_var(value: T) -> T:
 
     .. code:: python
 
-        # Source and generated Python (direct_call suppresses result handling)
+        # Source and generated Python (the value retains its identity)
         value = I.meta_var(existing_value)
         a, b = I.meta_var((left, right))
     """
@@ -66,11 +61,6 @@ def ir_module() -> IRModuleFrame:
         The constructed frame.
     """
     return _ffi_api.IRModule()  # type: ignore[attr-defined] # pylint: disable=no-member
-
-
-def reserve_function(func_name: str) -> GlobalVar:
-    """Reserve a module identity before a declaration frame evaluates its signature."""
-    return _ffi_api.ReserveFunction(func_name)
 
 
 def decl_function(func_name: str, func_signature: BaseFunc) -> GlobalVar:
@@ -230,8 +220,6 @@ def dummy_global_info() -> "DummyGlobalInfo":
     res : DummyGlobalInfo
         The result dummy global info.
     """
-    from tvm.relax import DummyGlobalInfo  # pylint: disable=import-outside-toplevel
-
     return DummyGlobalInfo()  # type: ignore[attr-defined] # pylint: disable=no-member
 
 
@@ -251,8 +239,6 @@ def vdevice(target=None, vdevice_id: int = 0, memory_scope: str = "global") -> "
     res : VDevice
         The result virtual device.
     """
-    from tvm.relax import VDevice  # pylint: disable=import-outside-toplevel
-
     return VDevice(target, vdevice_id, memory_scope)  # type: ignore[attr-defined] # pylint: disable=no-member
 
 
@@ -275,8 +261,6 @@ def lookup_vdevice(target_kind: str | None = None, device_index: int = -1) -> "V
     """
     if IRBuilder.is_in_scope():
         return _ffi_api.LookupVDevice(target_kind, device_index)
-    from tvm.relax import VDevice  # pylint: disable=import-outside-toplevel
-
     infos = _class_global_infos()
     if not infos:
         raise ValueError("The GlobalInfos in the IRModule is not defined.")

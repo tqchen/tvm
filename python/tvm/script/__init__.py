@@ -24,9 +24,13 @@ The registry permits out-of-tree dialects to expose the same public spellings.
 import importlib
 import importlib.util
 import sys
+from collections.abc import Callable
 from typing import Any
 
 _DIALECT_REGISTRY: dict[str, str] = {}
+# Dialects register whole-module checks at import, independently of source decorators.
+# Callbacks own concrete eligibility; this list retains no source or construction state.
+_MODULE_VALIDATORS: list[Callable[[Any], None]] = []
 
 # Subpackages of `tvm.script` whose per-dialect children are redirected to a
 # canonical package under `tvm.<dialect>.script`. An empty suffix names
@@ -35,6 +39,38 @@ _REDIRECTED_SUBPACKAGES = {
     "tvm.script.parser": "",
     "tvm.script.ir_builder": "builder",
 }
+
+
+def register_module_validator(validator: Callable[[Any], None], *, prepend: bool = False) -> None:
+    """Register an opaque dialect-owned check over a completed module.
+
+    Parameters
+    ----------
+    validator : Callable[[Any], None]
+        Whole-module validator. It owns concrete IR eligibility and raises on
+        failure; shared coordination forwards its exception unchanged.
+    prepend : bool, optional
+        Run this check before existing callbacks. False appends it instead.
+        Re-registering the same callback is a no-op and preserves its position.
+
+    Returns
+    -------
+    None
+        Registration changes no IR and returns no source-visible result.
+
+    Notes
+    -----
+    Register beside dialect initialization so captured and preexisting functions
+    are checked even when no corresponding source decorator appears. A callback
+    may lazily import its dialect implementation to preserve import order. The
+    registry owns static hooks only, never source scopes, frames or IR results.
+    """
+    if any(existing is validator for existing in _MODULE_VALIDATORS):
+        return
+    if prepend:
+        _MODULE_VALIDATORS.insert(0, validator)
+    else:
+        _MODULE_VALIDATORS.append(validator)
 
 
 def register_dialect(name: str, module_path: str) -> None:
@@ -190,3 +226,9 @@ def __getattr__(name: str) -> Any:
         globals()["ir_module"] = ir_module_value
         return ir_module_value
     raise AttributeError(f"module 'tvm.script' has no attribute {name!r}")
+
+
+# Shared source entry points participate in the same opaque namespace boundary.
+from .parser import register_namespace as _register_namespace
+
+_register_namespace("script", sys.modules[__name__])

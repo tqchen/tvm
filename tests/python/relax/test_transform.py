@@ -194,7 +194,7 @@ def test_call_tir_rewrite_with_interspersed_primitive_argument():
         @R.function
         def main(
             A: R.Tensor((16,), "float32"),
-            scale: R.Prim("float32"),
+            scale: T.float32,
             C: R.Tensor((16,), "float32"),
         ) -> R.Tensor((16,), "float32"):
             R.func_attr({"relax.force_pure": True})

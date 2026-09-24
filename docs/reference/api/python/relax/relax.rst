@@ -17,7 +17,13 @@
 
 tvm.relax
 ---------
+
+``tvm.relax.DummyGlobalInfo`` and ``tvm.relax.VDevice`` remain compatibility
+exports of :class:`tvm.ir.DummyGlobalInfo` and
+:class:`tvm.ir.VDevice`. See those shared IR classes for their
+constructor parameters and behavior.
+
 .. automodule:: tvm.relax
     :members:
     :imported-members:
-    :exclude-members: BlockBuilder, Call, Tuple, TupleGetItem, Var, Span, GlobalVar, SourceName, TupleType, Type, FuncType
+    :exclude-members: BlockBuilder, Call, Tuple, TupleGetItem, Var, Span, GlobalVar, SourceName, TupleType, Type, FuncType, DummyGlobalInfo, VDevice

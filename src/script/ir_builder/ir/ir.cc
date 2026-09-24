@@ -18,8 +18,8 @@
  */
 #include <tvm/ffi/function.h>
 #include <tvm/ffi/reflection/registry.h>
+#include <tvm/ir/global_info.h>
 #include <tvm/ir/module.h>
-#include <tvm/relax/global_info.h>
 #include <tvm/runtime/logging.h>
 #include <tvm/script/ir_builder/ir/ir.h>
 
@@ -68,15 +68,6 @@ inline ffi::Optional<Type> GetGlobalVarType(const BaseFunc& func) {
     }
   }
   return std::nullopt;
-}
-
-GlobalVar ReserveFunction(const ffi::String& func_name) {
-  IRModuleFrame frame = FindModuleFrame();
-  TVM_FFI_CHECK(!frame->global_var_map.count(func_name), ValueError)
-      << "function " << func_name << " already exists";
-  GlobalVar gv(func_name);
-  frame->global_var_map.Set(func_name, gv);
-  return gv;
 }
 
 GlobalVar DeclFunction(const ffi::String& func_name, const BaseFunc& func_signature) {
@@ -160,7 +151,7 @@ void ModuleGlobalInfos(ffi::Map<ffi::String, ffi::Array<GlobalInfo>> global_info
   }
 }
 
-relax::VDevice LookupVDevice(ffi::String target_kind, int device_index) {
+VDevice LookupVDevice(ffi::String target_kind, int device_index) {
   if (IRBuilder::IsInScope()) {
     IRModuleFrame frame = FindModuleFrame();
     if (frame->global_infos.empty()) {
@@ -172,11 +163,11 @@ relax::VDevice LookupVDevice(ffi::String target_kind, int device_index) {
       TVM_FFI_THROW(ValueError) << "The target VDevice in the GlobalInfos was not found.";
     }
     if (target_kind == "vdevice") {
-      return vdevices[device_index].as_or_throw<relax::VDevice>();
+      return vdevices[device_index].as_or_throw<VDevice>();
     }
     int count = 0;
     for (auto vdevice : vdevices) {
-      auto vdev = vdevice.as_or_throw<relax::VDevice>();
+      auto vdev = vdevice.as_or_throw<VDevice>();
       if (vdev->target->kind->name == target_kind) {
         if (count == device_index) {
           return vdev;
@@ -186,7 +177,7 @@ relax::VDevice LookupVDevice(ffi::String target_kind, int device_index) {
     }
   }
   LOG(WARNING) << "The annotated device was not found, please check your vdevice list.";
-  return relax::VDevice();
+  return VDevice();
 }
 
 bool LookupName(const ffi::String& name) {
@@ -201,7 +192,6 @@ TVM_FFI_STATIC_INIT_BLOCK() {
   namespace refl = tvm::ffi::reflection;
   refl::GlobalDef()
       .def("script.ir_builder.ir.IRModule", IRModule)
-      .def("script.ir_builder.ir.ReserveFunction", ReserveFunction)
       .def("script.ir_builder.ir.DeclFunction", DeclFunction)
       .def("script.ir_builder.ir.DefFunction", DefFunction)
       .def("script.ir_builder.ir.ModuleAttrs", ModuleAttrs)

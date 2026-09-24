@@ -14,169 +14,20 @@
 # KIND, either express or implied.  See the License for the
 # specific language governing permissions and limitations
 # under the License.
-"""The source-to-builder protocol shared by TVMScript dialects.
+"""Shared contract for source-to-builder rewriting.
 
-The parser preserves source syntax and evaluation order while rewriting it into
-ordinary Python. Its state describes syntax, never IR values. Generated code
-uses ``I`` for shared module and source-location support and ``X`` for the
-current dialect's builders and protocol hooks. Native function frames own
-parameters, symbols and completed functions; module and region frames own their
-references and results. Ordinary functions can use one ``X.function()`` entry.
-When forward references are needed, ``X.function(decl=True)`` reserves each
-signature before body entry, allowing sibling calls without another ownership
-record. Re-entering that same frame completes its body.
-Syntax registration is owned by ``tvm.script.parser.protocol_registry``. Dialects import
-its APIs directly; this file documents the complete customization contract but
-does not import or re-export those registration APIs. Registration state lives
-across parses, while PrescanContext, ModuleContext and FunctionContext only
-consume it. Callable flags and records live in parser-owned dictionaries, never
-on the registered callables. The argument-policy table shares one immutable
-policy between original and adapted callable
-identities. No registry stores active frames, construction results or per-parse
-environments. Module setup precedes all signatures, which precede all bodies.
-Completed results are validated only after frame exit.
+The parser rewrites source syntax into ordinary Python calls to shared ``I``
+support and dialect ``X`` builders. Native frames own IR construction, symbols
+and completed results. ``X.function_()`` constructs one function; optional
+``decl=True`` reserves signatures before the same frames build their bodies.
+The source decorator supplies its builder namespace and forwards its options
+explicitly to that hook. Completed modules are checked through opaque,
+dialect-owned validators registered with ``tvm.script.register_module_validator``.
 
-A dialect selects source syntax through these registration APIs:
-
-* ``args_policy(fields, scalar_strings=True, dtype=None, as_type=False)`` marks
-  individual parameters as ``expr_str`` or ``global_info``. Positional and
-  keyword arguments use the same signature-based policy. Expression strings
-  lower through ``X.resolve_type_var_``; global-info strings use
-  ``I.resolve_global_info_``. Unmarked strings remain literal. The optional
-  opaque dtype reaches symbol resolution unchanged. Concrete arguments still
-  execute the constructor; eager expression/type adapters retain the builder's
-  MissingType and active-function behavior. Unknown policies or parameter names
-  are rejected at registration.
-* ``register_type_var_decl`` marks an omitted-value scalar declaration and its
-  optional dtype, selecting ``X.resolve_type_var_``. ``register_binding_decl``
-  marks an explicit ordinary binding that shadows outer mutable storage and
-  still uses ``X.bind_``. ``register_mutable_var_decl`` advertises call,
-  annotation or parameter positions for ``X.decl_mutable_var_``; later stores
-  use ``X.set_mutable_var_``.
-* ``direct_call`` returns the registered callable unchanged. Source calls omit
-  automatic binding, emission, result-span attachment and the outer source-call
-  wrapper. Callee and arguments still evaluate once in order, with normal child
-  rewriting. Scope-ID queries, block-axis producers and explicit ``T.bind`` use
-  this same category, preserving producer identity, unpacking and explicit names.
-  Direct calls precede stores to outer mutable names; assignment supplies no new
-  resource name. The callable owns its effects. This differs from AlreadyEmitted,
-  whose wrapped result retains normal source-result handling.
-* ``result_span`` declares that the complete effect is represented by the returned
-  node or emission receipt. It retains ordinary binding/emission while selecting
-  result attachment instead of a source-call context. Register it beside a proven
-  concrete producer; opaque helpers that emit unrelated statements still need
-  their context. ``is_result_span`` reads this marker without evaluating properties.
-* ``register_result_members`` associates a producer or annotation with an
-  opaque namespace of actual member callables/descriptors. Prescan facts and
-  chained producer syntax can expose those members without evaluating a value
-  or inspecting its IR type. Each member still needs its own declaration or
-  direct-call registration; a method name alone never selects a policy.
-* ``register_function`` records an opaque builder namespace, copied option
-  mapping, defaults and an optional Python-body flag for a source decorator.
-  ``function_info`` reads that ``FunctionDecoratorInfo`` record. The flag keeps
-  original Python callables in module ``__pyfuncs__``; other functions lower
-  through the registered dialect's function/signature/body hooks.
-
-``get_args_policy`` reads ``ArgsPolicy`` and its ``ExprStrPolicy`` record;
-``handle_call_args_policy`` selects that policy before source argument traversal.
-String decoding and physical source-range mapping live in ``parser.expr_str_handling``;
-general expression rewriting remains in the main transpiler.
-``get_type_var_decl`` reads ``DeclarationArguments``. ``is_binding_decl``,
-``is_mutable_var_decl`` and ``is_direct_call``
-read declaration/call markers. ``copy_function_info`` shares the exact registered
-decorator record with a source function; ``register_function_options`` and
-``get_function_options`` retain explicitly applied options. ``module_decorator``
-and ``is_module_decorator`` classify module decorators, while
-``register_parameter_dtype`` and ``get_parameter_dtype`` record parameter dtype
-syntax. ``get_result_members`` reads member namespaces. Every registration and
-lookup normalizes Python bound methods and property getters without evaluating
-properties. ``DeclarationArguments`` carries omitted-value parameter and dtype
-facts. These readers neither call constructors nor own native state. The shared
-``constexpr`` marker is recognized by identity for host control expressions and
-specialization annotations; dialect semantic exports refer to that same marker.
-
-All callable syntax facts live in parser-owned dictionaries, with no callable
-attribute writes or fallback reads. Decorators preserve identity, including built-in,
-extension and slotted callables. Explicit registrations own their callable and
-policy for registry lifetime, including namespaces that reference their own
-decorator. Copied source-function information and applied options instead use
-separate weak storage so parsing does not permanently retain each source function
-or its closure. Tables store syntax metadata only, never active parse scopes,
-native frames or constructed results.
-
-A dialect registers policies beside the owning definitions. Generated constructors
-receive metadata when created; native callables that cannot use a decorator receive
-an explicit registration beside their exposure. Do not scan a completed namespace or
-keep a separate inventory of concrete dialect registrations. For example:
-
-.. code:: python
-
-    from tvm.script.parser.protocol_registry import (
-        args_policy,
-        direct_call,
-        register_binding_decl,
-        register_function,
-        register_mutable_var_decl,
-        register_result_members,
-        register_type_var_decl,
-    )
-
-    @register_binding_decl
-    def alloc_buffer(shape, dtype):
-        return make_buffer(shape, dtype)
-
-    @direct_call
-    def thread_id():
-        return current_thread_variable()
-
-    # At a generated dtype-constructor creation site:
-    int32 = make_dtype_constructor("int32")
-    register_type_var_decl(int32, dtype="int32")
-
-    @args_policy({"shape": "expr_str", "device": "global_info"})
-    def tensor(shape, device=None):
-        return make_tensor(shape, device)
-
-    @direct_call
-    def identity(value):
-        return value
-
-    # Source
-    value = tensor(("n",), device="cuda:0")
-    kept = identity(value)
-    # Generated builder
-    value = X.bind_(
-        tensor((X.resolve_type_var_("n"),), device=I.resolve_global_info_("cuda:0")),
-        name="value",
-    )
-    kept = identity(value)
-
-Importing the registration module does not initialize parser entry points or
-concrete builders. Applying an expression/type argument policy requests the
-shared eager annotation adapter when needed; native frames still own all IR
-construction, symbol identity and validation. Definitions and detailed API
-docstrings remain beside the parser-owned implementation.
-
-Shared source support remains in ir_builder.base and is exported through I:
-I.at_(location, value) annotates that same object (or AlreadyEmitted.value),
-records a returned frame's deferred location, and preserves identity;
-I.with_at_group_(location, thunk) evaluates one source call inside restored
-caller/definition provenance and applies ``at_`` before returning. ``I.annotation_value_``
-converts a rewritten annotation without creating a parser owner. Generated programs
-use a table of ``SpanEntry`` objects created while rewriting: ``_S[i](value)``
-attaches a materialized range, ``_S[i].ctx(thunk)`` evaluates under that range,
-and known protocol operations accept ``span=_S[i]``. Entries retain fixed source
-metadata only; dynamic caller ancestry is composed at invocation. Explicit locations
-also accept Span objects or (SourceName, start_line, end_line, start_column, end_column)
-tuples; None omits explicit attribution. Track-span disabling omits source
-instrumentation. Registered direct_call syntax is the explicit exception: it
-omits automatic binding, emission and result location handling, while arguments
-still follow their own rewriting rules. meta_var is a direct identity call.
-Module aliases use shared lexical assignment and retain the active module.
-
-The dialect namespace advertises ``supports_mutable_declarations`` so a
-primitive annotation imported from another dialect does not grant mutable
-storage syntax to a dialect whose bindings are immutable.
+Special syntax markers and argument policies live beside their definitions in
+``tvm.script.parser.protocol_registry``. The hooks below document their own
+inputs, effects and source mappings; dialect implementations live in each
+``builder.parser_protocol`` and are exported through ``X``.
 
 For example, source functions can share a symbolic shape spelling while each
 function retains its own symbol identity:
@@ -202,19 +53,17 @@ Python binding; the explicit dtype declaration deliberately binds Python ``n``.
 
     with IRBuilder() as builder:
         with I.ir_module():
-            first_reference = I.reserve_function("first")
-            second_reference = I.reserve_function("second")
-            with X.function(decl=True) as first:
+            with X.function_(decl=True) as first:
                 X.func_name("first")
                 X.arg("a", X.Buffer((X.resolve_type_var_("n"),), "float32"))
-            with X.function(decl=True) as second:
+            with X.function_(decl=True) as second:
                 X.func_name("second")
                 X.arg("a", X.Buffer((X.resolve_type_var_("n"),), "float32"))
             with first:
                 def first_body():
                     a = first.params[0]
                     n = X.resolve_type_var_("n", dtype="int64")
-                    X.emit_(X.call_global_var_(second.reference, [a]))
+                    X.emit_(X.call_global_var_(second.global_var, [a]))
                 first_body()
             with second:
                 def second_body():
@@ -353,6 +202,7 @@ def bind_(
     ty: Any = None,
     name: str | None = None,
     span: _Span = None,
+    value_span: _Span = None,
     name_span: _Span = None,
     frame_value: bool = False,
 ) -> Any:
@@ -369,9 +219,13 @@ def bind_(
     name : str, optional
         Source target name. None (the default) requests no source-derived name.
     span : SpanEntry, Span or source-location tuple, optional
-        Location for the constructed result. None (the default) leaves explicit location
-        unspecified; active source-call provenance is composed by the builder. Frames
-        retain their location until finalization.
+        Binding-target location for a newly constructed binding. None (the default)
+        leaves it unspecified; this is separate from the RHS location.
+    value_span : SpanEntry, Span or source-location tuple, optional
+        RHS source location, passed separately without first stamping the returned value.
+        None (the default) leaves explicit RHS attribution unspecified. The dialect
+        applies it only when binding/conversion requires value attribution; TIRx
+        variable and metadata passthrough retain producer names and spans.
     name_span : SpanEntry, Span or source-location tuple, optional
         Location of the target identifier. None (the default) uses span; it can differ
         from the emitted statement location.
@@ -389,8 +243,14 @@ def bind_(
     -----
     Requires the dialect construction context when producing IR. TIRx emits immutable Bind
     statements; Relax emits normalized bindings and match-casts. Unsupported
-    values/annotations raise TypeError or ValueError. Mutable storage and scope declarations
-    use distinct hooks. A DSL may opt into concise scope entry: register the returned child
+    values/annotations raise TypeError or ValueError. Ordinary TIRx Vars (including
+    BufferVars) pass through before general Expr binding, without naming, stamping
+    or another binding. Other Expr values retain ordinary dialect binding. Non-Expr
+    metadata such as Layout and ordinary meta_class instances passes through
+    unchanged without inspecting or naming its resources. Explicit typed declarations,
+    mutable storage and frame targets retain their separate contracts. AlreadyEmitted
+    receipts retain RHS attribution without another emission. A DSL may opt into
+    concise scope entry: register the returned child
     frame's exit callback on the active parent before child entry, then return its entered
     value. Later statements enter that child, and parent exit closes it. This is dialect
     policy; it adds no parser-owned scope state. Direct-call results and source module
@@ -401,7 +261,7 @@ def bind_(
         # Source
         x = value
         # Generated builder
-        x = X.bind_(value, name="x")
+        x = X.bind_(value, name="x", span=_S[0], value_span=_S[1])
 
         # TIRx concise scope entry
         tid = T.launch_thread("threadIdx.x", 128)
@@ -433,13 +293,13 @@ def emit_(value: Any, *, span: _Span = None) -> None:
     Notes
     -----
     Requires an active dialect function/region when emitting IR. TIRx adds statements,
-    evaluates expressions, and can enter concise frames; variables/text are inert and
-    sequences are consumed elementwise. Relax accepts only void expressions (or
+    evaluates expressions, and can enter concise frames. Variables, text, layouts,
+    and meta_class instances are inert; sequences are consumed
+    elementwise. Relax accepts only void expressions (or
     None/AlreadyEmitted); unsupported values raise TypeError and non-void expressions raise
     ValueError. An explicit span annotates the exact previously emitted node in a receipt
     without emitting it again. Known builder results need no separate result wrapper;
-    opaque source calls keep their scoped provenance before this hook. Registered
-    direct_call statements bypass this hook.
+    opaque source calls keep their scoped provenance before this hook.
 
     .. code:: python
 
@@ -451,7 +311,7 @@ def emit_(value: Any, *, span: _Span = None) -> None:
     raise NotImplementedError
 
 
-def decl_mutable_var_(
+def decl_mutable_cell_(
     value: Any = MISSING,
     *,
     ty: Any = None,
@@ -497,12 +357,12 @@ def decl_mutable_var_(
         # Source
         x: T.int32 = 1
         # Generated builder
-        x = X.decl_mutable_var_(1, ty=X.int32, name="x")
+        x = X.decl_mutable_cell_(1, ty=X.int32, name="x")
     """
     raise NotImplementedError
 
 
-def set_mutable_var_(target: Any, value: Any, *, span: _Span = None) -> None:
+def set_mutable_cell_(target: Any, value: Any, *, span: _Span = None) -> None:
     """Emit an update through an existing mutable handle without rebinding it.
 
     Parameters
@@ -536,8 +396,8 @@ def set_mutable_var_(target: Any, value: Any, *, span: _Span = None) -> None:
         x: T.int32 = 0
         x = value
         # Generated builder
-        x = X.decl_mutable_var_(0, ty=X.int32, name="x")
-        X.set_mutable_var_(x, value)
+        x = X.decl_mutable_cell_(0, ty=X.int32, name="x")
+        X.set_mutable_cell_(x, value)
     """
     raise NotImplementedError
 
@@ -635,11 +495,12 @@ def check_well_formed_(module: _ir.IRModule) -> None:
 
     Notes
     -----
-    Requires completed IR, with no active construction frame. Shared I validation runs Relax
-    whole-module checks, s_tir verification, then TIRx verification on each non-s_tir
-    primitive function, preserving cross-function checks. Dialect X hooks validate a
-    standalone completed function under that dialect policy. Invalid IR raises ValueError
-    retaining native details; the parser propagates the exception unchanged.
+    Requires completed IR, with no active construction frame. Root coordination
+    invokes opaque whole-module hooks supplied by dialect initialization through
+    tvm.script.register_module_validator. Each hook owns concrete types, eligibility
+    and cross-function validation, including captured/preexisting members. No source
+    decorator inventory selects the hooks. Validator exceptions propagate unchanged;
+    an empty hook list raises RuntimeError instead of establishing validity.
     check_well_formed=False omits the generated call entirely.
 
     .. code:: python
@@ -651,24 +512,16 @@ def check_well_formed_(module: _ir.IRModule) -> None:
         # Generated builder, after module frame exit
         I.check_well_formed_(module)
     """
-    from tvm import relax, s_tir, tirx
+    from tvm.script import _MODULE_VALIDATORS
 
-    message = (
-        "Program is not well-formed. If this is deliberate, set "
-        "check_well_formed=False in the top-level decorator."
-    )
-    if not relax.analysis.check_well_formed(module):
-        raise ValueError(message)
-    try:
-        s_tir.analysis.verify_well_formed(module)
-        for function in module.functions.values():
-            if isinstance(function, tirx.PrimFunc) and not function.attrs.get("s_tir", False):
-                tirx.analysis.verify_tirx_well_formed(function)
-    except Exception as error:
-        raise ValueError(f"{message}\n{error}") from error
+    validators = tuple(_MODULE_VALIDATORS)
+    if not validators:
+        raise RuntimeError("No completed-module validators are registered")
+    for validator in validators:
+        validator(module)
 
 
-def function(*, decl: bool = False, span: _Span = None, **options: Any) -> IRBuilderFrame:
+def function_(*, decl: bool = False, span: _Span = None, **options: Any) -> IRBuilderFrame:
     """Create the native function frame used for signature and body construction.
 
     Parameters
@@ -706,7 +559,7 @@ def function(*, decl: bool = False, span: _Span = None, **options: Any) -> IRBui
         def f(a: T.int32):
             T.evaluate(a)
         # Generated builder
-        with X.function() as fn:
+        with X.function_() as fn:
             X.func_name("f")
             a = X.arg("a", X.int32)
             X.emit_(X.evaluate(a))
@@ -1330,38 +1183,34 @@ def if_then_else_(condition: Any, true_value: Any, false_value: Any) -> Any:
     raise NotImplementedError
 
 
-def and_(*values: Any, chain: Sequence[Any] | None = None) -> Any:
-    """Construct conjunction while preserving comparison-chain operand identity.
+def and_(*values: Any) -> Any:
+    """Construct a conjunction from ordinary boolean or comparison operands.
 
     Parameters
     ----------
-    values : Any
-        One or more eagerly constructed host/IR comparisons or boolean operands, in
-        order.
-    chain : sequence of Any, optional
-        Original once-evaluated comparison operands. None (default) means ordinary
-        conjunction. Otherwise length is len(values)+1; shared nontrivial IR operands
-        receive lexical native bindings.
+    *values : Any
+        Eagerly constructed host or IR operands in source order. TIRx constructs
+        primitive conjunctions; Relax selects primitive or tensor operations.
 
     Returns
     -------
     Any
-        Host result or native conjunction expression.
+        The host boolean or native conjunction expression.
 
     Notes
     -----
-    No statement is emitted. TIRx supports scalar/vector conjunction; Relax supports host,
-    primitive and tensor predicates. Empty operands or invalid chain arity raise
-    TypeError/ValueError; native type errors propagate. Chained runtime operands are
-    evaluated once and progressively short-circuited, without constructing replacement
-    variables in the parser.
+    Empty operands raise TypeError. Simple comparison chains accept only names
+    and numeric literals, including signed literals. They lower directly to
+    adjacent comparisons with this conjunction; complex chain operands are a
+    source error before evaluation. There are no temporary operand bindings or
+    substitution. Explicit constexpr code retains Python short-circuit behavior.
 
     .. code:: python
 
         # Source
-        a < b < c
-        # Generated builder; a, b and c have already evaluated once
-        X.and_(X.lt(a, b), X.lt(b, c), chain=(a, b, c))
+        0 < i < 10
+        # Generated builder
+        X.and_(X.lt_(0, i), X.lt_(i, 10))
     """
     raise NotImplementedError
 
@@ -1425,14 +1274,14 @@ def not_(value: Any) -> Any:
     raise NotImplementedError
 
 
-def lt(lhs: Any, rhs: Any, *, span: _Span = None) -> _ir.Expr:
+def lt_(lhs: Any, rhs: Any, *, span: _Span = None) -> _ir.Expr:
     """Construct the < comparison in written operand order.
 
     Parameters
     ----------
-    lhs : Expr, IterVar or scalar
+    lhs : Expr or scalar
         Already-evaluated left operand.
-    rhs : Expr, IterVar or scalar
+    rhs : Expr or scalar
         Already-evaluated right operand.
     span : SpanEntry, Span or source-location tuple, optional
         Location for the constructed result. None (the default) leaves explicit location
@@ -1446,8 +1295,8 @@ def lt(lhs: Any, rhs: Any, *, span: _Span = None) -> _ir.Expr:
 
     Notes
     -----
-    No statement is emitted or frame entered. TIRx compares primitive operands (including
-    IterVar.var); Relax selects tensor comparison if either operand is a nonprimitive IR
+    No statement is emitted or frame entered. TIRx compares primitive operands;
+    Relax selects tensor comparison if either operand is a nonprimitive IR
     expression, otherwise primitive comparison. Native dtype/shape errors propagate. Do not
     use Python object equality to compare these operands.
 
@@ -1456,19 +1305,19 @@ def lt(lhs: Any, rhs: Any, *, span: _Span = None) -> _ir.Expr:
         # Source
         lhs < rhs
         # Generated builder
-        X.lt(lhs, rhs)
+        X.lt_(lhs, rhs)
     """
     raise NotImplementedError
 
 
-def le(lhs: Any, rhs: Any, *, span: _Span = None) -> _ir.Expr:
+def le_(lhs: Any, rhs: Any, *, span: _Span = None) -> _ir.Expr:
     """Construct the <= comparison in written operand order.
 
     Parameters
     ----------
-    lhs : Expr, IterVar or scalar
+    lhs : Expr or scalar
         Already-evaluated left operand.
-    rhs : Expr, IterVar or scalar
+    rhs : Expr or scalar
         Already-evaluated right operand.
     span : SpanEntry, Span or source-location tuple, optional
         Location for the constructed result. None (the default) leaves explicit location
@@ -1482,8 +1331,8 @@ def le(lhs: Any, rhs: Any, *, span: _Span = None) -> _ir.Expr:
 
     Notes
     -----
-    No statement is emitted or frame entered. TIRx compares primitive operands (including
-    IterVar.var); Relax selects tensor comparison if either operand is a nonprimitive IR
+    No statement is emitted or frame entered. TIRx compares primitive operands;
+    Relax selects tensor comparison if either operand is a nonprimitive IR
     expression, otherwise primitive comparison. Native dtype/shape errors propagate. Do not
     use Python object equality to compare these operands.
 
@@ -1492,19 +1341,19 @@ def le(lhs: Any, rhs: Any, *, span: _Span = None) -> _ir.Expr:
         # Source
         lhs <= rhs
         # Generated builder
-        X.le(lhs, rhs)
+        X.le_(lhs, rhs)
     """
     raise NotImplementedError
 
 
-def gt(lhs: Any, rhs: Any, *, span: _Span = None) -> _ir.Expr:
+def gt_(lhs: Any, rhs: Any, *, span: _Span = None) -> _ir.Expr:
     """Construct the > comparison in written operand order.
 
     Parameters
     ----------
-    lhs : Expr, IterVar or scalar
+    lhs : Expr or scalar
         Already-evaluated left operand.
-    rhs : Expr, IterVar or scalar
+    rhs : Expr or scalar
         Already-evaluated right operand.
     span : SpanEntry, Span or source-location tuple, optional
         Location for the constructed result. None (the default) leaves explicit location
@@ -1518,8 +1367,8 @@ def gt(lhs: Any, rhs: Any, *, span: _Span = None) -> _ir.Expr:
 
     Notes
     -----
-    No statement is emitted or frame entered. TIRx compares primitive operands (including
-    IterVar.var); Relax selects tensor comparison if either operand is a nonprimitive IR
+    No statement is emitted or frame entered. TIRx compares primitive operands;
+    Relax selects tensor comparison if either operand is a nonprimitive IR
     expression, otherwise primitive comparison. Native dtype/shape errors propagate. Do not
     use Python object equality to compare these operands.
 
@@ -1528,19 +1377,19 @@ def gt(lhs: Any, rhs: Any, *, span: _Span = None) -> _ir.Expr:
         # Source
         lhs > rhs
         # Generated builder
-        X.gt(lhs, rhs)
+        X.gt_(lhs, rhs)
     """
     raise NotImplementedError
 
 
-def ge(lhs: Any, rhs: Any, *, span: _Span = None) -> _ir.Expr:
+def ge_(lhs: Any, rhs: Any, *, span: _Span = None) -> _ir.Expr:
     """Construct the >= comparison in written operand order.
 
     Parameters
     ----------
-    lhs : Expr, IterVar or scalar
+    lhs : Expr or scalar
         Already-evaluated left operand.
-    rhs : Expr, IterVar or scalar
+    rhs : Expr or scalar
         Already-evaluated right operand.
     span : SpanEntry, Span or source-location tuple, optional
         Location for the constructed result. None (the default) leaves explicit location
@@ -1554,8 +1403,8 @@ def ge(lhs: Any, rhs: Any, *, span: _Span = None) -> _ir.Expr:
 
     Notes
     -----
-    No statement is emitted or frame entered. TIRx compares primitive operands (including
-    IterVar.var); Relax selects tensor comparison if either operand is a nonprimitive IR
+    No statement is emitted or frame entered. TIRx compares primitive operands;
+    Relax selects tensor comparison if either operand is a nonprimitive IR
     expression, otherwise primitive comparison. Native dtype/shape errors propagate. Do not
     use Python object equality to compare these operands.
 
@@ -1564,19 +1413,19 @@ def ge(lhs: Any, rhs: Any, *, span: _Span = None) -> _ir.Expr:
         # Source
         lhs >= rhs
         # Generated builder
-        X.ge(lhs, rhs)
+        X.ge_(lhs, rhs)
     """
     raise NotImplementedError
 
 
-def eq(lhs: Any, rhs: Any, *, span: _Span = None) -> _ir.Expr:
+def eq_(lhs: Any, rhs: Any, *, span: _Span = None) -> _ir.Expr:
     """Construct the == comparison in written operand order.
 
     Parameters
     ----------
-    lhs : Expr, IterVar or scalar
+    lhs : Expr or scalar
         Already-evaluated left operand.
-    rhs : Expr, IterVar or scalar
+    rhs : Expr or scalar
         Already-evaluated right operand.
     span : SpanEntry, Span or source-location tuple, optional
         Location for the constructed result. None (the default) leaves explicit location
@@ -1590,8 +1439,8 @@ def eq(lhs: Any, rhs: Any, *, span: _Span = None) -> _ir.Expr:
 
     Notes
     -----
-    No statement is emitted or frame entered. TIRx compares primitive operands (including
-    IterVar.var); Relax selects tensor comparison if either operand is a nonprimitive IR
+    No statement is emitted or frame entered. TIRx compares primitive operands;
+    Relax selects tensor comparison if either operand is a nonprimitive IR
     expression, otherwise primitive comparison. Native dtype/shape errors propagate. Do not
     use Python object equality to compare these operands.
 
@@ -1600,19 +1449,19 @@ def eq(lhs: Any, rhs: Any, *, span: _Span = None) -> _ir.Expr:
         # Source
         lhs == rhs
         # Generated builder
-        X.eq(lhs, rhs)
+        X.eq_(lhs, rhs)
     """
     raise NotImplementedError
 
 
-def ne(lhs: Any, rhs: Any, *, span: _Span = None) -> _ir.Expr:
+def ne_(lhs: Any, rhs: Any, *, span: _Span = None) -> _ir.Expr:
     """Construct the != comparison in written operand order.
 
     Parameters
     ----------
-    lhs : Expr, IterVar or scalar
+    lhs : Expr or scalar
         Already-evaluated left operand.
-    rhs : Expr, IterVar or scalar
+    rhs : Expr or scalar
         Already-evaluated right operand.
     span : SpanEntry, Span or source-location tuple, optional
         Location for the constructed result. None (the default) leaves explicit location
@@ -1626,8 +1475,8 @@ def ne(lhs: Any, rhs: Any, *, span: _Span = None) -> _ir.Expr:
 
     Notes
     -----
-    No statement is emitted or frame entered. TIRx compares primitive operands (including
-    IterVar.var); Relax selects tensor comparison if either operand is a nonprimitive IR
+    No statement is emitted or frame entered. TIRx compares primitive operands;
+    Relax selects tensor comparison if either operand is a nonprimitive IR
     expression, otherwise primitive comparison. Native dtype/shape errors propagate. Do not
     use Python object equality to compare these operands.
 
@@ -1636,6 +1485,6 @@ def ne(lhs: Any, rhs: Any, *, span: _Span = None) -> _ir.Expr:
         # Source
         lhs != rhs
         # Generated builder
-        X.ne(lhs, rhs)
+        X.ne_(lhs, rhs)
     """
     raise NotImplementedError

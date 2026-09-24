@@ -36,11 +36,6 @@ class SeqExprFrame(RelaxFrame): ...
 class FunctionFrame(SeqExprFrame):
     """Native function frame retaining signature, symbols and finalized results."""
 
-    @property
-    def reference(self):
-        """The stable declared module or local reference."""
-        return self.local_var if self.local_var is not None else self.global_var
-
     def resolve_type_var(self, name, dtype=None, *, value=None, span=None):
         """Resolve a primitive symbol in this function's native map."""
         return _resolve_type_var(self, _ffi_api.ResolveTypeVar, name, dtype, value=value, span=span)

@@ -16,107 +16,12 @@
 # under the License.
 """Lexical-only body helpers execute inside their already-entered frames."""
 
-import ast
-import copy
 import traceback
 
 import pytest
 
 from tvm.script.ir_builder import IRBuilder
 from tvm.script.parser import entry, jit_support
-
-
-@pytest.mark.parametrize(
-    "source, helper_count",
-    [
-        pytest.param(
-            "@X.script\ndef main(x: X.tensor((4,))):\n    X.record(x)\n",
-            1,
-            id="ordinary",
-        ),
-        pytest.param(
-            "@X.script\ndef main(x: X.tensor((4,))):\n    main(x)\n",
-            1,
-            id="recursive",
-        ),
-        pytest.param(
-            """
-@I.ir_module
-class Module:
-    @X.script
-    def first(x: X.tensor((4,))):
-        second(x)
-    @X.script
-    def second(y: X.tensor((4,))):
-        X.record(y)
-""",
-            2,
-            id="module",
-        ),
-        pytest.param(
-            """
-@X.script
-def main(x: X.tensor((4,))):
-    @X.script
-    def inner(y: X.tensor((4,))):
-        X.record(x)
-        X.record(y)
-    X.record(x)
-""",
-            2,
-            id="nested",
-        ),
-        pytest.param(
-            """
-@X.script
-def main(condition: X.tensor(())):
-    if condition:
-        X.record(1)
-    else:
-        X.record(2)
-""",
-            3,
-            id="branches",
-        ),
-    ],
-)
-def test_lexical_helpers_are_defined_and_called_inside_frames(
-    language, monkeypatch, source, helper_count
-):
-    # The requested structure is with frame: def body(): ...; body().
-    # Observe the actual transpiled program and still execute its normal path.
-    programs = []
-    original = entry._recompose_builder
-
-    def capture(translated, **kwargs):
-        programs.append(copy.deepcopy(translated))
-        return original(translated, **kwargs)
-
-    monkeypatch.setattr(entry, "_recompose_builder", capture)
-    language.parse(source)
-    assert len(programs) == 1
-    tree = programs[0]
-    parents = {child: parent for parent in ast.walk(tree) for child in ast.iter_child_nodes(parent)}
-    helpers = [node for node in ast.walk(tree) if isinstance(node, ast.FunctionDef)]
-    assert len(helpers) == helper_count
-    for helper in helpers:
-        scope = parents[helper]
-        assert isinstance(scope, ast.With)
-        # Ordinary signatures are constructed in the same frame before the
-        # zero-argument body helper; declaration re-entry needs no prelude.
-        assert scope.body[-2] is helper
-        invocation = scope.body[-1]
-        assert isinstance(invocation, ast.Expr) and isinstance(invocation.value, ast.Call)
-        assert isinstance(invocation.value.func, ast.Name)
-        assert invocation.value.func.id == helper.name
-        assert invocation.value.args == [] and invocation.value.keywords == []
-        assert helper.args.posonlyargs == [] and helper.args.args == []
-        assert helper.args.kwonlyargs == []
-        assert helper.args.vararg is None and helper.args.kwarg is None
-        assert (scope.lineno, invocation.lineno) == (helper.lineno, helper.lineno)
-        assert (scope.end_lineno, invocation.end_lineno) == (helper.end_lineno, helper.end_lineno)
-    assert language.stack == [] and language.source_stack == []
-    assert not IRBuilder.is_in_scope()
 
 
 @pytest.mark.parametrize("fail", [False, True])
@@ -174,21 +79,12 @@ def main(x: X.tensor((4,))):
     assert not IRBuilder.is_in_scope()
 
 
-def test_zero_argument_helper_preserves_original_capture_names(language, monkeypatch):
+def test_body_preserves_capture_and_parameter_identity(language):
     # Before: the body reads an enclosing token and its original runtime parameter.
     # Expected builder program: preserve both identities under their source names,
-    # without adding capture parameters where no lexical-binding conflict exists.
+    # while preserving their original lexical lookup.
     token = object()
     X = language.X
-    helpers = []
-    original = entry._recompose_builder
-
-    def capture(translated, **kwargs):
-        result = original(translated, **kwargs)
-        helpers.extend(node for node, _, _ in kwargs["body_sources"])
-        return result
-
-    monkeypatch.setattr(entry, "_recompose_builder", capture)
 
     @X.script
     def main(x: X.tensor((4,))):
@@ -197,12 +93,6 @@ def test_zero_argument_helper_preserves_original_capture_names(language, monkeyp
 
     assert main.body[0][1] is token
     assert main.body[1][1] is main.params[0]
-    assert len(helpers) == 1
-    helper = helpers[0]
-    assert helper.args.args == [] and helper.args.posonlyargs == []
-    assert helper.args.kwonlyargs == [] and helper.args.kw_defaults == []
-    names = {node.id for node in ast.walk(helper) if isinstance(node, ast.Name)}
-    assert {"token", "x"} <= names
 
 
 @pytest.mark.parametrize("parameter_count,bindings", [(0, None), (2, None), (2, {})])
@@ -214,42 +104,22 @@ def test_parameter_setup_depends_on_explicit_specialization_request(
     # state/read/selectors/iterator; an explicit {} still enables specialization.
     signature = ", ".join(f"{name}: X.tensor((4,))" for name in ("x", "y")[:parameter_count])
     arguments = ", ".join(("x", "y")[:parameter_count])
-    recompose = entry._recompose_builder
-    programs = []
     requested = bindings is not None
+    reads = []
+    read_bindings = jit_support.read_specialization_bindings
 
-    def capture(translated, **kwargs):
-        nodes = list(ast.walk(translated))
-        names = {node.id for node in nodes if isinstance(node, ast.Name)}
-        assert any(name.startswith("_specialization") for name in names) is requested
-        if not requested:
-            assert not any(name.startswith("_arguments") for name in names)
-            assert not any(isinstance(node, ast.In | ast.NotIn) for node in nodes)
-            helpers = [kwargs["environment"].get(name) for name in names]
-            assert not any(
-                helper is target
-                for helper in helpers
-                for target in (iter, next, jit_support.read_specialization_bindings)
-            )
-        parameter_reads = [
-            node for node in nodes if isinstance(node, ast.Attribute) and node.attr == "params"
-        ]
-        assert bool(parameter_reads) is bool(parameter_count)
-        programs.append(True)
-        return recompose(translated, **kwargs)
+    def observe_read(name):
+        reads.append(name)
+        return read_bindings(name)
 
-    def forbidden_lookup(*args, **kwargs):
-        pytest.fail("ordinary parsing must not read specialization state")
-
-    monkeypatch.setattr(entry, "_recompose_builder", capture)
-    if not requested:
-        monkeypatch.setattr(jit_support, "read_specialization_bindings", forbidden_lookup)
+    monkeypatch.setattr(jit_support, "read_specialization_bindings", observe_read)
     result = entry.parse(
         f"@X.script\ndef main({signature}):\n    main({arguments})\n",
         extra_vars={"X": language.X},
         _specialization_bindings=bindings,
+        root_builder=language.X,
     )
-    assert programs == [True]
+    assert reads == (["main"] if requested else [])
     assert len(result.params) == parameter_count
     call = result.body[0][1]
     assert call.args[0] is language.references["main"]

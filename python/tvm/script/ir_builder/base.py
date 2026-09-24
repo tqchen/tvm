@@ -249,7 +249,9 @@ class SpanEntry:
 
     Entries retain only fixed source metadata. Calling an entry attaches its
     span to the same result; ``ctx(thunk)`` additionally supplies call provenance
-    during evaluation. Both compose the active caller context at invocation.
+    during evaluation. ``ctx(thunk, attach_result=False)`` supplies only the
+    evaluation context, leaving result attachment to the binding operation.
+    Both compose the active caller context at invocation.
     Builders accepting an explicit span normalize an entry with ``source_span``.
     """
 
@@ -262,9 +264,13 @@ class SpanEntry:
         """Attach this range to the same value, receipt, or native frame."""
         return at(self.span, value)
 
-    def ctx(self, thunk: Callable[[], _T]) -> _T:
-        """Evaluate once under this range and restore context even on failure."""
-        return with_at_group_(self.span, thunk)
+    def ctx(self, thunk: Callable[[], _T], *, attach_result: bool = True) -> _T:
+        """Evaluate once under this range, optionally attaching it to the result.
+
+        Context is restored even on failure. Frames constructed during the call
+        retain their native construction span regardless of result attachment.
+        """
+        return with_at_group_(self.span, thunk, attach_result=attach_result)
 
 
 def source_span(
@@ -319,8 +325,10 @@ def require_defined(value, name):
 def with_at_group_(
     location: SpanEntry | ir.Span | tuple[str | ir.SourceName, int, int, int, int] | None,
     thunk: Callable[[], _T],
+    *,
+    attach_result: bool = True,
 ) -> _T:
-    """Evaluate a source call exactly once under its location and retain its result."""
+    """Evaluate once under a location, optionally attaching it to the same result."""
     span = source_span(location)
     context = (
         IRBuilder.current().with_source_span(span)
@@ -328,7 +336,8 @@ def with_at_group_(
         else nullcontext()
     )
     with context:
-        return at(location, thunk())
+        value = thunk()
+        return at(location, value) if attach_result else value
 
 
 at_ = at

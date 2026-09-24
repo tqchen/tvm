@@ -31,50 +31,50 @@ from tvm.script.ir_builder import IRBuilder as _IRBuilder
 from tvm.script.ir_builder.base import at as _at
 from tvm.script.ir_builder.base import source_span as _source_span
 from tvm.script.ir_builder.ir.parser_protocol import resolve_global_info_ as _lookup_global_info
+from tvm.script.parser.protocol_registry import ARGS_POLICIES as _ARGS_POLICIES
 from tvm.script.parser.protocol_registry import args_policy as _args_policy
 from tvm.script.parser.protocol_registry import constexpr as constexpr
-from tvm.script.parser.protocol_registry import (
-    register_parameter_dtype as _register_parameter_dtype,
-)
 
 from . import distributed as dist
 from . import ir as _native
 from .distributed.ir import _lookup_device_mesh
 from .ir import *
-from .parser_protocol import Else as Else
-from .parser_protocol import Then as Then
-from .parser_protocol import While as While
-from .parser_protocol import and_ as and_
-from .parser_protocol import arg as arg
-from .parser_protocol import assert_ as assert_
-from .parser_protocol import bind_ as bind_
-from .parser_protocol import break_ as break_
-from .parser_protocol import call_global_var_ as call_global_var_
-from .parser_protocol import check_well_formed_ as check_well_formed_
-from .parser_protocol import continue_ as continue_
-from .parser_protocol import decl_mutable_var_ as decl_mutable_var_
-from .parser_protocol import emit_ as emit_
-from .parser_protocol import eq as eq
-from .parser_protocol import for_ as for_
-from .parser_protocol import func_name as func_name
-from .parser_protocol import func_ret_type as func_ret_type
-from .parser_protocol import function as function
-from .parser_protocol import ge as ge
-from .parser_protocol import gt as gt
-from .parser_protocol import if_ as if_
-from .parser_protocol import if_then_else_ as if_then_else_
-from .parser_protocol import le as le
-from .parser_protocol import lt as lt
-from .parser_protocol import ne as ne
-from .parser_protocol import not_ as not_
-from .parser_protocol import or_ as or_
-from .parser_protocol import range_ as range_
-from .parser_protocol import resolve_type_var_ as resolve_type_var_
-from .parser_protocol import return_ as return_
-from .parser_protocol import set_mutable_var_ as set_mutable_var_
-from .parser_protocol import setattr as setattr
-from .parser_protocol import setitem as setitem
-from .parser_protocol import unpack as unpack
+from .parser_protocol import (
+    Else,
+    Then,
+    While,
+    and_,
+    arg,
+    assert_,
+    bind_,
+    break_,
+    call_global_var_,
+    check_well_formed_,
+    continue_,
+    decl_mutable_cell_,
+    emit_,
+    eq_,
+    for_,
+    func_name,
+    func_ret_type,
+    function_,
+    ge_,
+    gt_,
+    if_,
+    if_then_else_,
+    le_,
+    lt_,
+    ne_,
+    not_,
+    or_,
+    range_,
+    resolve_type_var_,
+    return_,
+    set_mutable_cell_,
+    setattr,
+    setitem,
+    unpack,
+)
 
 If = if_
 For = for_
@@ -83,7 +83,7 @@ For = for_
 supports_mutable_declarations = False
 
 
-@_args_policy({"shape": "expr_str", "vdevice": "global_info"}, scalar_strings=False)
+@_args_policy("R.Tensor", {"shape": "expr_str", "vdevice": "global_info"}, scalar_strings=False)
 def Tensor(shape=None, dtype=None, vdevice=None, ndim=-1, *, span=None):
     """Construct a tensor type from concrete shape dimensions."""
     if isinstance(shape, _python.str) and dtype is None:
@@ -96,7 +96,9 @@ def Tensor(shape=None, dtype=None, vdevice=None, ndim=-1, *, span=None):
     return _relax.TensorType(shape, dtype, vdevice, ndim, _source_span(span))
 
 
-@_args_policy({"shape": "expr_str", "device_mesh": "global_info"}, scalar_strings=False)
+@_args_policy(
+    "R.DTensor", {"shape": "expr_str", "device_mesh": "global_info"}, scalar_strings=False
+)
 def DTensor(shape=None, dtype=None, device_mesh=None, placement="", *, ndim=-1, span=None):
     """Construct a distributed tensor type from concrete dimensions."""
     if isinstance(device_mesh, _python.str) and not _IRBuilder.is_in_scope():
@@ -112,6 +114,7 @@ def DTensor(shape=None, dtype=None, device_mesh=None, placement="", *, ndim=-1, 
 
 # The distributed source spelling shares concrete constructors and argument policy.
 dist.DTensor = DTensor
+_ARGS_POLICIES["R.dist.DTensor"] = _ARGS_POLICIES["R.DTensor"]
 dist.device_mesh = device_mesh
 
 Range = _ir.Range
@@ -120,7 +123,7 @@ Range = _ir.Range
 __tvm_value_if__ = True
 
 
-@_args_policy({"values": "expr_str"}, dtype="int64")
+@_args_policy("R.Shape", {"values": "expr_str"}, dtype="int64")
 def Shape(values=None, ndim=-1, *, span=None):
     """Construct a shape type from concrete dimensions."""
     return _relax.ShapeType(values, ndim, _source_span(span))
@@ -163,14 +166,6 @@ def Tuple(*fields, span=None):
     if len(fields) == 1 and isinstance(fields[0], list | _python.tuple):
         fields = fields[0]
     return _ir.TupleType([_type(field) for field in fields], _source_span(span))
-
-
-def Prim(dtype, *, span=None):
-    """Construct a primitive scalar type."""
-    return _ir.PrimType(dtype)
-
-
-_register_parameter_dtype(Prim, "dtype")
 
 
 def Object(*, span=None):
@@ -233,14 +228,14 @@ __all__ = [
     "DTensor",
     "For",
     "for_",
+    "function_",
     "if_",
     "check_well_formed_",
     "resolve_type_var_",
     "call_global_var_",
-    "decl_mutable_var_",
-    "set_mutable_var_",
+    "decl_mutable_cell_",
+    "set_mutable_cell_",
     "Object",
-    "Prim",
     "Range",
     "Shape",
     "Tensor",
@@ -252,12 +247,12 @@ __all__ = [
     "device_mesh",
     "dist",
     "emit_",
-    "eq",
-    "ge",
-    "gt",
-    "le",
-    "lt",
-    "ne",
+    "eq_",
+    "ge_",
+    "gt_",
+    "le_",
+    "lt_",
+    "ne_",
     "is_type_var",
     "match_cast",
     "return_",

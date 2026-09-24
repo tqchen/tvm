@@ -20,11 +20,16 @@ import pytest
 from dummy_builder import Language, RecordingSpanEntry
 
 from tvm.script.ir_builder import base
-from tvm.script.parser import entry
+from tvm.script.parser import entry, protocol_registry
 
 
 @pytest.fixture
 def language(monkeypatch):
+    monkeypatch.setattr(
+        entry,
+        "register_namespace",
+        lambda alias, namespace: monkeypatch.setitem(entry._NAMESPACES, alias, namespace),
+    )
     language = Language()
     monkeypatch.setattr(entry, "builder_ir", language.I)
     monkeypatch.setattr(entry, "SpanEntry", lambda span: RecordingSpanEntry(language, span))
@@ -36,5 +41,7 @@ def spanned_language(language, monkeypatch):
     monkeypatch.setattr(entry, "SpanEntry", base.SpanEntry)
     language.I.at_ = base.at_
     language.I.with_at_group_ = base.with_at_group_
-    language.X.inline = entry.make_macro_decorator(language.X)
+    language.X.inline = protocol_registry.declaration_kind("X.inline", "helper")(
+        entry.make_macro_decorator(language.X)
+    )
     return language

@@ -89,7 +89,7 @@ def test_reentrant_specialization_restores_root_bindings_after_failure(language)
         raise failure
 
     def nested():
-        ordinary = entry.parse(source, extra_vars={"X": language.X})
+        ordinary = entry.parse(source, extra_vars={"X": language.X}, root_builder=language.X)
         assert len(ordinary.params) == 1
         assert ordinary.body[0][1] is ordinary.params[0]
         with pytest.raises(ValueError) as caught:
@@ -97,6 +97,7 @@ def test_reentrant_specialization_restores_root_bindings_after_failure(language)
                 "@X.script\ndef kernel(n: I.constexpr):\n    fail()\n",
                 extra_vars={"X": language.X, "I": I, "fail": fail},
                 _specialization_bindings={"n": 8},
+                root_builder=language.X,
             )
         assert caught.value is failure
         seen.append(jit_support.read_specialization_bindings("kernel"))
@@ -105,6 +106,7 @@ def test_reentrant_specialization_restores_root_bindings_after_failure(language)
         "@X.script\ndef kernel(n: I.constexpr):\n    nested()\n    X.record(n)\n",
         extra_vars={"X": language.X, "I": I, "nested": nested},
         _specialization_bindings={"n": 4},
+        root_builder=language.X,
     )
     assert result.params == [] and result.body[-1] == ("emit", 4)
     assert seen == [{"n": 4}]
@@ -118,29 +120,15 @@ def test_eager_entry_releases_unused_scope_but_keeps_annotation_value(
     # Before: unrelated payload and annotation-only width share an enclosing scope.
     # Expected builder program: use width, then drop the temporary definition scope.
     X = language.X
-    from tvm.script.parser import protocol_registry as registry
-
     source_references = []
-    copy_info = registry.copy_function_info
+    parse = entry.parse
 
-    def observe_copy(source, target):
-        source_references.append(weakref.ref(target))
-        return copy_info(source, target)
+    def observe_parse(source, *args, **kwargs):
+        if inspect.isfunction(source):
+            source_references.append(weakref.ref(source))
+        return parse(source, *args, **kwargs)
 
-    monkeypatch.setattr(registry, "copy_function_info", observe_copy)
-
-    def temporary_metadata():
-        captured, option = Payload(), Payload()
-
-        def source():
-            return captured
-
-        registry.copy_function_info(X.script, source)
-        registry.register_function_options(source, {"temporary": option})
-        assert registry.function_info(source) is registry.function_info(X.script)
-        assert registry.get_function_options(source)["temporary"] is option
-        assert vars(source) == {}
-        return weakref.ref(source), weakref.ref(captured), weakref.ref(option)
+    monkeypatch.setattr(entry, "parse", observe_parse)
 
     def make():
         payload = Payload()
@@ -162,13 +150,11 @@ def test_eager_entry_releases_unused_scope_but_keeps_annotation_value(
         return Result, reference
 
     with without_cyclic_gc():
-        metadata_references = temporary_metadata()
-        assert all(reference() is None for reference in metadata_references)
         result, reference = make()
         assert reference() is None
         # An ordinary Python class itself has cyclic type/MRO ownership. Its
-        # member lifetime is not a registry leak; the raw copied-function guard
-        # above isolates that requirement without requiring class collection.
+        # member lifetime is not a registry leak; the standalone source guard
+        # checks release without requiring collection of an ordinary Python class.
         if not module:
             assert source_references and all(reference() is None for reference in source_references)
         function = result["main"] if module else result
@@ -221,10 +207,6 @@ def test_acquired_ast_context_and_builder_are_temporary(language, monkeypatch, f
         return transformer, namespace
 
     def capture_recompose(translated, **kwargs):
-        assert all(
-            not any(name.startswith("_tvm_") for name in vars(node))
-            for node in ast.walk(translated)
-        )
         builder = recompose(translated, **kwargs)
         references.append(weakref.ref(builder))
         return builder
@@ -289,7 +271,12 @@ def test_expression_exception_keeps_original_source_call_traceback(spanned_langu
     source = "@X.script\ndef main():\n    X.record(explode())\n"
     filename = "expression_traceback.py"
     with pytest.raises(error_type) as caught:
-        entry.parse(source, extra_vars={"X": language.X, "explode": explode}, filename=filename)
+        entry.parse(
+            source,
+            extra_vars={"X": language.X, "explode": explode},
+            filename=filename,
+            root_builder=spanned_language.X,
+        )
     assert caught.value is original
     assert type(caught.value) is error_type
     frames = traceback.extract_tb(caught.value.__traceback__)

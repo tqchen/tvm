@@ -3212,7 +3212,7 @@ def relax_float_symbolic_var():
     """Relax scalar variables may use any dtype."""
 
     @R.function
-    def func(value: R.Prim("float16")):
+    def func(value: T.float16):
         return value
 
     return func

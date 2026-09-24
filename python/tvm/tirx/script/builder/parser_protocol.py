@@ -25,6 +25,7 @@ from typing import Any
 
 from tvm import ir as _ir
 from tvm import tirx as _tir
+from tvm.ir.prim import _ffi_api as _prim_ffi
 from tvm.script.ir_builder import IRBuilder as _IRBuilder
 from tvm.script.ir_builder import base as _base
 
@@ -55,60 +56,15 @@ def bind_(
     ty: Any = None,
     name: str | None = None,
     span: _Span = None,
+    value_span: _Span = None,
     name_span: _Span = None,
     frame_value: bool = False,
 ) -> Any:
-    """Apply the dialect's ordinary assignment policy.
+    """Implements :func:`tvm.script.ir_builder.ir.parser_protocol.bind_`.
 
-    Parameters
-    ----------
-    value : Any, optional
-        Once-evaluated RHS. MISSING (the default) denotes an omitted initializer and is
-        rejected unless the dialect supports the annotation-only form.
-    ty : Type or annotation callable, optional
-        Already-rewritten source annotation. None (the default) lets the dialect infer
-        the binding type.
-    name : str, optional
-        Source target name. None (the default) requests no source-derived name.
-    span : SpanEntry, Span or source-location tuple, optional
-        Location for the constructed result. None (the default) leaves explicit location
-        unspecified; active source-call provenance is composed by the builder. Frames
-        retain their location until finalization.
-    name_span : SpanEntry, Span or source-location tuple, optional
-        Location of the target identifier. None (the default) uses span; it can differ
-        from the emitted statement location.
-    frame_value : bool, optional
-        False by default. True names an already-entered with-target without constructing
-        another binding or entering its frame.
-
-    Returns
-    -------
-    Any
-        The value bound to the Python target; usually a native variable, or an unchanged
-        host/frame-owned value.
-
-    Notes
-    -----
-    Requires the dialect construction context when producing IR. TIRx emits immutable Bind
-    statements; Relax emits normalized bindings and match-casts. Unsupported
-    values/annotations raise TypeError or ValueError. Mutable storage and scope declarations
-    use distinct hooks. A DSL may opt into concise scope entry: register the returned child
-    frame's exit callback on the active parent before child entry, then return its entered
-    value. Later statements enter that child, and parent exit closes it. This is dialect
-    policy; it adds no parser-owned scope state. Direct-call results and source module
-    aliases bypass this operation.
-
-    .. code:: python
-
-        # Source
-        x = value
-        # Generated builder
-        x = X.bind_(value, name="x")
-
-        # TIRx concise scope entry
-        tid = T.launch_thread("threadIdx.x", 128)
-        # Generated builder
-        tid = X.bind_(X.launch_thread("threadIdx.x", 128), name="tid")
+    Returned Vars, including buffers, and metadata retain identity, names and spans.
+    Other expressions create native Bind nodes; value_span belongs to the RHS.
+    Explicit typed bindings and frame targets retain their separate contracts.
     """
     name_span = span if name_span is None else name_span
     if frame_value:
@@ -123,7 +79,7 @@ def bind_(
                     name_span=name_span,
                     frame_value=True,
                 )
-        elif isinstance(value, _ir.Var | _tir.IterVar | _tir.Layout):
+        elif isinstance(value, _ir.Var | _tir.Layout):
             _name(value, name, name_span)
         elif isinstance(value, _ir.TensorLoad) and _tir.is_buffer_var(value.source):
             _name(value.source, name, name_span)
@@ -132,6 +88,8 @@ def bind_(
         if value is _base.MISSING:
             raise ValueError("An immutable binding requires an initializer")
         value = _builder._as_expr(value)
+        if not isinstance(value, _ir.Var):
+            _base.at_(value_span, value)
         variable = _name(ty.as_var(rhs_dtype=value.ty), name, name_span)
         _base.with_at_group_(span, lambda: _native.Bind(value, var=variable))
         return variable
@@ -139,73 +97,47 @@ def bind_(
         annotation = ty() if callable(ty) and not isinstance(ty, _ir.Expr) else ty
         annotation = annotation.ty if isinstance(annotation, _ir.Expr) else annotation
         value = _builder._as_expr(value)
+        if not isinstance(value, _ir.Var):
+            _base.at_(value_span, value)
         variable = _ir.Var(name or "", annotation)
         return _name(
             _base.with_at_group_(span, lambda: _native.Bind(value, var=variable)), name, name_span
         )
     if value is _base.MISSING:
         raise ValueError("An uninitialized binding requires a scalar type annotation")
+    if isinstance(value, _base.AlreadyEmitted):
+        return _base.at_(value_span, value)
     if isinstance(value, _base.IRBuilderFrame):
-        return _name(_enter_concise(_base.at_(span, value)), name, name_span)
-    if isinstance(value, list | tuple):
-        for index, item in enumerate(value):
-            bind_(item, name=None if name is None else f"{name}_{index}", span=span)
+        frame_span = value_span if value_span is not None else span
+        return _name(_enter_concise(_base.at_(frame_span, value)), name, name_span)
+    # a = existing_var and a = producer() share the same runtime value rule.
+    # A Var already owns its declaration, including a newly constructed buffer view.
+    if isinstance(value, _ir.Var):
         return value
-    if getattr(type(value), "_is_meta_class", False):
-        return value
-    if _tir.is_buffer_var(value) or isinstance(value, _tir.IterVar | _tir.Layout):
-        return _name(value, name, name_span)
-    if isinstance(value, _ir.Var) and not value.name:
-        return _name(value, name, name_span)
     if isinstance(value, _ir.TensorRegion):
         return value
     if not isinstance(value, _ir.Expr | _python.int | _python.float | _python.bool | str):
         return value
-    value = _builder._as_expr(value)
+    value = _base.at_(value_span, _builder._as_expr(value))
     return _name(_base.with_at_group_(span, lambda: _native.Bind(value)), name, name_span)
 
 
 def emit_(value: Any, *, span: _Span = None) -> None:
-    """Consume a source expression statement.
+    """Implements :func:`tvm.script.ir_builder.ir.parser_protocol.emit_`.
 
-    Parameters
-    ----------
-    value : Any
-        Once-evaluated expression result. AlreadyEmitted receipts and None produce no
-        additional emission.
-    span : SpanEntry, Span or source-location tuple, optional
-        Location of the emitted statement and expression, or the existing node in an
-        AlreadyEmitted receipt. None leaves explicit attribution unspecified. Active
-        caller provenance is composed without adding a construction context; native
-        frames retain the location for finalization.
-
-    Returns
-    -------
-    None
-        No source-visible value.
-
-    Notes
-    -----
-    Requires an active dialect function/region when emitting IR. TIRx adds statements,
-    evaluates expressions, and can enter concise frames; variables/text are inert and
-    sequences are consumed elementwise. Relax accepts only void expressions (or
-    None/AlreadyEmitted); unsupported values raise TypeError and non-void expressions raise
-    ValueError. An explicit span annotates the exact previously emitted node in a receipt
-    without emitting it again. Known builder results need no separate result wrapper;
-    opaque source calls keep their scoped provenance before this hook. Registered
-    direct_call statements bypass this hook.
-
-    .. code:: python
-
-        # Source
-        T.evaluate(1)
-        # Generated builder
-        X.emit_(X.evaluate(1), span=_S[0])
+    Native statements emit once; receipts are already emitted. Vars, layouts
+    and meta_class instances are inert. Sequences are consumed
+    elementwise; concise frames close with their owning parent. Other values use
+    native expression conversion, retaining its errors for unsupported host values.
     """
     if isinstance(value, _base.AlreadyEmitted):
         _base.at_(span, value)
         return None
-    if value is None or isinstance(value, str | _ir.Var):
+    if (
+        value is None
+        or isinstance(value, str | _ir.Var | _tir.Layout)
+        or getattr(type(value), "_is_meta_class", False)
+    ):
         return
     if isinstance(value, list | tuple | _ir.Array):
         for item in value:
@@ -233,78 +165,16 @@ def resolve_type_var_(
     value: _ir.Var | None = None,
     span: _Span = None,
 ) -> _ir.Var:
-    """Resolve or declare a symbolic variable in the nearest native function.
-
-    Parameters
-    ----------
-    name : str
-        Function-local lookup key; quoted symbols do not create a Python binding.
-    dtype : str, Type or Var, optional
-        Explicit primitive type or supplied variable. None defaults new symbols to
-        int64; existing symbols must agree with an explicit dtype.
-    value : Var, optional
-        Existing primitive variable to register without replacement. None creates a
-        variable only if the name is not already registered.
-    span : SpanEntry, Span or source-location tuple, optional
-        Location for the constructed result. None (the default) leaves explicit location
-        unspecified; active source-call provenance is composed by the builder. Frames
-        retain their location until finalization.
-
-    Returns
-    -------
-    _ir.Var
-        The exact existing or newly registered variable.
-
-    Notes
-    -----
-    Requires an active native function frame. The signature and resumed body use the same
-    symbol map; nested functions use separate maps. Conflicting dtype/variable declarations
-    or missing context raise a builder error. No statement is emitted.
-
-    .. code:: python
-
-        # Source
-        n = T.int64()
-        # Generated builder
-        n = X.resolve_type_var_("n", dtype="int64")
-    """
+    """Implements :func:`tvm.script.ir_builder.ir.parser_protocol.resolve_type_var_`."""
     return _base._current_function_frame().resolve_type_var(name, dtype, value=value, span=span)
 
 
 def call_global_var_(function: _ir.GlobalVar, args: Sequence[Any]) -> _ir.Expr:
-    """Construct a call to a declared module function.
-
-    Parameters
-    ----------
-    function : GlobalVar
-        Native callee reference reserved by the module declaration phase.
-    args : sequence of Any
-        Positional operands evaluated once, in source order. Generated global calls do
-        not accept keyword arguments.
-
-    Returns
-    -------
-    _ir.Expr
-        The caller dialect's call expression; constructing it does not emit a statement.
-
-    Notes
-    -----
-    The callee declaration must be available in the active module context. TIRx preserves
-    its exact declared return type; Relax converts operands using its expression conversion.
-    Invalid types or an unavailable declaration produce native builder errors. Source-call
-    handling attaches locations to the returned expression.
-
-    .. code:: python
-
-        # Source
-        Module.callee(x)
-        # Generated builder
-        X.call_global_var_(callee_reference, [x])
-    """
+    """Implements :func:`tvm.script.ir_builder.ir.parser_protocol.call_global_var_`."""
     return _native._call_global(function, *args)
 
 
-def decl_mutable_var_(
+def decl_mutable_cell_(
     value: Any = _base.MISSING,
     *,
     ty: Any = None,
@@ -312,45 +182,10 @@ def decl_mutable_var_(
     span: _Span = None,
     name_span: _Span = None,
 ) -> Any:
-    """Introduce explicitly declared mutable storage.
+    """Implements :func:`tvm.script.ir_builder.ir.parser_protocol.decl_mutable_cell_`.
 
-    Parameters
-    ----------
-    value : Any, optional
-        Once-evaluated storage handle for a call declaration, or initializer for an
-        annotation declaration. MISSING (the default) means no initializer.
-    ty : Type or annotation callable, optional
-        Scalar or vector storage annotation. None (the default) identifies an already-
-        created storage handle.
-    name : str, optional
-        Source target name. None (the default) requests no source-derived name.
-    span : SpanEntry, Span or source-location tuple, optional
-        Location for the constructed result. None (the default) leaves explicit location
-        unspecified; active source-call provenance is composed by the builder. Frames
-        retain their location until finalization.
-    name_span : SpanEntry, Span or source-location tuple, optional
-        Location of the target identifier. None (the default) uses span; it can differ
-        from the emitted statement location.
-
-    Returns
-    -------
-    Any
-        The same declared storage handle, or the handle allocated for the annotation.
-
-    Notes
-    -----
-    TIRx requires an active primitive function; scalar primitive annotations allocate local
-    storage and may initialize it. Vector annotations allocate storage but reject an
-    initializer. Invalid handle/type combinations raise TypeError or ValueError. Relax
-    always rejects mutable storage with TypeError. Declaration syntax takes precedence over
-    any outer mutable target name.
-
-    .. code:: python
-
-        # Source
-        x: T.int32 = 1
-        # Generated builder
-        x = X.decl_mutable_var_(1, ty=X.int32, name="x")
+    Primitive annotations allocate scalar local storage; vector annotations
+    allocate their declared shape. Buffer declaration producers retain their own effects.
     """
     name_span = span if name_span is None else name_span
     if isinstance(ty, _native.LocalVectorAnnotation):
@@ -368,7 +203,7 @@ def decl_mutable_var_(
             raise TypeError("Mutable scalar annotations require a primitive scalar type")
         storage = _base.with_at_group_(span, lambda: _native.local_scalar(str(annotation))).scalar
         if value is not _base.MISSING:
-            set_mutable_var_(storage, value, span=span)
+            set_mutable_cell_(storage, value, span=span)
     else:
         storage = value.scalar if isinstance(value, _native.scalar_wrapper) else value
     if isinstance(storage, _ir.TensorLoad):
@@ -380,44 +215,12 @@ def decl_mutable_var_(
     return storage
 
 
-def set_mutable_var_(
+def set_mutable_cell_(
     target: _ir.TensorLoad | _ir.Var | _native.scalar_wrapper, value: Any, *, span: _Span = None
 ) -> None:
-    """Emit an update through an existing mutable handle without rebinding it.
+    """Implements :func:`tvm.script.ir_builder.ir.parser_protocol.set_mutable_cell_`.
 
-    Parameters
-    ----------
-    target : TensorLoad, scalar wrapper or one-element buffer Var
-        Storage handle returned by an explicit mutable declaration. Its identity is
-        retained; this argument is not a source name or a new declaration.
-    value : Expr or scalar convertible to Expr
-        Once-evaluated value to store. Native store checking validates its type and
-        indices against the target.
-    span : SpanEntry, Span or source-location tuple, optional
-        Location of the emitted store. None (the default) leaves explicit location
-        unspecified; existing source-call provenance is retained.
-
-    Returns
-    -------
-    None
-        No value. The Python target continues to denote the original storage handle.
-
-    Notes
-    -----
-    TIRx requires an active primitive function/statement region and appends a native store
-    to that region. Scalar wrappers are unwrapped, TensorLoad indices are preserved, and
-    one-element buffer targets use index zero. Unsupported targets raise TypeError; native
-    type/index checks propagate. Relax always raises TypeError because its bindings are
-    immutable. No new allocation or immutable binding is created.
-
-    .. code:: python
-
-        # Source
-        x: T.int32 = 0
-        x = value
-        # Generated builder
-        x = X.decl_mutable_var_(0, ty=X.int32, name="x")
-        X.set_mutable_var_(x, value)
+    Updates emit a scalar buffer store. Targets must denote scalar storage.
     """
     if isinstance(target, _native.scalar_wrapper):
         target = target.scalar
@@ -434,58 +237,22 @@ def set_mutable_var_(
         raise TypeError("A mutable assignment requires scalar storage")
 
 
-def function(
+def function_(
     *,
     private: bool = False,
     s_tir: bool = False,
     persistent: bool = False,
+    is_stir: bool | None = None,
     decl: bool = False,
     span: _Span = None,
 ) -> _frame.PrimFuncFrame:
-    """Create the native function frame used for signature and body construction.
+    """Implements :func:`tvm.script.ir_builder.ir.parser_protocol.function_`.
 
-    Parameters
-    ----------
-    private : bool, optional
-        False by default; True suppresses a public global symbol.
-    s_tir : bool, optional
-        False by default. True uses s_tir root-block and buffer-layout semantics.
-    persistent : bool, optional
-        False by default. True marks a persistent kernel.
-    decl : bool, optional
-        False (default) constructs a complete function on one entry. True collects a
-        signature on the first entry and retains this frame for body re-entry.
-    span : SpanEntry, Span or source-location tuple, optional
-        Location for the constructed result. None (the default) leaves explicit location
-        unspecified; active source-call provenance is composed by the builder. Frames
-        retain their location until finalization.
-
-    Returns
-    -------
-    IRBuilderFrame
-        The native context manager. It owns params, result type, symbol map, reference
-        and completed result.
-
-    Notes
-    -----
-    Requires an active IRBuilder; module definitions also require its module frame. Declare
-    every sibling signature before any body for forward references. Re-enter the same frame,
-    define and invoke a zero-argument lexical helper inside it, then exit before validation.
-    Invalid options/context raise builder errors. The frame stores its source location
-    independently of exit-time ambient context.
-
-    .. code:: python
-
-        # Source
-        @T.prim_func
-        def f(a: T.int32):
-            T.evaluate(a)
-        # Generated builder
-        with X.function() as fn:
-            X.func_name("f")
-            a = X.arg("a", X.int32)
-            X.emit_(X.evaluate(a))
+    Public private/s_tir/persistent options pass to the native function frame;
+    is_stir supplies the JIT spelling. The same frame supports declaration and body entry.
     """
+    if is_stir is not None:
+        s_tir = is_stir
     native = (
         _ffi_api.DeclFunction(private, s_tir, persistent)
         if decl
@@ -495,40 +262,7 @@ def function(
 
 
 def arg(name: str, annotation: Any, *, span: _Span = None) -> _ir.Var:
-    """Add a parameter to the active native function signature.
-
-    Parameters
-    ----------
-    name : str
-        Source parameter name.
-    annotation : Type, Var, Buffer or callable
-        Concrete rewritten annotation or existing native parameter. A callable
-        annotation is evaluated; an existing variable retains identity.
-    span : SpanEntry, Span or source-location tuple, optional
-        Location for the constructed result. None (the default) leaves explicit location
-        unspecified; active source-call provenance is composed by the builder. Frames
-        retain their location until finalization.
-
-    Returns
-    -------
-    _ir.Var
-        The created or retained parameter variable (buffers are native variables).
-
-    Notes
-    -----
-    Requires an active function signature frame. Primitive symbols use that frame's
-    resolver, preserving annotation/body identity. TIRx handles buffer layout according to
-    its function policy; Relax converts its type annotation. Invalid annotations or context
-    raise TypeError/native builder errors.
-
-    .. code:: python
-
-        # Source
-        def f(a: T.int32):
-            pass
-        # Generated builder, inside the signature frame
-        a = X.arg("a", X.int32)
-    """
+    """Implements :func:`tvm.script.ir_builder.ir.parser_protocol.arg`."""
     if callable(annotation) and not isinstance(annotation, _ir.Expr):
         annotation = annotation()
     if isinstance(annotation, _ir.PrimType) or _ir.is_prim_var(annotation):
@@ -555,37 +289,7 @@ def arg(name: str, annotation: Any, *, span: _Span = None) -> _ir.Var:
 
 
 def func_ret_type(annotation: Any, *, span: _Span = None) -> None:
-    """Set the active native function's return annotation.
-
-    Parameters
-    ----------
-    annotation : Type, Expr or callable
-        Rewritten return annotation; expression annotations supply their type. None
-        denotes a void/empty tuple return as supported by the dialect.
-    span : SpanEntry, Span or source-location tuple, optional
-        Location for the constructed result. None (the default) leaves explicit location
-        unspecified; active source-call provenance is composed by the builder. Frames
-        retain their location until finalization.
-
-    Returns
-    -------
-    None
-        No value.
-
-    Notes
-    -----
-    Requires a function signature frame. Resolves callable annotations and records the type;
-    no body is emitted. Unsupported or conflicting types raise native builder errors. The
-    completed function retains its frame span.
-
-    .. code:: python
-
-        # Source
-        def f() -> T.int32:
-            return 1
-        # Generated builder, inside the signature frame
-        X.func_ret_type(X.int32)
-    """
+    """Implements :func:`tvm.script.ir_builder.ir.parser_protocol.func_ret_type`."""
     annotation = _base._return_annotation(annotation)
     if callable(annotation) and not isinstance(annotation, _ir.Expr | _ir.Type):
         annotation = annotation()
@@ -595,78 +299,12 @@ def func_ret_type(annotation: Any, *, span: _Span = None) -> None:
 
 
 def setitem(target: Any, key: Any, value: Any, *, span: _Span = None) -> None:
-    """Apply an indexed assignment using already-evaluated operands.
-
-    Parameters
-    ----------
-    target : buffer Var
-        Destination buffer.
-    key : Expr, int, slice or sequence
-        Indices in written order; native buffer-store rules validate supported forms.
-    value : Expr or scalar
-        Once-evaluated stored value.
-    span : SpanEntry, Span or source-location tuple, optional
-        Location for the constructed result. None (the default) leaves explicit location
-        unspecified; active source-call provenance is composed by the builder. Frames
-        retain their location until finalization.
-
-    Returns
-    -------
-    None
-        No value; emits a store without rebinding the target.
-
-    Notes
-    -----
-    TIRx requires an active statement region and preserves target/index evaluation order.
-    Native shape/type/index errors propagate. Relax raises TypeError because indexed
-    mutation is unsupported.
-
-    .. code:: python
-
-        # Source
-        A[i] = value
-        # Generated builder
-        X.setitem(A, i, value)
-    """
+    """Implements :func:`tvm.script.ir_builder.ir.parser_protocol.setitem`."""
     _base.at_(span, _builder.buffer_store(target, value, key))
 
 
 def setattr(target: Any, name: str, value: Any, *, span: _Span = None) -> None:
-    """Apply an attribute assignment using already-evaluated operands.
-
-    Parameters
-    ----------
-    target : Any
-        Object containing a scalar storage attribute or ordinary mutable Python
-        metadata.
-    name : str
-        Attribute identifier, evaluated by source syntax before this hook.
-    value : Any
-        Once-evaluated replacement or stored value.
-    span : SpanEntry, Span or source-location tuple, optional
-        Location for the constructed result. None (the default) leaves explicit location
-        unspecified; active source-call provenance is composed by the builder. Frames
-        retain their location until finalization.
-
-    Returns
-    -------
-    None
-        No value.
-
-    Notes
-    -----
-    TIRx stores through scalar storage attributes without replacing their handles; other
-    attributes use ordinary Python setattr. Native store checks and Python attribute errors
-    propagate. Relax raises TypeError. A native store needs an active function; ordinary
-    host metadata updates do not.
-
-    .. code:: python
-
-        # Source
-        state.count = value
-        # Generated builder
-        X.setattr(state, "count", value)
-    """
+    """Implements :func:`tvm.script.ir_builder.ir.parser_protocol.setattr`."""
     previous = getattr(target, name, _base.MISSING)
     if isinstance(previous, _native.scalar_wrapper):
         previous = previous.scalar
@@ -674,106 +312,30 @@ def setattr(target: Any, name: str, value: Any, *, span: _Span = None) -> None:
     if _tir.is_buffer_var(buffer):
         shape = buffer.ty.shape
         if len(shape) == 1 and _python.bool(shape[0] == 1):
-            set_mutable_var_(previous, value, span=span)
+            set_mutable_cell_(previous, value, span=span)
             return
     _python.setattr(target, name, value)
 
 
 def return_(value: Any = None, *, span: _Span = None) -> None:
-    """Record a dialect function return while continuing Python construction.
-
-    Parameters
-    ----------
-    value : Any, optional
-        Return operand. None (the default) means an empty tuple in Relax; TIRx requires
-        an expression.
-    span : SpanEntry, Span or source-location tuple, optional
-        Location for the constructed result. None (the default) leaves explicit location
-        unspecified; active source-call provenance is composed by the builder. Frames
-        retain their location until finalization.
-
-    Returns
-    -------
-    None
-        No Python control transfer or source-visible value.
-
-    Notes
-    -----
-    Requires an active function/region. TIRx emits its native return operation; Relax
-    records the function result. Unsupported missing/type/context combinations raise
-    TypeError or native errors. A source macro retaining ordinary Python return does not
-    call this hook.
-
-    .. code:: python
-
-        # Source
-        return value
-        # Generated builder
-        X.return_(value)
-    """
+    """Implements :func:`tvm.script.ir_builder.ir.parser_protocol.return_`."""
     if value is None:
         raise TypeError("A primitive function return requires an expression")
     _base.with_at_group_(span, lambda: _native.Return(_builder._as_expr(value)))
 
 
 def break_(*, span: _Span = None) -> None:
-    """Emit break for the enclosing dialect loop.
+    """Implements :func:`tvm.script.ir_builder.ir.parser_protocol.break_`.
 
-    Parameters
-    ----------
-    span : SpanEntry, Span or source-location tuple, optional
-        Location for the constructed result. None (the default) leaves explicit location
-        unspecified; active source-call provenance is composed by the builder. Frames
-        retain their location until finalization.
-
-    Returns
-    -------
-    None
-        No Python control transfer.
-
-    Notes
-    -----
-    Construction emits the requested break with its source location. The final native
-    well-formedness check requires an enclosing loop in the completed primitive function.
-    Relax raises TypeError. Explicit constexpr loops retain ordinary Python control flow.
-
-    .. code:: python
-
-        # Source
-        break
-        # Generated builder
-        X.break_()
+    Legality is checked on the completed function, across loop and function boundaries.
     """
     _base.at_(span, _native.evaluate(_native.break_loop()))
 
 
 def continue_(*, span: _Span = None) -> None:
-    """Emit continue for the enclosing dialect loop.
+    """Implements :func:`tvm.script.ir_builder.ir.parser_protocol.continue_`.
 
-    Parameters
-    ----------
-    span : SpanEntry, Span or source-location tuple, optional
-        Location for the constructed result. None (the default) leaves explicit location
-        unspecified; active source-call provenance is composed by the builder. Frames
-        retain their location until finalization.
-
-    Returns
-    -------
-    None
-        No Python control transfer.
-
-    Notes
-    -----
-    Construction emits the requested continue with its source location. The final native
-    well-formedness check requires an enclosing loop in the completed primitive function.
-    Relax raises TypeError. Explicit constexpr loops retain ordinary Python control flow.
-
-    .. code:: python
-
-        # Source
-        continue
-        # Generated builder
-        X.continue_()
+    Legality is checked on the completed function, across loop and function boundaries.
     """
     _base.at_(span, _native.evaluate(_native.continue_loop()))
 
@@ -784,38 +346,7 @@ def assert_(
     *,
     span: _Span = None,
 ) -> None:
-    """Emit a runtime assertion.
-
-    Parameters
-    ----------
-    condition : Expr or bool
-        Already-evaluated predicate.
-    message : str or assertion metadata, optional
-        Empty text by default. Relax requires construction-time text. TIRx also accepts
-        message parts or an (error_kind, parts) pair.
-    span : SpanEntry, Span or source-location tuple, optional
-        Location for the constructed result. None (the default) leaves explicit location
-        unspecified; active source-call provenance is composed by the builder. Frames
-        retain their location until finalization.
-
-    Returns
-    -------
-    None
-        No value; emits a native assertion.
-
-    Notes
-    -----
-    Requires an active function/statement region. Malformed diagnostic metadata raises
-    TypeError; native predicate checking propagates. Construction does not test an IR
-    predicate as a host boolean.
-
-    .. code:: python
-
-        # Source
-        assert condition, "failed"
-        # Generated builder
-        X.assert_(condition, "failed")
-    """
+    """Implements :func:`tvm.script.ir_builder.ir.parser_protocol.assert_`."""
     kind = "RuntimeError"
     if isinstance(message, tuple):
         if len(message) != 2 or not isinstance(message[0], str):
@@ -830,164 +361,27 @@ def assert_(
 
 
 def if_(condition: Any, *, span: _Span = None) -> _frame.IfFrame:
-    """Create the native conditional frame for a source if statement.
-
-    Parameters
-    ----------
-    condition : Expr or bool
-        Already-evaluated predicate; both branch bodies construct IR without testing it
-        in Python.
-    span : SpanEntry, Span or source-location tuple, optional
-        Location for the constructed result. None (the default) leaves explicit location
-        unspecified; active source-call provenance is composed by the builder. Frames
-        retain their location until finalization.
-
-    Returns
-    -------
-    IRBuilderFrame
-        A native conditional context manager. Relax exposes its same-named merged output
-        as frame.var after exit.
-
-    Notes
-    -----
-    Requires an active function region. Enter Then/Else frames inside it; each branch's
-    lexical helper is defined and called inside that branch frame. TIRx permits a missing
-    else; value-producing Relax branches must agree on their final binding name/type.
-    Invalid context/condition/outputs produce builder diagnostics. Explicit constexpr
-    conditions remain ordinary Python if statements.
-
-    .. code:: python
-
-        # Source
-        if condition:
-            T.evaluate(1)
-        # Generated builder
-        with X.if_(condition):
-            with X.Then():
-                def branch():
-                    X.emit_(X.evaluate(1))
-                branch()
-    """
+    """Implements :func:`tvm.script.ir_builder.ir.parser_protocol.if_`."""
     return _base.at_(span, _native.If(condition))
 
 
 def Then(*, span: _Span = None) -> _frame.ThenFrame:
-    """Create the true branch of the active conditional.
-
-    Parameters
-    ----------
-    span : SpanEntry, Span or source-location tuple, optional
-        Location for the constructed result. None (the default) leaves explicit location
-        unspecified; active source-call provenance is composed by the builder. Frames
-        retain their location until finalization.
-
-    Returns
-    -------
-    IRBuilderFrame
-        The native branch context manager; its exit finalizes its region.
-
-    Notes
-    -----
-    Requires an active ``if_`` frame and records the true branch. Invalid ordering or repeated
-    branches raise native builder errors. The frame stores its source location; statements
-    keep their individual locations. Lexical helpers take zero explicit arguments and run
-    inside the entered frame.
-
-    .. code:: python
-
-        # Source
-        if condition:
-            pass
-        else:
-            pass
-        # Generated builder, inside X.if_(condition)
-        with X.Then():
-            def branch():
-                pass
-            branch()
-    """
+    """Implements :func:`tvm.script.ir_builder.ir.parser_protocol.Then`."""
     return _base.at_(span, _native.Then())
 
 
 def Else(*, span: _Span = None) -> _frame.ElseFrame:
-    """Create the false branch of the active conditional.
-
-    Parameters
-    ----------
-    span : SpanEntry, Span or source-location tuple, optional
-        Location for the constructed result. None (the default) leaves explicit location
-        unspecified; active source-call provenance is composed by the builder. Frames
-        retain their location until finalization.
-
-    Returns
-    -------
-    IRBuilderFrame
-        The native branch context manager; its exit finalizes its region.
-
-    Notes
-    -----
-    Requires an active ``if_`` frame and records the false branch. Invalid ordering or repeated
-    branches raise native builder errors. The frame stores its source location; statements
-    keep their individual locations. Lexical helpers take zero explicit arguments and run
-    inside the entered frame.
-
-    .. code:: python
-
-        # Source
-        if condition:
-            pass
-        else:
-            pass
-        # Generated builder, inside X.if_(condition)
-        with X.Else():
-            def branch():
-                pass
-            branch()
-    """
+    """Implements :func:`tvm.script.ir_builder.ir.parser_protocol.Else`."""
     return _base.at_(span, _native.Else())
 
 
 def for_(
     iterable: Any, *, names: str | Sequence[str] | None = None, span: _Span = None
 ) -> _frame.ForFrame:
-    """Configure and return the native iteration frame for a source for loop.
+    """Implements :func:`tvm.script.ir_builder.ir.parser_protocol.for_`.
 
-    Parameters
-    ----------
-    iterable : ForFrame or range
-        Already-evaluated iteration specification. TIRx converts a Python range to its
-        native serial frame.
-    names : str or sequence of str, optional
-        Source target names, including at most one ``*starred`` group. None (the default)
-        retains constructor defaults. Native configuration expands/validates them before
-        entry; names never control the entry return shape.
-    span : SpanEntry, Span or source-location tuple, optional
-        Location for the constructed result. None (the default) leaves explicit location
-        unspecified; active source-call provenance is composed by the builder. Frames
-        retain their location until finalization.
-
-    Returns
-    -------
-    IRBuilderFrame
-        The same configured ForFrame. Entry returns the native variable for one
-        dimension, or the original variable sequence otherwise.
-
-    Notes
-    -----
-    TIRx requires an active primitive function before entry. Variables already have final
-    names at entry. Simple scalar targets use the entry result; generated tuple,
-    list or starred targets use the stable frame.vars sequence for unpacking.
-    Invalid iterable/names raise TypeError, ValueError or native errors. Relax rejects imperative
-    loops. A frame stores its location before deferred body finalization.
-
-    .. code:: python
-
-        # Source
-        for i in range(n):
-            T.evaluate(i)
-        # Generated builder
-        with X.for_(X.range_(n), names=("i",)) as i:
-            X.emit_(X.evaluate(i))
+    A single native loop returns its scalar Var; multiple loops return their
+    sequence. frame.vars remains the stable sequence for source unpacking.
     """
     if isinstance(iterable, _python.range):
         iterable = _native.serial(iterable.start, iterable.stop, step=iterable.step)
@@ -998,70 +392,12 @@ def for_(
 
 
 def While(condition: Any, *, span: _Span = None) -> _frame.WhileFrame:
-    """Create a native while-loop frame.
-
-    Parameters
-    ----------
-    condition : Expr or bool
-        Loop predicate expression, constructed once and evaluated by the IR at runtime.
-    span : SpanEntry, Span or source-location tuple, optional
-        Location for the constructed result. None (the default) leaves explicit location
-        unspecified; active source-call provenance is composed by the builder. Frames
-        retain their location until finalization.
-
-    Returns
-    -------
-    IRBuilderFrame
-        A context manager whose exit completes the loop body.
-
-    Notes
-    -----
-    TIRx requires an active function region. Invalid predicate/context produces native
-    errors; Relax raises TypeError. This does not repeatedly execute the Python body. The
-    frame owns its stored source span.
-
-    .. code:: python
-
-        # Source
-        while condition:
-            T.evaluate(1)
-        # Generated builder
-        with X.While(condition):
-            X.emit_(X.evaluate(1))
-    """
+    """Implements :func:`tvm.script.ir_builder.ir.parser_protocol.While`."""
     return _base.at_(span, _native.While(condition))
 
 
 def unpack(value: Any) -> Any:
-    """Expose elements for ordinary Python target unpacking.
-
-    Parameters
-    ----------
-    value : Any
-        Concrete IR tuple, typed tuple expression, or ordinary host iterable.
-
-    Returns
-    -------
-    Any
-        A Python tuple of IR fields/projections for an IR tuple; otherwise the original
-        value.
-
-    Notes
-    -----
-    No statement is emitted and no builder frame is entered. Known IR tuple types supply
-    arity; ordinary Python performs target-count/starred-unpacking checks. Field identities
-    are retained for concrete tuples. Direct-call results keep ordinary Python unpacking
-    without this hook.
-
-    .. code:: python
-
-        # Source
-        a, b = value
-        # Generated builder
-        left, right = X.unpack(value)
-        a = X.bind_(left, name="a")
-        b = X.bind_(right, name="b")
-    """
+    """Implements :func:`tvm.script.ir_builder.ir.parser_protocol.unpack`."""
     if isinstance(value, _ir.Tuple):
         return _python.tuple(value.fields)
     if isinstance(value, _ir.Expr) and isinstance(value.ty, _ir.TupleType):
@@ -1070,35 +406,7 @@ def unpack(value: Any) -> Any:
 
 
 def range_(*args: Any, annotations: dict[str, Any] | None = None) -> _frame.ForFrame:
-    """Normalize builtin range syntax to a native serial loop frame.
-
-    Parameters
-    ----------
-    args : Expr or int
-        One to three already-evaluated bounds: stop; start, stop; or start, stop, step.
-        Omitted start is zero and omitted step uses the native default.
-    annotations : dict, optional
-        Native loop annotations. None (the default) adds none.
-
-    Returns
-    -------
-    IRBuilderFrame
-        An unentered serial loop frame; ``for_`` configures names and source span.
-
-    Notes
-    -----
-    TIRx validates arity and rejects a literal zero step (TypeError/ValueError). Native
-    bound/type diagnostics propagate. Relax raises TypeError. Only the resolved builtin
-    range is normalized; unrelated host callables named range retain ordinary call behavior.
-
-    .. code:: python
-
-        # Source
-        for i in range(2, n, 2):
-            pass
-        # Generated builder iteration specification
-        X.range_(2, n, 2)
-    """
+    """Implements :func:`tvm.script.ir_builder.ir.parser_protocol.range_`."""
     if len(args) == 1:
         args = (0, args[0], None)
     elif len(args) == 2:
@@ -1111,428 +419,65 @@ def range_(*args: Any, annotations: dict[str, Any] | None = None) -> _frame.ForF
 
 
 def if_then_else_(condition: Any, true_value: Any, false_value: Any) -> Any:
-    """Construct conditional evaluation from eagerly constructed operands.
-
-    Parameters
-    ----------
-    condition : Any
-        Host boolean or scalar IR predicate.
-    true_value : Any
-        Already-constructed true arm.
-    false_value : Any
-        Already-constructed false arm.
-
-    Returns
-    -------
-    Any
-        The selected host value or native conditional expression.
-
-    Notes
-    -----
-    No statement emission or frame entry occurs. Host predicates select an existing value;
-    scalar IR uses conditional evaluation. Relax also accepts its expression arms. Operand
-    construction remains eager; runtime evaluation follows dialect conditional semantics.
-    Invalid combinations raise native type errors. Source-result handling supplies spans.
-
-    .. code:: python
-
-        # Source
-        yes if condition else no
-        # Generated builder
-        X.if_then_else_(condition, yes, no)
-    """
+    """Implements :func:`tvm.script.ir_builder.ir.parser_protocol.if_then_else_`."""
     return _builder.select(condition, true_value, false_value)
 
 
-def and_(*values: Any, chain: Sequence[Any] | None = None) -> Any:
-    """Construct conjunction while preserving comparison-chain operand identity.
-
-    Parameters
-    ----------
-    values : Any
-        One or more eagerly constructed host/IR comparisons or boolean operands, in
-        order.
-    chain : sequence of Any, optional
-        Original once-evaluated comparison operands. None (default) means ordinary
-        conjunction. Otherwise length is len(values)+1; shared nontrivial IR operands
-        receive lexical native bindings.
-
-    Returns
-    -------
-    Any
-        Host result or native conjunction expression.
-
-    Notes
-    -----
-    No statement is emitted. TIRx supports scalar/vector conjunction; Relax supports host,
-    primitive and tensor predicates. Empty operands or invalid chain arity raise
-    TypeError/ValueError; native type errors propagate. Chained runtime operands are
-    evaluated once and progressively short-circuited, without constructing replacement
-    variables in the parser.
-
-    .. code:: python
-
-        # Source
-        a < b < c
-        # Generated builder; a, b and c have already evaluated once
-        X.and_(X.lt(a, b), X.lt(b, c), chain=(a, b, c))
-    """
-    if chain is not None:
-        from .comparison import _comparison_chain
-
-        return _comparison_chain(values, chain, and_, _tir.Let)
+def and_(*values: Any) -> Any:
+    """Implements :func:`tvm.script.ir_builder.ir.parser_protocol.and_`."""
     return _builder.logical_and(*values)
 
 
 def or_(*values: Any) -> Any:
-    """Construct a disjunction from already-evaluated operands.
-
-    Parameters
-    ----------
-    values : Any
-        One or more host or dialect boolean operands in source order.
-
-    Returns
-    -------
-    Any
-        Host result or dialect disjunction expression.
-
-    Notes
-    -----
-    No statement is emitted or frame entered. TIRx supports scalar/vector predicates; Relax
-    also supports tensor predicates. Empty operands raise TypeError; native type checks
-    propagate. Explicit constexpr operands retain host short-circuit syntax in the generated
-    program. Result spans are attached by shared source handling.
-
-    .. code:: python
-
-        # Source
-        a or b
-        # Generated builder
-        X.or_(a, b)
-    """
+    """Implements :func:`tvm.script.ir_builder.ir.parser_protocol.or_`."""
     return _builder.logical_or(*values)
 
 
 def not_(value: Any) -> Any:
-    """Negate a host or dialect boolean without coercing IR truth in Python.
-
-    Parameters
-    ----------
-    value : Any
-        Once-evaluated host boolean or primitive/tensor boolean expression.
-
-    Returns
-    -------
-    Any
-        Host boolean or native logical negation expression.
-
-    Notes
-    -----
-    No statement is emitted or frame entered. TIRx constructs primitive negation; Relax also
-    supports tensor negation. Invalid operand types propagate native errors. Shared source
-    handling attaches the result span.
-
-    .. code:: python
-
-        # Source
-        not value
-        # Generated builder
-        X.not_(value)
-    """
+    """Implements :func:`tvm.script.ir_builder.ir.parser_protocol.not_`."""
     return _builder.logical_not(value)
 
 
 def func_name(name: str) -> None:
-    """Set the active native function's source name.
-
-    Parameters
-    ----------
-    name : str
-        Function identifier; used for the module reference and public symbol according
-        to dialect privacy options.
-
-    Returns
-    -------
-    None
-        No value.
-
-    Notes
-    -----
-    Requires a function frame. Mutates its signature metadata and emits no statement;
-    invalid or repeated naming follows native diagnostics. No source span argument is needed
-    because the frame owns its location.
-
-    .. code:: python
-
-        # Source
-        def f():
-            pass
-        # Generated builder, inside the function frame
-        X.func_name("f")
-    """
+    """Implements :func:`tvm.script.ir_builder.ir.parser_protocol.func_name`."""
     return _native.func_name(name)
 
 
-def eq(lhs: Any, rhs: Any, *, span: _Span = None) -> _ir.Expr:
-    """Construct the == comparison in written operand order.
-
-    Parameters
-    ----------
-    lhs : Expr, IterVar or scalar
-        Already-evaluated left operand.
-    rhs : Expr, IterVar or scalar
-        Already-evaluated right operand.
-    span : SpanEntry, Span or source-location tuple, optional
-        Location for the constructed result. None (the default) leaves explicit location
-        unspecified; active source-call provenance is composed by the builder. Frames
-        retain their location until finalization.
-
-    Returns
-    -------
-    _ir.Expr
-        A native comparison expression.
-
-    Notes
-    -----
-    No statement is emitted or frame entered. TIRx compares primitive operands (including
-    IterVar.var); Relax selects tensor comparison if either operand is a nonprimitive IR
-    expression, otherwise primitive comparison. Native dtype/shape errors propagate. Do not
-    use Python object equality to compare these operands.
-
-    .. code:: python
-
-        # Source
-        lhs == rhs
-        # Generated builder
-        X.eq(lhs, rhs)
-    """
-    from . import comparison
-
-    return comparison.eq(lhs, rhs, span=span)
+def eq_(lhs: Any, rhs: Any, *, span: _Span = None) -> _ir.Expr:
+    """Implements :func:`tvm.script.ir_builder.ir.parser_protocol.eq_`."""
+    return _prim_ffi._OpEQ(lhs, rhs, _base.source_span(span))
 
 
-def ne(lhs: Any, rhs: Any, *, span: _Span = None) -> _ir.Expr:
-    """Construct the != comparison in written operand order.
-
-    Parameters
-    ----------
-    lhs : Expr, IterVar or scalar
-        Already-evaluated left operand.
-    rhs : Expr, IterVar or scalar
-        Already-evaluated right operand.
-    span : SpanEntry, Span or source-location tuple, optional
-        Location for the constructed result. None (the default) leaves explicit location
-        unspecified; active source-call provenance is composed by the builder. Frames
-        retain their location until finalization.
-
-    Returns
-    -------
-    _ir.Expr
-        A native comparison expression.
-
-    Notes
-    -----
-    No statement is emitted or frame entered. TIRx compares primitive operands (including
-    IterVar.var); Relax selects tensor comparison if either operand is a nonprimitive IR
-    expression, otherwise primitive comparison. Native dtype/shape errors propagate. Do not
-    use Python object equality to compare these operands.
-
-    .. code:: python
-
-        # Source
-        lhs != rhs
-        # Generated builder
-        X.ne(lhs, rhs)
-    """
-    from . import comparison
-
-    return comparison.ne(lhs, rhs, span=span)
+def ne_(lhs: Any, rhs: Any, *, span: _Span = None) -> _ir.Expr:
+    """Implements :func:`tvm.script.ir_builder.ir.parser_protocol.ne_`."""
+    return _prim_ffi._OpNE(lhs, rhs, _base.source_span(span))
 
 
-def lt(lhs: Any, rhs: Any, *, span: _Span = None) -> _ir.Expr:
-    """Construct the < comparison in written operand order.
-
-    Parameters
-    ----------
-    lhs : Expr, IterVar or scalar
-        Already-evaluated left operand.
-    rhs : Expr, IterVar or scalar
-        Already-evaluated right operand.
-    span : SpanEntry, Span or source-location tuple, optional
-        Location for the constructed result. None (the default) leaves explicit location
-        unspecified; active source-call provenance is composed by the builder. Frames
-        retain their location until finalization.
-
-    Returns
-    -------
-    _ir.Expr
-        A native comparison expression.
-
-    Notes
-    -----
-    No statement is emitted or frame entered. TIRx compares primitive operands (including
-    IterVar.var); Relax selects tensor comparison if either operand is a nonprimitive IR
-    expression, otherwise primitive comparison. Native dtype/shape errors propagate. Do not
-    use Python object equality to compare these operands.
-
-    .. code:: python
-
-        # Source
-        lhs < rhs
-        # Generated builder
-        X.lt(lhs, rhs)
-    """
-    from . import comparison
-
-    return comparison.lt(lhs, rhs, span=span)
+def lt_(lhs: Any, rhs: Any, *, span: _Span = None) -> _ir.Expr:
+    """Implements :func:`tvm.script.ir_builder.ir.parser_protocol.lt_`."""
+    return _prim_ffi._OpLT(lhs, rhs, _base.source_span(span))
 
 
-def le(lhs: Any, rhs: Any, *, span: _Span = None) -> _ir.Expr:
-    """Construct the <= comparison in written operand order.
-
-    Parameters
-    ----------
-    lhs : Expr, IterVar or scalar
-        Already-evaluated left operand.
-    rhs : Expr, IterVar or scalar
-        Already-evaluated right operand.
-    span : SpanEntry, Span or source-location tuple, optional
-        Location for the constructed result. None (the default) leaves explicit location
-        unspecified; active source-call provenance is composed by the builder. Frames
-        retain their location until finalization.
-
-    Returns
-    -------
-    _ir.Expr
-        A native comparison expression.
-
-    Notes
-    -----
-    No statement is emitted or frame entered. TIRx compares primitive operands (including
-    IterVar.var); Relax selects tensor comparison if either operand is a nonprimitive IR
-    expression, otherwise primitive comparison. Native dtype/shape errors propagate. Do not
-    use Python object equality to compare these operands.
-
-    .. code:: python
-
-        # Source
-        lhs <= rhs
-        # Generated builder
-        X.le(lhs, rhs)
-    """
-    from . import comparison
-
-    return comparison.le(lhs, rhs, span=span)
+def le_(lhs: Any, rhs: Any, *, span: _Span = None) -> _ir.Expr:
+    """Implements :func:`tvm.script.ir_builder.ir.parser_protocol.le_`."""
+    return _prim_ffi._OpLE(lhs, rhs, _base.source_span(span))
 
 
-def gt(lhs: Any, rhs: Any, *, span: _Span = None) -> _ir.Expr:
-    """Construct the > comparison in written operand order.
-
-    Parameters
-    ----------
-    lhs : Expr, IterVar or scalar
-        Already-evaluated left operand.
-    rhs : Expr, IterVar or scalar
-        Already-evaluated right operand.
-    span : SpanEntry, Span or source-location tuple, optional
-        Location for the constructed result. None (the default) leaves explicit location
-        unspecified; active source-call provenance is composed by the builder. Frames
-        retain their location until finalization.
-
-    Returns
-    -------
-    _ir.Expr
-        A native comparison expression.
-
-    Notes
-    -----
-    No statement is emitted or frame entered. TIRx compares primitive operands (including
-    IterVar.var); Relax selects tensor comparison if either operand is a nonprimitive IR
-    expression, otherwise primitive comparison. Native dtype/shape errors propagate. Do not
-    use Python object equality to compare these operands.
-
-    .. code:: python
-
-        # Source
-        lhs > rhs
-        # Generated builder
-        X.gt(lhs, rhs)
-    """
-    from . import comparison
-
-    return comparison.gt(lhs, rhs, span=span)
+def gt_(lhs: Any, rhs: Any, *, span: _Span = None) -> _ir.Expr:
+    """Implements :func:`tvm.script.ir_builder.ir.parser_protocol.gt_`."""
+    return _prim_ffi._OpGT(lhs, rhs, _base.source_span(span))
 
 
-def ge(lhs: Any, rhs: Any, *, span: _Span = None) -> _ir.Expr:
-    """Construct the >= comparison in written operand order.
-
-    Parameters
-    ----------
-    lhs : Expr, IterVar or scalar
-        Already-evaluated left operand.
-    rhs : Expr, IterVar or scalar
-        Already-evaluated right operand.
-    span : SpanEntry, Span or source-location tuple, optional
-        Location for the constructed result. None (the default) leaves explicit location
-        unspecified; active source-call provenance is composed by the builder. Frames
-        retain their location until finalization.
-
-    Returns
-    -------
-    _ir.Expr
-        A native comparison expression.
-
-    Notes
-    -----
-    No statement is emitted or frame entered. TIRx compares primitive operands (including
-    IterVar.var); Relax selects tensor comparison if either operand is a nonprimitive IR
-    expression, otherwise primitive comparison. Native dtype/shape errors propagate. Do not
-    use Python object equality to compare these operands.
-
-    .. code:: python
-
-        # Source
-        lhs >= rhs
-        # Generated builder
-        X.ge(lhs, rhs)
-    """
-    from . import comparison
-
-    return comparison.ge(lhs, rhs, span=span)
+def ge_(lhs: Any, rhs: Any, *, span: _Span = None) -> _ir.Expr:
+    """Implements :func:`tvm.script.ir_builder.ir.parser_protocol.ge_`."""
+    return _prim_ffi._OpGE(lhs, rhs, _base.source_span(span))
 
 
 def check_well_formed_(function: _tir.PrimFunc) -> None:
-    """Validate a completed standalone primitive function.
+    """Implements :func:`tvm.script.ir_builder.ir.parser_protocol.check_well_formed_`.
 
-    Parameters
-    ----------
-    function : PrimFunc
-        Completed function after its native frame has exited.
-
-    Returns
-    -------
-    None
-        No value or mutation; success means the existing native validators accepted the
-        program.
-
-    Notes
-    -----
-    Requires completed IR, with no active construction frame. Shared I validation runs Relax
-    whole-module checks, s_tir verification, then TIRx verification on each non-s_tir
-    primitive function, preserving cross-function checks. Dialect X hooks validate a
-    standalone completed function under that dialect policy. Invalid IR raises ValueError
-    retaining native details; the parser propagates the exception unchanged.
-    check_well_formed=False omits the generated call entirely.
-
-    .. code:: python
-
-        # Source
-        @T.prim_func
-        def f():
-            pass
-        # Generated builder, after function frame exit
-        X.check_well_formed_(function)
+    The completed native function owns semantic loop and IR validation.
+    Module-wide S-TIR and TIRx checks are supplied separately to the root coordinator.
     """
     from tvm import s_tir
 
@@ -1544,5 +489,22 @@ def check_well_formed_(function: _tir.PrimFunc) -> None:
         s_tir.analysis.verify_well_formed(_ir.IRModule.from_expr(function))
         if not function.attrs.get("s_tir", False):
             _tir.analysis.verify_tirx_well_formed(function)
+    except Exception as error:
+        raise ValueError(f"{message}\n{error}") from error
+
+
+def _check_module_well_formed(module: _ir.IRModule) -> None:
+    """Own completed-module S-TIR checks and primitive-function eligibility."""
+    from tvm import s_tir
+
+    message = (
+        "Program is not well-formed. If this is deliberate, set "
+        "check_well_formed=False in the top-level decorator."
+    )
+    try:
+        s_tir.analysis.verify_well_formed(module)
+        for function in module.functions.values():
+            if isinstance(function, _tir.PrimFunc) and not function.attrs.get("s_tir", False):
+                _tir.analysis.verify_tirx_well_formed(function)
     except Exception as error:
         raise ValueError(f"{message}\n{error}") from error

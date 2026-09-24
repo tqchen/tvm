@@ -450,12 +450,12 @@ def test_applying_unknown_relative_byte_offset_is_legal():
     """
 
     @R.function(private=True)
-    def explicit_ty(A: R.Tensor, relative_byte_offset: R.Prim("int64")) -> R.Tensor:
+    def explicit_ty(A: R.Tensor, relative_byte_offset: T.int64) -> R.Tensor:
         B: R.Tensor = R.memory.view(A, relative_byte_offset=relative_byte_offset)
         return B
 
     @R.function(private=True)
-    def inferred_ty(A: R.Tensor, relative_byte_offset: R.Prim("int64")):
+    def inferred_ty(A: R.Tensor, relative_byte_offset: T.int64):
         B = R.memory.view(A, relative_byte_offset=relative_byte_offset)
         return B
 

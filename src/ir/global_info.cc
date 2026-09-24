@@ -18,14 +18,13 @@
  */
 
 /*!
- * \file src/relax/ir/global_info.cc
+ * \file src/ir/global_info.cc
  * \brief Module global info.
  */
 
 #include <tvm/ffi/reflection/registry.h>
-#include <tvm/relax/global_info.h>
+#include <tvm/ir/global_info.h>
 namespace tvm {
-namespace relax {
 
 TVM_FFI_STATIC_INIT_BLOCK() {
   VDeviceNode::RegisterReflection();
@@ -34,10 +33,8 @@ TVM_FFI_STATIC_INIT_BLOCK() {
 
 TVM_FFI_STATIC_INIT_BLOCK() {
   namespace refl = tvm::ffi::reflection;
-  refl::GlobalDef().def("relax.DummyGlobalInfo", []() {
-    auto n = DummyGlobalInfo(ffi::make_object<DummyGlobalInfoNode>());
-    return n;
-  });
+  auto make_dummy = []() { return DummyGlobalInfo(ffi::make_object<DummyGlobalInfoNode>()); };
+  refl::GlobalDef().def("ir.DummyGlobalInfo", make_dummy).def("relax.DummyGlobalInfo", make_dummy);
 }
 
 VDevice::VDevice(Target tgt, int dev_id, MemoryScope mem_scope) {
@@ -50,9 +47,9 @@ VDevice::VDevice(Target tgt, int dev_id, MemoryScope mem_scope) {
 
 TVM_FFI_STATIC_INIT_BLOCK() {
   namespace refl = tvm::ffi::reflection;
-  refl::GlobalDef().def("relax.VDevice", [](Target tgt, int dev_id, MemoryScope mem_scope) {
+  auto make_vdevice = [](Target tgt, int dev_id, MemoryScope mem_scope) {
     return VDevice(tgt, dev_id, mem_scope);
-  });
+  };
+  refl::GlobalDef().def("ir.VDevice", make_vdevice).def("relax.VDevice", make_vdevice);
 }
-}  // namespace relax
 }  // namespace tvm

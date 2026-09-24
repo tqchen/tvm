@@ -22,7 +22,12 @@ from tvm.script.parser import entry
 
 
 def parse(language, source, *, extra_vars=None, **options):
-    return entry.parse(source, extra_vars={"X": language.X, **(extra_vars or {})}, **options)
+    return entry.parse(
+        source,
+        extra_vars={"X": language.X, **(extra_vars or {})},
+        **options,
+        root_builder=language.X,
+    )
 
 
 def test_marked_expressions_are_lazy_operand_valued_and_ordered(language):

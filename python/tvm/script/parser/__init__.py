@@ -14,27 +14,49 @@
 # KIND, either express or implied.  See the License for the
 # specific language governing permissions and limitations
 # under the License.
-"""Canonical TVMScript AST parser and public construction namespaces."""
+"""Canonical TVMScript parser with dialect-owned namespace initialization."""
 
 from __future__ import annotations
 
 import importlib
-import sys
+from collections.abc import Callable
 from typing import Any, TypeVar
 
-_ENTRY_EXPORTS: tuple[str, ...] = (
-    "_NAMESPACES",
+_NAMESPACES: dict[str, object] = {}
+_NAMESPACE_INITIALIZERS: list[Callable[[], None]] = []
+_NAMESPACE_ALIASES: set[str] = {"I", "ir"}
+_ENTRY_EXPORTS = (
     "from_source",
     "ir_module",
     "make_decorator",
     "make_macro_decorator",
     "parse",
     "pyfunc",
-    "register_namespace",
 )
-__all__: list[str] = [name for name in _ENTRY_EXPORTS if not name.startswith("_")]
-_initialized: bool = False
-_initializing: bool = False
+__all__ = [*_ENTRY_EXPORTS, "register_namespace", "register_namespace_initializer"]
+_initialized = False
+_initializing = False
+
+
+def register_namespace(alias: str, namespace: object) -> None:
+    """Register an opaque fixed namespace; its first alias is the syntax key root.
+
+    Each parse borrows these namespaces. Replacing an alias affects future parses
+    only; registration enters no builder frame and inspects no namespace members.
+    """
+    _NAMESPACES[alias] = namespace
+
+
+def register_namespace_initializer(
+    initializer: Callable[[], None], *, aliases: tuple[str, ...] = ()
+) -> None:
+    """Register a dialect-owned lazy bootstrap callback, without importing its dialect."""
+    _NAMESPACE_ALIASES.update(aliases)
+    if any(existing is initializer for existing in _NAMESPACE_INITIALIZERS):
+        return
+    _NAMESPACE_INITIALIZERS.append(initializer)
+    if _initialized:
+        initializer()
 
 
 def _initialize() -> None:
@@ -43,74 +65,21 @@ def _initialize() -> None:
         return
     _initializing = True
     try:
-        from tvm.relax import script as relax_namespace
-        from tvm.relax.script import builder as relax_builder
-        from tvm.tirx import script as tir_namespace
-        from tvm.tirx.layout import Axis
-        from tvm.tirx.script import builder as tir_builder
-        from tvm.tirx.script import tile
-
-        from . import entry, ir
-
-        for namespace, builder in ((tir_namespace, tir_builder), (relax_namespace, relax_builder)):
-            namespace.__dict__.update(
-                (name, value) for name, value in vars(builder).items() if not name.startswith("_")
-            )
-        # Source assignment consumes a receipt; imperative bind returns the Var.
-        tir_namespace.bind = tir_builder._native.bind
-        tir_namespace.prim_func = entry.make_decorator(
-            tir_builder,
-            option_map={"private": "private", "s_tir": "s_tir", "persistent": "persistent"},
-        )
-        tir_namespace.inline = entry.make_macro_decorator(
-            tir_builder, preserve_return=True, late_binding=True
-        )
-        tir_namespace.macro = entry.make_macro_decorator(tir_builder, preserve_return=False)
-        tir_namespace.tile = tile
-        for name in ("cluster", "cta", "thread", "warp", "warpgroup", "wg"):
-            setattr(tir_namespace, name, getattr(tile, name))
-        relax_namespace.function = entry.make_decorator(
-            relax_builder, option_map={"pure": "is_pure", "private": "is_private"}
-        )
-        relax_namespace.macro = entry.make_macro_decorator(relax_builder, preserve_return=True)
-        ir.ir_module = entry.ir_module
-        ir.pyfunc = entry.pyfunc
-        for namespace in (tir_namespace, relax_namespace, ir):
-            # Materialize declared public entry points after builder bootstrap.
-            # Source-text decorators need the same registered metadata as Python
-            # decorator lookup, including entries owned lazily by a dialect.
-            for name in vars(namespace).get("_ENTRY_EXPORTS", ()):
-                getattr(namespace, name)
-            namespace.__all__ = sorted(
-                {
-                    *vars(namespace).get("__all__", ()),
-                    *vars(namespace).get("_ENTRY_EXPORTS", ()),
-                    *(name for name in vars(namespace) if not name.startswith("_")),
-                }
-            )
-        entry._NAMESPACES.update(
-            I=ir,
-            ir=ir,
-            T=tir_namespace,
-            tir=tir_namespace,
-            tirx=tir_namespace,
-            R=relax_namespace,
-            relax=relax_namespace,
-            Tx=tile,
-            Axis=Axis,
-            TypeVar=TypeVar,
-        )
-
+        importlib.import_module(__name__ + ".ir")
+        register_namespace("TypeVar", TypeVar)
+        for initialize in _NAMESPACE_INITIALIZERS:
+            initialize()
         _initialized = True
     finally:
         _initializing = False
 
 
 def __getattr__(name: str) -> Any:
+    if name not in _ENTRY_EXPORTS and name not in _NAMESPACES and name not in _NAMESPACE_ALIASES:
+        raise AttributeError(f"module {__name__!r} has no attribute {name!r}")
+    _initialize()
     if name in _ENTRY_EXPORTS:
-        _initialize()
-        return getattr(importlib.import_module(f"{__name__}.entry"), name)
-    if name in ("tirx", "tir", "relax", "I", "T", "R", "Tx"):
-        _initialize()
-        return sys.modules[f"{__name__}.entry"]._NAMESPACES[name]
+        return getattr(importlib.import_module(__name__ + ".entry"), name)
+    if name in _NAMESPACES:
+        return _NAMESPACES[name]
     raise AttributeError(f"module {__name__!r} has no attribute {name!r}")

@@ -33,7 +33,7 @@ def _default_op_wrapper(func: Callable[..., Any]) -> Callable[..., Any]:
     from tvm.tirx.script.builder.ir import _op_wrapper  # pylint: disable=import-outside-toplevel
 
     # NKI producers return a single call_intrin node and never emit separately.
-    return _result_span(_op_wrapper(func))
+    return _result_span(f"T.nki.{func.__name__.removeprefix('nki_')}")(_op_wrapper(func))
 
 
 class NKINamespace:

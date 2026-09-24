@@ -55,7 +55,7 @@ def test_call_scope_keeps_result_identity_and_restores_after_exception():
 
 def test_scoped_helper_multiple_emissions_and_normal_return(spanned):
     marker = object()
-    with spanned.context(), spanned.X.function():
+    with spanned.context(), spanned.X.function_():
 
         def helper():
             first = I.with_at_group_(loc(8), lambda: prim.IntImm("int32", 1))

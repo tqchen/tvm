@@ -409,7 +409,7 @@ def rewriter(rewriter_mod: IRModule | type) -> PatternMatchingRewriter:
 
 
 # Member decorators defer to the same shared module construction boundary.
-_module_decorator(rewriter)
+_module_decorator("R.rewriter")(rewriter)
 
 
 ############################# BindingBlock ##############################

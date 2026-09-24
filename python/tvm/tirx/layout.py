@@ -27,8 +27,6 @@ import tvm_ffi
 
 import tvm
 from tvm.runtime import Object
-from tvm.script.parser.protocol_registry import direct_call as _direct_call
-from tvm.script.parser.protocol_registry import register_result_members as _register_result_members
 from tvm.tirx.expr import Expr
 
 from . import _ffi_api
@@ -65,7 +63,6 @@ def _split_coord(coord: Expr, extents: list[Expr]) -> list[Expr]:
     return result
 
 
-@_direct_call
 @tvm_ffi.register_object("tirx.Layout")
 class Layout(Object):
     def __init__(self):
@@ -156,7 +153,6 @@ class Layout(Object):
                 results[i] = c
         return results
 
-    @_direct_call
     def canonicalize(self) -> "Layout":
         """Canonicalize the layout by simplifying and fusing iterators where possible.
 
@@ -167,7 +163,6 @@ class Layout(Object):
         """
         return _ffi_api.LayoutCanonicalize(self)  # pylint: disable=no-member
 
-    @_direct_call
     def tile(
         self, outer: "TileLayout", outer_shape: list[Expr], inner_shape: list[Expr]
     ) -> Union["TileLayout", "ComposeLayout"]:
@@ -191,7 +186,6 @@ class Layout(Object):
             self, outer, outer_shape, inner_shape
         )
 
-    @_direct_call
     def direct_sum(
         self, left: "TileLayout", left_shape: list[Expr], right_shape: list[Expr]
     ) -> Union["TileLayout", "ComposeLayout"]:
@@ -286,7 +280,6 @@ class Layout(Object):
             self, sum_layout, interleaved_shape, left_shape
         )
 
-    @_direct_call
     def slice(self, shape: list[Expr], region: list[tuple[Expr, Expr]]) -> Optional["Layout"]:
         """Slice the layout with a given shape and region.
 
@@ -312,7 +305,6 @@ class Layout(Object):
                 region_list.append(tvm.ir.Range(range_i[0], range_i[1]))
         return _ffi_api.LayoutSlice(self, shape, region_list)  # pylint: disable=no-member
 
-    @_direct_call
     def tile_to(self, to_shape: list[Expr], current_shape: list[Expr]) -> "Layout":
         """Tile the current layout to the given shape.
 
@@ -363,7 +355,6 @@ class Layout(Object):
             return False
         return _ffi_api.TileLayoutIsTrainium(self)  # pylint: disable=no-member
 
-    @_direct_call
     def storage(self) -> "Layout":
         if isinstance(self, TileLayout):
             # Filter out shard with thread axis
@@ -383,7 +374,6 @@ class Layout(Object):
         else:
             raise ValueError(f"Unsupported layout type: {type(self)}")
 
-    @_direct_call
     def unpack(self, num: int) -> "Layout":
         """Unpack the layout, where a single element in the layout is unpacked into num contiguous elements.
 
@@ -413,7 +403,6 @@ class Layout(Object):
         else:
             raise ValueError(f"Unsupported layout type: {type(self)}")
 
-    @_direct_call
     def broadcast(self, num: int, position: int = -1, axis: '"Axis" | str' = "m") -> "Layout":
         """Insert a stride-0 broadcast dim of extent ``num`` at ``position``.
 
@@ -444,7 +433,6 @@ class Layout(Object):
         else:
             raise ValueError(f"broadcast not supported for {type(self)}")
 
-    @_direct_call
     def pack(self, num: int) -> "Layout":
         """Pack the layout, where num contiguous elements in the layout are packed into a single element.
 
@@ -485,16 +473,6 @@ class Layout(Object):
 
 
 # Result namespaces are available once this class has been created.
-_register_result_members(Layout, Layout)
-_register_result_members(Layout.canonicalize, Layout)
-_register_result_members(Layout.tile, Layout)
-_register_result_members(Layout.direct_sum, Layout)
-_register_result_members(Layout.slice, Layout)
-_register_result_members(Layout.tile_to, Layout)
-_register_result_members(Layout.storage, Layout)
-_register_result_members(Layout.unpack, Layout)
-_register_result_members(Layout.broadcast, Layout)
-_register_result_members(Layout.pack, Layout)
 
 
 # Set of axis names registered on the C++ side. Used for lazy resolution of
@@ -644,7 +622,6 @@ __all__ += [
 _TMEM_DATAPATH_ROWS = {"A": 128, "B": 64, "C": 64, "D": 128, "E": 64, "F": 64, "G": 32}
 
 
-@_direct_call
 def tmem_datapath_layout(datapath: str, rows: int, cols: int, sub_slab: int = 0) -> "TileLayout":
     """Return the ``TileLayout`` for a tcgen05 MMA datapath.
 
@@ -787,7 +764,6 @@ def _mma_datapath_letter(M, cta_group, ws=False, sparse=False):
     )
 
 
-@_direct_call
 def tmem_mma_operand_layout(
     operand, shape, dtype, *, M, cta_group, ws=False, sparse=False, group=None
 ):
@@ -900,7 +876,6 @@ def tmem_mma_operand_layout(
     return layout.canonicalize()
 
 
-@_direct_call
 def wg_local_layout(cols, rows=128):
     """Return a warpgroup-local register layout.
 
@@ -940,7 +915,6 @@ _TCGEN05_FRAG_ROWS = {
 }
 
 
-@_direct_call
 def tcgen05_atom_layout(instr_shape: str, tensor_shape: tuple[int, int], dtype) -> "TileLayout":
     """Register-side ``TileLayout`` for ``tcgen05.ld``/``tcgen05.st`` atoms.
 
@@ -1377,7 +1351,6 @@ def _spec_to_iters(pair) -> list:
     return result
 
 
-@_direct_call
 @tvm_ffi.register_object("tirx.TileLayout")
 class TileLayout(Layout):
     """A memory layout that tiles data across devices."""
@@ -1401,7 +1374,6 @@ class TileLayout(Layout):
         )
 
     @staticmethod
-    @_direct_call
     def from_iters(
         shard: "Sequence[Iter]" = (),
         replica: "Sequence[Iter]" = (),
@@ -1416,7 +1388,6 @@ class TileLayout(Layout):
         """Check if the layout is trivial."""
         return _ffi_api.TileLayoutIsTrivial(self)  # pylint: disable=no-member
 
-    @_direct_call
     def group(self, shape: list[Expr]) -> tuple["Layout", list[int]]:
         """Group the current layout by the given shape.
 
@@ -1432,7 +1403,6 @@ class TileLayout(Layout):
         """
         return _ffi_api.TileLayoutGroup(self, shape)  # pylint: disable=no-member
 
-    @_direct_call
     def group_many(self, shapes: Sequence[Sequence[Expr]]) -> tuple["TileLayout", list[list[int]]]:
         """Group the layout by the minimal common refinement of several shapes.
 
@@ -1460,7 +1430,6 @@ class TileLayout(Layout):
         return _ffi_api.TileLayoutGetScope(self)  # pylint: disable=no-member
 
     @classmethod
-    @_direct_call
     def trainium(cls, annotation: str, shape: tuple[Expr], is_psum: bool = False) -> "TileLayout":
         """Create a TileLayout from an annotation string and a shape."""
         analyzer = tvm.sym.Analyzer()
@@ -1519,7 +1488,6 @@ class TileLayout(Layout):
     kPSUMMaxElemPerBank = 512
     kPSUMBankNum = 8
 
-    @_direct_call
     def to_psum(self) -> "TileLayout":
         """Convert the layout to a psum layout."""
         analyzer = tvm.sym.Analyzer()
@@ -1544,7 +1512,6 @@ class TileLayout(Layout):
                 shard.append(i)
         return TileLayout.from_iters(shard, [], dict())  # pylint: disable=no-member
 
-    @_direct_call
     def permute_dims(self, perm: list[int]) -> "TileLayout":
         """Permute the dimensions of the layout."""
         assert len(perm) == len(self.shard), (
@@ -1555,7 +1522,6 @@ class TileLayout(Layout):
             new_shard.append(self.shard[i])
         return TileLayout.from_iters(new_shard, self.replica, self.offset)
 
-    @_direct_call
     def permute_by_groups(self, seps: list[int], perm: list[int]) -> "TileLayout":
         """Permute groups of shard iters defined by ``seps``.
 
@@ -1577,19 +1543,8 @@ class TileLayout(Layout):
 
 
 # Result namespaces are available once this class has been created.
-_register_result_members(TileLayout, TileLayout)
-_register_result_members(TileLayout.from_iters, TileLayout)
-_register_result_members(TileLayout.trainium, TileLayout)
-_register_result_members(TileLayout.to_psum, TileLayout)
-_register_result_members(TileLayout.permute_dims, TileLayout)
-_register_result_members(TileLayout.permute_by_groups, TileLayout)
-_register_result_members(tmem_datapath_layout, TileLayout)
-_register_result_members(tmem_mma_operand_layout, TileLayout)
-_register_result_members(wg_local_layout, TileLayout)
-_register_result_members(tcgen05_atom_layout, TileLayout)
 
 
-@_direct_call
 @tvm_ffi.register_object("tirx.ComposeLayout")
 class ComposeLayout(Layout):
     """A memory layout that swizzles a tile layout.
@@ -1625,4 +1580,3 @@ class ComposeLayout(Layout):
 
 
 # Result namespaces are available once this class has been created.
-_register_result_members(ComposeLayout, ComposeLayout)

@@ -40,11 +40,6 @@ class PrimFuncFrame(TIRFrame):
         """The native declared parameters, shared with the resumed body."""
         return self.args
 
-    @property
-    def reference(self):
-        """The stable declared module or local reference."""
-        return self.global_var
-
     def resolve_type_var(self, name, dtype=None, *, value=None, span=None):
         """Resolve a primitive symbol in this function's native map."""
         return _resolve_type_var(self, _ffi_api.ResolveTypeVar, name, dtype, value=value, span=span)
