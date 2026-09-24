@@ -127,7 +127,7 @@ def _odd_even_sort(
 
         # Copy data to scratch space
         base_idx = by_val * size * axis_mul_after + bz
-        with T.serial(0, 2) as (n,):
+        with T.serial(0, 2) as n:
             with T.If((tid + n + start) < size):
                 with T.Then():
                     T.buffer_store(
@@ -149,7 +149,7 @@ def _odd_even_sort(
         idxm = tvm.tirx.indexmod
         # OddEvenTransposeSort
         current_sort_num = tvm.tirx.min(block_size, size - start)
-        with T.serial(0, current_sort_num) as (k,):
+        with T.serial(0, current_sort_num) as k:
             n = idxm(tid + k, 2)
             with T.If(tid + n < current_sort_num - 1):
                 with T.Then():
@@ -177,7 +177,7 @@ def _odd_even_sort(
             )
 
         ## Copy sorted data to output
-        with T.serial(0, 2) as (n,):
+        with T.serial(0, 2) as n:
             with T.If(tid + n + start < size):
                 with T.Then():
                     out_idx = base_idx + (tid + n + start) * axis_mul_after
@@ -289,7 +289,7 @@ def _sort_common(
             i_buf[0] = i_val
             j_buf[0] = j_val
 
-        with T.serial(0, tvm.te.min(aCount + bCount - diag, step_count)) as (count,):
+        with T.serial(0, tvm.te.min(aCount + bCount - diag, step_count)) as count:
             i_idx = base_idx + i_buf[0]
             j_idx = base_idx + j_buf[0]
             k_idx = base_idx + (kStart + diag + count)
@@ -494,7 +494,7 @@ def _sort_common(
                     j_buf,
                 )
 
-    with T.serial(0, cast(upper_lim - lower_lim, target_dtype)) as (l2_width,):
+    with T.serial(0, cast(upper_lim - lower_lim, target_dtype)) as l2_width:
         width = 2 << (l2_width + lower_lim)
         # Define and launch the CUDA kernel
         target = tvm.target.Target.current()

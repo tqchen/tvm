@@ -127,7 +127,7 @@ def exclusive_scan_ir(data, output, reduction=None, binop=operator.add, identity
                 # Up Sweep of exclusive scan
                 lim = ceil_log2(scan_axis_size)
 
-                with T.serial(0, cast(lim, "int32")) as (l2_width,):
+                with T.serial(0, cast(lim, "int32")) as l2_width:
                     width = 2 << l2_width
 
                     tx = te.thread_axis("threadIdx.x")
@@ -172,7 +172,7 @@ def exclusive_scan_ir(data, output, reduction=None, binop=operator.add, identity
                                 reduction[bx] = output[(bx + 1) * scan_axis_size - 1]
                             output[(bx + 1) * scan_axis_size - 1] = cast(identity_value, out_dtype)
 
-                with T.serial(0, cast(lim, "int32")) as (l2_width,):
+                with T.serial(0, cast(lim, "int32")) as l2_width:
                     width = 2 << (lim - l2_width - 1)
 
                     tx = te.thread_axis("threadIdx.x")

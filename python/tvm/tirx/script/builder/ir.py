@@ -50,9 +50,6 @@ from tvm.script.parser.protocol_registry import (
     register_mutable_var_decl as _register_mutable_var_decl,
 )
 from tvm.script.parser.protocol_registry import register_result_members as _register_result_members
-from tvm.script.parser.protocol_registry import (
-    register_scope_var_query_or_decl as _register_scope_var_query_or_decl,
-)
 from tvm.script.parser.protocol_registry import register_type_var_decl as _register_type_var_decl
 from tvm.target import Target
 
@@ -683,7 +680,7 @@ def elected():
     )
 
 
-@_register_scope_var_query_or_decl
+@_direct_call
 def scope_id(
     extents: list[Expr | int] | None, parent: str, cur: str, dtype: str = "int32"
 ) -> Var | tuple[Var, ...]:
@@ -698,7 +695,7 @@ def scope_id(
     return tuple(ret)
 
 
-@_register_scope_var_query_or_decl
+@_direct_call
 def cluster_id(
     extents: list[Expr | int] | None = None, dtype: str = "int32"
 ) -> Var | tuple[Var, ...]:
@@ -713,7 +710,7 @@ def cluster_id(
     return tuple(ret)
 
 
-@_register_scope_var_query_or_decl
+@_direct_call
 def cta_id(
     extents: list[Expr | int] | None = None, preferred=None, dtype: str = "int32"
 ) -> Var | tuple[Var, ...]:
@@ -728,7 +725,7 @@ def cta_id(
     return tuple(ret)
 
 
-@_register_scope_var_query_or_decl
+@_direct_call
 def cta_id_in_cluster(
     extents: list[Expr | int] | None = None, preferred=None, dtype: str = "int32"
 ) -> Var | tuple[Var, ...]:
@@ -743,14 +740,14 @@ def cta_id_in_cluster(
     return tuple(ret)
 
 
-@_register_scope_var_query_or_decl
+@_direct_call
 def cta_id_in_pair(dtype: str = "int32") -> Var:
     """Return the native CTA index within its two-CTA pair."""
     ret = _ffi_api.CtaIdInPair(dtype)  # type: ignore[attr-defined] # pylint: disable=no-member
     return ret[0]
 
 
-@_register_scope_var_query_or_decl
+@_direct_call
 def warpgroup_id(
     extents: list[Expr | int] | None = None, dtype: str = "int32"
 ) -> Var | tuple[Var, ...]:
@@ -765,7 +762,7 @@ def warpgroup_id(
     return tuple(ret)
 
 
-@_register_scope_var_query_or_decl
+@_direct_call
 def warp_id(extents: list[Expr | int] | None = None, dtype: str = "int32") -> Var | tuple[Var, ...]:
     """Define a cta→warp scope id. Pass ``None`` (the default) to defer the
     extent; it will be inferred at LowerTIRx from sibling closure.
@@ -778,7 +775,7 @@ def warp_id(extents: list[Expr | int] | None = None, dtype: str = "int32") -> Va
     return tuple(ret)
 
 
-@_register_scope_var_query_or_decl
+@_direct_call
 def warp_id_in_wg(
     extents: list[Expr | int] | None = None, dtype: str = "int32"
 ) -> Var | tuple[Var, ...]:
@@ -793,7 +790,7 @@ def warp_id_in_wg(
     return tuple(ret)
 
 
-@_register_scope_var_query_or_decl
+@_direct_call
 def lane_id(extents: list[Expr | int] | None = None, dtype: str = "int32") -> Var | tuple[Var, ...]:
     """Define a warp→thread scope id. Pass ``None`` (the default) to defer the
     extent; it will be inferred at LowerTIRx from sibling closure.
@@ -806,7 +803,7 @@ def lane_id(extents: list[Expr | int] | None = None, dtype: str = "int32") -> Va
     return tuple(ret)
 
 
-@_register_scope_var_query_or_decl
+@_direct_call
 def thread_id(
     extents: list[Expr | int] | None = None, dtype: str = "int32"
 ) -> Var | tuple[Var, ...]:
@@ -821,7 +818,7 @@ def thread_id(
     return tuple(ret)
 
 
-@_register_scope_var_query_or_decl
+@_direct_call
 def thread_id_in_wg(
     extents: list[Expr | int] | None = None, dtype: str = "int32"
 ) -> Var | tuple[Var, ...]:
@@ -1133,7 +1130,7 @@ class axis:  # pylint: disable=invalid-name
     """The axis class"""
 
     @staticmethod
-    @_register_scope_var_query_or_decl
+    @_direct_call
     def spatial(
         dom: ir.Range | list[Expr] | tuple[Expr],
         binding: Expr,
@@ -1162,7 +1159,7 @@ class axis:  # pylint: disable=invalid-name
         )
 
     @staticmethod
-    @_register_scope_var_query_or_decl
+    @_direct_call
     def reduce(
         dom: ir.Range | list[Expr] | tuple[Expr],
         binding: Expr,
@@ -1191,7 +1188,7 @@ class axis:  # pylint: disable=invalid-name
         )
 
     @staticmethod
-    @_register_scope_var_query_or_decl
+    @_direct_call
     def scan(
         dom: ir.Range | list[Expr] | tuple[Expr],
         binding: Expr,
@@ -1220,7 +1217,7 @@ class axis:  # pylint: disable=invalid-name
         )
 
     @staticmethod
-    @_register_scope_var_query_or_decl
+    @_direct_call
     def opaque(
         dom: ir.Range | list[Expr] | tuple[Expr],
         binding: Expr,
@@ -1249,7 +1246,7 @@ class axis:  # pylint: disable=invalid-name
         )
 
     @staticmethod
-    @_register_scope_var_query_or_decl
+    @_direct_call
     def remap(kinds: str, bindings: list[Expr], dtype: str = "int32") -> list[Var] | Var:
         """The block axis remapping function.
 
@@ -1582,7 +1579,7 @@ def Assert(condition: Expr, message, error_kind: str = "RuntimeError") -> frame.
     return _ffi_api.Assert(condition, error_kind, message)  # type: ignore[attr-defined] # pylint: disable=no-member
 
 
-@_register_scope_var_query_or_decl
+@_direct_call
 def Bind(  # pylint: disable=invalid-name
     value: Expr,
     type_annotation: Type | None = None,  # pylint: disable=redefined-outer-name
@@ -1628,7 +1625,7 @@ def Let(  # pylint: disable=invalid-name
     return tir.Let(var, value, expr)
 
 
-@_register_scope_var_query_or_decl
+@_direct_call
 def bind(
     value: Expr,
     type_annotation: Type | None = None,  # pylint: disable=redefined-outer-name
@@ -2325,7 +2322,7 @@ def launch_thread(
     return _ffi_api.LaunchThread(thread, extent)  # type: ignore[attr-defined] # pylint: disable=no-member
 
 
-@_register_scope_var_query_or_decl
+@_direct_call
 def env_thread(thread_tag: str, dtype: str = "int32") -> IterVar:
     """Bind a var to thread env
 

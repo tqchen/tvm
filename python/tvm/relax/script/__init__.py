@@ -24,6 +24,8 @@ import inspect as _inspect
 from collections.abc import Callable as _Callable
 from typing import TYPE_CHECKING, Any
 
+from tvm.script.parser.protocol_registry import module_decorator as _module_decorator
+
 if TYPE_CHECKING:
     from tvm.ir import IRModule
     from tvm.relax.base_py_module import BasePyModule
@@ -180,4 +182,4 @@ def py_module(
 
 
 # Member decorators may defer to this shared-parser entry without importing Relax.
-py_module.__tvm_module_decorator__ = True
+_module_decorator(py_module)

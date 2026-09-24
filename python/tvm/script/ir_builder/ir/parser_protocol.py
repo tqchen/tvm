@@ -29,8 +29,9 @@ Syntax registration is owned by ``tvm.script.parser.protocol_registry``. Dialect
 its APIs directly; this file documents the complete customization contract but
 does not import or re-export those registration APIs. Registration state lives
 across parses, while PrescanContext, ModuleContext and FunctionContext only
-consume it. Callable markers stay on the registered callables. The argument
-policy table shares one immutable policy between original and adapted callable
+consume it. Callable flags and records live in parser-owned dictionaries, never
+on the registered callables. The argument-policy table shares one immutable
+policy between original and adapted callable
 identities. No registry stores active frames, construction results or per-parse
 environments. Module setup precedes all signatures, which precede all bodies.
 Completed results are validated only after frame exit.
@@ -52,14 +53,13 @@ A dialect selects source syntax through these registration APIs:
   still uses ``X.bind_``. ``register_mutable_var_decl`` advertises call,
   annotation or parameter positions for ``X.decl_mutable_var_``; later stores
   use ``X.set_mutable_var_``.
-* ``register_scope_var_query_or_decl`` marks calls whose producer already owns
-  the returned variables. This declaration category precedes mutable stores;
-  ``X.scope_var_query_or_decl_`` preserves identity and performs dialect naming
-  and validation without another IR binding.
 * ``direct_call`` returns the registered callable unchanged. Source calls omit
   automatic binding, emission, result-span attachment and the outer source-call
   wrapper. Callee and arguments still evaluate once in order, with normal child
-  rewriting. The callable owns its effects. This differs from AlreadyEmitted,
+  rewriting. Scope-ID queries, block-axis producers and explicit ``T.bind`` use
+  this same category, preserving producer identity, unpacking and explicit names.
+  Direct calls precede stores to outer mutable names; assignment supplies no new
+  resource name. The callable owns its effects. This differs from AlreadyEmitted,
   whose wrapped result retains normal source-result handling.
 * ``result_span`` declares that the complete effect is represented by the returned
   node or emission receipt. It retains ordinary binding/emission while selecting
@@ -71,8 +71,8 @@ A dialect selects source syntax through these registration APIs:
   chained producer syntax can expose those members without evaluating a value
   or inspecting its IR type. Each member still needs its own declaration or
   direct-call registration; a method name alone never selects a policy.
-* ``register_function`` attaches an opaque builder namespace, copied option
-  mapping, defaults and an optional Python-body flag to a source decorator.
+* ``register_function`` records an opaque builder namespace, copied option
+  mapping, defaults and an optional Python-body flag for a source decorator.
   ``function_info`` reads that ``FunctionDecoratorInfo`` record. The flag keeps
   original Python callables in module ``__pyfuncs__``; other functions lower
   through the registered dialect's function/signature/body hooks.
@@ -82,16 +82,27 @@ A dialect selects source syntax through these registration APIs:
 String decoding and physical source-range mapping live in ``parser.expr_str_handling``;
 general expression rewriting remains in the main transpiler.
 ``get_type_var_decl`` reads ``DeclarationArguments``. ``is_binding_decl``,
-``is_mutable_var_decl``, ``is_scope_var_query_or_decl`` and ``is_direct_call``
+``is_mutable_var_decl`` and ``is_direct_call``
 read declaration/call markers. ``copy_function_info`` shares the exact registered
-decorator record with a source function, leaving definition scope and applied
-options to the entry point. ``get_result_members`` reads member namespaces,
-normalizing bound methods and property getters. Argument, scope-query and
-direct-call readers also recognize Python bound-method identities where
-applicable. ``DeclarationArguments`` carries omitted-value parameter and dtype
+decorator record with a source function; ``register_function_options`` and
+``get_function_options`` retain explicitly applied options. ``module_decorator``
+and ``is_module_decorator`` classify module decorators, while
+``register_parameter_dtype`` and ``get_parameter_dtype`` record parameter dtype
+syntax. ``get_result_members`` reads member namespaces. Every registration and
+lookup normalizes Python bound methods and property getters without evaluating
+properties. ``DeclarationArguments`` carries omitted-value parameter and dtype
 facts. These readers neither call constructors nor own native state. The shared
 ``constexpr`` marker is recognized by identity for host control expressions and
 specialization annotations; dialect semantic exports refer to that same marker.
+
+All callable syntax facts live in parser-owned dictionaries, with no callable
+attribute writes or fallback reads. Decorators preserve identity, including built-in,
+extension and slotted callables. Explicit registrations own their callable and
+policy for registry lifetime, including namespaces that reference their own
+decorator. Copied source-function information and applied options instead use
+separate weak storage so parsing does not permanently retain each source function
+or its closure. Tables store syntax metadata only, never active parse scopes,
+native frames or constructed results.
 
 A dialect registers policies beside the owning definitions. Generated constructors
 receive metadata when created; native callables that cannot use a decorator receive
@@ -107,7 +118,6 @@ keep a separate inventory of concrete dialect registrations. For example:
         register_function,
         register_mutable_var_decl,
         register_result_members,
-        register_scope_var_query_or_decl,
         register_type_var_decl,
     )
 
@@ -115,7 +125,7 @@ keep a separate inventory of concrete dialect registrations. For example:
     def alloc_buffer(shape, dtype):
         return make_buffer(shape, dtype)
 
-    @register_scope_var_query_or_decl
+    @direct_call
     def thread_id():
         return current_thread_variable()
 
@@ -658,52 +668,6 @@ def check_well_formed_(module: _ir.IRModule) -> None:
         raise ValueError(f"{message}\n{error}") from error
 
 
-def scope_var_query_or_decl_(
-    value: Any, *, name: str | None = None, span: _Span = None, name_span: _Span = None
-) -> Any:
-    """Retain the identity of a scope query or declaration result.
-
-    Parameters
-    ----------
-    value : Var, IterVar, list, tuple or Array
-        The once-evaluated result of a registered scope variable operation: a native
-        Var (including a pointer-typed Var), an IterVar, or a list, tuple or Array of
-        these. The operation has already created or selected its variable.
-    name : str, optional
-        Source name for a scalar target. None (default) leaves its producer name.
-        Aggregate target names do not prefix or rename individual members.
-    span : SpanEntry, Span or source-location tuple, optional
-        Source statement location, used for block-axis naming when name_span is
-        omitted. None (default) leaves it unspecified. Other variables retain
-        the producer location already supplied by source-call handling.
-    name_span : SpanEntry, Span or source-location tuple, optional
-        Location of the target identifier. None (the default) uses span; it can differ
-        from the emitted statement location.
-
-    Returns
-    -------
-    Any
-        The exact input object, including the original sequence for aggregate results.
-
-    Notes
-    -----
-    TIRx requires an active function and preserves variable identity without Bind,
-    allocation, store or symbol-map canonicalization. Block axes receive source names and
-    duplicate-name validation; unnamed scope variables receive a name while explicit
-    producer names remain intact. Invalid result types raise TypeError and duplicate axis
-    names raise ValueError. Relax rejects the category. This declaration category takes
-    precedence over a same-named outer mutable storage target.
-
-    .. code:: python
-
-        # Source
-        tid = T.thread_id_in_wg()
-        # Generated builder
-        tid = X.scope_var_query_or_decl_(X.thread_id_in_wg(), name="tid")
-    """
-    raise NotImplementedError
-
-
 def function(*, decl: bool = False, span: _Span = None, **options: Any) -> IRBuilderFrame:
     """Create the native function frame used for signature and body construction.
 
@@ -1208,13 +1172,15 @@ def for_(
     Returns
     -------
     IRBuilderFrame
-        The same configured ForFrame; entry always returns its native variable sequence.
+        The same configured ForFrame. Entry returns the native variable for one
+        dimension, or the original variable sequence otherwise.
 
     Notes
     -----
     TIRx requires an active primitive function before entry. Variables already have final
-    names at entry, and Python performs single/multiple/starred unpacking. Invalid
-    iterable/names raise TypeError, ValueError or native errors. Relax rejects imperative
+    names at entry. Simple scalar targets use the entry result; generated tuple,
+    list or starred targets use the stable frame.vars sequence for unpacking.
+    Invalid iterable/names raise TypeError, ValueError or native errors. Relax rejects imperative
     loops. A frame stores its location before deferred body finalization.
 
     .. code:: python
@@ -1223,7 +1189,7 @@ def for_(
         for i in range(n):
             T.evaluate(i)
         # Generated builder
-        with X.for_(X.range_(n), names=("i",)) as (i,):
+        with X.for_(X.range_(n), names=("i",)) as i:
             X.emit_(X.evaluate(i))
     """
     raise NotImplementedError

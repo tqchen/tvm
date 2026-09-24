@@ -50,10 +50,10 @@ def _get_valid_counts_ir(
         out_tensor = T.buffer_proxy(out_tensor)
         out_indices = T.buffer_proxy(out_indices)
 
-        with T.parallel(0, batch_size) as (i,):
+        with T.parallel(0, batch_size) as i:
             valid_count[i] = T.int32(0)
 
-            with T.serial(0, num_anchors) as (j,):
+            with T.serial(0, num_anchors) as j:
                 score = data[i, j, score_index]
                 if id_index < 0:
                     is_valid = score > score_threshold
@@ -63,16 +63,16 @@ def _get_valid_counts_ir(
                 with T.If(is_valid):
                     with T.Then():
                         cur = valid_count[i]
-                        with T.serial(0, box_data_length) as (k,):
+                        with T.serial(0, box_data_length) as k:
                             out_tensor[i, cur, k] = data[i, j, k]
                         out_indices[i, cur] = j
                         valid_count[i] = cur + 1
 
             # Fill remaining slots with -1
-            with T.serial(0, num_anchors) as (j,):
+            with T.serial(0, num_anchors) as j:
                 with T.If(j >= valid_count[i]):
                     with T.Then():
-                        with T.serial(0, box_data_length) as (k,):
+                        with T.serial(0, box_data_length) as k:
                             out_tensor[i, j, k] = tvm.tirx.Cast(data.dtype, T.float32(-1.0))
                         out_indices[i, j] = T.int32(-1)
 
@@ -216,7 +216,7 @@ def _classic_nms_ir(
         # For hard NMS the historical threshold is 0.0; for soft NMS use score_threshold.
         thresh = tvm.tirx.Cast(data.dtype, T.float32(score_threshold if is_soft_nms else 0.0))
 
-        with T.parallel(0, batch_size) as (i,):
+        with T.parallel(0, batch_size) as i:
             # Step 1: Reorder data by sorted score
             nkeep_buf = T.alloc_buffer((1,), "int32", scope="local")
             nkeep_local = T.buffer_proxy(nkeep_buf)
@@ -226,15 +226,15 @@ def _classic_nms_ir(
                     nkeep_local[0] = top_k
 
             # Copy sorted boxes to output
-            with T.serial(0, num_anchors) as (j,):
+            with T.serial(0, num_anchors) as j:
                 with T.If(j < nkeep_local[0]):
                     with T.Then():
                         src_idx = sorted_index[i, j]
-                        with T.serial(0, box_data_length) as (k,):
+                        with T.serial(0, box_data_length) as k:
                             out_data[i, j, k] = data[i, src_idx, k]
                         out_box_indices[i, j] = sorted_index[i, j]
                     with T.Else():
-                        with T.serial(0, box_data_length) as (k,):
+                        with T.serial(0, box_data_length) as k:
                             out_data[i, j, k] = tvm.tirx.Cast(data.dtype, T.float32(-1.0))
                         out_box_indices[i, j] = T.int32(-1)
 
@@ -299,7 +299,7 @@ def _classic_nms_ir(
                 # LiteRT soft-NMS selects the current highest-score candidate each round.
                 soft_nms_scale = tvm.tirx.Cast(data.dtype, T.float32(-0.5 / soft_nms_sigma))
 
-                with T.serial(0, nkeep_local[0]) as (_,):
+                with T.serial(0, nkeep_local[0]) as _:
                     with T.If(
                         tvm.tirx.Select(
                             max_output_size > 0,
@@ -311,7 +311,7 @@ def _classic_nms_ir(
                             best_idx[0] = T.int32(-1)
                             best_score[0] = thresh
 
-                            with T.serial(0, nkeep_local[0]) as (j,):
+                            with T.serial(0, nkeep_local[0]) as j:
                                 with T.If(
                                     tvm.tirx.all(
                                         j >= num_valid_boxes[0],
@@ -333,14 +333,14 @@ def _classic_nms_ir(
                                             )
                                             out_box_indices[i, best_idx[0]] = tmp_idx[0]
 
-                                            with T.serial(0, box_data_length) as (k,):
+                                            with T.serial(0, box_data_length) as k:
                                                 tmp_val[0] = out_data[i, num_valid_boxes[0], k]
                                                 out_data[i, num_valid_boxes[0], k] = out_data[
                                                     i, best_idx[0], k
                                                 ]
                                                 out_data[i, best_idx[0], k] = tmp_val[0]
 
-                                    with T.serial(0, nkeep_local[0]) as (j,):
+                                    with T.serial(0, nkeep_local[0]) as j:
                                         with T.If(
                                             tvm.tirx.all(
                                                 j > num_valid_boxes[0],
@@ -389,24 +389,24 @@ def _classic_nms_ir(
                 if return_indices:
                     out_valid_box_count[i, 0] = num_valid_boxes[0]
 
-                    with T.serial(0, num_anchors) as (j,):
+                    with T.serial(0, num_anchors) as j:
                         with T.If(j < num_valid_boxes[0]):
                             with T.Then():
                                 orig_idx = out_box_indices[i, j]
                                 out_box_indices[i, j] = indices[i, orig_idx]
                         with T.If(j >= num_valid_boxes[0]):
                             with T.Then():
-                                with T.serial(0, box_data_length) as (k,):
+                                with T.serial(0, box_data_length) as k:
                                     out_data[i, j, k] = tvm.tirx.Cast(data.dtype, T.float32(-1.0))
                                 out_box_indices[i, j] = T.int32(-1)
                 else:
-                    with T.serial(0, num_anchors) as (j,):
+                    with T.serial(0, num_anchors) as j:
                         with T.If(j >= num_valid_boxes[0]):
                             with T.Then():
-                                with T.serial(0, box_data_length) as (k,):
+                                with T.serial(0, box_data_length) as k:
                                     out_data[i, j, k] = tvm.tirx.Cast(data.dtype, T.float32(-1.0))
             else:
-                with T.serial(0, nkeep_local[0]) as (j,):
+                with T.serial(0, nkeep_local[0]) as j:
                     with T.If(
                         tvm.tirx.all(
                             out_data[i, j, score_index] > thresh,
@@ -420,7 +420,7 @@ def _classic_nms_ir(
                         with T.Then():
                             num_valid_boxes[0] = num_valid_boxes[0] + 1
 
-                            with T.serial(0, nkeep_local[0]) as (k,):
+                            with T.serial(0, nkeep_local[0]) as k:
                                 with T.If(
                                     tvm.tirx.all(k > j, out_data[i, k, score_index] > thresh)
                                 ):
@@ -447,7 +447,7 @@ def _classic_nms_ir(
                                                         out_box_indices[i, k] = T.int32(-1)
 
                         with T.Else():
-                            with T.serial(0, box_data_length) as (k,):
+                            with T.serial(0, box_data_length) as k:
                                 out_data[i, j, k] = tvm.tirx.Cast(data.dtype, T.float32(-1.0))
                             out_box_indices[i, j] = T.int32(-1)
 
@@ -456,7 +456,7 @@ def _classic_nms_ir(
                     valid_idx = T.buffer_proxy(valid_idx_buf)
                     valid_idx[0] = T.int32(0)
 
-                    with T.serial(0, num_anchors) as (j,):
+                    with T.serial(0, num_anchors) as j:
                         with T.If(out_box_indices[i, j] >= 0):
                             with T.Then():
                                 orig_idx = out_box_indices[i, j]
@@ -465,7 +465,7 @@ def _classic_nms_ir(
 
                     out_valid_box_count[i, 0] = valid_idx[0]
 
-                    with T.serial(0, num_anchors) as (j,):
+                    with T.serial(0, num_anchors) as j:
                         with T.If(j >= valid_idx[0]):
                             with T.Then():
                                 out_box_indices[i, j] = T.int32(-1)
@@ -672,22 +672,22 @@ def _rearrange_out(data, batch_size, num_anchors, box_data_length, score_index):
             data = T.buffer_proxy(ins[0])
             out = T.buffer_proxy(outs[0])
 
-            with T.parallel(0, batch_size) as (i,):
+            with T.parallel(0, batch_size) as i:
                 valid_idx_buf = T.alloc_buffer((1,), "int32", scope="local")
                 valid_idx = T.buffer_proxy(valid_idx_buf)
                 valid_idx[0] = T.int32(0)
 
-                with T.serial(0, num_anchors) as (j,):
+                with T.serial(0, num_anchors) as j:
                     with T.If(data[i, j, score_index] >= tvm.tirx.Cast(data.dtype, T.float32(0.0))):
                         with T.Then():
-                            with T.serial(0, box_data_length) as (k,):
+                            with T.serial(0, box_data_length) as k:
                                 out[i, valid_idx[0], k] = data[i, j, k]
                             valid_idx[0] = valid_idx[0] + 1
 
-                with T.serial(0, num_anchors) as (j,):
+                with T.serial(0, num_anchors) as j:
                     with T.If(j >= valid_idx[0]):
                         with T.Then():
-                            with T.serial(0, box_data_length) as (k,):
+                            with T.serial(0, box_data_length) as k:
                                 out[i, j, k] = tvm.tirx.Cast(data.dtype, T.float32(-1.0))
 
             return ib.get()
@@ -727,7 +727,7 @@ def _nms_loop(
 
         num_boxes_to_check = nkeep - (j + 1)
 
-        with T.parallel(0, num_boxes_to_check) as (_k,):
+        with T.parallel(0, num_boxes_to_check) as _k:
             k = j + 1 + _k
 
             with T.If(
@@ -745,7 +745,7 @@ def _nms_loop(
                             out_scores[i, k] = T.float32(-1.0)
                             on_new_invalidated_box_func(i, k)
 
-    with T.serial(0, batch_size) as (i,):
+    with T.serial(0, batch_size) as i:
         nkeep = if_then_else(tvm.tirx.all(top_k > 0, top_k < valid_count[i]), top_k, valid_count[i])
 
         with T.If(tvm.tirx.all(iou_threshold > te.const(0), valid_count[i] > te.const(0))):
@@ -754,7 +754,7 @@ def _nms_loop(
                 num_valid_boxes_local = T.buffer_proxy(num_valid_boxes_local_buf)
                 num_valid_boxes_local[0] = T.int32(0)
 
-                with T.serial(0, nkeep) as (j,):
+                with T.serial(0, nkeep) as j:
                     with T.If(
                         tvm.tirx.all(
                             out_scores[i, j] > -1.0,  # box is still valid
@@ -780,7 +780,7 @@ def _get_valid_box_count(scores, score_threshold):
 
     def searchsorted_ir(scores_buf, score_thresh_buf, valid_count_buf):
         with IRBuilder() as ib:
-            with T.parallel(0, batch_classes) as (i,):
+            with T.parallel(0, batch_classes) as i:
                 if hasattr(score_threshold, "shape"):
                     if len(score_threshold.shape) == 0:
                         score_thresh_scalar = score_thresh_buf[()]
@@ -823,7 +823,7 @@ def _get_valid_box_count(scores, score_threshold):
 
         def searchsorted_ir_scalar(scores_buf, valid_count_buf):
             with IRBuilder() as ib:
-                with T.parallel(0, batch_classes) as (i,):
+                with T.parallel(0, batch_classes) as i:
                     if isinstance(score_threshold, te.Tensor):
                         if len(score_threshold.shape) == 0:
                             score_thresh_tir = score_threshold()
@@ -865,11 +865,11 @@ def _collect_selected_indices_ir(
             else:
                 # Fallback to a reasonable default if max_output_boxes_per_class is not an integer
                 max_output_rows = batch_classes * 10
-            with T.serial(0, max_output_rows) as (init_i,):
-                with T.serial(0, 3) as (init_j,):  # 3 columns
+            with T.serial(0, max_output_rows) as init_i:
+                with T.serial(0, 3) as init_j:  # 3 columns
                     out[init_i, init_j] = cast(0, "int64")
 
-            with T.parallel(0, batch_classes) as (i,):
+            with T.parallel(0, batch_classes) as i:
                 i_64 = cast(i, "int64")
                 batch_id = i_64 // num_class
                 class_id = i_64 % num_class
@@ -887,7 +887,7 @@ def _collect_selected_indices_ir(
                 else:
                     limit = num_detections[i]
 
-                with T.serial(0, limit) as (j,):
+                with T.serial(0, limit) as j:
                     out[row_offsets[i] + j, 0] = batch_id
                     out[row_offsets[i] + j, 1] = class_id
                     out[row_offsets[i] + j, 2] = cast(selected_indices[i, j], "int64")
@@ -912,12 +912,12 @@ def _collect_selected_indices_and_scores_ir(
         collected_scores = T.buffer_proxy(collected_scores)
         zero = cast(0, "int64")
 
-        with T.parallel(0, batch_size * num_class) as (i,):
+        with T.parallel(0, batch_size * num_class) as i:
             i_64 = cast(i, "int64")
             batch_id = i_64 // num_class
             class_id = i_64 % num_class
 
-            with T.serial(0, num_boxes) as (j,):
+            with T.serial(0, num_boxes) as j:
                 with T.If(j < num_detections[batch_id, class_id]):
                     with T.Then():
                         offset = row_offsets[batch_id, class_id] + j

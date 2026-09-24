@@ -181,7 +181,7 @@ def _grad_take_backward(bb: BlockBuilder, call: Call) -> Expr:
             with IRBuilder() as ib:
                 with T.seq_scope():
                     # Init loop (zero-fill output buffer)
-                    with T.serial(fused_shape) as (i,):
+                    with T.serial(fused_shape) as i:
                         out[i] = tirx.const(0, dtype=x_ptr.dtype)
 
                     # Accumulation loop
@@ -198,10 +198,10 @@ def _grad_take_backward(bb: BlockBuilder, call: Call) -> Expr:
 
                         with T.serial(
                             fused_output_grad_shape_pre * fused_output_grad_shape_nxt
-                        ) as (fused,):
+                        ) as fused:
                             i = fused // fused_output_grad_shape_nxt
                             j = fused % fused_output_grad_shape_nxt
-                            with T.serial(indices_len) as (loop_l,):
+                            with T.serial(indices_len) as loop_l:
                                 out_idx = (
                                     i * fused_output_grad_shape_nxt * x_axis_len
                                     + idx[loop_l] * fused_output_grad_shape_nxt
@@ -214,7 +214,7 @@ def _grad_take_backward(bb: BlockBuilder, call: Call) -> Expr:
                                 )
                                 out[out_idx] = out[out_idx] + grad[grad_idx]
                     else:
-                        with T.serial(indices_len) as (loop_l,):
+                        with T.serial(indices_len) as loop_l:
                             out[idx[loop_l]] = out[idx[loop_l]] + grad[loop_l]
 
                 return ib.get()

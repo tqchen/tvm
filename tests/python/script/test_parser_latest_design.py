@@ -147,13 +147,16 @@ def test_nested_scope_does_not_reassign_outer_symbol(language):
 
 
 @pytest.mark.parametrize("count", [1, 2])
-def test_direct_and_scope_declaration_calls_preserve_identity_once(language, count):
-    # Before: variable(s) = declared(); direct(value); variable = direct(value).
-    # Expected builder program: query/declaration naming only, direct calls bypass bind/emit.
-    values = tuple(object() for _ in range(count))
+def test_direct_producers_preserve_identity_once_and_override_mutable_targets(language, count):
+    # Before: cell = X.cell(); cell, other = producer(); direct(cell).
+    # Builder: ordinary Python assignment/unpacking of the direct producer's value,
+    # without storing into the old cell or changing producer-owned names/spans.
+    from dummy_builder import Value
+
+    values = tuple(Value("native", name=f"producer_{i}", span=("producer",)) for i in range(count))
     calls = []
 
-    @registry.register_scope_var_query_or_decl
+    @registry.direct_call
     def declared():
         calls.append("declared")
         return values[0] if count == 1 else values
@@ -161,23 +164,24 @@ def test_direct_and_scope_declaration_calls_preserve_identity_once(language, cou
     @registry.direct_call
     def direct(value):
         calls.append("direct")
+        assert value is values[0]
+        assert value.name == "producer_0" and value.span == ("producer",)
         return value
 
     language.X.unpack = lambda value: value
-    target = "first" if count == 1 else "first, second"
+    target = "cell" if count == 1 else "cell, second"
     result = language.parse(
-        f"@X.script\ndef main():\n    {target} = declared()\n"
-        "    kept = direct(first)\n    direct(kept)\n    X.record(kept)\n",
+        f"@X.script\ndef main():\n    cell = X.cell()\n    {target} = declared()\n"
+        "    kept = direct(cell)\n    direct(kept)\n",
         declared=declared,
         direct=direct,
     )
     assert calls == ["declared", "direct", "direct"]
-    assert result.body == [("emit", values[0])]
-    assert not any(event[0] == "bind" for event in language.events)
+    assert result.body == []
+    assert not any(event[0] in ("bind", "set") for event in language.events)
 
 
-@pytest.mark.parametrize("category", ["direct", "scope"])
-def test_registered_global_callee_does_not_override_lexical_shadow(language, category):
+def test_registered_global_callee_does_not_override_lexical_shadow(language):
     # Before: a local callable shadows a registered global of the same spelling.
     # Expected builder program: ordinary local call/bind semantics and one evaluation.
     calls = []
@@ -189,10 +193,7 @@ def test_registered_global_callee_does_not_override_lexical_shadow(language, cat
     def operation():
         pytest.fail("shadowed global callable executed")
 
-    if category == "direct":
-        registry.direct_call(operation)
-    else:
-        registry.register_scope_var_query_or_decl(operation)
+    registry.direct_call(operation)
     result = language.parse(
         "@X.script\ndef main():\n    operation = ordinary\n"
         "    value = operation()\n    X.record(value)\n",
@@ -251,14 +252,14 @@ def test_body_annotation_reads_a_preceding_ordinary_local(language):
 
 
 @pytest.mark.parametrize("ordinary_write", [False, True])
-def test_scope_declaration_reuses_symbol_spelling_but_plain_write_is_rejected(
+def test_direct_producer_reuses_symbol_spelling_but_plain_write_is_rejected(
     language, ordinary_write
 ):
-    # Before: an explicit scope declaration reuses an existing symbolic spelling.
-    # Expected: declaration precedence applies; a subsequent ordinary write remains illegal.
+    # Before: a direct producer reuses an existing symbolic spelling.
+    # Expected: direct-call precedence applies; a subsequent ordinary write remains illegal.
     value = object()
 
-    @registry.register_scope_var_query_or_decl
+    @registry.direct_call
     def declared():
         return value
 
@@ -395,6 +396,37 @@ def test_result_span_contract_keeps_opaque_context_and_direct_call_exemption(lan
     assert not any(event[:2] == ("bind", "kept") for event in language.events)
 
 
+def test_native_bind_direct_call_keeps_returned_and_stored_variable_identity():
+    # renamed = T.bind(argument(x), var=produced): the native producer alone
+    # emits its binding, and assignment preserves its explicit variable/name/span.
+    from tvm import ir, tirx
+
+    span = ir.Span(ir.SourceName("producer.py"), 7, 7, 2, 19)
+    produced = ir.Var("producer_name", "int32", span)
+    calls, observed = [], []
+
+    def argument(value):
+        calls.append(value)
+        return value
+
+    @registry.direct_call
+    def observe(value):
+        observed.append(value)
+        assert value.same_as(produced) and value.span.same_as(span)
+        assert value.name == "producer_name"
+
+    function = entry.parse(
+        "@T.prim_func\ndef main(x: T.int32):\n"
+        "    renamed = T.bind(argument(x), var=produced)\n"
+        "    observe(renamed)\n    T.evaluate(renamed)\n",
+        extra_vars={"produced": produced, "argument": argument, "observe": observe},
+    )
+    binding, use = function.body.seq
+    assert isinstance(binding, tirx.Bind) and isinstance(use, tirx.Evaluate)
+    assert binding.var.same_as(produced) and use.value.same_as(produced)
+    assert len(observed) == len(calls) == 1 and calls[0].same_as(function.params[0])
+
+
 def test_native_view_keeps_producer_identity_name_and_span(monkeypatch):
     # renamed = captured.view(mark()); assignment must not rename, attach a
     # consumer span to, or bind the direct native producer's result.
@@ -409,6 +441,7 @@ def test_native_view_keeps_producer_identity_name_and_span(monkeypatch):
     seen, produced, observed = [], [], []
     span = base.source_span(("producer.py", 7, 7, 2, 19))
 
+    @registry.direct_call
     @wraps(original)
     def view(buffer, *args):
         seen.append("view")

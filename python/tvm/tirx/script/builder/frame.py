@@ -69,9 +69,10 @@ class ForFrame(TIRFrame):
         """
         _ffi_api.ForFrameSetNames(self, names)
 
-    def __enter__(self) -> Array[Var]:  # type: ignore[override]
+    def __enter__(self) -> Var | Array[Var]:  # type: ignore[override]
+        """Enter with one variable directly, or the native sequence for multiple loops."""
         super().__enter__()
-        return self.vars
+        return self.vars[0] if len(self.vars) == 1 else self.vars
 
 
 @_register_object("script.ir_builder.tirx.AssertFrame")

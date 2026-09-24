@@ -243,10 +243,10 @@ def test_vulkan_constant_passing(vulkan_parameter_impl, vulkan_parameter_dtype):
                 scalar_sum = scalar_vars[0]
                 for s in scalar_vars[1:]:
                     scalar_sum = scalar_sum + s
-                with T_builder.thread_binding(tvm.tirx.ceildiv(n_var, 64), thread="blockIdx.x") as (
-                    i_0,
-                ):
-                    with T_builder.thread_binding(64, thread="threadIdx.x") as (i_1,):
+                with T_builder.thread_binding(
+                    tvm.tirx.ceildiv(n_var, 64), thread="blockIdx.x"
+                ) as i_0:
+                    with T_builder.thread_binding(64, thread="threadIdx.x") as i_1:
                         with T_builder.sblock("B"):
                             v_i = T_builder.axis.spatial(n_var, i_0 * 64 + i_1)
                             T_builder.where(i_0 * 64 + i_1 < n_var)

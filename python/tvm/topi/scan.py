@@ -120,7 +120,7 @@ def scanop(
             data_buf = T.buffer_proxy(data_buf)
             out_buf = T.buffer_proxy(out_buf)
 
-            with T.parallel(0, axis_mul_before * axis_mul_after) as (fused,):
+            with T.parallel(0, axis_mul_before * axis_mul_after) as fused:
                 i = fused // axis_mul_after
                 j = fused % axis_mul_after
                 base_idx = i * cumsum_axis_len * axis_mul_after + j
@@ -128,7 +128,7 @@ def scanop(
                     out_buf[base_idx] = cast(identity_value, dtype)
                 else:
                     out_buf[base_idx] = maybe_cast(data_buf[base_idx])
-                with T.serial(0, cumsum_axis_len - 1) as (_k,):
+                with T.serial(0, cumsum_axis_len - 1) as _k:
                     k = _k + 1
                     cur_idx = base_idx + k * axis_mul_after
                     prev_idx = base_idx + (k - 1) * axis_mul_after

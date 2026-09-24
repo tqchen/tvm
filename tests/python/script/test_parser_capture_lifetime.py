@@ -112,10 +112,35 @@ def test_reentrant_specialization_restores_root_bindings_after_failure(language)
 
 
 @pytest.mark.parametrize("module", [False, True])
-def test_eager_entry_releases_unused_scope_but_keeps_annotation_value(language, module):
+def test_eager_entry_releases_unused_scope_but_keeps_annotation_value(
+    language, module, monkeypatch
+):
     # Before: unrelated payload and annotation-only width share an enclosing scope.
     # Expected builder program: use width, then drop the temporary definition scope.
     X = language.X
+    from tvm.script.parser import protocol_registry as registry
+
+    source_references = []
+    copy_info = registry.copy_function_info
+
+    def observe_copy(source, target):
+        source_references.append(weakref.ref(target))
+        return copy_info(source, target)
+
+    monkeypatch.setattr(registry, "copy_function_info", observe_copy)
+
+    def temporary_metadata():
+        captured, option = Payload(), Payload()
+
+        def source():
+            return captured
+
+        registry.copy_function_info(X.script, source)
+        registry.register_function_options(source, {"temporary": option})
+        assert registry.function_info(source) is registry.function_info(X.script)
+        assert registry.get_function_options(source)["temporary"] is option
+        assert vars(source) == {}
+        return weakref.ref(source), weakref.ref(captured), weakref.ref(option)
 
     def make():
         payload = Payload()
@@ -137,8 +162,15 @@ def test_eager_entry_releases_unused_scope_but_keeps_annotation_value(language, 
         return Result, reference
 
     with without_cyclic_gc():
+        metadata_references = temporary_metadata()
+        assert all(reference() is None for reference in metadata_references)
         result, reference = make()
         assert reference() is None
+        # An ordinary Python class itself has cyclic type/MRO ownership. Its
+        # member lifetime is not a registry leak; the raw copied-function guard
+        # above isolates that requirement without requiring class collection.
+        if not module:
+            assert source_references and all(reference() is None for reference in source_references)
         function = result["main"] if module else result
         assert function.params[0].args[0].args[0] == (7,)
 

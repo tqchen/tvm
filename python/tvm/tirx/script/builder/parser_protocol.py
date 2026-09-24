@@ -969,13 +969,15 @@ def for_(
     Returns
     -------
     IRBuilderFrame
-        The same configured ForFrame; entry always returns its native variable sequence.
+        The same configured ForFrame. Entry returns the native variable for one
+        dimension, or the original variable sequence otherwise.
 
     Notes
     -----
     TIRx requires an active primitive function before entry. Variables already have final
-    names at entry, and Python performs single/multiple/starred unpacking. Invalid
-    iterable/names raise TypeError, ValueError or native errors. Relax rejects imperative
+    names at entry. Simple scalar targets use the entry result; generated tuple,
+    list or starred targets use the stable frame.vars sequence for unpacking.
+    Invalid iterable/names raise TypeError, ValueError or native errors. Relax rejects imperative
     loops. A frame stores its location before deferred body finalization.
 
     .. code:: python
@@ -984,7 +986,7 @@ def for_(
         for i in range(n):
             T.evaluate(i)
         # Generated builder
-        with X.for_(X.range_(n), names=("i",)) as (i,):
+        with X.for_(X.range_(n), names=("i",)) as i:
             X.emit_(X.evaluate(i))
     """
     if isinstance(iterable, _python.range):
@@ -1544,74 +1546,3 @@ def check_well_formed_(function: _tir.PrimFunc) -> None:
             _tir.analysis.verify_tirx_well_formed(function)
     except Exception as error:
         raise ValueError(f"{message}\n{error}") from error
-
-
-def scope_var_query_or_decl_(
-    value: Any, *, name: str | None = None, span: _Span = None, name_span: _Span = None
-) -> Any:
-    """Retain the identity of a scope query or declaration result.
-
-    Parameters
-    ----------
-    value : Var, IterVar, list, tuple or Array
-        The once-evaluated result of a registered scope variable operation: a native
-        Var (including a pointer-typed Var), an IterVar, or a list, tuple or Array of
-        these. The operation has already created or selected its variable.
-    name : str, optional
-        Source name for a scalar target. None (default) leaves its producer name.
-        Aggregate target names do not prefix or rename individual members.
-    span : SpanEntry, Span or source-location tuple, optional
-        Source statement location, used for block-axis naming when name_span is
-        omitted. None (default) leaves it unspecified. Other variables retain
-        the producer location already supplied by source-call handling.
-    name_span : SpanEntry, Span or source-location tuple, optional
-        Location of the target identifier. None (the default) uses span; it can differ
-        from the emitted statement location.
-
-    Returns
-    -------
-    Any
-        The exact input object, including the original sequence for aggregate results.
-
-    Notes
-    -----
-    TIRx requires an active function and preserves variable identity without Bind,
-    allocation, store or symbol-map canonicalization. Block axes receive source names and
-    duplicate-name validation; unnamed scope variables receive a name while explicit
-    producer names remain intact. Invalid result types raise TypeError and duplicate axis
-    names raise ValueError. Relax rejects the category. This declaration category takes
-    precedence over a same-named outer mutable storage target.
-
-    .. code:: python
-
-        # Source
-        tid = T.thread_id_in_wg()
-        # Generated builder
-        tid = X.scope_var_query_or_decl_(X.thread_id_in_wg(), name="tid")
-    """
-    name_span = span if name_span is None else name_span
-    if isinstance(value, list | tuple | _ir.Array):
-        for item in value:
-            scope_var_query_or_decl_(
-                item,
-                span=span,
-                name_span=name_span,
-            )
-        return value
-    variable = value.var if isinstance(value, _tir.IterVar) else value
-    if not isinstance(variable, _ir.Var):
-        raise TypeError("A scope variable declaration must return a native variable")
-    for frame in reversed(_IRBuilder.current().frames):
-        if isinstance(frame, _frame.SBlockFrame) and _python.any(
-            axis.var.same_as(variable) for axis in frame.iter_vars
-        ):
-            if name is not None and _python.any(
-                axis.var.name == name and not axis.var.same_as(variable) for axis in frame.iter_vars
-            ):
-                raise ValueError(f"Duplicate block axis name {name!r}")
-            _name(variable, name, name_span)
-            return value
-    if not variable.name and name is not None:
-        _IRBuilder.name(name, variable)
-    # The source call already owns the producer span; naming must not relocate it.
-    return value

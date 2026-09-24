@@ -70,7 +70,6 @@ from .parser_protocol import or_ as or_
 from .parser_protocol import range_ as range_
 from .parser_protocol import resolve_type_var_ as resolve_type_var_
 from .parser_protocol import return_ as return_
-from .parser_protocol import scope_var_query_or_decl_ as scope_var_query_or_decl_
 from .parser_protocol import set_mutable_var_ as set_mutable_var_
 from .parser_protocol import setattr as setattr
 from .parser_protocol import setitem as setitem

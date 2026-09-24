@@ -33,6 +33,9 @@ from tvm.script.ir_builder.base import source_span as _source_span
 from tvm.script.ir_builder.ir.parser_protocol import resolve_global_info_ as _lookup_global_info
 from tvm.script.parser.protocol_registry import args_policy as _args_policy
 from tvm.script.parser.protocol_registry import constexpr as constexpr
+from tvm.script.parser.protocol_registry import (
+    register_parameter_dtype as _register_parameter_dtype,
+)
 
 from . import distributed as dist
 from . import ir as _native
@@ -68,7 +71,6 @@ from .parser_protocol import or_ as or_
 from .parser_protocol import range_ as range_
 from .parser_protocol import resolve_type_var_ as resolve_type_var_
 from .parser_protocol import return_ as return_
-from .parser_protocol import scope_var_query_or_decl_ as scope_var_query_or_decl_
 from .parser_protocol import set_mutable_var_ as set_mutable_var_
 from .parser_protocol import setattr as setattr
 from .parser_protocol import setitem as setitem
@@ -168,7 +170,7 @@ def Prim(dtype, *, span=None):
     return _ir.PrimType(dtype)
 
 
-Prim.__tvm_parameter_dtype__ = "dtype"
+_register_parameter_dtype(Prim, "dtype")
 
 
 def Object(*, span=None):
@@ -234,7 +236,6 @@ __all__ = [
     "if_",
     "check_well_formed_",
     "resolve_type_var_",
-    "scope_var_query_or_decl_",
     "call_global_var_",
     "decl_mutable_var_",
     "set_mutable_var_",

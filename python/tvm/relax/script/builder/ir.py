@@ -208,6 +208,7 @@ from tvm.runtime._tensor import (
     webgpu,
 )
 from tvm.script.ir_builder.ir import decl_function, lookup_vdevice
+from tvm.script.parser.protocol_registry import module_decorator as _module_decorator
 
 from . import _ffi_api, frame
 
@@ -408,7 +409,7 @@ def rewriter(rewriter_mod: IRModule | type) -> PatternMatchingRewriter:
 
 
 # Member decorators defer to the same shared module construction boundary.
-rewriter.__tvm_module_decorator__ = True
+_module_decorator(rewriter)
 
 
 ############################# BindingBlock ##############################

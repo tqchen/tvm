@@ -936,8 +936,6 @@ class IRBuilderTranspiler(ast.NodeTransformer):
         if not isinstance(value, ast.Call | ast.Subscript):
             return None
         constructor = self._resolve_constructor(value)
-        if protocol.is_scope_var_query_or_decl(constructor):
-            return "scope_var_query_or_decl"
         if protocol.is_direct_call(constructor):
             return "direct_call"
         return "ordinary"
@@ -956,11 +954,7 @@ class IRBuilderTranspiler(ast.NodeTransformer):
         if isinstance(target, ast.Name):
             site = self.module.prescan.sites.get(target) if self.module.prescan else None
             kind = site.kind if site is not None else "ordinary"
-            if call_kind is not None and kind in (
-                "ordinary",
-                "direct_call",
-                "scope_var_query_or_decl",
-            ):
+            if call_kind is not None and kind in ("ordinary", "direct_call"):
                 kind = call_kind
             binding_declaration = kind == "binding_declaration" and (
                 self._resolve(site.declaration_root) is not None
@@ -1004,29 +998,17 @@ class IRBuilderTranspiler(ast.NodeTransformer):
                     name_span=self.module.span(target),
                     **keywords,
                 )
-            elif kind == "scope_var_query_or_decl" and not frame_value:
-                # -------------------- Pattern --------------------
-                # Python source:
-                #     i = X.axis.spatial(extent, value)
-                #
-                # Builder:
-                #     i = X.scope_var_query_or_decl_(X.axis.spatial(extent, value), name="i")
-                # -------------------------------------------------
-                # Only the dialect naming/validation hook runs; it preserves the variable identity.
-                value = self._call_dialect(
-                    "scope_var_query_or_decl_",
-                    [value],
-                    statement,
-                    name_span=self.module.span(target),
-                    **keywords,
-                )
             elif kind in ("direct_call", "module_alias") and not frame_value:
                 # -------------------- Pattern --------------------
                 # Python source:
+                #     i = X.axis.spatial(extent, value)
+                #     x = X.bind(value)
                 #     value = I.meta_var(x)
                 #     alias = Module
                 #
                 # Builder:
+                #     i = X.axis.spatial(extent, value)
+                #     x = X.bind(value)
                 #     value = I.meta_var(x)
                 #     alias = Module
                 # -------------------------------------------------
@@ -1184,7 +1166,7 @@ class IRBuilderTranspiler(ast.NodeTransformer):
         )
         site = self.module.prescan.sites.get(node.target) if self.module.prescan else None
         if call_kind == "direct_call" and (
-            site is None or site.kind in ("ordinary", "direct_call", "scope_var_query_or_decl")
+            site is None or site.kind in ("ordinary", "direct_call")
         ):
             # value: annotation() = direct(payload) -> value = direct(payload)
             # This category owns its result; discarded annotation syntax must
@@ -1436,15 +1418,21 @@ class IRBuilderTranspiler(ast.NodeTransformer):
             )
         return result
 
-    def visit_For(self, node: ast.For) -> ast.For | ast.With:
+    def visit_For(self, node: ast.For) -> ast.For | ast.With | list[ast.stmt]:
         # -------------------- Pattern --------------------
         # Python source:
         #     for i, *tail in X.grid(m, n, k):
         #         body(i, tail)
         #
         # Builder:
-        #     with X.for_(X.grid(m, n, k), names=("i", "*tail")) as (i, *tail):
+        #     loop = X.for_(X.grid(m, n, k), names=("i", "*tail"))
+        #     with loop:
+        #         i, *tail = loop.vars
         #         X.emit_(body(i, tail))
+        #
+        # A scalar source target uses ordinary entry directly:
+        #     with X.for_(X.grid(n), names=("i",)) as i:
+        #         X.emit_(body(i))
         # -------------------------------------------------
         if self.bypass_ast_rewrite:
             return self.generic_visit(node)
@@ -1463,7 +1451,6 @@ class IRBuilderTranspiler(ast.NodeTransformer):
             iterable = self.visit(node.iter)
         if isinstance(node.target, ast.Name):
             names: ast.expr = ast.Tuple([ast.Constant(node.target.id)], ast.Load())
-            node.target = ast.copy_location(ast.Tuple([node.target], ast.Store()), node.target)
         elif isinstance(node.target, ast.Tuple | ast.List):
             names = ast.Tuple(
                 [
@@ -1478,7 +1465,28 @@ class IRBuilderTranspiler(ast.NodeTransformer):
         # The generated iteration check originates at the source iterable, not
         # the final body line. Its native frame span still covers the whole loop.
         ast.copy_location(context, node.iter)
+        # A sequence target unpacks stable frame.vars after entry, including a
+        # one-dimensional loop whose public entry returns a scalar variable.
+        frame = self.module.fresh("_loop") if not isinstance(node.target, ast.Name) else None
         body = self.transform_statements(node.body)
+        if frame is not None:
+            unpack = ast.copy_location(
+                ast.Assign(
+                    [node.target],
+                    ast.Attribute(ast.Name(frame, ast.Load()), "vars", ast.Load()),
+                ),
+                node.target,
+            )
+            return [
+                self._assign(frame, context, node.iter),
+                ast.copy_location(
+                    ast.With(
+                        [ast.withitem(ast.Name(frame, ast.Load()))],
+                        [unpack, *body],
+                    ),
+                    node,
+                ),
+            ]
         return ast.copy_location(
             ast.With([ast.withitem(context, node.target)], body or [ast.Pass()]), node
         )

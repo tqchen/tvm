@@ -448,21 +448,54 @@ def main():
 
 
 @pytest.mark.parametrize(
-    "target, bounds, names", [("i", "4", ("i",)), ("i, j", "4, 5", ("i", "j"))]
+    "target, bounds, arguments, names",
+    [
+        ("i", "4", "i", ["i"]),
+        ("(i,)", "4", "i", ["i"]),
+        ("[i]", "4", "i", ["i"]),
+        ("i, j", "4, 5", "i, j", ["i", "j"]),
+        ("i, *tail", "4, 5, 6", "i, *tail", ["i", "tail_0", "tail_1"]),
+    ],
 )
-def test_loop_targets_configure_the_entered_frame(language, target, bounds, names):
-    # Before: for i, j in X.grid(4, 5): X.record(i)
-    # Expected builder program:
-    # with X.for_(X.grid(4, 5), names=("i", "j")) as (i, j):
-    #     X.emit_(X.record(i))
-    result = language.parse(f"""
-@X.script
-def main():
-    for {target} in X.grid({bounds}):
-        X.record(i)
-""")
-    assert ("loop_names", names) in language.events
-    assert result.body[0][1].name == "i"
+def test_loop_targets_configure_the_entered_frame(language, target, bounds, arguments, names):
+    # Scalar: with X.for_(...) as i. Sequence: loop = X.for_(...);
+    # with loop: original_target = loop.vars. Construct once and unpack stable vars.
+    grid = language.X.grid
+    frames, observed = [], []
+
+    def construct(*extents):
+        frame = grid(*extents)
+        frames.append((frame, tuple(frame.vars)))
+        return frame
+
+    def observe(*values):
+        frame, original = frames[-1]
+        assert language.stack[-1] is frame
+        assert len(values) == len(original)
+        assert all(value is old for value, old in zip(values, original))
+        assert [value.name for value in values] == names
+        observed.append(values)
+
+    language.X.grid = construct
+    source = (
+        f"@X.script\ndef main():\n    for {target} in X.grid({bounds}):\n"
+        f"        observe({arguments})\n"
+    )
+    language.parse(source, observe=observe)
+    assert len(frames) == len(observed) == 1
+    assert language.stack == [] and language.source_stack == []
+    if target == "(i,)":
+        failure = ValueError("loop body failure")
+
+        def fail(*values):
+            observe(*values)
+            raise failure
+
+        with pytest.raises(ValueError) as caught:
+            language.parse(source, observe=fail)
+        assert caught.value is failure
+        assert len(frames) == len(observed) == 2
+        assert language.stack == [] and language.source_stack == []
 
 
 def test_actual_decorator_preserves_annotation_definition_and_body_scopes(language):

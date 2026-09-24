@@ -444,10 +444,7 @@ class PrescanCollector(ast.NodeVisitor):
                 annotation.func if isinstance(annotation, ast.Call) else annotation,
                 self.environment,
             )
-            dtype_owner = constructor.__func__ if inspect.ismethod(constructor) else constructor
-            dtype = inspect.getattr_static(dtype_owner, "__tvm_parameter_dtype__", None)
-            if not isinstance(dtype, str):
-                dtype = None
+            dtype = protocol.get_parameter_dtype(constructor)
             declaration = protocol.get_type_var_decl(constructor)
             self._record_binding(
                 arg.arg,
@@ -515,9 +512,9 @@ class PrescanCollector(ast.NodeVisitor):
                 if origin is None or item.node.lineno < origin.lineno:
                     origins[item.name] = item.node
         for item in facts:
-            # Explicit symbol/scope declarations are not ordinary writes. Native
-            # frames retain declaration identity and validate scoped axis reuse.
-            if item.kind in ("symbol", "scope_var_query_or_decl") or item.name in assignable:
+            # Explicit symbols and direct producers are not ordinary IR bindings.
+            # Producers retain their own returned identity and naming.
+            if item.kind in ("symbol", "direct_call") or item.name in assignable:
                 continue
             origin = origins.get(item.name)
             if origin is not None and (item.node.lineno, item.node.col_offset) > (
@@ -550,13 +547,11 @@ class PrescanCollector(ast.NodeVisitor):
         #     x = I.meta_var(value)
         #
         # Builder:
-        #     tid = X.scope_var_query_or_decl_(X.thread_id(), name="tid")
+        #     tid = X.thread_id()
         #     x = I.meta_var(value)
         # -------------------------------------------------
-        # Registered identity-preserving categories also apply to destructured targets.
-        if protocol.is_scope_var_query_or_decl(constructor):
-            kind = "scope_var_query_or_decl"
-        elif protocol.is_direct_call(constructor):
+        # Direct producers also preserve identity in destructured targets.
+        if protocol.is_direct_call(constructor):
             kind = "direct_call"
         if isinstance(target, ast.Name):
             declaration = protocol.get_type_var_decl(constructor)
@@ -578,7 +573,7 @@ class PrescanCollector(ast.NodeVisitor):
                 )
             ):
                 self._record_binding(target.id, target, "mutable", annotation)
-            elif kind in ("scope_var_query_or_decl", "direct_call"):
+            elif kind == "direct_call":
                 self._record_binding(target.id, target, kind, annotation, value=value)
             elif binding_declaration is not None:
                 self._record_binding(
@@ -722,7 +717,7 @@ class PrescanCollector(ast.NodeVisitor):
         #         body(i)
         #
         # Builder:
-        #     with X.for_(values, names=("i",)) as (i,):
+        #     with X.for_(values, names=("i",)) as i:
         #         X.emit_(body(i))
         # -------------------------------------------------
         # Loop binders remain assignable and are never signature declarations.

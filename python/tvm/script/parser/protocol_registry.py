@@ -17,10 +17,13 @@
 """Parser-owned syntax registration, metadata and lookup helpers.
 
 Dialect builders register their callables here, and prescan, argument rewriting
-and transpilation read the resulting metadata. The argument-policy table lives
-across parses; other markers live on their callables. Aliases and bound methods
-share the existing callable identities. Records contain syntax facts and opaque
-builder namespaces, never active frames, constructed results or parse contexts.
+and transpilation read the resulting dictionary entries. Registration leaves
+callables unchanged. Aliases, bound methods and property getters share normalized
+callable identities. Explicit syntax registrations own their callables and records
+for registry lifetime. Copied source-function metadata and applied options use
+separate weak storage, releasing temporary functions and closures after parsing.
+Records contain syntax facts and opaque builder namespaces, never active frames,
+constructed results or parse contexts.
 
 Importing this module needs only the standard library. Registration does not
 initialize parser entry points or concrete dialects. Expression-argument policies
@@ -36,11 +39,76 @@ from __future__ import annotations
 
 import ast
 from collections.abc import Callable, Mapping
-from inspect import getattr_static, signature
+from inspect import signature
 from types import MappingProxyType, MethodType
 from typing import Any, NamedTuple, NoReturn, TypeVar
+from weakref import ReferenceType, ref
 
 _Callable = TypeVar("_Callable", bound=Callable[..., Any])
+
+_Metadata = TypeVar("_Metadata")
+_Registry = dict[int, tuple[ReferenceType[object] | None, object, _Metadata]]
+
+
+def _callable_key(target: object) -> object:
+    """Normalize descriptors without evaluating a property or producer."""
+    if issubclass(type(target), property):
+        target = property.fget.__get__(target)
+    if type(target) is MethodType:
+        target = target.__func__
+    return target
+
+
+def _register(table: _Registry[_Metadata], target: object, value: _Metadata) -> None:
+    """Own explicit syntax registrations for the registry lifetime."""
+    target = _callable_key(target)
+    table[id(target)] = (None, target, value)
+
+
+def _remember_source(table: _Registry[_Metadata], target: object, value: _Metadata) -> None:
+    """Keep copied parsing metadata without owning a temporary source function."""
+    target = _callable_key(target)
+    key = id(target)
+
+    def discard(reference: ReferenceType[object]) -> None:
+        entry = table.get(key)
+        if entry is not None and entry[0] is reference:
+            del table[key]
+
+    try:
+        reference = ref(target, discard)
+        owner = None
+    except TypeError:
+        # Built-ins/extensions may expose neither writable attributes nor weakrefs.
+        reference = None
+        owner = target
+    table[key] = (reference, owner, value)
+
+
+def _lookup(table: _Registry[_Metadata], target: object) -> _Metadata | None:
+    """Read by identity, without invoking user hashing, equality or descriptors."""
+    target = _callable_key(target)
+    entry = table.get(id(target))
+    if entry is None:
+        return None
+    reference, owner, value = entry
+    if reference is not None:
+        owner = reference()
+    return value if owner is target else None
+
+
+_RESULT_SPAN: _Registry[bool] = {}
+_DIRECT_CALL: _Registry[bool] = {}
+_TYPE_VAR_DECL: _Registry[DeclarationArguments] = {}
+_BINDING_DECL: _Registry[bool] = {}
+_MUTABLE_VAR_DECL: _Registry[frozenset[str]] = {}
+_FUNCTION_INFO: _Registry[FunctionDecoratorInfo] = {}
+_RESULT_MEMBERS: _Registry[object] = {}
+_MODULE_DECORATOR: _Registry[bool] = {}
+_PARAMETER_DTYPE: _Registry[str] = {}
+# Parsing a source function does not make it a persistent syntax registration.
+_COPIED_FUNCTION_INFO: _Registry[FunctionDecoratorInfo] = {}
+_FUNCTION_OPTIONS: _Registry[Mapping[str, Any]] = {}
 
 
 def result_span(constructor: _Callable) -> _Callable:
@@ -75,7 +143,7 @@ def result_span(constructor: _Callable) -> _Callable:
         # Builder: X.emit_(make_node(x), span=_S[i])
         # Nested expression: _S[i](make_node(x))
     """
-    constructor.__tvm_result_span__ = True
+    _register(_RESULT_SPAN, constructor, True)
     return constructor
 
 
@@ -94,8 +162,8 @@ def is_result_span(constructor: object) -> bool:
 
     Notes
     -----
-    Bound methods share their underlying function's marker. Only the literal
-    boolean True declares the contract; descriptors and unregistered values do not.
+    Bound methods and properties share their underlying function's registration.
+    Callable attributes are not consulted; unregistered values retain ordinary handling.
     This lookup creates no IR, enters no frame and retains no construction state.
 
     .. code:: python
@@ -106,9 +174,7 @@ def is_result_span(constructor: object) -> bool:
             # Generated: _S[i](make_node(x))
             pass
     """
-    if isinstance(constructor, MethodType):
-        constructor = constructor.__func__
-    return getattr_static(constructor, "__tvm_result_span__", False) is True
+    return _lookup(_RESULT_SPAN, constructor) is True
 
 
 def constexpr(value: object) -> NoReturn:
@@ -172,10 +238,8 @@ class ExprStrPolicy(NamedTuple):
     scalar_strings: bool = True
 
 
-# Process-wide registry: callable identity -> immutable syntax policy. Dialect
-# imports register once; aliases share identities. No per-function entries or
-# evaluation results are cached, and transpilers only read this table.
-_ARGS_POLICIES: dict[object, ArgsPolicy] = {}
+# Argument policies use the same normalized identity and lifetime as other syntax facts.
+_ARGS_POLICIES: _Registry[ArgsPolicy] = {}
 
 
 class ArgsPolicy(NamedTuple):
@@ -210,13 +274,13 @@ def get_args_policy(constructor: object) -> ArgsPolicy | None:
     Returns
     -------
     ArgsPolicy | None
-        Shared immutable policy, or None for unregistered/unhashable values.
+        Shared immutable policy, or None for unregistered values.
 
     Notes
     -----
     No builder context, IR construction or source-span changes occur. The returned policy
-    belongs to process-wide registration, not a particular parse. Custom hashing errors
-    other than TypeError propagate.
+    belongs to callable registration, not a particular parse. Identity lookup does not
+    call user hashing or equality methods.
 
     .. code:: python
 
@@ -228,12 +292,7 @@ def get_args_policy(constructor: object) -> ArgsPolicy | None:
         policy = get_args_policy(tensor)
         tensor((X.resolve_type_var_("n"),))
     """
-    if isinstance(constructor, MethodType):
-        constructor = constructor.__func__
-    try:
-        return _ARGS_POLICIES.get(constructor)
-    except TypeError:
-        return None
+    return _lookup(_ARGS_POLICIES, constructor)
 
 
 def handle_call_args_policy(
@@ -353,8 +412,8 @@ def args_policy(
         else:
             result = constructor
         policy = ArgsPolicy(MappingProxyType(fields.copy()), expression)
-        _ARGS_POLICIES[constructor] = policy
-        _ARGS_POLICIES[result] = policy
+        _register(_ARGS_POLICIES, constructor, policy)
+        _register(_ARGS_POLICIES, result, policy)
         return result
 
     return decorate
@@ -372,8 +431,8 @@ class DeclarationArguments(NamedTuple):
 
     Notes
     -----
-    `register_type_var_decl` attaches this record to its callable. Aliases
-    and transpilation passes share it for the callable's lifetime; it stores
+    `register_type_var_decl` stores this record in the parser-owned table. Aliases
+    and transpilation passes share it for the registry's lifetime; it stores
     no symbols or construction results and enters no builder frame.
     """
 
@@ -389,7 +448,7 @@ def register_type_var_decl(
     Parameters
     ----------
     constructor : callable
-        Constructor supporting syntax attribute assignment. Identity is retained.
+        Constructor whose identity is retained; writable attributes are unnecessary.
     value_parameter : str, optional
         Value parameter whose absence means declaration; defaults to expr.
     dtype : object, optional
@@ -405,8 +464,8 @@ def register_type_var_decl(
     -----
     No constructor executes and no frame is entered. Syntax predeclaration precedes
     dependent signature shapes while original body ordering remains. Only direct declaration
-    forms are collected, not nested/effectful expressions. Aliases share callable metadata;
-    unsupported attribute assignment raises AttributeError.
+    forms are collected, not nested/effectful expressions. Aliases share the same
+    dictionary-owned syntax record; registration leaves callable attributes untouched.
 
     .. code:: python
 
@@ -419,7 +478,7 @@ def register_type_var_decl(
         # Generated builder
         n = X.resolve_type_var_("n", dtype="int32")
     """
-    constructor.__tvm_type_var_decl__ = DeclarationArguments(value_parameter, dtype)
+    _register(_TYPE_VAR_DECL, constructor, DeclarationArguments(value_parameter, dtype))
     return constructor
 
 
@@ -429,7 +488,7 @@ def register_binding_decl(constructor: _Callable) -> _Callable:
     Parameters
     ----------
     constructor : callable
-        Producer supporting syntax attribute assignment.
+        Producer, including built-in or slotted callables without writable attributes.
 
     Returns
     -------
@@ -454,7 +513,7 @@ def register_binding_decl(constructor: _Callable) -> _Callable:
         # Generated builder
         x = X.bind_(make_value(), name="x")
     """
-    constructor.__tvm_binding_decl__ = True
+    _register(_BINDING_DECL, constructor, True)
     return constructor
 
 
@@ -469,7 +528,7 @@ def get_type_var_decl(constructor: object) -> DeclarationArguments | None:
     Returns
     -------
     DeclarationArguments or None
-        The attached record, or None when no declaration is registered.
+        The registered record, or None when no declaration is registered.
 
     Notes
     -----
@@ -486,9 +545,7 @@ def get_type_var_decl(constructor: object) -> DeclarationArguments | None:
         declaration = get_type_var_decl(X.int32)
         n = X.resolve_type_var_("n", dtype=declaration.dtype)
     """
-    if isinstance(constructor, MethodType):
-        constructor = constructor.__func__
-    declaration = getattr_static(constructor, "__tvm_type_var_decl__", None)
+    declaration = _lookup(_TYPE_VAR_DECL, constructor)
     return declaration if isinstance(declaration, DeclarationArguments) else None
 
 
@@ -520,9 +577,7 @@ def is_binding_decl(constructor: object) -> bool:
         is_binding_decl(make_value)
         x = X.bind_(make_value(), name="x")
     """
-    if isinstance(constructor, MethodType):
-        constructor = constructor.__func__
-    return getattr_static(constructor, "__tvm_binding_decl__", False) is True
+    return _lookup(_BINDING_DECL, constructor) is True
 
 
 def register_mutable_var_decl(constructor: _Callable, *, syntax: str = "call") -> _Callable:
@@ -531,7 +586,7 @@ def register_mutable_var_decl(constructor: _Callable, *, syntax: str = "call") -
     Parameters
     ----------
     constructor : callable
-        Storage/annotation constructor supporting attribute assignment.
+        Storage/annotation constructor; no writable attribute or slot is required.
     syntax : str, optional
         One of call (default), annotation or parameter. Repeated registration adds to
         its immutable syntax set.
@@ -544,8 +599,8 @@ def register_mutable_var_decl(constructor: _Callable, *, syntax: str = "call") -
     Notes
     -----
     No value is constructed, cached or inspected. Builders own storage and stores; prescan
-    reads only syntax category. Unknown syntax raises ValueError and unsupported attribute
-    assignment raises AttributeError. Declaration patterns take precedence over a prior
+    reads only syntax category. Unknown syntax raises ValueError. Registration leaves
+    callable attributes untouched. Declaration patterns take precedence over a prior
     target binding.
 
     .. code:: python
@@ -561,8 +616,8 @@ def register_mutable_var_decl(constructor: _Callable, *, syntax: str = "call") -
     """
     if syntax not in ("call", "annotation", "parameter"):
         raise ValueError("Mutable declaration syntax must be call, annotation or parameter")
-    kinds: frozenset[str] = getattr(constructor, "__tvm_mutable_var_decl__", frozenset())
-    constructor.__tvm_mutable_var_decl__ = kinds | frozenset((syntax,))
+    kinds = _lookup(_MUTABLE_VAR_DECL, constructor) or frozenset()
+    _register(_MUTABLE_VAR_DECL, constructor, kinds | frozenset((syntax,)))
     return constructor
 
 
@@ -597,9 +652,7 @@ def is_mutable_var_decl(constructor: object, *, syntax: str) -> bool:
         is_mutable_var_decl(T.local_scalar, syntax="call")
         x = X.decl_mutable_var_(X.local_scalar("int32"), name="x")
     """
-    if isinstance(constructor, MethodType):
-        constructor = constructor.__func__
-    kinds = getattr_static(constructor, "__tvm_mutable_var_decl__", frozenset())
+    kinds = _lookup(_MUTABLE_VAR_DECL, constructor)
     return isinstance(kinds, frozenset) and syntax in kinds
 
 
@@ -646,7 +699,7 @@ def register_function(
     Parameters
     ----------
     decorator : callable
-        Function decorator supporting attribute assignment; retained unchanged.
+        Function decorator, retained unchanged without writing attributes.
     builder : object or None
         Opaque dialect builder namespace, or None for ordinary Python functions.
     option_map : mapping of str to str, optional
@@ -666,8 +719,9 @@ def register_function(
     Notes
     -----
     No annotation, function or builder executes and no frame/span is retained. Registration
-    replaces callable metadata for its lifetime; mappings are read-only by convention.
-    Unsupported attributes or invalid mappings raise AttributeError/TypeError/ValueError.
+    owns the callable and its metadata for registry lifetime; mappings are read-only
+    by convention. A namespace may intentionally refer back to its decorator.
+    Invalid mappings raise TypeError or ValueError; writable attributes are not required.
     These records contain syntax options, never per-parse results.
 
     .. code:: python
@@ -684,9 +738,11 @@ def register_function(
         with X.function(private=True):
             pass
     """
-    decorator.__tvm_function_info__ = FunctionDecoratorInfo(
+    info = FunctionDecoratorInfo(
         builder, dict(option_map or {}), dict(defaults or {}), bool(python)
     )
+    _COPIED_FUNCTION_INFO.pop(id(_callable_key(decorator)), None)
+    _register(_FUNCTION_INFO, decorator, info)
     return decorator
 
 
@@ -701,13 +757,15 @@ def function_info(decorator: object) -> FunctionDecoratorInfo | None:
     Returns
     -------
     FunctionDecoratorInfo | None
-        Shared flat record, or None for an unregistered decorator.
+        Shared explicit or copied source record, or None when neither is registered.
 
     Notes
     -----
     No context, construction effect or source attachment. Option mappings belong to
     registration and must not be mutated by a parse. Static lookup does not evaluate
-    properties; unknown decorators are diagnosed by the parser consumer.
+    properties; unknown decorators are diagnosed by the parser consumer. Copied
+    source metadata takes precedence without promoting that source function to a
+    persistent syntax registration.
 
     .. code:: python
 
@@ -722,14 +780,12 @@ def function_info(decorator: object) -> FunctionDecoratorInfo | None:
         with X.function():
             pass
     """
-    if isinstance(decorator, MethodType):
-        decorator = decorator.__func__
-    info = getattr_static(decorator, "__tvm_function_info__", None)
-    return info if isinstance(info, FunctionDecoratorInfo) else None
+    info = _lookup(_COPIED_FUNCTION_INFO, decorator)
+    return info if info is not None else _lookup(_FUNCTION_INFO, decorator)
 
 
 def copy_function_info(source: Callable[..., Any], target: Callable[..., Any]) -> None:
-    """Attach an existing decorator registration to its source function.
+    """Share an existing decorator registration with its source function.
 
     Parameters
     ----------
@@ -741,14 +797,15 @@ def copy_function_info(source: Callable[..., Any], target: Callable[..., Any]) -
     Returns
     -------
     None
-        The target is updated in place without constructing another record.
+        The target receives a separate temporary entry sharing the exact syntax record.
 
     Notes
     -----
-    Missing registration or unsupported attribute assignment raises AttributeError.
-    The source attribute is read once and assigned unchanged. Definition scope,
-    applied decorator options and native construction remain entry-point concerns;
-    no parse environment or result is retained by this operation.
+    Missing registration raises AttributeError. The record is read once and shared
+    unchanged through a weak callable key, so copying does not retain a temporary
+    source function or its closure. Applied options use register_function_options;
+    definition scope and native construction remain entry-point concerns. No parse
+    environment or result is retained by this operation.
 
     .. code:: python
 
@@ -761,76 +818,10 @@ def copy_function_info(source: Callable[..., Any], target: Callable[..., Any]) -
         # Decorator preparation before the generated builder executes
         copy_function_info(prim_func, f)
     """
-    target.__tvm_function_info__ = source.__tvm_function_info__
-
-
-def register_scope_var_query_or_decl(constructor: _Callable) -> _Callable:
-    """Mark a call that already owns its scope variable or immutable declaration.
-
-    Parameters
-    ----------
-    constructor : callable
-        Scope query/declaration producer, for example a block-axis constructor, scope-ID
-        helper or T.bind.
-
-    Returns
-    -------
-    _Callable
-        The exact producer with scope_var_query_or_decl syntax metadata.
-
-    Notes
-    -----
-    Registration neither executes the producer nor stores an IR result/frame. The RHS
-    executes once; generated assignment preserves returned identities and delegates source
-    naming/validation to the dialect hook. This category precedes ordinary binding or a
-    store to an outer mutable name. Callable attribute errors propagate.
-
-    .. code:: python
-
-        from tvm.script.parser.protocol_registry import register_scope_var_query_or_decl
-
-        # Source
-        register_scope_var_query_or_decl(T.bind)
-        # Source
-        x = T.bind(value)
-        # Generated builder
-        x = X.scope_var_query_or_decl_(X.bind(value), name="x")
-    """
-    constructor.__tvm_scope_var_query_or_decl__ = True
-    return constructor
-
-
-def is_scope_var_query_or_decl(constructor: object) -> bool:
-    """Read scope-query/declaration metadata from a resolved callable.
-
-    Parameters
-    ----------
-    constructor : object
-        Resolved producer or bound method; bound methods read the underlying function.
-
-    Returns
-    -------
-    bool
-        True for the registered syntax category, otherwise False.
-
-    Notes
-    -----
-    No builder context/evaluation or span handling occurs. This is syntax recognition, not a
-    runtime variable-type test. Static lookup does not evaluate properties.
-
-    .. code:: python
-
-        from tvm.script.parser.protocol_registry import is_scope_var_query_or_decl
-
-        # Source
-        x = T.bind(value)
-        # Rewrite-time decision and generated operation
-        is_scope_var_query_or_decl(T.bind)
-        x = X.scope_var_query_or_decl_(X.bind(value), name="x")
-    """
-    if isinstance(constructor, MethodType):
-        constructor = constructor.__func__
-    return getattr_static(constructor, "__tvm_scope_var_query_or_decl__", False) is True
+    info = function_info(source)
+    if info is None:
+        raise AttributeError("Callable has no registered function metadata")
+    _remember_source(_COPIED_FUNCTION_INFO, target, info)
 
 
 def direct_call(constructor: _Callable) -> _Callable:
@@ -839,7 +830,7 @@ def direct_call(constructor: _Callable) -> _Callable:
     Parameters
     ----------
     constructor : callable
-        Producer, method or class supporting attribute assignment. Callable identity and
+        Producer, method or class, including immutable callables. Callable identity and
         ordinary return values are retained.
 
     Returns
@@ -853,7 +844,7 @@ def direct_call(constructor: _Callable) -> _Callable:
     result ``at_`` and the outer ``with_at_group_`` wrapper. Callee/arguments still evaluate once in
     order, and argument expressions follow their own syntax rules. The callable owns any IR
     effects or source attribution it needs. This is separate from AlreadyEmitted, which
-    retains ordinary result-span attachment. Attribute errors propagate.
+    retains ordinary result-span attachment. Registration writes only parser-owned tables.
 
     .. code:: python
 
@@ -867,7 +858,7 @@ def direct_call(constructor: _Callable) -> _Callable:
         x = identity(value)
         identity(value)
     """
-    constructor.__tvm_direct_call__ = True
+    _register(_DIRECT_CALL, constructor, True)
     return constructor
 
 
@@ -901,9 +892,7 @@ def is_direct_call(constructor: object) -> bool:
         is_direct_call(I.meta_var)
         x = I.meta_var(value)
     """
-    if isinstance(constructor, MethodType):
-        constructor = constructor.__func__
-    return getattr_static(constructor, "__tvm_direct_call__", False) is True
+    return _lookup(_DIRECT_CALL, constructor) is True
 
 
 def register_result_members(constructor: _Callable, members: object) -> _Callable:
@@ -912,8 +901,8 @@ def register_result_members(constructor: _Callable, members: object) -> _Callabl
     Parameters
     ----------
     constructor : callable
-        Registered annotation or value producer. Bound methods attach metadata
-        to their underlying function; the supplied callable is returned unchanged.
+        Registered annotation or value producer. Bound methods and properties register
+        their underlying function; the supplied target is returned unchanged.
     members : object
         Opaque namespace of actual member callables/descriptors. It describes
         syntax available on the produced value, without describing an IR type.
@@ -921,7 +910,7 @@ def register_result_members(constructor: _Callable, members: object) -> _Callabl
     Returns
     -------
     _Callable
-        The original producer with its member-namespace attribute.
+        The original producer with its dictionary-owned member-namespace registration.
 
     Notes
     -----
@@ -930,7 +919,7 @@ def register_result_members(constructor: _Callable, members: object) -> _Callabl
     namespace from existing prescan facts. A registered member producer may
     supply another namespace for chained views. Unknown or ambiguous aliases
     retain their ordinary policy; spelling alone never marks a method direct.
-    Attribute-assignment errors propagate. Registration performs no source
+    Registration requires no writable attributes and performs no source
     attachment and does not itself mark a call as direct_call.
 
     .. code:: python
@@ -945,8 +934,7 @@ def register_result_members(constructor: _Callable, members: object) -> _Callabl
         # Generated Python preserves the producer's ordinary result.
         view = A.permute(1, 0)
     """
-    target = constructor.__func__ if isinstance(constructor, MethodType) else constructor
-    target.__tvm_result_members__ = members
+    _register(_RESULT_MEMBERS, constructor, members)
     return constructor
 
 
@@ -967,7 +955,7 @@ def get_result_members(constructor: object) -> object | None:
     Notes
     -----
     This reads syntax metadata only. It enters no frame, calls no producer and
-    inspects no constructed IR result. Metadata has callable lifetime; no
+    inspects no constructed IR result. Explicit metadata has registry lifetime; no
     function-local lookup state is cached. Static lookup does not evaluate properties.
     Member lookup still checks the actual member's direct_call or
     declaration metadata; a namespace does not make all its methods direct.
@@ -984,8 +972,186 @@ def get_result_members(constructor: object) -> object | None:
         # Generated Python
         view = A.permute(1, 0)
     """
-    if isinstance(constructor, property):
-        constructor = constructor.fget
-    if isinstance(constructor, MethodType):
-        constructor = constructor.__func__
-    return getattr_static(constructor, "__tvm_result_members__", None)
+    return _lookup(_RESULT_MEMBERS, constructor)
+
+
+def module_decorator(decorator: _Callable) -> _Callable:
+    """Register a module decorator without changing its callable identity.
+
+    Parameters
+    ----------
+    decorator : callable
+        Module decorator, including immutable or slotted callables.
+
+    Returns
+    -------
+    _Callable
+        The identical callable, with dictionary-owned syntax registration.
+
+    Notes
+    -----
+    Member function decorators use this classification to defer parsing until
+    the enclosing module is available. Registration calls no producer, writes
+    no callable attributes and retains no parse scope or constructed result.
+
+    .. code:: python
+
+        @module_decorator
+        def module(source):
+            return parse(source)
+        # Source: @module class M: ...
+        # Member decorators defer; module(source) owns the shared parse.
+    """
+    _register(_MODULE_DECORATOR, decorator, True)
+    return decorator
+
+
+def is_module_decorator(decorator: object) -> bool:
+    """Read module-decorator syntax without evaluating descriptors.
+
+    Parameters
+    ----------
+    decorator : object
+        Resolved callable, bound method or property getter descriptor.
+
+    Returns
+    -------
+    bool
+        True only for an explicitly registered module decorator.
+
+    Notes
+    -----
+    Normalized identity lookup does not call the decorator or inspect its
+    attributes. Unregistered values retain ordinary function-entry handling.
+
+    .. code:: python
+
+        # Source: @module class M: ...
+        if is_module_decorator(module):
+            # Defer member construction to the module boundary.
+            pass
+    """
+    return _lookup(_MODULE_DECORATOR, decorator) is True
+
+
+def register_parameter_dtype(constructor: _Callable, dtype: str) -> _Callable:
+    """Register parameter dtype syntax for a constructor.
+
+    Parameters
+    ----------
+    constructor : callable
+        Parameter annotation constructor, returned unchanged.
+    dtype : str
+        Dtype spelling, or the constructor argument name that supplies it.
+
+    Returns
+    -------
+    _Callable
+        The identical constructor with a dictionary-owned dtype policy.
+
+    Notes
+    -----
+    Prescan reads this syntax fact without evaluating annotations. Non-string
+    metadata raises TypeError; registration constructs no IR, writes no callable
+    attributes and stores no evaluated parameters.
+
+    .. code:: python
+
+        register_parameter_dtype(Prim, "dtype")
+        # Source: def main(value: Prim("int32")): ...
+        # Prescan records the literal dtype for the parameter declaration.
+    """
+    if not isinstance(dtype, str):
+        raise TypeError("Parameter dtype metadata must be a string")
+    _register(_PARAMETER_DTYPE, constructor, dtype)
+    return constructor
+
+
+def get_parameter_dtype(constructor: object) -> str | None:
+    """Read a registered constructor's parameter dtype syntax.
+
+    Parameters
+    ----------
+    constructor : object
+        Resolved constructor, bound method or property getter descriptor.
+
+    Returns
+    -------
+    str or None
+        Registered dtype spelling/argument name, or None when unregistered.
+
+    Notes
+    -----
+    Lookup normalizes callable identities and executes no descriptor, annotation
+    or constructor. The receiving dialect owns parameter construction.
+
+    .. code:: python
+
+        # Source: def main(value: Prim("int32")): ...
+        dtype_parameter = get_parameter_dtype(Prim)
+        # Prescan reads the named source argument; no Prim call runs here.
+    """
+    return _lookup(_PARAMETER_DTYPE, constructor)
+
+
+def register_function_options(function: _Callable, options: Mapping[str, Any]) -> _Callable:
+    """Record applied decorator options without retaining the source function.
+
+    Parameters
+    ----------
+    function : callable
+        Source function receiving the already-applied decorator's syntax options.
+    options : Mapping[str, Any]
+        Applied keyword options, copied into a read-only mapping.
+
+    Returns
+    -------
+    _Callable
+        The identical function, with no attribute mutation or forwarding wrapper.
+
+    Notes
+    -----
+    Values are syntax options, never parse scopes, frames or construction results.
+    These are temporary source facts, separate from explicit syntax registrations.
+    Weak callable ownership permits Python source functions and their closures
+    to disappear after parsing, even when cyclic GC is disabled. Non-weak-referenceable
+    native or slotted targets use a strong fallback; ordinary Python functions
+    require no such fallback. The supplied mapping itself is not retained.
+
+    .. code:: python
+
+        # Source: @prim_func(private=True) def main(): ...
+        register_function_options(main, {"private": True})
+        # Entry later generates: with X.function(private=True): ...
+    """
+    _remember_source(_FUNCTION_OPTIONS, function, MappingProxyType(dict(options)))
+    return function
+
+
+def get_function_options(function: object) -> Mapping[str, Any]:
+    """Read applied decorator options for a source function.
+
+    Parameters
+    ----------
+    function : object
+        Source function, normalized consistently with registration.
+
+    Returns
+    -------
+    Mapping[str, Any]
+        Registered read-only options, or an empty mapping when unregistered.
+
+    Notes
+    -----
+    Entry reads these syntax options to reconstruct an explicitly applied
+    decorator. Lookup does not evaluate the function, construct IR, attach
+    spans or retrieve a captured environment.
+
+    .. code:: python
+
+        # Source: @prim_func(private=True) def main(): ...
+        options = get_function_options(main)
+        # Generated builder: with X.function(private=True): ...
+    """
+    options = _lookup(_FUNCTION_OPTIONS, function)
+    return options if options is not None else {}

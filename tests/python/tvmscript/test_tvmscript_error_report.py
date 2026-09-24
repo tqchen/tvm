@@ -182,17 +182,23 @@ def test_duplicate_block_axes():
         for i, j in T.grid(16, 16):
             with T.sblock():
                 vi = T.axis.S(16, i)
-                vi = T.axis.S(16, j)  # error
-                T.evaluate(1.0)
+                vi = T.axis.S(16, j)
+                T.evaluate(vi)
 
     def duplicate_block_axes_remap() -> None:
         for i, j in T.grid(16, 16):
             with T.sblock():
-                vi, vi = T.axis.remap("SS", [i, j])  # error
-                T.evaluate(1.0)
+                vi, vi = T.axis.remap("SS", [i, j])
+                T.evaluate(vi)
 
-    check_error(duplicate_block_axes, 5, ValueError)
-    check_error(duplicate_block_axes_remap, 4, ValueError)
+    # Python spelling does not rename or merge independently created native axes.
+    for source in (duplicate_block_axes, duplicate_block_axes_remap):
+        parsed = T.prim_func(s_tir=True)(source)
+        block = parsed.body.block.body.body.body.block
+        assert len(block.iter_vars) == 2
+        first, second = (axis.var for axis in block.iter_vars)
+        assert not first.same_as(second)
+        assert block.body.value.same_as(second)
 
 
 def test_miss_block_bind():
@@ -289,7 +295,7 @@ def test_duplicate_block_signature():
         for i, j in T.grid(16, 16):
             with T.sblock():
                 vi, vj = T.axis.remap("SS", [i, j])
-                vi = T.axis.S(i, 16)  # error
+                vi = T.axis.S(i, 16)
                 T.evaluate(1.0)
 
     def duplicate_sblock_attrs_with_same_key_diff_value() -> None:
@@ -304,7 +310,10 @@ def test_duplicate_block_signature():
     check_error(duplicate_writes, 7, tvm.error.InternalError)
     check_error(duplicate_predicate, 6, tvm.error.InternalError)
     check_error(duplicate_init, 7, ValueError)
-    check_error(duplicate_axes, 5, ValueError)
+    parsed = T.prim_func(s_tir=True)(duplicate_axes)
+    axes = parsed.body.block.body.body.body.block.iter_vars
+    assert len(axes) == 3
+    assert not axes[0].var.same_as(axes[2].var)
     check_error(duplicate_sblock_attrs_with_same_key_diff_value, 6, tvm.error.InternalError)
 
 

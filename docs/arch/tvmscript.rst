@@ -177,6 +177,11 @@ as ``expr_str`` translate symbolic strings written directly in source expression
 preserves a module reference for builder-side lookup. Dtype and placement strings remain
 literal. Captured or computed symbolic shapes must already contain explicit IR variables;
 the parser does not interpret expression strings found inside captured values.
+Registration keeps the original callable unchanged and stores syntax facts in registry
+dictionaries. Bound methods and property getters use their underlying callable identity;
+lookup never evaluates a property. Explicit syntax registrations own the callable and its
+policy for the registry's lifetime. Metadata copied onto temporary source functions uses
+separate storage that releases with those functions and their closures.
 The registry selects a call's argument policy before traversal;
 ``parser/expr_str_handling.py`` decodes annotation/expression strings and maps their
 escaped, multiline and UTF-8 source ranges. The main visitor rewrites the decoded syntax.
@@ -185,6 +190,12 @@ Assignments become binding operations, standalone expressions become emission op
 and loops and scopes become builder contexts. Concrete binding, type checking, comparison
 construction, and frame finalization belong to the builders. Ordinary host calls and
 operator overloads execute as part of the generated Python program.
+
+Loop frames create their named variables during construction. Entering a frame returns
+the variable directly for one dimension and the variable sequence for multiple dimensions,
+so ordinary Python uses ``with T.serial(0, n) as i``. Generated scalar loops use the same
+entry form. Generated tuple, list and starred targets unpack the entered frame's stable
+``vars`` sequence, preserving explicit one-dimensional unpacking and native variable identity.
 
 Parser syntax restrictions raise ``SyntaxError`` with the original filename and source
 range. Python helper and builder exceptions propagate unchanged, preserving their identity,
@@ -272,6 +283,9 @@ registration inventories. Dialect ``parser_protocol`` modules implement construc
 registration and generated-builder contract; that module implements builder hooks
 without re-exporting registration APIs. For example, dialect registration imports
 ``args_policy`` and ``direct_call`` from ``tvm.script.parser.protocol_registry``.
+Scope-variable and block-axis producers, including explicit ``T.bind``, are direct calls:
+assignment keeps their returned objects and explicit producer names without another
+binding, emission, result-span attachment or assignment-derived naming hook.
 
 Calls registered with ``direct_call`` keep their ordinary results without automatic
 binding, emission or result-span attachment. Their arguments still undergo normal

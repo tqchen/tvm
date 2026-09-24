@@ -70,6 +70,11 @@ class Frame:
     def __init__(self, language, kind, *, decl=False, values=(), span=None, local=False, **options):
         self.language, self.kind, self.decl = language, kind, decl
         self.values = values
+        self.vars = (
+            [Value("loop", (bound,), f"i{index}") for index, bound in enumerate(values)]
+            if kind == "for"
+            else []
+        )
         self.function = Function() if kind == "function" else None
         self.params = []
         self.type_var_map = {}
@@ -83,10 +88,7 @@ class Frame:
         self.language.stack.append(self)
         self.language.events.append(("enter", self.kind, self.decl, self))
         if self.kind == "for":
-            names = self.names
-            names = (names,) if isinstance(names, str) else names
-            variables = [Value("loop", (bound,), name) for name, bound in zip(names, self.values)]
-            return variables
+            return self.vars[0] if len(self.vars) == 1 else self.vars
         return self
 
     def __exit__(self, error_type, error, traceback):
@@ -175,7 +177,6 @@ class Language:
             resolve_type_var_=self.resolve_type_var,
             bind_=self.bind,
             check_well_formed_=lambda result: None,
-            scope_var_query_or_decl_=lambda value, **kwargs: value,
             emit_=self.emit,
             decl_mutable_var_=self.decl_mutable,
             set_mutable_var_=self.set_mutable,
@@ -296,6 +297,18 @@ class Language:
 
     def for_frame(self, frame, *, names=None, span=None, **kwargs):
         frame.names = names
+        if names is not None:
+            names = (names,) if isinstance(names, str) else names
+            expanded = []
+            for name in names:
+                if name.startswith("*"):
+                    expanded.extend(
+                        f"{name[1:]}_{i}" for i in range(len(frame.vars) - len(names) + 1)
+                    )
+                else:
+                    expanded.append(name)
+            for variable, name in zip(frame.vars, expanded):
+                variable.name = name
         if span is not None:
             span(frame)
         self.events.append(("loop_names", names))

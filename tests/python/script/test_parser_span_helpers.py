@@ -125,28 +125,57 @@ def test_explicit_emission_keeps_receipt_identity_and_normalized_span(existing_d
     assert locations(builder.get().value) == [("definition.py", 7, 1, 20)]
 
 
-def test_native_loop_keeps_entered_variables_and_stored_span_at_exit():
-    # for i, *tail in grid(...): names are final before native entry; an unrelated
-    # exit-time context cannot replace the loop's recorded caller/definition span.
+@pytest.mark.parametrize(
+    "producer, dimensions, names",
+    [
+        ("serial", 1, None),
+        ("parallel", 1, "i"),
+        ("vectorized", 1, None),
+        ("unroll", 1, "i"),
+        ("grid", 1, ("i",)),
+        ("grid", 2, ("i", "*tail")),
+    ],
+)
+def test_native_loop_keeps_entered_variables_and_stored_span_at_exit(producer, dimensions, names):
+    # Ordinary Python scalar entry and multi-loop entry preserve the native vars,
+    # independent of names spelling. Stored spans win over unrelated exit context.
+    from tvm import tirx
     from tvm.script.ir_builder import base
     from tvm.tirx.script import builder as T
 
     caller = base.SpanEntry(base.source_span(loc(3, "caller.py")))
     definition = base.SpanEntry(base.source_span(loc(7, "definition.py")))
+    created = []
     with IRBuilder() as builder:
-        frame = caller.ctx(lambda: T.for_(T.grid(2, 3), names=("i", "*tail"), span=definition))
-        assert [value.name for value in frame.vars] == ["i", "tail_0"]
-        variables = frame.__enter__()
-        assert variables.same_as(frame.vars)
-        receipt = T.evaluate(variables[0] + variables[1])
+
+        def construct():
+            frame = getattr(T, producer)(*(2, 3)[:dimensions])
+            created.append((frame, tuple(frame.vars), [value.name for value in frame.vars]))
+            return (
+                definition(frame) if names is None else T.for_(frame, names=names, span=definition)
+            )
+
+        frame = caller.ctx(construct)
+        assert len(created) == 1
+        variables = frame.vars
+        expected_names = created[0][2] if names is None else ["i", "tail_0"][:dimensions]
+        assert all(value.name for value in variables)
+        assert [value.name for value in variables] == expected_names
+        entered = frame.__enter__()
+        assert entered.same_as(variables[0] if dimensions == 1 else variables)
+        assert all(value.same_as(old) for value, old in zip(variables, created[0][1]))
+        assert [value.name for value in variables] == expected_names
+        value = variables[0] if dimensions == 1 else variables[0] + variables[1]
+        receipt = T.evaluate(value)
         with builder.with_source_span(base.source_span(loc(90, "unrelated.py"))):
             frame.__exit__(None, None, None)
-    outer = builder.get()
-    inner = outer.body
+    node = builder.get()
     expected = [("caller.py", 3, 1, 20), ("definition.py", 7, 1, 20)]
-    assert locations(outer) == locations(inner) == expected
-    assert outer.loop_var.same_as(variables[0]) and inner.loop_var.same_as(variables[1])
-    assert inner.body.same_as(receipt.value)
+    for variable in variables:
+        assert isinstance(node, tirx.For)
+        assert locations(node) == expected and node.loop_var.same_as(variable)
+        node = node.body
+    assert node.same_as(receipt.value)
 
 
 def test_span_entry_restores_context_after_original_exception():

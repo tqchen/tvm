@@ -86,13 +86,13 @@ def stft(
             window = T.buffer_proxy(window_ptr)
             output = T.buffer_proxy(output_ptr)
             # https://librosa.org/doc/0.7.2/_modules/librosa/core/spectrum.html#stft
-            with T.parallel(0, output_ptr.shape[0] * output_ptr.shape[1]) as (batch_row,):
+            with T.parallel(0, output_ptr.shape[0] * output_ptr.shape[1]) as batch_row:
                 with col_loop(0, output_ptr.shape[2]) as col:
                     batch = tirx.floordiv(batch_row, output_ptr.shape[1])
                     row = tirx.floormod(batch_row, output_ptr.shape[1])
                     output[batch, row, col, 0] = tirx.Cast(data_ptr.dtype, 0)
                     output[batch, row, col, 1] = tirx.Cast(data_ptr.dtype, 0)
-                    with T.serial(0, win_length) as (wlen,):
+                    with T.serial(0, win_length) as wlen:
                         output[batch, row, col, 0] += (
                             window[wlen]
                             * data[batch, col * hop_length + wlen]
@@ -178,14 +178,14 @@ def dft(
             sign = -1 if inverse else 1
             factor = 1.0 / n_fft if inverse else 1.0
 
-            with T.parallel(0, base_range) as (i,):
+            with T.parallel(0, base_range) as i:
                 base_idx = i * n_fft
-                with T.serial(0, n_fft) as (n,):
+                with T.serial(0, n_fft) as n:
                     n_idx = base_idx + n
                     re_output_ptr[n_idx] = tirx.Cast(re_output_ptr.dtype, 0)
                     im_output_ptr[n_idx] = tirx.Cast(im_output_ptr.dtype, 0)
                     _w = sign * -2 * pi * n / n_fft
-                    with T.serial(0, n_fft) as (k,):
+                    with T.serial(0, n_fft) as k:
                         k_idx = base_idx + k
                         w = _w * k
                         cos_w = tirx.Cast(re_output_ptr.dtype, tirx.cos(w))

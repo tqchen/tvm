@@ -766,8 +766,9 @@ def for_(
     Notes
     -----
     TIRx requires an active primitive function before entry. Variables already have final
-    names at entry, and Python performs single/multiple/starred unpacking. Invalid
-    iterable/names raise TypeError, ValueError or native errors. Relax rejects imperative
+    names at entry. Simple scalar targets use the entry result; generated tuple,
+    list or starred targets use the stable frame.vars sequence for unpacking.
+    Invalid iterable/names raise TypeError, ValueError or native errors. Relax rejects imperative
     loops. A frame stores its location before deferred body finalization.
 
     .. code:: python
@@ -776,7 +777,7 @@ def for_(
         for i in range(n):
             T.evaluate(i)
         # Generated builder
-        with X.for_(X.range_(n), names=("i",)) as (i,):
+        with X.for_(X.range_(n), names=("i",)) as i:
             X.emit_(X.evaluate(i))
     """
     raise TypeError("Relax does not support imperative for loops")
@@ -1453,50 +1454,3 @@ def check_well_formed_(function: _relax.Function) -> None:
         s_tir.analysis.verify_well_formed(_ir.IRModule.from_expr(function))
     except Exception as error:
         raise ValueError(f"{message}\n{error}") from error
-
-
-def scope_var_query_or_decl_(
-    value: Any, *, name: str | None = None, span: _Span = None, name_span: _Span = None
-) -> NoReturn:
-    """Retain the identity of a scope query or declaration result.
-
-    Parameters
-    ----------
-    value : Var, IterVar, list, tuple or Array
-        The once-evaluated result of a registered scope variable operation: a native
-        Var (including a pointer-typed Var), an IterVar, or a list, tuple or Array of
-        these. The operation has already created or selected its variable.
-    name : str, optional
-        Source name for a scalar target. None (default) leaves its producer name.
-        Aggregate target names do not prefix or rename individual members.
-    span : SpanEntry, Span or source-location tuple, optional
-        Source statement location, used for block-axis naming when name_span is
-        omitted. None (default) leaves it unspecified. Other variables retain
-        the producer location already supplied by source-call handling.
-    name_span : SpanEntry, Span or source-location tuple, optional
-        Location of the target identifier. None (the default) uses span; it can differ
-        from the emitted statement location.
-
-    Returns
-    -------
-    NoReturn
-        Always raises TypeError; Relax does not support this imperative operation.
-        No frame is entered and no binding, store or statement is created.
-
-    Notes
-    -----
-    TIRx requires an active function and preserves variable identity without Bind,
-    allocation, store or symbol-map canonicalization. Block axes receive source names and
-    duplicate-name validation; unnamed scope variables receive a name while explicit
-    producer names remain intact. Invalid result types raise TypeError and duplicate axis
-    names raise ValueError. Relax rejects the category. This declaration category takes
-    precedence over a same-named outer mutable storage target.
-
-    .. code:: python
-
-        # Source
-        tid = T.thread_id_in_wg()
-        # Generated builder
-        tid = X.scope_var_query_or_decl_(X.thread_id_in_wg(), name="tid")
-    """
-    raise TypeError("Relax does not support scope variable declarations")

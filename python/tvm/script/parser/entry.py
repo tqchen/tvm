@@ -224,10 +224,8 @@ def _is_inside_class(function: FunctionType, frame: FrameType) -> bool:
         environment.update(frame.f_back.f_locals)
 
     return any(
-        getattr(
-            resolve_syntax(item.func if isinstance(item, ast.Call) else item, environment),
-            "__tvm_module_decorator__",
-            False,
+        syntax_protocol.is_module_decorator(
+            resolve_syntax(item.func if isinstance(item, ast.Call) else item, environment)
         )
         for item in node.decorator_list
     )
@@ -316,7 +314,7 @@ def make_decorator(
             finally:
                 del frame
             syntax_protocol.copy_function_info(decorator, function)
-            function.__tvm_function_options__ = options
+            syntax_protocol.register_function_options(function, options)
             if deferred:
                 return function
             result = parse(
@@ -448,7 +446,6 @@ def make_macro_decorator(
                     definition_scope=definition_scope,
                 )
 
-            invoke.__tvm_construction_helper__ = (builder, options)
             return invoke
 
         return apply(function) if function is not None else apply
@@ -457,22 +454,17 @@ def make_macro_decorator(
 
 
 def pyfunc(function: _Callable) -> _Callable:
-    """Mark an ordinary Python callable for collection in a module.
+    """Keep an ordinary Python callable for collection in a module.
 
     Parameters
     ----------
     function : callable
-        Python function supporting attribute assignment.
+        Python function to retain in the module.
 
     Returns
     -------
     callable
-        The same function, with its registration marker attached.
-
-    Raises
-    ------
-    AttributeError
-        If the supplied object does not support the marker attribute.
+        The same function, unchanged.
 
     Notes
     -----
@@ -480,7 +472,6 @@ def pyfunc(function: _Callable) -> _Callable:
     it to the result's ``__pyfuncs__`` mapping. This decorator enters no frame and
     preserves callable identity for the function's lifetime.
     """
-    function.__tvm_python_function__ = True
     return function
 
 
@@ -547,7 +538,7 @@ def _prepare_transpiler(
         decorator_name = fresh()
         namespace[decorator_name] = source
         keywords = []
-        for key, value in getattr(source, "__tvm_function_options__", {}).items():
+        for key, value in syntax_protocol.get_function_options(source).items():
             option_name = fresh()
             namespace[option_name] = value
             keywords.append(ast.keyword(key, ast.Name(option_name, ast.Load())))
@@ -857,6 +848,6 @@ def ir_module(module: type | None = None, **options: Any) -> IRModule | Callable
     return apply(module) if module is not None else apply
 
 
-ir_module.__tvm_module_decorator__ = True
+syntax_protocol.module_decorator(ir_module)
 
 from_source = parse

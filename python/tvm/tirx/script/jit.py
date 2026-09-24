@@ -101,11 +101,9 @@ def make_jit(builder: object) -> Callable[..., Any]:
             finally:
                 del frame
             protocol.copy_function_info(jit, function)
-            function.__tvm_function_options__ = {
-                "private": private,
-                "s_tir": is_stir,
-                "persistent": persistent,
-            }
+            protocol.register_function_options(
+                function, {"private": private, "s_tir": is_stir, "persistent": persistent}
+            )
             return TIRJit(
                 function,
                 check_well_formed,

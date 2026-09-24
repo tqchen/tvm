@@ -86,7 +86,7 @@ def test_roundtrip_scopeid2():
         # fmt: on
 
     code = test.script()
-    assert "cta_id_in_pair = T.cta_id_in_pair()" in code
+    assert " = T.cta_id_in_pair()" in code
     assert from_source(code).script() == code
     assert_structural_equal(test, from_source(code))
 
@@ -110,8 +110,8 @@ def test_roundtrip_scopeid_deferred():
         # fmt: on
 
     code = test.script()
-    assert "bx = T.cta_id()" in code
-    assert "tx = T.thread_id()" in code
+    assert " = T.cta_id()" in code
+    assert " = T.thread_id()" in code
     assert from_source(code).script() == code
     assert_structural_equal(test, from_source(code))
 
@@ -2499,11 +2499,16 @@ def test_warp_role():
         # fmt: on
 
     code = test.script()
-    assert "warp_id == 1" in code, f"should have warp_id==1 guard:\n{code}"
-    assert "warp_id == 0" in code, f"should have warp_id==0 guard:\n{code}"
+    warp_name = next(
+        line.partition(" = ")[0].strip()
+        for line in code.splitlines()
+        if " = T.warp_id_in_wg([4])" in line
+    )
+    assert f"{warp_name} == 1" in code, f"should have warp_id==1 guard:\n{code}"
+    assert f"{warp_name} == 0" in code, f"should have warp_id==0 guard:\n{code}"
     assert "setmaxnreg" in code, f"should have setmaxnreg:\n{code}"
-    assert "if warp_id == 1:" in code, f"should have warp_id==1 if-guard:\n{code}"
-    assert "if warp_id == 0:" in code, f"should have warp_id==0 if-guard:\n{code}"
+    assert f"if {warp_name} == 1:" in code, f"should have warp_id==1 if-guard:\n{code}"
+    assert f"if {warp_name} == 0:" in code, f"should have warp_id==0 if-guard:\n{code}"
     # The printed code is valid TIR — it should parse back
     assert from_source(code).script() == code
     assert_structural_equal(test, from_source(code))
@@ -2527,7 +2532,12 @@ def test_warpgroup_role():
         # fmt: on
 
     code = test.script()
-    assert "wg_id == 2" in code, f"should have wg_id==2 guard:\n{code}"
+    group_name = next(
+        line.partition(" = ")[0].strip()
+        for line in code.splitlines()
+        if " = T.warpgroup_id([4])" in line
+    )
+    assert f"{group_name} == 2" in code, f"should have wg_id==2 guard:\n{code}"
     assert "setmaxnreg" in code, f"should have setmaxnreg:\n{code}"
     assert from_source(code).script() == code
     assert_structural_equal(test, from_source(code))

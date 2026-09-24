@@ -96,10 +96,10 @@ def index_put(data, indices, values, accumulate=False):
 
         with IRBuilder() as ib:
             with T.seq_scope():
-                with T.parallel(0, full_range) as (i,):
+                with T.parallel(0, full_range) as i:
                     out[i] = data[i]
 
-                with T.parallel(0, index_len) as (k,):
+                with T.parallel(0, index_len) as k:
                     # Decompose k into multi-dimensional broadcast index
                     k_temp = k
                     broadcast_indices = []

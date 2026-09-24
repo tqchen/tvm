@@ -102,7 +102,7 @@ def scatter_elements(data, indices, updates, axis=0, reduction="update"):
                             j = fused % ind_after_axis_range
                             pre_index1 = i * ind_before_axis_stride + j
                             pre_index2 = i * before_axis_stride + j
-                            with T.serial(0, ind_axis_range) as (k,):
+                            with T.serial(0, ind_axis_range) as k:
                                 # Offset along indices or updates
                                 index1 = pre_index1 + k * ind_after_axis_range
                                 # Get index and shift to positive side if need
