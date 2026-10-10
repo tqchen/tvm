@@ -27,9 +27,9 @@ namespace printer {
 namespace details {
 
 void PrintSTirFunction(DocTranslatorObj* d, const tirx::FunctionNode* func) {
-  d->SetExtraState("tirx.buffer_default_layout_none", true);
+  d->SetExtraState("tirx.tensor_default_layout_none", true);
   PrintFunction(d, func, NamespaceDoc("s_tir")->Attr("function"), tvm::attr::kSTir);
-  d->SetExtraState("tirx.buffer_default_layout_none", std::nullopt);
+  d->SetExtraState("tirx.tensor_default_layout_none", std::nullopt);
 }
 
 }  // namespace details

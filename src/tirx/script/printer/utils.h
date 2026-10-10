@@ -34,7 +34,7 @@ namespace details {
 
 void PrintFunction(DocTranslatorObj* d, const tirx::FunctionNode* func, ExprDoc decorator,
                    const ffi::String& dialect_attr);
-bool IsScalarBuffer(DocTranslatorObj* d, const Expr& source);
+bool IsScalarTensor(DocTranslatorObj* d, const Expr& source);
 ffi::Optional<ExprDoc> VarDocTranslate(DocTranslatorObj* d, ffi::AnyView input,
                                        const ffi::Object* destination);
 

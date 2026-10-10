@@ -84,8 +84,8 @@ ffi::Optional<ExprDoc> VarDocTranslate(DocTranslatorObj* d, ffi::AnyView input,
     d->Emit(AssignDoc(VarDoc(d, var), rhs, annotation), var);
     return std::nullopt;
   }
-  // Mutable scalar syntax binds a TensorLoad; resource uses need its buffer.
-  if (IsScalarBuffer(d, var)) return IdDoc(id->name)->Attr("source");
+  // Mutable scalar syntax binds a TensorLoad; resource uses need its tensor.
+  if (IsScalarTensor(d, var)) return IdDoc(id->name)->Attr("source");
   return IdDoc(id->name);
 }
 
