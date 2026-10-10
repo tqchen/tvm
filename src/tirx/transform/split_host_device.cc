@@ -262,6 +262,10 @@ class HostDeviceSplitter : public StmtExprMutator {
     } else if (auto config = cur_func_->GetAttr<ffi::String>("backend_config")) {
       device_func = WithAttr(std::move(device_func), "backend_config", config.value());
     }
+    if (auto script_namespace = cur_func_->GetAttr<ffi::String>(tvm::attr::kScriptNamespace)) {
+      device_func =
+          WithAttr(std::move(device_func), tvm::attr::kScriptNamespace, script_namespace.value());
+    }
     bool is_stir = cur_func_->attrs->dict.count(tvm::attr::kSTir);
     if (is_stir) {
       device_func = WithAttr(std::move(device_func), tvm::attr::kSTir, true);
