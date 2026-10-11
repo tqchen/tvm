@@ -44,7 +44,7 @@ class BackendConfigBinder : public StmtExprMutator {
   Function Apply(Function func) {
     TVM_FFI_CHECK(!func->GetAttr<ffi::String>("tirx.cuda_arch").has_value(), ValueError)
         << "tirx.cuda_arch was removed; set backend_config['cuda']['arch'] on device_entry or "
-           "tvm.compile";
+           "Target";
     auto resolved =
         resolve_(func->GetAttr<ffi::String>("backend_config").value_or(""), defaults_, target_)
             .cast<ffi::Array<ffi::Any>>();
@@ -78,11 +78,11 @@ class BackendConfigBinder : public StmtExprMutator {
   ffi::Function resolve_;
 };
 
-Pass BindBackendConfig(ffi::String defaults) {
-  auto transform = [defaults](Function func, IRModule mod, PassContext ctx) -> Function {
+Pass BindBackendConfig() {
+  auto transform = [](Function func, IRModule mod, PassContext ctx) -> Function {
     auto target = func->GetAttr<Target>(tvm::attr::kTarget);
     if (!target.has_value() || target.value()->kind->name != "cuda") return func;
-    return BackendConfigBinder(target.value(), defaults).Apply(func);
+    return BackendConfigBinder(target.value(), "").Apply(func);
   };
   return CreateFunctionPass(transform, 0, "cuda.BindBackendConfig");
 }

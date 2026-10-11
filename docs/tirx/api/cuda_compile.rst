@@ -17,8 +17,9 @@
 CUDA backend configuration
 ==========================
 
-Pass a nested mapping directly to ``tvm.compile(..., backend_config=...)`` or
-``T.device_entry(..., backend_config=...)``. Each backend owns its configuration;
+Set build-wide defaults in ``Target.attrs["backend_config"]`` and pass that
+Target to ``tvm.compile``. Use ``T.device_entry(..., backend_config=...)`` for
+local overrides. Each backend owns its configuration;
 CUDA currently provides these fixed keys:
 
 .. list-table:: CUDA keys
@@ -49,8 +50,9 @@ CUDA currently provides these fixed keys:
        Defaults to ``["-v", "--warn-on-local-memory-usage", "--register-usage-level=10"]``.
 
 ``BackendConfig`` is a ``TypedDict`` for completion and static typing. Its
-constructor returns an ordinary dictionary; all keys are optional. Compilation
-and entry construction validate and snapshot the supplied mapping. Native
+constructor returns an ordinary dictionary; all keys are optional. Target
+and entry construction snapshot the supplied mapping; compilation validates
+the backend settings. Native
 compiler arguments are not modeled as separate Python fields.
 
 .. code-block:: python
@@ -61,7 +63,8 @@ compiler arguments are not modeled as separate Python fields.
         arch="sm_100a", compiler="nvrtc",
         nvrtc=["--use_fast_math", "--ftz=false"],
     )
-    executable = tvm.compile(func, backend_config={"cuda": cuda_config})
+    target = tvm.target.Target({"kind": "cuda", "backend_config": {"cuda": cuda_config}})
+    executable = tvm.compile(func, target=target)
 
 .. autoclass:: tvm.backend.cuda.BackendConfig
    :members:

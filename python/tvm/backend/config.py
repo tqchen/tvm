@@ -56,21 +56,29 @@ def parse_backend_config(value):
     return copy_backend_config(json.loads(value) if value else None)
 
 
-def prepare_target(target, config=None, mod=None):
-    """Resolve the build target, including architectures supplied by CUDA entries."""
+def prepare_target(target, mod=None):
+    """Resolve a build Target, including architectures supplied by CUDA entries."""
     import tvm_ffi
 
     from tvm.target import Target
 
-    config = copy_backend_config(config)
     active = Target.current() if target is None else target
-    if isinstance(active, Target) and active.kind.name == "cuda" and "arch" not in active.attrs:
-        active = dict(active.export())
-    generic_cuda = (
-        active is None
-        or active == "cuda"
-        or (isinstance(active, Mapping) and active.get("kind") == "cuda" and "arch" not in active)
-    )
+    # Inspect explicit CUDA settings before constructing a generic Target, which
+    # may otherwise query a device for its architecture.
+    if active == "cuda":
+        active = {"kind": "cuda"}
+    if active is not None:
+        if not isinstance(active, Mapping) or "tag" in active:
+            active = dict(Target(active).export())
+        else:
+            active = dict(active)
+        cuda = copy_backend_config(active.get("backend_config")).get("cuda", {})
+        if cuda and active.get("kind") != "cuda":
+            raise ValueError("CUDA backend_config requires a CUDA target")
+        if "arch" in cuda:
+            active["arch"] = cuda["arch"]
+
+    generic_cuda = active is None or (active.get("kind") == "cuda" and "arch" not in active)
     entries = []
     if mod is not None and generic_cuda:
         from tvm.ir import RegionStmt
@@ -80,30 +88,15 @@ def prepare_target(target, config=None, mod=None):
                 entries.append(parse_backend_config(node.attrs.get("backend_config", "")))
 
         tvm_ffi.structural_walk(mod, visit)
-    if not config and not any(entries):
-        return target
-    cuda = config.get("cuda", {})
-    if generic_cuda:
-        arch = cuda.get("arch")
-        if arch is None and entries and all(c.get("cuda", {}).get("arch") for c in entries):
-            arch = entries[0]["cuda"]["arch"]
-        attrs = dict(active) if isinstance(active, Mapping) else {"kind": "cuda"}
-        if arch is not None:
-            attrs["arch"] = arch
-        return Target(attrs)
-    active = Target(active)
-    if cuda and active.kind.name != "cuda":
-        raise ValueError("CUDA backend_config requires a CUDA target")
-    arch = cuda.get("arch")
-    if arch is not None and active.attrs.get("arch") != arch:
-        raise ValueError(
-            f"Target.arch={active.attrs.get('arch')!r} conflicts with backend_config arch={arch!r}"
-        )
-    return active
+    if any(entries):
+        active = active if active is not None else {"kind": "cuda"}
+        if all(c.get("cuda", {}).get("arch") for c in entries):
+            active["arch"] = entries[0]["cuda"]["arch"]
+    return Target(active) if active is not None else None
 
 
 def argparse_backend_config(value):
-    """Parse the same nested mapping accepted by compile and device_entry."""
+    """Parse the same nested mapping accepted by Target and device_entry."""
     try:
         return parse_backend_config(value)
     except (TypeError, ValueError) as error:

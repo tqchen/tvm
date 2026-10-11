@@ -1117,3 +1117,15 @@ def test_external_patch_contract(tmp_path):
     assert report["site_count"] > 0
     assert report["normalized_signature"] == oracle["abi"]["native_patched_hot_path"]
     assert all(re.fullmatch(r"[0-9a-f]{64}", value) for value in report["sha256"].values())
+
+
+def test_profiler_compile_uses_target_backend_config(monkeypatch):
+    from tvm.backend.config import parse_backend_config
+
+    monkeypatch.setenv("TVM_COMPILE_FORCE_FALLBACK", "1")
+    target = tvm.target.Target(
+        {"kind": "cuda", "arch": "sm_100a", "backend_config": {"cuda": {"nvrtc": []}}}
+    )
+    built = IketProfiler().compile(plain_entry, target=target)
+    config = parse_backend_config(built.mod.imports[0].inspect_source("backend_config"))
+    assert config["cuda"]["nvrtc"] == []

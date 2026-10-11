@@ -192,17 +192,21 @@ def test_entry_ir_roundtrip_and_resolution():
         kernel, tvm.script.from_source(kernel.script(), extra_vars={"T": T})
     )
     tvm.ir.assert_structural_equal(kernel, tvm.ir.load_json(tvm.ir.save_json(kernel)))
-    target = tvm.target.Target({"kind": "cuda", "arch": "sm_100a"}, host="llvm")
-    mod = tvm.tirx.transform.BindTarget(target)(tvm.IRModule({"main": kernel}))
-    mod = BindBackendConfig(
+    target = tvm.target.Target(
         {
-            "cuda": {
-                "arch": "sm_100a",
-                "nvcc": ["--use_fast_math", "--generate-line-info"],
-                "nvrtc": ["--use_fast_math", "--generate-line-info"],
-            }
-        }
-    )(mod)
+            "kind": "cuda",
+            "arch": "sm_100a",
+            "backend_config": {
+                "cuda": {
+                    "nvcc": ["--use_fast_math", "--generate-line-info"],
+                    "nvrtc": ["--use_fast_math", "--generate-line-info"],
+                }
+            },
+        },
+        host="llvm",
+    )
+    mod = tvm.tirx.transform.BindTarget(target)(tvm.IRModule({"main": kernel}))
+    mod = BindBackendConfig()(mod)
     entries = []
     tvm_ffi.structural_walk(
         mod,
@@ -220,12 +224,17 @@ def test_entry_ir_roundtrip_and_resolution():
     assert "--generate-line-info" not in config["cuda"]["nvrtc"]
 
 
-def test_target_arch_conflict():
+def test_target_backend_arch_precedence():
     from tvm.backend.config import prepare_target
 
-    with pytest.raises(ValueError, match="conflicts"):
-        prepare_target({"kind": "cuda", "arch": "sm_90"}, {"cuda": {"arch": "sm_100a"}})
-    assert prepare_target(None, {"cuda": {"arch": "sm_100a"}}).arch == "sm_100a"
+    target = tvm.target.Target(
+        {"kind": "cuda", "arch": "sm_90", "backend_config": {"cuda": {"arch": "sm_100a"}}},
+        host="llvm",
+    )
+    resolved = prepare_target(target)
+    assert resolved.arch == "sm_100a"
+    assert resolved.host.kind.name == "llvm"
+    assert target.arch == "sm_90"
 
 
 @pytest.mark.gpu
@@ -247,14 +256,19 @@ def test_backend_config_controls_actual_ftz(compiler):
     for ftz in (False, True):
         module = tvm.compile(
             kernel,
-            backend_config={
-                "cuda": {
-                    "arch": arch,
-                    "compiler": compiler,
-                    "nvcc": ["--use_fast_math", "--ftz" + "=" + str(ftz).lower()],
-                    "nvrtc": ["--use_fast_math", "--ftz" + "=" + str(ftz).lower()],
+            target=tvm.target.Target(
+                {
+                    "kind": "cuda",
+                    "backend_config": {
+                        "cuda": {
+                            "arch": arch,
+                            "compiler": compiler,
+                            "nvcc": ["--use_fast_math", "--ftz" + "=" + str(ftz).lower()],
+                            "nvrtc": ["--use_fast_math", "--ftz" + "=" + str(ftz).lower()],
+                        }
+                    },
                 }
-            },
+            ),
         )
         b = tvm.runtime.empty((32,), "float32", tvm.cuda())
         module.mod["kernel"](a, b)
@@ -302,7 +316,10 @@ def test_two_entries_keep_compilers_math_and_order():
             C[y] = B[y] * T.float32(0.5)
 
     arch = env.cuda_arch(0)
-    module = tvm.compile(kernel, backend_config={"cuda": {"arch": arch}})
+    module = tvm.compile(
+        kernel,
+        target=tvm.target.Target({"kind": "cuda", "backend_config": {"cuda": {"arch": arch}}}),
+    )
     assert len(module.mod.imports) == 2
     configs = [parse_backend_config(m.inspect_source("backend_config")) for m in module.mod.imports]
     assert {c["cuda"]["compiler"] for c in configs} == {"nvcc", "nvrtc"}
@@ -365,7 +382,7 @@ def test_serialized_config_replays_in_fresh_process(tmp_path, monkeypatch, fallb
             "nvrtc": ["--use_fast_math", "--ftz=false", "--generate-line-info"],
         }
     }
-    module = tvm.compile(main, backend_config=config)
+    module = tvm.compile(main, target=tvm.target.Target({"kind": "cuda", "backend_config": config}))
     library = str(tmp_path / "replay.so")
     module.export_library(library)
     script = """
@@ -612,7 +629,10 @@ from tvm.script import tirx as T
 target = tvm.target.Target("cuda", host="llvm")
 assert "arch" not in target.attrs
 assert not tvm.testing.device_enabled("cuda")
-resolved = prepare_target(target, {"cuda": BackendConfig(arch="sm_100a")})
+configured = tvm.target.Target(
+    {**target.export(), "backend_config": {"cuda": BackendConfig(arch="sm_100a")}}
+)
+resolved = prepare_target(configured)
 assert resolved.arch == "sm_100a"
 assert resolved.host.kind.name == "llvm"
 
@@ -628,6 +648,12 @@ except ValueError as error:
     assert "explicit" in str(error)
 else:
     raise AssertionError("offline compilation must not guess an architecture")
+import os
+from tvm.backend.config import parse_backend_config
+os.environ["TVM_COMPILE_FORCE_FALLBACK"] = "1"
+module = tvm.compile(main, target=configured)
+config = parse_backend_config(module.mod.imports[0].inspect_source("backend_config"))
+assert config["cuda"]["arch"] == "sm_100a"
 """
     path = tmp_path / "generic_cuda.py"
     path.write_text(script)
@@ -685,7 +711,10 @@ def test_source_fallback_does_not_invoke_compiler(monkeypatch):
         T.device_entry(launch=T.cuda.LaunchConfig(grid=1, block=32))
         A[T.cuda.thread_idx("x")] = T.float32(1)
 
-    module = tvm.compile(main, backend_config={"cuda": {"arch": "sm_100a"}})
+    module = tvm.compile(
+        main,
+        target=tvm.target.Target({"kind": "cuda", "backend_config": {"cuda": {"arch": "sm_100a"}}}),
+    )
     assert "__global__" in module.mod.imports[0].inspect_source("cuda")
     assert (
         parse_backend_config(module.mod.imports[0].inspect_source("backend_config"))["cuda"]["arch"]
@@ -705,7 +734,10 @@ def test_identical_entries_share_one_module(monkeypatch):
             A[T.cuda.thread_idx("x")] = T.float32(2)
 
     config["cuda"]["nvrtc"].clear()
-    module = tvm.compile(main, backend_config={"cuda": {"arch": "sm_100a"}})
+    module = tvm.compile(
+        main,
+        target=tvm.target.Target({"kind": "cuda", "backend_config": {"cuda": {"arch": "sm_100a"}}}),
+    )
     assert len(module.mod.imports) == 1
     resolved = parse_backend_config(module.mod.imports[0].inspect_source("backend_config"))
     assert resolved["cuda"]["nvrtc"] == ["--ftz=false"]
@@ -725,8 +757,132 @@ def test_build_snapshots_config_before_passes(monkeypatch):
         def run_before_pass(self, mod, info):
             config["cuda"]["nvrtc"] = ["--ftz=true"]
 
+    target = tvm.target.Target({"kind": "cuda", "backend_config": config})
     with tvm.transform.PassContext(instruments=[ChangeCallerConfig()]):
-        module = tvm.compile(main, backend_config=config)
+        module = tvm.compile(main, target=target)
     resolved = parse_backend_config(module.mod.imports[0].inspect_source("backend_config"))
     assert config["cuda"]["nvrtc"] == ["--ftz=true"]
     assert resolved["cuda"]["nvrtc"] == ["--ftz=false"]
+
+
+@pytest.mark.parametrize("build", [tvm.compile, tvm.tirx.build])
+@pytest.mark.parametrize("target_form", ["object", "tag", "tag_dict", "scope"])
+def test_build_uses_target_defaults(monkeypatch, build, target_form):
+    monkeypatch.setenv("TVM_COMPILE_FORCE_FALLBACK", "1")
+
+    @T.function
+    def main(A: T.Tensor((32,), "float32")):
+        T.device_entry(
+            launch=T.cuda.LaunchConfig(grid=1, block=32),
+            backend_config={"cuda": {"nvrtc": [], "ptxas": []}},
+        )
+        A[T.cuda.thread_idx("x")] = T.float32(1)
+
+    attrs = {
+        "kind": "cuda",
+        "arch": "sm_100a",
+        "backend_config": {"cuda": {"compiler": "nvrtc", "nvrtc": ["--ftz=true"]}},
+    }
+    tvm.target.tag.register_tag("test/build-backend-config", attrs, override=True)
+    target = tvm.target.Target(attrs, host="llvm")
+    if target_form == "tag":
+        target = "test/build-backend-config"
+    elif target_form == "tag_dict":
+        target = {"tag": "test/build-backend-config"}
+    if target_form == "scope":
+        with target:
+            built = build(main)
+    else:
+        built = build(main, target=target)
+    module = built.mod if isinstance(built, tvm.runtime.Executable) else built
+    config = parse_backend_config(module.imports[0].inspect_source("backend_config"))["cuda"]
+    assert config["arch"] == "sm_100a"
+    assert config["compiler"] == "nvrtc"
+    assert config["nvrtc"] == config["ptxas"] == []
+
+
+@pytest.mark.parametrize("own_host", [False, True])
+def test_build_preserves_function_target_defaults(monkeypatch, own_host):
+    monkeypatch.setenv("TVM_COMPILE_FORCE_FALLBACK", "1")
+
+    @T.function
+    def main(A: T.Tensor((32,), "float32")):
+        T.device_entry(launch=T.cuda.LaunchConfig(grid=1, block=32))
+        A[T.cuda.thread_idx("x")] = T.float32(1)
+
+    build_host = tvm.target.Target("llvm")
+    function_host = tvm.target.Target({"kind": "llvm", "mcpu": "generic"})
+    function_target = tvm.target.Target(
+        {
+            "kind": "cuda",
+            "arch": "sm_80",
+            "backend_config": {"cuda": {"arch": "sm_90a", "compiler": "nvcc", "nvcc": ["-O1"]}},
+        },
+        host=function_host if own_host else None,
+    )
+    build_target = tvm.target.Target(
+        {
+            "kind": "cuda",
+            "arch": "sm_100a",
+            "backend_config": {"cuda": {"compiler": "nvrtc", "nvrtc": []}},
+        },
+        host=build_host,
+    )
+    bound = main.with_attr("global_symbol", "bound").with_attr("target", function_target)
+    mod = tvm.IRModule({"bound": bound, "unbound": main.with_attr("global_symbol", "unbound")})
+    targets = {}
+
+    @tvm.transform.pass_instrument
+    class CaptureBoundTargets:
+        def run_after_pass(self, mod, info):
+            if info.name == "tirx.BindTarget":
+                targets.update({gv.name_hint: f.attrs["target"] for gv, f in mod.functions.items()})
+
+    with tvm.transform.PassContext(instruments=[CaptureBoundTargets()]):
+        built = tvm.compile(mod, target=build_target)
+    configs = {
+        config["arch"]: config
+        for module in built.mod.imports
+        if (config := parse_backend_config(module.inspect_source("backend_config"))["cuda"])
+    }
+    assert len(configs) == 2
+    assert configs["sm_90a"]["compiler"] == "nvcc"
+    assert configs["sm_90a"]["nvcc"] == ["-O1"]
+    assert configs["sm_100a"]["compiler"] == "nvrtc"
+    assert configs["sm_100a"]["nvrtc"] == []
+    tvm.ir.assert_structural_equal(targets["bound"].host, function_host if own_host else build_host)
+    tvm.ir.assert_structural_equal(mod["bound"].attrs["target"], function_target)
+
+
+def test_target_configuration_snapshot_and_identity(monkeypatch):
+    monkeypatch.setenv("TVM_COMPILE_FORCE_FALLBACK", "1")
+
+    @T.function
+    def main(A: T.Tensor((32,), "float32")):
+        T.device_entry(launch=T.cuda.LaunchConfig(grid=1, block=32))
+        A[T.cuda.thread_idx("x")] = T.float32(1)
+
+    config = {"cuda": {"arch": "sm_100a", "nvrtc": ["--ftz=false"]}}
+    first = tvm.target.Target({"kind": "cuda", "backend_config": config})
+    config["cuda"]["nvrtc"][0] = "--ftz=true"
+    second = tvm.target.Target({"kind": "cuda", "backend_config": config})
+    assert not tvm_ffi.structural_equal(first, second)
+    mod = tvm.IRModule(
+        {
+            "first": main.with_attr("global_symbol", "first").with_attr("target", first),
+            "second": main.with_attr("global_symbol", "second").with_attr("target", second),
+        }
+    )
+    built = tvm.compile(mod)
+    assert len(built.mod.imports) == 2
+    options = {
+        tuple(parse_backend_config(module.inspect_source("backend_config"))["cuda"]["nvrtc"])
+        for module in built.mod.imports
+    }
+    assert options == {("--ftz=false",), ("--ftz=true",)}
+
+
+@pytest.mark.parametrize("build", [tvm.compile, tvm.tirx.build, tvm.relax.build])
+def test_build_rejects_separate_backend_config(build):
+    with pytest.raises(TypeError, match="backend_config"):
+        build(tvm.IRModule(), backend_config={"cuda": {"arch": "sm_100a"}})

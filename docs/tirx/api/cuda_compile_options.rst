@@ -31,6 +31,8 @@ lists:
         "nvrtc": ["--use_fast_math", "--ftz=false", "--std=c++20", "-I/include"],
         "ptxas": ["-O3", "--register-usage-level=10"],
     }}
+    target = tvm.target.Target({"kind": "cuda", "backend_config": backend_config})
+    executable = tvm.compile(func, target=target)
 
 Each list contains argv items, without shell parsing. The selected frontend
 receives its own list and the forwarded ``ptxas`` list. Each list replaces the

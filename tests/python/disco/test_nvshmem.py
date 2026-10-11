@@ -339,7 +339,10 @@ def _kernel_compile(compile_mode):
 
             target = tvm.target.Target("cuda")
             tvm.compile(
-                NvshmemQueryModule, target=target, backend_config=backend_config
+                NvshmemQueryModule,
+                target=tvm.target.Target(
+                    {**tvm.target.Target(target).export(), "backend_config": backend_config}
+                ),
             ).export_library(path)
             mod = sess.load_vm_module(path)
             result = mod["main"]()

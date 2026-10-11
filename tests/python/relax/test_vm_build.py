@@ -1291,5 +1291,41 @@ def test_relax_module_with_multiple_targets():
     tvm.testing.run_with_gpu_lock(run_and_check)
 
 
+@pytest.mark.parametrize("build", [tvm.compile, tvm.relax.build])
+def test_vm_build_uses_target_backend_config(monkeypatch, build):
+    from tvm.backend.config import parse_backend_config
+
+    monkeypatch.setenv("TVM_COMPILE_FORCE_FALLBACK", "1")
+
+    @I.ir_module
+    class Module:
+        @T.function
+        def add_one(A: T.Tensor((32,), "float32"), B: T.Tensor((32,), "float32")):
+            T.func_attr({"tirx.is_scheduled": True})
+            T.device_entry(launch=T.cuda.LaunchConfig(grid=1, block=32))
+            tx = T.cuda.thread_idx("x")
+            B[tx] = A[tx] + T.float32(1)
+
+        @R.function
+        def main(A: R.Tensor((32,), "float32")):
+            B = R.call_tir(Module.add_one, (A,), ty_args=(R.Tensor((32,), "float32"),))
+            return B
+
+    target = tvm.target.Target(
+        {"kind": "cuda", "arch": "sm_100a", "backend_config": {"cuda": {"nvrtc": []}}},
+        host="llvm",
+    )
+    built = build(Module, target=target)
+    pending = [built.mod]
+    configs = []
+    while pending:
+        module = pending.pop()
+        if module.kind == "cuda":
+            configs.append(parse_backend_config(module.inspect_source("backend_config")))
+        pending.extend(module.imports)
+    assert len(configs) == 1
+    assert configs[0]["cuda"]["nvrtc"] == []
+
+
 if __name__ == "__main__":
     tvm.testing.main()

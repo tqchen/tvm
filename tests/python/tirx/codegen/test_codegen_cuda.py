@@ -28,15 +28,13 @@ from tvm.script import tirx as T
 from tvm.testing import env
 
 
-def _get_source(
-    func: tvm.tirx.Function, target=None, backend_config=None
-) -> tuple[str, tvm.IRModule]:
+def _get_source(func: tvm.tirx.Function, target=None) -> tuple[str, tvm.IRModule]:
     if target is None:
         target = {"kind": "cuda", "arch": "sm_100a"}
     target = tvm.target.Target(target)
     mod = tvm.IRModule({"main": func})
     with target:
-        mod = tvm.compile(mod, target=target, tir_pipeline="tirx", backend_config=backend_config)
+        mod = tvm.compile(mod, target=target, tir_pipeline="tirx")
     src = mod.mod.imports[0].inspect_source()
     return src, mod
 
@@ -521,7 +519,14 @@ def test_sparse_decode_conversion_intrinsics_codegen():
             T.ptx.cvt.rn.bf16x2.e4m3x2(U32[1], U16[0])
             T.ptx.add.f32x2(U64[0], pair, pair)
 
-    src, _ = _get_source(main, backend_config={"cuda": {"compiler": "nvcc"}})
+    src, _ = _get_source(
+        main,
+        target={
+            "kind": "cuda",
+            "arch": "sm_100a",
+            "backend_config": {"cuda": {"compiler": "nvcc"}},
+        },
+    )
     assert "cvt.rz.ue8m0x2.f32 %0, %1, %2;" in src
     assert "cvt.rn.bf16x2.ue8m0x2 %0, %1;" in src
     assert "cvt.rn.bf16x2.e4m3x2 %0, %1;" in src
