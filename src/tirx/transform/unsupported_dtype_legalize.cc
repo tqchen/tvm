@@ -318,10 +318,10 @@ class ComputeLegalizer : public StmtExprMutator {
   }
 
   UnchangedOr<PrimExpr> Mutate_(const prim::LetNode* op, InplaceMode inplace_mode) final {
-    PrimExpr value = PromoteToTarget(op->value);
+    PrimExpr value = PromoteToTarget(Mutate(op->value, inplace_mode).ValueOrUnchanged(op->value));
     Var var = op->var;
     if (value.ty() != op->value.ty()) {
-      var = op->var.CopyWithDType(op->value.ty());
+      var = op->var.CopyWithDType(value.ty());
       VarRemapSet(op->var, var);
     }
     auto body_result = Mutate(op->body, inplace_mode);
@@ -359,10 +359,11 @@ class ComputeLegalizer : public StmtExprMutator {
       allocation_to_promote_ = previous;
       return result;
     }
-    PrimExpr value = PromoteToTarget(prim_value.value());
+    PrimExpr value = PromoteToTarget(
+        Mutate(prim_value.value(), inplace_mode).ValueOrUnchanged(prim_value.value()));
     Var var = op->var;
     if (value.ty() != prim_value.value().ty()) {
-      var = op->var.CopyWithDType(prim_value.value().ty());
+      var = op->var.CopyWithDType(value.ty());
       VarRemapSet(op->var, var);
     }
 
