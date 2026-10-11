@@ -866,6 +866,7 @@ class FusedTIRConstructor : public ExprVisitor {
     ffi::Map<ffi::String, Any> attr_map;
     attr_map.Set(tvm::tirx::attr::kNoAlias, true);
     attr_map.Set(tvm::attr::kSTir, true);
+    attr_map.Set(tvm::attr::kScriptNamespace, ffi::String("s_tir"));
     auto subst = ffi::make_object<tirx::FuseTIRBufferSubstitutor>(func_info_.buffer_subst_map,
                                                                   func_info_.symbolic_var_remap);
     TVM_FFI_ICHECK(func_info_.global_name != "fused");
