@@ -25,7 +25,8 @@ here so the same objects are not expanded twice.
 
 For C++ construction, include ``tvm/tirx/expr.h`` for ``TensorVar``, buffer
 loads, and buffer-region constructors. Include ``tvm/tirx/type.h`` for
-``TensorType`` and ``TensorMapType``. Buffer regions use the shared
+``TensorType``, ``TensorMapType``, and ``MutableCellType``. Include
+``tvm/tirx/op/mutable_cell.h`` for the dedicated initialized cell operations. Buffer regions use the shared
 ``TensorRegion`` expression from ``tvm/ir/expr.h`` and ``TensorRegionType``
 from ``tvm/ir/type.h``.
 

@@ -26,12 +26,14 @@
 #include <tvm/ir/prim/expr.h>
 #include <tvm/ir/prim/op.h>
 #include <tvm/s_tir/stmt.h>
+#include <tvm/tirx/analysis.h>
 #include <tvm/tirx/function.h>
 #include <tvm/tirx/op/abi.h>
 #include <tvm/tirx/op/gpu.h>
 #include <tvm/tirx/op/memory.h>
 #include <tvm/tirx/op/region.h>
 #include <tvm/tirx/stmt.h>
+#include <tvm/tirx/type.h>
 
 #include <string>
 
@@ -79,6 +81,7 @@ const VarNode* AsBufferVarNode(const Expr& expr) {
 CodeGenSPIRV::CodeGenSPIRV(Target target) : spirv_support_(target) {}
 
 runtime::SPIRVShader CodeGenSPIRV::BuildFunction(const Function& f, const std::string& name) {
+  tirx::VerifyMutableCells(f);
   TVM_FFI_CHECK(f->body.has_value(), ValueError)
       << "Kernel code generation requires a function body";
   this->InitFuncState();
@@ -1015,6 +1018,8 @@ void CodeGenSPIRV::Dispatch_(const AssertStmtNode* op) {
 }
 
 void CodeGenSPIRV::Dispatch_(const BindNode* op) {
+  TVM_FFI_CHECK(!op->var->ty.as<tirx::MutableCellTypeNode>(), ValueError)
+      << "SPIR-V codegen does not support mutable cells";
   if (const auto* call = op->value.as<CallNode>(); call) {
     if (call->op.same_as(tirx::alloc_tensor_op())) return DispatchAllocTensor(op, call);
     if (call->op.same_as(tirx::decl_tensor_op())) return DispatchDeclTensor(op, call);

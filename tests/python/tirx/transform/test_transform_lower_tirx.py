@@ -1726,7 +1726,7 @@ def test_lower_alloc_decl_buffer_outside_of_parser():
     def int_var1(val):
         buf = T.local_scalar("int32")
         if val is not None:
-            T.tensor_store(buf.source, 0, val)
+            T.set_mutable_cell_(buf, val)
         return buf
 
     TestMutableCells = SimpleNamespace(int_var1=int_var1)
@@ -1766,12 +1766,12 @@ def test_lower_alloc_decl_buffer_outside_of_parser():
         A[0] = T.float16(1)
         B[0] = T.float16(2)
         C[0] = T.float16(3)
-        D = T.alloc_local((1,), "int32", layout=None)
+        D = T.local_scalar("int32")
         D = 1
-        D = D[0] + 1
-        E = T.alloc_local((1,), "int32", layout=None)
+        D = D + 1
+        E = T.local_scalar("int32")
         E = 2
-        E = E[0] + 2
+        E = E + 2
         F = T.alloc_local((1,), "int32", layout=None)
         F = 3
         F = F[0] + 3

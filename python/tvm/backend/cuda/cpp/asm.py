@@ -29,6 +29,7 @@ import re
 
 from tvm import ir
 from tvm.backend.cuda.op import cuda_func_call
+from tvm.tirx.mutable_cell import is_mutable_cell_load
 
 from ..codegen.registry import CODEGEN_REGISTRY, register_codegen
 from ..codegen.schema import device_intrinsic
@@ -140,6 +141,8 @@ def _wait_until_same_width(dst_ty, suffix, what):
 
 
 def _wait_until_thread_local_scalar(dst, what):
+    if is_mutable_cell_load(dst):
+        return dst.ty
     if not isinstance(dst, ir.TensorLoad) or dst.source.scope() not in {
         "local",
         "local_scalar",
@@ -260,7 +263,19 @@ def cuda_wait_until(dst, ptr, condition, scope, space, ptx_type, backoff_ns):
             f"{closing} }} while (0)\n"
         )
         operands = (condition, backoff_ns)
-    return cuda_func_call(name, *load_call.args[1:-1], *operands, source), tags
+    call = cuda_func_call(name, *load_call.args[1:-1], *operands, source)
+    if is_mutable_cell_load(dst):
+        # The macro re-evaluates its predicate after each output update.
+        call = ir.Call(
+            call.op,
+            call.args,
+            attrs={
+                "mutable_cell_writes": [ir.const(0, "int32")],
+                "mutable_cell_condition": ir.const(2, "int32"),
+            },
+            ty=call.ty,
+        )
+    return call, tags
 
 
 # =============================================================================

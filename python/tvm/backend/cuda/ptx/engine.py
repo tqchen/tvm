@@ -46,6 +46,7 @@ from tvm.ir import Call, Op, StringImm, TensorLoad, const
 from tvm.ir.op import register_op_attr
 from tvm.ir.type import PointerType, PrimType
 from tvm.tirx.expr import CallEffectKind, IntImm
+from tvm.tirx.mutable_cell import is_mutable_cell_load
 from tvm.tirx.op import call_intrin, reinterpret
 
 from .render import render_variant
@@ -308,9 +309,28 @@ def _make_codegen(entry: InstructionEntry):
         # by the C codegen as the lvalue it binds the reference parameter to.
         # A predicate rides after the operands, so everything past n_operands
         # is forwarded as-is.
-        forwarded = [rest[at[i]] for i in range(n_operands) if i not in imm_at and i not in sunk]
+        forwarded_indices = [i for i in range(n_operands) if i not in imm_at and i not in sunk]
+        forwarded = [rest[at[i]] for i in forwarded_indices]
         forwarded += list(rest[n_present:])
-        return cuda_func_call(helper, *forwarded, source)
+        writable = {
+            i + lane for slot, i, lanes in layout if slot.rw in ("w", "rw") for lane in range(lanes)
+        }
+        writes = [
+            position
+            for position, index in enumerate(forwarded_indices)
+            if index in writable and is_mutable_cell_load(forwarded[position])
+        ]
+        call = cuda_func_call(helper, *forwarded, source)
+        if writes:
+            # Only table-declared outputs receive a cell lvalue. Other operands
+            # remain value reads, including reads of the same cell in this call.
+            call = Call(
+                call.op,
+                call.args,
+                attrs={"mutable_cell_writes": [IntImm("int32", i) for i in writes]},
+                ty=call.ty,
+            )
+        return call
 
     return codegen
 
@@ -485,7 +505,10 @@ def _coerce_pred_operand(entry, slot, values):
         # The 0/1 materialization of a .pred result: a "=r" uint32 the caller
         # receives through a reference parameter, so it needs a writable
         # uint32 lvalue exactly like any other destination.
-        if not isinstance(value, TensorLoad) or arg_dtype(value) != "uint32":
+        if (
+            not (isinstance(value, TensorLoad) or is_mutable_cell_load(value))
+            or arg_dtype(value) != "uint32"
+        ):
             raise ValueError(
                 f"{entry.name}: operand '{slot.name}' is a .pred result and must be "
                 f"a writable uint32 scalar or buffer element (declare it first, "
@@ -523,10 +546,10 @@ def _coerce_typed(entry, slot, values, mod_map):
     if slot.rw in ("w", "rw"):
         # A PTX destination is a register the caller declared, so every lane has
         # to be a writable lvalue: a scalar (`x: T.float32`) or a buffer element.
-        # Both are buffer-backed TensorLoad nodes, which the C codegen prints as the lvalue
-        # bound to the helper's reference parameter.
+        # Explicit tensor elements and local cell reads denote writable locations.
+        # Codegen carries the table's output positions to the helper call.
         for value in values:
-            if not isinstance(value, TensorLoad):
+            if not (isinstance(value, TensorLoad) or is_mutable_cell_load(value)):
                 raise ValueError(
                     f"{entry.name}: destination '{slot.name}' must be a writable scalar or "
                     f"buffer element (declare it first, e.g. `d: T.{allowed[0]}`), got "

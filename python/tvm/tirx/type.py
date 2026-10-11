@@ -18,10 +18,34 @@
 
 import tvm_ffi
 
-from tvm.ir import Type
+from tvm.ir import PrimType, Type
 from tvm.ir.location import UNKNOWN_LOC, Location
 
 from . import _ffi_api
+from .exec_scope import ExecScope
+
+
+@tvm_ffi.register_object("tirx.MutableCellType")
+class MutableCellType(Type):
+    """The type of an initialized, non-aliasing local mutable cell.
+
+    ``element_type`` is a numeric or boolean primitive scalar/fixed vector.
+    Omitted ``scope`` and ``ExecScope("thread")`` both denote one local cell
+    per execution thread. Wider scopes and cell-handle escape are unsupported.
+    """
+
+    element_type: PrimType
+    scope: ExecScope | None
+
+    def __init__(
+        self,
+        element_type: str | PrimType,
+        scope: ExecScope | None = None,
+        loc: Location = UNKNOWN_LOC,
+    ):
+        if isinstance(element_type, str):
+            element_type = PrimType(element_type)
+        self.__init_handle_by_constructor__(_ffi_api.MutableCellType, element_type, scope, loc)
 
 
 @tvm_ffi.register_object("tirx.TensorMapType")

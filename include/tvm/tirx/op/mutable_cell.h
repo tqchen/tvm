@@ -16,30 +16,29 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-#ifndef SRC_TIRX_SCRIPT_PRINTER_UTILS_H_
-#define SRC_TIRX_SCRIPT_PRINTER_UTILS_H_
 
-#include <tvm/ir/expr.h>
-#include <tvm/tirx/function.h>
-#include <tvm/tirx/stmt.h>
+/*! \file tvm/tirx/op/mutable_cell.h
+ *  \brief Initialized mutable local cell operations.
+ */
+#ifndef TVM_TIRX_OP_MUTABLE_CELL_H_
+#define TVM_TIRX_OP_MUTABLE_CELL_H_
 
-#include <optional>
+#include <tvm/ir/op.h>
 
-#include "../../../script/printer/ir/utils.h"
+namespace tvm::tirx {
 
-namespace tvm {
-namespace script {
-namespace printer {
-namespace details {
+/*! \brief Allocate a fresh cell of Call.ty, initialized by args[0].
+ *  Only valid as the direct value of a Bind to a MutableCellType Var.
+ */
+TVM_DLL const Op& mutable_cell_alloc_op();
 
-void PrintFunction(DocTranslatorObj* d, const tirx::FunctionNode* func, ExprDoc decorator,
-                   const ffi::String& dialect_attr);
-ffi::Optional<ExprDoc> VarDocTranslate(DocTranslatorObj* d, ffi::AnyView input,
-                                       const ffi::Object* destination);
+/*! \brief Read the element value of the cell Var in args[0]. */
+TVM_DLL const Op& mutable_cell_load_op();
 
-}  // namespace details
-}  // namespace printer
-}  // namespace script
-}  // namespace tvm
+/*! \brief Assign args[1] to the cell Var in args[0]; returns void.
+ *  Only valid as the direct value of an Evaluate statement.
+ */
+TVM_DLL const Op& mutable_cell_store_op();
 
-#endif  // SRC_TIRX_SCRIPT_PRINTER_UTILS_H_
+}  // namespace tvm::tirx
+#endif  // TVM_TIRX_OP_MUTABLE_CELL_H_

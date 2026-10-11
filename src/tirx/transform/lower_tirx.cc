@@ -24,6 +24,7 @@
 
 #include <tvm/ffi/reflection/registry.h>
 #include <tvm/ir/transform.h>
+#include <tvm/tirx/analysis.h>
 #include <tvm/tirx/transform.h>
 
 #include <cstdlib>
@@ -34,7 +35,13 @@ namespace tirx {
 namespace transform {
 
 Pass LowerTIRx() {
-  std::vector<tvm::transform::Pass> passes = {TileDispatch()};
+  auto verify_cells = CreateFunctionPass(
+      [](Function function, IRModule, PassContext) {
+        VerifyMutableCells(function);
+        return function;
+      },
+      0, "tirx.VerifyMutableCells");
+  std::vector<tvm::transform::Pass> passes = {verify_cells, TileDispatch()};
   if (std::getenv("TVM_PRINT_AFTER_TIRX_DISPATCH_OPS")) {
     passes.push_back(tvm::transform::PrintIR());
   }

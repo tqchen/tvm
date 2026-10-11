@@ -31,9 +31,11 @@
 #include <tvm/ffi/reflection/registry.h>
 #include <tvm/ir/function.h>
 #include <tvm/ir/prim/op.h>
+#include <tvm/tirx/analysis.h>
 #include <tvm/tirx/function.h>
 #include <tvm/tirx/op/gpu.h>
 #include <tvm/tirx/op/memory.h>
+#include <tvm/tirx/op/mutable_cell.h>
 #include <tvm/tirx/op/region.h>
 #include <tvm/tirx/op/vector.h>
 #include <tvm/tirx/stmt.h>
@@ -275,6 +277,7 @@ std::tuple<std::string, llvm::Function::LinkageTypes> CodeGenLLVM::GetLinkage(
 }
 
 llvm::Function* CodeGenLLVM::DeclareFunctionInternal(const GlobalVar& gvar, const Function& func) {
+  tirx::VerifyMutableCells(func);
   if (auto it = functions_.find(gvar.get()); it != functions_.end()) {
     return it->second;
   }
@@ -1711,7 +1714,9 @@ llvm::Value* CodeGenLLVM::Dispatch_(const prim::LetNode* op) {
   auto var_value = MakeValue(op->value);
   var_map_[op->var.get()] = var_value;
   AddDebugInformation(var_value, op->var);
-  analyzer_->Bind(op->var, op->value);
+  if (SideEffect(op->value) <= CallEffectKind::kPure) {
+    analyzer_->Bind(op->var, op->value);
+  }
   return MakeValue(op->body);
 }
 
@@ -1949,6 +1954,16 @@ llvm::Value* CodeGenLLVM::CreateMaskedStore(const CallNode* op) {
 
 llvm::Value* CodeGenLLVM::Dispatch_(const CallNode* op) {
   const ffi::Array<Expr>& args = op->args;
+  if (op->op.same_as(tirx::mutable_cell_load_op())) {
+    return builder_->CreateLoad(GetLLVMType(op->ty), GetVarValue(args[0].as_or_throw<Var>().get()),
+                                "cell_value");
+  }
+  if (op->op.same_as(tirx::mutable_cell_store_op())) {
+    llvm::Value* value = MakeValue(args[1]);
+    return builder_->CreateStore(value, GetVarValue(args[0].as_or_throw<Var>().get()));
+  }
+  TVM_FFI_CHECK(!op->op.same_as(tirx::mutable_cell_alloc_op()), ValueError)
+      << "Mutable cell allocation requires Bind";
   if (op->op.same_as(tirx::masked_load_op())) return CreateMaskedLoad(op);
   if (op->op.same_as(tirx::masked_store_op())) return CreateMaskedStore(op);
   if (op->op.same_as(tirx::tensor_data_ptr_op())) {
@@ -2281,6 +2296,21 @@ void CodeGenLLVM::Dispatch_(const AssertStmtNode* op) {
 }
 
 void CodeGenLLVM::Dispatch_(const BindNode* op) {
+  if (const auto* cell_type = op->var->ty.as<tirx::MutableCellTypeNode>()) {
+    EmitDebugLocation(op);
+    const auto* call = op->value.as_or_throw<Call>().get();
+    llvm::Value* initial_value = MakeValue(call->args[0]);
+    llvm::Value* cell = WithFunctionEntry([&]() {
+      return builder_->CreateAlloca(GetLLVMType(cell_type->element_type), nullptr,
+                                    op->var->name.c_str());
+    });
+    TVM_FFI_ICHECK(!var_map_.count(op->var.get()));
+    var_map_[op->var.get()] = cell;
+    // Storage can live in the entry block, but each dynamic declaration must
+    // initialize its own value, including declarations inside loops.
+    builder_->CreateStore(initial_value, cell);
+    return;
+  }
   if (const auto* call = op->value.as<CallNode>(); call) {
     if (call->op.same_as(tirx::alloc_tensor_op())) return DispatchAllocTensor(op, call);
     if (call->op.same_as(tirx::decl_tensor_op())) return DispatchDeclTensor(op, call);
@@ -2313,7 +2343,8 @@ void CodeGenLLVM::Dispatch_(const BindNode* op) {
 
   AddDebugInformation(value, op->var);
   var_map_[v] = value;
-  if (auto prim_value = op->value.as<PrimExpr>()) {
+  if (auto prim_value = op->value.as<PrimExpr>();
+      prim_value && SideEffect(prim_value.value()) <= CallEffectKind::kPure) {
     analyzer_->Bind(op->var, prim_value.value());
   }
   if (alloc_storage_info_.count(v) && alloc_storage_info_[v].alignment > 1) {

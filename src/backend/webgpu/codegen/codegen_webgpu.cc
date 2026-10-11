@@ -34,6 +34,7 @@
 #include <tvm/tirx/op/memory.h>
 #include <tvm/tirx/op/region.h>
 #include <tvm/tirx/transform.h>
+#include <tvm/tirx/type.h>
 
 #include <algorithm>
 #include <limits>
@@ -686,6 +687,8 @@ void CodeGenWebGPU::Dispatch_(const TensorLoadNode* op, std::ostream& os) {  // 
 }
 
 void CodeGenWebGPU::Dispatch_(const BindNode* op) {
+  TVM_FFI_CHECK(!op->var->ty.as<tirx::MutableCellTypeNode>(), ValueError)
+      << "WebGPU codegen does not support mutable cells";
   if (const auto* call = op->value.as<CallNode>(); call) {
     if (call->op.same_as(tirx::alloc_tensor_op())) return DispatchAllocTensor(op, call);
     if (call->op.same_as(tirx::decl_tensor_op())) return DispatchDeclTensor(op, call);

@@ -93,6 +93,14 @@ TVM_DLL size_t CalculateWorkspaceBytes(const Function& func, int64_t workspace_b
 TVM_DLL bool VerifyWellFormed(const Function& func, bool assert_mode = true);
 
 /*!
+ * \brief Verify mutable cell initialization, type, lifetime and non-aliasing rules.
+ *
+ * This focused check accepts ordinary IR without checking unrelated dialect rules.
+ * It rejects cell-handle escape, parallel captures and vectorized cell operations.
+ */
+TVM_DLL bool VerifyMutableCells(const Function& func, bool assert_mode = true);
+
+/*!
  * \brief Verify if the TIR in the given IRMOdule is well-formed.
  *
  * In addition to the checks performed for each Function (see above),

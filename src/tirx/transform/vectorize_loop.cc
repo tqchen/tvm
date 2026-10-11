@@ -1416,6 +1416,7 @@ namespace transform {
 // TODO(tvm-team): Make it as a target property.
 Pass VectorizeLoop(bool enable_vectorize) {
   auto pass_func = [=](Function f, IRModule m, PassContext ctx) {
+    VerifyMutableCells(f);
     auto* n = f.CopyOnWrite();
     if (enable_vectorize) {
       n->body = ffi::make_object<LoopVectorizer>(n->attrs)

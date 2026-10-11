@@ -68,6 +68,8 @@ from tvm.tirx.layout import (
     TileLayout,
     wg_local_layout,
 )
+from tvm.tirx.mutable_cell import is_mutable_cell_load, mutable_cell_alloc, mutable_cell_load
+from tvm.tirx.type import MutableCellType
 
 from . import _ffi_api, frame
 
@@ -756,12 +758,36 @@ def shared_scalar(
     return alloc_scalar(dtype=dtype, scope="shared", annotations=annotations)
 
 
+def _cell_value(value, element_type):
+    if isinstance(value, _ir.Expr) and isinstance(value.ty, _ir.PrimType):
+        source = DataType(value.ty.dtype)
+        target = DataType(element_type.dtype)
+        if source != target:
+            if source.lanes != target.lanes:
+                raise TypeError("Mutable cell assignment requires matching vector lanes")
+            return tir.Cast(element_type, value)
+    return value
+
+
+@_register_mutable_decl("tirx.alloc_cell")
+def alloc_cell(dtype="float32", value=0, *, scope: ExecScope | None = None) -> _ir.Call:
+    """Allocate an initialized local cell and return its readable contents.
+
+    The cell is fresh whenever its declaration executes, and lives in the
+    enclosing lexical scope. Omitted scope denotes the current execution thread.
+    A declaration without an initializer starts at typed zero.
+    """
+    from tvm.script.ir_builder.stmt import bind  # pylint: disable=import-outside-toplevel
+
+    element_type = _normalize_prim_type(dtype)
+    allocation = mutable_cell_alloc(element_type, _cell_value(value, element_type), scope)
+    return mutable_cell_load(bind(allocation))
+
+
 @_register_mutable_decl("tirx.local_scalar")
-def local_scalar(
-    dtype: str = "float32", *, annotations: dict[str, Any] | None = None
-) -> _ir.TensorLoad:
-    """Allocate a zero-dimensional buffer in local memory."""
-    return alloc_scalar(dtype=dtype, scope="local", annotations=annotations)
+def local_scalar(dtype: str = "float32") -> _ir.Call:
+    """Allocate a zero-initialized thread-local mutable cell."""
+    return alloc_cell(dtype)
 
 
 def _is_meta_class_instance(value: Any) -> bool:
@@ -769,6 +795,8 @@ def _is_meta_class_instance(value: Any) -> bool:
 
 
 def _meta_resource_for_value(value: Any) -> Any | None:
+    if is_mutable_cell_load(value):
+        return value.args[0]
     if isinstance(value, _ir.TensorLoad):
         return value.source
     if is_tensor_var(value):
@@ -1228,6 +1256,7 @@ u64 = _register_scalar_annotation("tirx.u64", uint64, dtype="uint64")
 _register_mutable_decl("tirx.u64", syntax="annotation")(u64)
 
 
+@_register_mutable_decl("tirx.bool", syntax="annotation")
 def boolean(expr: Expr | None = None) -> Expr:
     """Construct a new tirx.Var with type boolean or cast expression to type boolean.
 
@@ -1447,6 +1476,7 @@ __all__ = [
     "Layout",
     "LetAnnotation",
     "LocalVectorAnnotation",
+    "MutableCellType",
     "Ptr",
     "R",
     "Range",
@@ -1458,6 +1488,7 @@ __all__ = [
     "Tuple",
     "Var",
     "alloc_cast_frag",
+    "alloc_cell",
     "alloc_local",
     "alloc_scalar",
     "alloc_shared",

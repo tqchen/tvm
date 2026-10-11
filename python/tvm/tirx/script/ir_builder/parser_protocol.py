@@ -87,6 +87,7 @@ from tvm.tirx import Expr
 from tvm.tirx.expr import (
     IntImm,
 )
+from tvm.tirx.mutable_cell import is_mutable_cell_load, mutable_cell_store
 
 from . import _ffi_api, frame
 from . import ir as _native
@@ -264,6 +265,8 @@ def bind_(
                 )
         elif isinstance(value, _ir.Var | _tir.Layout):
             _name(value, name, name_loc)
+        elif is_mutable_cell_load(value):
+            _name(value.args[0], name, name_loc)
         elif isinstance(value, _ir.TensorLoad) and _tir.is_tensor_var(value.source):
             _name(value.source, name, name_loc)
         return value
@@ -313,7 +316,7 @@ def decl_mutable_cell_(
 ) -> Any:
     """Implements :func:`tvm.script.ir_builder.parser_protocol.decl_mutable_cell_`.
 
-    Primitive annotations allocate scalar local storage; vector annotations
+    Primitive annotations allocate initialized local cells; tensor annotations
     allocate their declared shape. Var declaration producers retain their own effects.
     """
     name_loc = loc if name_loc is None else name_loc
@@ -330,12 +333,13 @@ def decl_mutable_cell_(
         annotation = annotation.ty if isinstance(annotation, _ir.Expr) else annotation
         if not isinstance(annotation, _ir.PrimType) or str(annotation) == "handle":
             raise TypeError("Mutable scalar annotations require a primitive scalar type")
-        storage = _base.with_at_group_(loc, lambda: _native.local_scalar(str(annotation)))
-        if value is not _base.MISSING:
-            set_mutable_cell_(storage, value, loc=loc)
+        initial = 0 if value is _base.MISSING else value
+        storage = _base.with_at_group_(loc, lambda: _native.alloc_cell(annotation, initial))
     else:
         storage = value
-    if isinstance(storage, _ir.TensorLoad):
+    if is_mutable_cell_load(storage):
+        _name(storage.args[0], name, name_loc)
+    elif isinstance(storage, _ir.TensorLoad):
         _name(storage.source, name, name_loc)
     elif _tir.is_tensor_var(storage):
         _name(storage, name, name_loc)
@@ -345,12 +349,16 @@ def decl_mutable_cell_(
 
 
 def set_mutable_cell_(
-    target: _ir.TensorLoad | _ir.Var, value: Any, *, loc: _Loc = None
+    target: _ir.Expr, value: Any, *, loc: _Loc = None
 ) -> _base.AlreadyEmitted[tvm.ir.Stmt]:
     """Implements :func:`tvm.script.ir_builder.parser_protocol.set_mutable_cell_`.
 
-    Updates emit a scalar buffer store. Targets must denote scalar storage.
+    Updates emit a dedicated cell store or an explicit scalar tensor store.
     """
+    if is_mutable_cell_load(target):
+        cell = target.args[0]
+        value = _native._cell_value(value, cell.ty.element_type)
+        return _base.at_(loc, evaluate(mutable_cell_store(cell, value)))
     if isinstance(target, _ir.TensorLoad):
         return _base.at_(loc, tensor_store(target.source, list(target.indices), value))
     elif (
@@ -412,6 +420,8 @@ def setattr_(
 ) -> _base.AlreadyEmitted[tvm.ir.Stmt] | None:
     """Implements :func:`tvm.script.ir_builder.parser_protocol.setattr_`."""
     previous = getattr(target, name, _base.MISSING)
+    if is_mutable_cell_load(previous):
+        return set_mutable_cell_(previous, value, loc=loc)
     buffer = previous.source if isinstance(previous, _ir.TensorLoad) else previous
     if _tir.is_tensor_var(buffer):
         shape = buffer.ty.shape

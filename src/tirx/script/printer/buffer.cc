@@ -37,15 +37,6 @@ namespace script {
 namespace printer {
 namespace details {
 
-bool IsScalarBuffer(DocTranslatorObj* d, const Expr& source) {
-  auto var = source.as<Var>();
-  if (!var.has_value()) return false;
-  IdDoc id = d->VarGetOrAllocId(var.value(), false);
-  auto column = d->GetOrCreateExtraState<ffi::Dict<IdDoc, bool>>("tirx.buffer_as_mutable_var");
-  auto found = column.find(id);
-  return found != column.end() && (*found).second;
-}
-
 namespace {
 
 ffi::Optional<ExprDoc> BufferOperationDocTranslate(DocTranslatorObj* d, ffi::AnyView input,
@@ -122,18 +113,6 @@ ffi::Optional<ExprDoc> BufferOperationDocTranslate(DocTranslatorObj* d, ffi::Any
   }
   IdDoc lhs = VarDoc(d, var);
   AssignDoc allocation(lhs, rhs, std::nullopt);
-  if (is_alloc && d->GetExtraConfig<bool>("tirx.scalar_buffer_as_mutable_var", true) &&
-      annotations.empty() && call->args.size() == 3 && scope->value == "local" &&
-      buffer.value()->IsScalar(true)) {
-    ExprDoc annotation = d->Translate(buffer.value()->dtype).value();
-    // T.bool is a type annotation but has no mutable-declaration syntax.
-    if (annotation.as<AttrAccessDoc>() && !buffer.value()->dtype.MatchesCode(kDLBool)) {
-      auto scalars = d->GetOrCreateExtraState<ffi::Dict<IdDoc, bool>>("tirx.buffer_as_mutable_var");
-      scalars.Set(d->VarGetOrAllocId(var, true), true);
-      allocation->rhs = std::nullopt;
-      allocation->annotation = annotation;
-    }
-  }
   d->Emit(allocation, ffi::GetRef<Call>(call));
   return std::nullopt;
 }
@@ -232,12 +211,9 @@ ffi::Optional<ExprDoc> TensorStoreDocTranslate(DocTranslatorObj* d, ffi::AnyView
       ffi::details::AnyUnsafe::RawObjectPtrFromAnyViewAfterCheck<const TensorStoreNode>(input);
   TVM_FFI_CHECK(destination == nullptr, TypeError)
       << "printer statement-only node cannot fulfill a destination";
-  auto tensor_var = store->dest.as<tvm::tirx::TensorVar>();
-  bool scalar = tensor_var.has_value() && IsScalarBuffer(d, tensor_var.value());
-  ExprDoc buffer = scalar ? ExprDoc(VarDoc(d, store->dest.as<Var>().value(), false))
-                          : d->Translate(store->dest).value();
+  ExprDoc buffer = d->Translate(store->dest).value();
   ExprDoc value = d->Translate(store->value).value();
-  ExprDoc lhs = scalar ? buffer : ExprDoc(IndexDoc(buffer, TensorIndices(d, store->indices, true)));
+  ExprDoc lhs = IndexDoc(buffer, TensorIndices(d, store->indices, true));
   d->Emit(AssignDoc(lhs, value, std::nullopt), ffi::GetRef<ffi::ObjectRef>(store));
   return std::nullopt;
 }
@@ -252,9 +228,6 @@ ffi::Optional<ExprDoc> TIRxTensorLoadDocTranslate(DocTranslatorObj* d, ffi::AnyV
                                                   const ffi::Object*) {
   const auto* load =
       ffi::details::AnyUnsafe::RawObjectPtrFromAnyViewAfterCheck<const TensorLoadNode>(input);
-  if (IsScalarBuffer(d, load->source)) {
-    return VarDoc(d, load->source.as<Var>().value(), false);
-  }
   ExprDoc source = d->Translate(load->source).value();
   return IndexDoc(source, TensorIndices(d, load->indices));
 }

@@ -568,8 +568,12 @@ def test_lowering_emits_native_dump_metadata_without_control_abi():
 def test_token_sentinel_and_dynamic_alternation_lowering():
     source = _cuda_source(_compile(token_loop))
 
-    assert "token_ptr[0] = (uint)0" in source
-    assert source.count("tvm_builtin_iket_official_event(token_ptr[0])") == 2
+    assert "uint token = (uint)0;" in source
+    assert "token_ptr" not in source
+    token_reads = re.findall(r"uint (\w+) = token;", source)
+    assert len(token_reads) == 2
+    for value in token_reads:
+        assert f"tvm_builtin_iket_official_event({value})" in source
     assert "case 1:" in source
     assert "case 2:" in source
     assert "case 31:" in source
@@ -579,6 +583,70 @@ def test_token_sentinel_and_dynamic_alternation_lowering():
         event = _official_global_bytes(source, f"__iket_evt_decl_{name}_{event_id}_attrs")
         assert int.from_bytes(event[4:8], "little") == event_id
         assert int.from_bytes(event[16:20], "little") == 4
+
+
+@pytest.mark.parametrize("payload_dtype", ["int32", "uint32"])
+def test_token_copy_between_cells_and_explicit_tensors(payload_dtype):
+    @T.function
+    def copied_token(out: T.Tensor((32,), "int32")):
+        T.device_entry(launch=T.cuda.LaunchConfig(grid=1, block=(32,)))
+        iket = IketProfiler()
+        tx = T.cuda.thread_idx("x")
+        first: T.uint32 = iket.range_start("copied", T.int32(7))
+        second: T.uint32 = first
+        explicit_token = T.alloc_tensor((1,), "uint32", scope="local")
+        explicit_token[0] = second
+        second = explicit_token[0]
+        iket.range_end(second, T.cast(T.int32(9), payload_dtype))
+        out[tx] = tx
+
+    if payload_dtype == "uint32":
+        with pytest.raises(TypeError, match="changes payload type"):
+            _compile(copied_token)
+        return
+
+    source = _cuda_source(_compile(copied_token))
+    assert "uint first = tvm_builtin_iket_official_event" in source
+    assert "uint second = " in source
+    assert "first_ptr" not in source
+    assert "second_ptr" not in source
+    assert "__iket_evt_decl_copied_1_attrs" in source
+
+    stripped = cuda_transforms.LowerIket()(tvm.IRModule({"main": copied_token}))
+    script = stripped.script()
+    assert "cuda.iket" not in script
+    assert "first" not in script
+    assert "second" not in script
+    assert "explicit_token" not in script
+
+
+@pytest.mark.parametrize(
+    "statement",
+    [
+        pytest.param("out[tx] = T.int32(token + T.uint32(1))", id="arithmetic"),
+        pytest.param("token = T.uint32(0)", id="overwrite"),
+        pytest.param('T.cuda.iket_mark("leaked", token)', id="payload"),
+        pytest.param(
+            'T.cuda.iket_range_end(T.cuda.iket_range_start("direct"))', id="direct_producer"
+        ),
+    ],
+)
+def test_rejects_cell_token_misuse(statement):
+    invalid_token = tvm.script.from_source(
+        f"""
+@T.function
+def invalid_token(out: T.Tensor((32,), "int32")):
+    T.device_entry(launch=T.cuda.LaunchConfig(grid=1, block=(32,)))
+    tx = T.cuda.thread_idx("x")
+    token: T.uint32 = T.cuda.iket_range_start("token")
+    {statement}
+    T.cuda.iket_range_end(token)
+""",
+        extra_vars={"T": T},
+    )
+
+    with pytest.raises(ValueError, match="RangeToken"):
+        cuda_transforms.LowerIket()(tvm.IRModule({"main": invalid_token}))
 
 
 def test_payload_metadata_and_native_record_layout():
@@ -628,7 +696,10 @@ def test_sentinel_only_has_no_declaration_and_guards_payload_evaluation():
     assert "__iket_evt_decl" not in source
     assert "__iket_range_decl" not in source
     kernel = source[source.index("sentinel_only_payload_kernel") :]
-    guard = kernel.index("if (token_ptr[0] != (uint)0)")
+    guard_match = re.search(r"if \((\w+) != \(uint\)0\)", kernel)
+    assert guard_match is not None
+    assert f"uint {guard_match[1]} = token;" in kernel
+    guard = guard_match.start()
     payload_load = kernel.index("out_ptr[((int)threadIdx.x)]", guard)
     event = kernel.index("tvm_builtin_iket_official_event", guard)
     assert guard < event < payload_load

@@ -34,6 +34,28 @@
 
 namespace tvm::tirx {
 
+void MutableCellTypeNode::Validate() const {
+  const PrimType& type = element_type;
+  bool numeric = type.MatchesCode(kDLInt, kDLUInt, kDLFloat, kDLBfloat, kDLBool) ||
+                 (type.code() >= kDLFloat8_e3m4 && type.code() <= kDLFloat4_e2m1fn);
+  TVM_FFI_CHECK(numeric && !type.IsScalableVector() && type.bits() > 0 && type.lanes() > 0,
+                TypeError)
+      << "MutableCellType requires a numeric or boolean scalar or fixed-vector element type";
+  TVM_FFI_CHECK(!scope || scope.value()->kind == ScopeKind::kThread, ValueError)
+      << "MutableCellType only supports the thread execution scope";
+}
+
+MutableCellType::MutableCellType(PrimType element_type, ffi::Optional<ExecScope> scope,
+                                 Location loc)
+    : Type(ffi::UnsafeInit{}) {
+  auto node = ffi::make_object<MutableCellTypeNode>();
+  node->element_type = std::move(element_type);
+  node->scope = std::move(scope);
+  node->loc = std::move(loc);
+  node->Validate();
+  data_ = std::move(node);
+}
+
 bool TensorTypeNode::IsScalar(bool alloc_or_decl) const {
   // TODO(@bohan): logical scope is not considered
   return shape.size() == 1 && tvm::prim::IsOne(shape[0]) && strides.empty() &&
@@ -55,6 +77,46 @@ std::optional<int64_t> TensorTypeNode::ConstantAllocationSize() const {
 }
 
 namespace {
+
+TVM_FFI_INLINE ffi::Expected<ffi::Optional<ffi::VisitInterrupt>> MutableCellTypeVisit(
+    ffi::StructuralVisitorObj* visitor, ffi::AnyView value) noexcept {
+  const auto* self =
+      ffi::details::AnyUnsafe::RawObjectPtrFromAnyViewAfterCheck<const MutableCellTypeNode>(value);
+  TVM_FFI_S_VISIT_MAYBE_EARLY_RETURN(visitor->VisitExpected(self->element_type));
+  TVM_FFI_S_VISIT_MAYBE_EARLY_RETURN(visitor->VisitExpected(self->scope));
+  return std::nullopt;
+}
+
+TVM_FFI_INLINE ffi::Expected<ffi::UnchangedOr<ffi::Any>> MutableCellTypeMutate(
+    ffi::StructuralMutatorObj* mutator, ffi::AnyView value) noexcept {
+  const auto* self =
+      ffi::details::AnyUnsafe::RawObjectPtrFromAnyViewAfterCheck<const MutableCellTypeNode>(value);
+  TVM_FFI_S_MUTATE_ASSIGN_OR_RETURN(ffi::UnchangedOr<PrimType>, element_type,
+                                    mutator->MutateExpected(self->element_type));
+  TVM_FFI_S_MUTATE_ASSIGN_OR_RETURN(ffi::UnchangedOr<ffi::Optional<ExecScope>>, scope,
+                                    mutator->MutateExpected(self->scope));
+  if (element_type.UnchangedOrSameAs(self->element_type) && scope.UnchangedOrSameAs(self->scope)) {
+    return ffi::Unchanged();
+  }
+  auto copy = ffi::make_object<MutableCellTypeNode>(*self);
+  copy->element_type = std::move(element_type).ValueOrUnchanged(std::move(copy->element_type));
+  copy->scope = std::move(scope).ValueOrUnchanged(std::move(copy->scope));
+  return ffi::Any(std::move(copy));
+}
+
+TVM_FFI_INLINE ffi::Expected<ffi::UnchangedOr<ffi::Any>> MutableCellTypeMaybeInplaceMutate(
+    ffi::StructuralMutatorObj* mutator, ffi::AnyView value) noexcept {
+  auto* self = const_cast<MutableCellTypeNode*>(
+      ffi::details::AnyUnsafe::RawObjectPtrFromAnyViewAfterCheck<const MutableCellTypeNode>(value));
+  TVM_FFI_S_MUTATE_ASSIGN_OR_RETURN(
+      ffi::UnchangedOr<PrimType>, element_type,
+      mutator->MutateExpected(self->element_type, ffi::InplaceMode::kAllow));
+  TVM_FFI_S_MUTATE_ASSIGN_OR_RETURN(ffi::UnchangedOr<ffi::Optional<ExecScope>>, scope,
+                                    mutator->MutateExpected(self->scope, ffi::InplaceMode::kAllow));
+  if (!element_type.IsUnchanged()) self->element_type = std::move(element_type).ValueUnchecked();
+  if (!scope.IsUnchanged()) self->scope = std::move(scope).ValueUnchecked();
+  return ffi::Unchanged();
+}
 
 TVM_FFI_INLINE ffi::Expected<ffi::Optional<ffi::VisitInterrupt>> TensorMapTypeVisit(
     ffi::StructuralVisitorObj*, ffi::AnyView) noexcept {
@@ -164,6 +226,22 @@ TVM_FFI_INLINE ffi::Expected<ffi::UnchangedOr<ffi::Any>> TensorTypeMaybeInplaceM
 }
 
 }  // namespace
+
+TVM_FFI_STATIC_INIT_BLOCK() {
+  namespace refl = tvm::ffi::reflection;
+  MutableCellTypeNode::RegisterReflection();
+  refl::TypeAttrDef<MutableCellTypeNode>()
+      .attr(refl::type_attr::kStructuralVisit,
+            ffi::FStructuralVisit::FromNative<&MutableCellTypeVisit>())
+      .attr(refl::type_attr::kStructuralMutate,
+            ffi::FStructuralMutate::FromNative<&MutableCellTypeMutate>())
+      .attr(refl::type_attr::kStructuralMaybeInplaceMutate,
+            ffi::FStructuralMutate::FromNative<&MutableCellTypeMaybeInplaceMutate>());
+  refl::GlobalDef().def("tirx.MutableCellType", [](PrimType element_type,
+                                                   ffi::Optional<ExecScope> scope, Location loc) {
+    return MutableCellType(std::move(element_type), std::move(scope), std::move(loc));
+  });
+}
 
 TensorType::TensorType(ffi::String storage_scope, PrimType dtype, ffi::Array<PrimExpr> shape,
                        ffi::Array<PrimExpr> strides, ffi::Optional<PrimExpr> elem_offset,

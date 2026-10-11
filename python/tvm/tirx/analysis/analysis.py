@@ -25,6 +25,11 @@ from ..function import Function
 from . import _ffi_api
 
 
+def verify_mutable_cells(func: Function, assert_mode: bool = True) -> bool:
+    """Check initialized local cell types, lexical lifetime and non-aliasing uses."""
+    return _ffi_api.VerifyMutableCells(func, assert_mode)
+
+
 def verify_memory(func: Function) -> bool:
     """Verify if func contains illegal host side direct memory access.
 

@@ -32,13 +32,16 @@
 #include <tvm/tirx/index_map.h>
 #include <tvm/tirx/op/gpu.h>
 #include <tvm/tirx/op/memory.h>
+#include <tvm/tirx/op/mutable_cell.h>
 #include <tvm/tirx/op/region.h>
 #include <tvm/tirx/stmt.h>
 #include <tvm/tirx/stmt_functor.h>
 
 #include <cmath>
 #include <iomanip>
+#include <optional>
 #include <string>
+#include <unordered_set>
 #include <utility>
 #include <vector>
 
@@ -1089,9 +1092,66 @@ void CodeGenCUDA::Dispatch_(const CallNode* op, std::ostream& os) {
   auto print_cuda_func_call = [&](const CallNode* op, std::ostream& os) {
     TVM_FFI_ICHECK_GE(op->args.size(), 2U);
     size_t num_args = op->args.size() - 2;
+    std::unordered_set<size_t> cell_writes;
+    int64_t cell_condition = -1;
+    if (op->attrs.has_value()) {
+      if (const auto* attrs = op->attrs.value().as<DictAttrsNode>()) {
+        if (auto it = attrs->dict.find("mutable_cell_writes"); it != attrs->dict.end()) {
+          auto indices = (*it).second.as<ffi::Array<ffi::Any>>();
+          TVM_FFI_CHECK(indices.has_value(), ValueError)
+              << "mutable_cell_writes must be an array of integer immediate indices";
+          for (const ffi::Any& entry : indices.value()) {
+            auto index = entry.as<IntImm>();
+            std::optional<int64_t> position;
+            if (index) position = index.value()->value.as<int64_t>();
+            TVM_FFI_CHECK(position && *position >= 0 && static_cast<size_t>(*position) < num_args,
+                          ValueError)
+                << "mutable_cell_writes contains an invalid argument index";
+            TVM_FFI_CHECK(cell_writes.insert(static_cast<size_t>(*position)).second, ValueError)
+                << "mutable_cell_writes contains a duplicate argument index";
+          }
+        }
+        if (auto it = attrs->dict.find("mutable_cell_condition"); it != attrs->dict.end()) {
+          auto index = (*it).second.as<IntImm>();
+          std::optional<int64_t> position;
+          if (index) position = index.value()->value.as<int64_t>();
+          TVM_FFI_CHECK(position && *position >= 0 && static_cast<size_t>(*position) < num_args &&
+                            !cell_writes.count(static_cast<size_t>(*position)),
+                        ValueError)
+              << "mutable_cell_condition contains an invalid argument index";
+          cell_condition = *position;
+        }
+      }
+    }
+    auto return_type = op->ty.as<PrimType>();
+    TVM_FFI_CHECK(
+        cell_writes.empty() || IsVoidType(op->ty) || (return_type && return_type.value().IsVoid()),
+        ValueError)
+        << "CUDA helpers that write mutable cells must return void";
     std::vector<std::string> args;
-    for (size_t i = 1; i < num_args + 1; i++) {
-      args.push_back(this->PrintExpr(op->args[i]));
+    for (size_t i = 0; i < num_args; i++) {
+      const Expr& arg = op->args[i + 1];
+      if (cell_writes.count(i)) {
+        const auto* load = arg.as<CallNode>();
+        TVM_FFI_CHECK(load && load->op.same_as(tirx::mutable_cell_load_op()), ValueError)
+            << "mutable_cell_writes requires a direct mutable cell load operand";
+        args.push_back(GetVarID(load->args[0].as_or_throw<Var>().get()));
+      } else if (static_cast<int64_t>(i) == cell_condition) {
+        // This is a generated macro's loop predicate, evaluated anew after
+        // each output update, rather than an ordinary by-value argument.
+        bool old_inline = inline_mutable_cell_loads_;
+        bool old_ssa = print_ssa_form_;
+        inline_mutable_cell_loads_ = true;
+        print_ssa_form_ = false;
+        auto statement_position = stream.tellp();
+        args.push_back(PrintExpr(arg));
+        inline_mutable_cell_loads_ = old_inline;
+        print_ssa_form_ = old_ssa;
+        TVM_FFI_CHECK(stream.tellp() == statement_position, ValueError)
+            << "Mutable cell wait conditions must be inline scalar expressions";
+      } else {
+        args.push_back(PrintExpr(arg));
+      }
     }
     std::string source_code = op->args[num_args + 1].as<StringImmNode>()->value;
     std::string func_name = op->args[0].as<StringImmNode>()->value;

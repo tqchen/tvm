@@ -29,6 +29,7 @@
 #include <tvm/tirx/op/memory.h>
 #include <tvm/tirx/stmt.h>
 #include <tvm/tirx/transform.h>
+#include <tvm/tirx/type.h>
 
 #include <algorithm>
 #include <cmath>
@@ -221,6 +222,8 @@ std::string CodeGenTrainium::GetStorageScopeStr(const std::string& scope) {  // 
 }
 
 void CodeGenTrainium::Dispatch_(const BindNode* op) {
+  TVM_FFI_CHECK(!op->var->ty.as<tirx::MutableCellTypeNode>(), ValueError)
+      << "Trainium codegen does not support mutable cells";
   if (const auto* call = op->value.as<CallNode>(); call) {
     if (call->op.same_as(tirx::alloc_tensor_op())) return DispatchAllocTensor(op, call);
     if (call->op.same_as(tirx::decl_tensor_op())) return DispatchDeclTensor(op, call);

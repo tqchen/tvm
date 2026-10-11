@@ -266,47 +266,55 @@ local array that nvcc/ptxas can promote to registers when its accesses permit.
 Scalar
 ~~~~~~
 
-A mutable scalar is represented by a ``local`` buffer with **one element** —
-strictly, you don't need a separate concept. You can allocate the buffer and
-index ``[0]``:
+A mutable scalar is a local **cell**, represented by a ``Var`` with
+``tirx.MutableCellType`` and dedicated allocation, load, and store operations.
+The handle names the cell; each load produces its current element value:
 
 .. code-block:: python
 
-    phase = Tx.alloc_local((1,), "int32")   # one-element local buffer
-    phase[0] = 0
-    while phase[0] < 4:
-        acc = acc + A[tx, phase[0]]
-        phase[0] += 1
-
-But writing ``phase[0]`` everywhere is clumsy, so a **scalar** is sugar for exactly
-this — a one-element local buffer you read and write **by name**:
-
-.. code-block:: python
-
-    phase: Tx.int32 = 0                 # mutable scalar (sugar for the above)
+    phase: Tx.int32 = 0
     while phase < 4:
         acc = acc + A[tx, phase]
         phase += 1
 
-    s = Tx.local_scalar("int32")        # explicit form; assign by name (s = ..., not s[0])
-    acc: Tx.float32 = 0.0               # a type-annotated assignment also makes one
+    s = Tx.local_scalar("int32")       # initialized to zero
+    acc: Tx.float32 = 0.0
+    pair = Tx.alloc_cell("float32x2", Tx.broadcast(0.0, 2))
 
-The two are not just similar — they parse to **structurally identical TIRx**. The
-sugar is resolved entirely in the parser: ``phase: Tx.int32`` *is* that one-element
-``local`` buffer, and ``phase`` / ``phase += 1`` *are* ``phase[0]`` /
-``phase[0] += 1``. ``tvm.ir.assert_structural_equal`` on the two kernels passes, and
-the printer even renders the explicit ``alloc_local`` + ``[0]`` form **back** as the
-scalar form — so once parsing is done there is no difference at all. Both therefore
-lower to the same ``alignas(64) int phase_ptr[1];``; the scalar just lets you drop
-the ``[0]``. (``Tx.local_scalar`` / ``Tx.shared_scalar`` / ``Tx.alloc_scalar`` choose
-the scope explicitly.)
+Cells generate ordinary typed local variables, reads, and assignments directly.
+For example, ``phase: Tx.int32 = 0`` generates ``int phase = 0;`` in CUDA C++.
+No tensor, buffer, array, or buffer-lowering pass implements a cell.
+An explicit ``Tx.alloc_local((1,), ...)`` remains a one-element tensor with
+indexed accesses and tensor syntax when printed.
 
-.. note::
+Each execution of a declaration creates fresh storage that lasts through its
+lexical scope. A declaration without an initializer starts at typed zero.
+An immutable binding captures a value, so later writes cannot change it:
 
-   **Why not a** ``Var``\ **?** A TIRx ``Var`` is *immutable* — a single static
-   binding (it is exactly what ``Tx.let`` produces, below). A scalar needs to be
-   *mutable* — you reassign it in loops and accumulators — so it must be backed by a
-   one-element buffer you can store into repeatedly, not a ``Var``.
+.. code-block:: python
+
+    value: Tx.int32 = 3
+    saved: Tx.let = value
+    value = 8                         # saved is still 3
+
+``MutableCellType(element_type, scope=None)`` accepts primitive numeric and
+boolean scalars and fixed-length vectors. The target must support the particular
+element type. Omitted scope means one cell per execution thread;
+``ExecScope("thread")`` is also accepted. Wider scopes, scalable vectors,
+pointers, tensors, and nested cells are unsupported. Cells in vectorized loops
+are rejected; ordinary serial and unrolled loops are supported. A parallel body
+may declare its own cells, but cannot capture a cell from outside that body.
+
+A cell handle cannot be copied, passed to a function, returned, or addressed.
+Only its loaded value can be used in ordinary expressions and arguments.
+CUDA PTX operations may use a cell as an explicitly declared output operand,
+and ``Tx.cuda.wait_until`` may update its cell destination; these operations
+keep the cell local and do not expose its address. Shared scalars and explicit
+``Tx.alloc_scalar`` / ``Tx.decl_scalar`` retain their tensor storage semantics.
+Use those storage operations when an addressable element is needed.
+
+C-family and LLVM backends implement cells directly. WebGPU, Trainium, and
+SPIR-V currently diagnose cells as unsupported.
 
 ``let``
 ~~~~~~~

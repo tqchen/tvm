@@ -61,7 +61,7 @@ ffi::Optional<ExprDoc> VarDocTranslate(DocTranslatorObj* d, ffi::AnyView input,
       rhs = NamespaceDoc("ir")->Attr("dynamic")->Call(
           {LiteralDoc::Str(var->name, std::nullopt)}, {"dtype"},
           {LiteralDoc::DataType(primitive.value()->dtype, std::nullopt)});
-    } else if (var->ty.as<tirx::TensorTypeNode>()) {
+    } else if (var->ty.as<tirx::TensorTypeNode>() || var->ty.as<tirx::MutableCellTypeNode>()) {
       rhs = NamespaceDoc("tirx")->Attr("Var")->Call(
           {LiteralDoc::Str(var->name, std::nullopt), d->Translate(var->ty).value()});
     } else {
@@ -84,8 +84,6 @@ ffi::Optional<ExprDoc> VarDocTranslate(DocTranslatorObj* d, ffi::AnyView input,
     d->Emit(AssignDoc(VarDoc(d, var), rhs, annotation), var);
     return std::nullopt;
   }
-  // Mutable scalar syntax binds a TensorLoad; resource uses need its buffer.
-  if (IsScalarBuffer(d, var)) return IdDoc(id->name)->Attr("source");
   return IdDoc(id->name);
 }
 

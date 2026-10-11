@@ -32,7 +32,13 @@ from .tensor import (
     decl_tensor,
     is_tensor_var,
 )
-from .type import TensorMapType
+from .type import MutableCellType, TensorMapType
+from .mutable_cell import (
+    mutable_cell_alloc,
+    mutable_cell_load,
+    mutable_cell_store,
+    is_mutable_cell_load,
+)
 from .expr import convert
 from .expr import Var, FloatImm, IntImm, Cast
 from .expr import Add, Sub, Mul, Div, Mod, FloorDiv, FloorMod

@@ -29,6 +29,7 @@
 #include <utility>
 
 #include "../ir/tir_visitor_with_path.h"
+#include "verify_mutable_cells.h"
 namespace tvm {
 namespace tirx {
 using AccessPath = ffi::reflection::AccessPath;
@@ -311,6 +312,7 @@ bool VerifyWellFormedCommon(const NodeRef& node, bool assert_mode) {
   return UndefinedVarVerifier<PathVisitor>::Verify(node, assert_mode) &&
          UndefinedBufferVerifier<PathVisitor>::Verify(node, assert_mode) &&
          TensorLoadTypeVerifier<PathVisitor>::Verify(node, assert_mode) &&
+         MutableCellVerifier<PathVisitor>::Verify(node, assert_mode) &&
          LoopControlVerifier<PathVisitor>::Verify(node, assert_mode);
 }
 }  // namespace tirx

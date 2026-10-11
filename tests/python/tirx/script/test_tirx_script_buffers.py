@@ -228,12 +228,11 @@ def test_alloc_apis():
         def init(self):
             self.Ta = self.Ta + T.float16(1)
             self.Tb = self.Tb + T.float16(2)
-            self.idx.source[0] = T.int32(0)
+            T.set_mutable_cell_(self.idx, T.int32(0))
             self.idx = self.idx + T.int32(1)
             self.inner_pool2 = self.inner_pool2 + T.float16(1)
             T.evaluate(T.address_of(self.Ta))
             T.evaluate(T.address_of(self.Tb))
-            T.evaluate(T.address_of(self.idx))
             T.evaluate(T.address_of(self.inner_pool))
             T.evaluate(T.address_of(self.inner_pool2))
 
@@ -251,14 +250,14 @@ def test_alloc_apis():
         E = T.decl_scalar("float16", pool.data, "shared.dyn", 0)
                 # normal 1-dim buffer with shape (1,)
         F = T.alloc_local((1,), "float16")
-        Ta: T.float16
+        Ta = T.shared_scalar("float16")
         inner_pool = T.decl_tensor(shape=[10], data=pool.data, dtype="uint8", scope="shared.dyn")
-        test = Test(Ta, inner_pool)  # noqa: F821
+        test = Test(Ta, inner_pool)
         test.init()
         A[0] = C
         A[0] = C + D  # noqa: F821
         A[1] = B[0] * C
-        D.source[0] = D + T.float16(1)  # noqa: F821
+        T.set_mutable_cell_(D, D + T.float16(1))  # noqa: F821
         D = D + T.float16(1)  # noqa: F821
         C = D
         T.evaluate(E)
@@ -272,7 +271,6 @@ def test_alloc_apis():
         T.evaluate(C.source.ptr_to([0] * len(C.source.shape)))
         T.evaluate(C.source.data)
         T.evaluate(D)
-        T.evaluate(T.address_of(D))
         # fmt: on
 
     code = test.script()
@@ -330,22 +328,20 @@ def test_buffer_shape_repeated_var_prints_out_of_line():
     assert_structural_equal(func, from_source(code))
 
 
-def test_scalar_allocbuffer_annotation_and_init_merge():
+def test_mutable_cell_annotation_and_initializer():
     # fmt: off
     @T.function
     def test():
         T.device_entry()
-        phase_mma = T.alloc_local((1,), "int32")
-        phase_mma[0] = T.int32(0)
-        phase_aux = T.alloc_local((1,), "int32")
-        T.evaluate(phase_mma[0] + phase_aux[0])
+        phase_mma: T.int32 = 0
+        phase_aux: T.int32
+        T.evaluate(phase_mma + phase_aux)  # noqa: F821
         # fmt: on
 
     code = test.script()
     assert "phase_mma: T.int32 = 0" in code
-    assert "phase_aux: T.int32" in code
-    assert "phase_mma = T.alloc_local" not in code
-    assert "phase_aux = T.alloc_local" not in code
+    assert "phase_aux: T.int32 = 0" in code
+    assert "alloc_local" not in code
     assert from_source(code).script() == code
     assert_structural_equal(test, from_source(code))
 
@@ -367,7 +363,7 @@ def test_scalar_allocbuffer_layout_none_keeps_alloc_local():
     assert_structural_equal(test, from_source(code))
 
 
-def test_scalar_allocbuffer_annotation_sugar():
+def test_single_element_tensor_preserves_storage_syntax():
     # fmt: off
     @T.function
     def test():
@@ -377,8 +373,9 @@ def test_scalar_allocbuffer_annotation_sugar():
     # fmt: on
 
     code = test.script()
-    assert "x: T.int32 = 0" in code
-    assert "x = T.alloc_tensor" not in code
+    assert "x = T.alloc_local" in code
+    assert "x[0] = 0" in code
+    assert "x: T.int32" not in code
     assert from_source(code).script() == code
     assert_structural_equal(test, from_source(code))
 

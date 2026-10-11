@@ -942,6 +942,7 @@ Pass SplitHostDevice() {
     for (const auto& [gvar, base_func] : mod->functions) {
       if (auto opt = base_func.as<Function>()) {
         Function func = opt.value();
+        VerifyMutableCells(func);
         func = AnnotateDeviceRegionsForSplit(std::move(func));
 
         auto global_symbol = func->GetAttr<ffi::String>(tvm::attr::kGlobalSymbol);

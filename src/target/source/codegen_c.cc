@@ -27,10 +27,12 @@
 #include <tvm/ir/prim/op.h>
 #include <tvm/ir/unique_name_supply.h>
 #include <tvm/sym/analyzer.h>
+#include <tvm/tirx/analysis.h>
 #include <tvm/tirx/function.h>
 #include <tvm/tirx/op/abi.h>
 #include <tvm/tirx/op/gpu.h>
 #include <tvm/tirx/op/memory.h>
+#include <tvm/tirx/op/mutable_cell.h>
 #include <tvm/tirx/op/region.h>
 #include <tvm/tirx/stmt.h>
 #include <tvm/tirx/type.h>
@@ -52,6 +54,8 @@ using namespace tirx;
 void CodeGenC::Init(bool output_ssa) { print_ssa_form_ = output_ssa; }
 
 void CodeGenC::InitFuncState(const Function& f) {
+  tirx::VerifyMutableCells(f);
+  inline_mutable_cell_loads_ = false;
   thread_extents_.clear();
   alloc_storage_scope_.clear();
   handle_data_type_.clear();
@@ -713,6 +717,24 @@ void CodeGenC::PrintCallExtern(Type ret_type, ffi::String global_symbol,
 }
 
 void CodeGenC::Dispatch_(const CallNode* op, std::ostream& os) {  // NOLINT(*)
+  if (op->op.same_as(tirx::mutable_cell_load_op())) {
+    // A load evaluates now.  In particular, SSA expression caching must never
+    // turn a captured read into an alias for a later value of the cell.
+    const auto* cell = op->args[0].as_or_throw<Var>().get();
+    if (inline_mutable_cell_loads_) {
+      os << GetVarID(cell);
+      return;
+    }
+    std::string value = name_supply_->FreshName("cell_value");
+    PrintIndent();
+    PrintSSAAssign(value, GetVarID(cell), op->ty);
+    os << value;
+    return;
+  }
+  TVM_FFI_CHECK(!op->op.same_as(tirx::mutable_cell_alloc_op()) &&
+                    !op->op.same_as(tirx::mutable_cell_store_op()),
+                ValueError)
+      << "Mutable cell allocation requires Bind and store requires Evaluate";
   TVM_FFI_ICHECK(!op->op.same_as(tirx::masked_load_op()))
       << "Predicated buffer load is not supported.";
   TVM_FFI_ICHECK(!op->op.same_as(tirx::masked_store_op()))
@@ -961,14 +983,14 @@ void CodeGenC::DispatchDeclTensor(const BindNode* op, const CallNode* buffer_cal
   }
 
   alloc_storage_scope_[buffer.get()] = scope;
+  std::string value =
+      PrintExpr(Call(PointerType(PrimType(dtype), scope), tirx::reinterpret_op(), {data}));
   this->PrintIndent();
   if (IsScopePartOfType()) {
     PrintStorageScope(scope, stream);
   }
   PrintType(PointerType(PrimType(dtype), scope), stream);
-  stream << ' ' << AllocVarID(buffer.get()) << " = ";
-  PrintExpr(Call(PointerType(PrimType(dtype), scope), tirx::reinterpret_op(), {data}), stream);
-  stream << ";\n";
+  stream << ' ' << AllocVarID(buffer.get()) << " = " << value << ";\n";
   RegisterHandleType(buffer.get(), PrimType(dtype));
 }
 
@@ -1240,6 +1262,14 @@ void CodeGenC::Dispatch_(const prim::SelectNode* op, std::ostream& os) {  // NOL
 }
 
 void CodeGenC::Dispatch_(const BindNode* op) {
+  if (const auto* cell_type = op->var->ty.as<tirx::MutableCellTypeNode>()) {
+    const auto* call = op->value.as_or_throw<Call>().get();
+    std::string initial_value = PrintExpr(call->args[0]);
+    PrintIndent();
+    PrintType(cell_type->element_type, stream);
+    stream << ' ' << AllocVarID(op->var.get()) << " = " << initial_value << ";\n";
+    return;
+  }
   if (const auto* call = op->value.as<CallNode>(); call) {
     if (call->op.same_as(tirx::alloc_tensor_op())) return DispatchAllocTensor(op, call);
     if (call->op.same_as(tirx::decl_tensor_op())) return DispatchDeclTensor(op, call);
@@ -1434,10 +1464,9 @@ void CodeGenC::Dispatch_(const WhileNode* op) {
 }
 
 void CodeGenC::Dispatch_(const ReturnNode* op) {
+  std::string value = PrintExpr(op->value);
   PrintIndent();
-  stream << "return ";
-  PrintExpr(op->value, stream);
-  stream << ";\n";
+  stream << "return " << value << ";\n";
 }
 
 void CodeGenC::Dispatch_(const BreakNode* op) {
@@ -1483,6 +1512,12 @@ void CodeGenC::Dispatch_(const EvaluateNode* op) {
   if (auto value = op->value.as<PrimExpr>(); value && IsConstInt(value.value())) return;
   const CallNode* call = op->value.as<CallNode>();
   if (call) {
+    if (call->op.same_as(tirx::mutable_cell_store_op())) {
+      std::string value = PrintExpr(call->args[1]);
+      PrintIndent();
+      stream << GetVarID(call->args[0].as_or_throw<Var>().get()) << " = " << value << ";\n";
+      return;
+    }
     if (call->op.same_as(tirx::assume_aligned_op())) {
       // Alignment facts do not require a runtime statement on C-family targets.
       return;
