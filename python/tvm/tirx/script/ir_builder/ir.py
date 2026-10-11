@@ -1404,7 +1404,8 @@ def Ptr(element_type, storage_scope="global", *, loc: _LocationEntry | Location 
     """Construct a pointer type from an element type or its annotation constructor.
 
     For example, ``Ptr(int32)`` and ``Ptr(TensorMap)`` construct pointers
-    in global scope; ``Ptr(int32, "shared")`` selects shared scope. Use ``I.Var(name, ty)`` to construct a variable of this type.
+    in global scope; ``Ptr(int32, "shared")`` selects shared scope. Use ``I.Var(name, ty)``
+    to construct a variable of this type.
     String element dtypes remain accepted, as in ``Ptr("float32", "shared")``.
     """
     if callable(element_type) and not isinstance(element_type, Type):
