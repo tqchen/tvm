@@ -1327,5 +1327,32 @@ def test_vm_build_uses_target_backend_config(monkeypatch, build):
     assert configs[0]["cuda"]["nvrtc"] == []
 
 
+@pytest.mark.parametrize("build", [tvm.compile, tvm.relax.build])
+@pytest.mark.parametrize(
+    "backend_config", [None, {"cuda": {"nvrtc": []}}, {"cuda": {"arch": "sm_100a"}}]
+)
+def test_vm_build_scoped_target_preserves_external_kernel_pipeline(build, backend_config):
+    @I.ir_module
+    class Module:
+        @Ts.function
+        def external(A: T.Tensor((32,), "float32"), B: T.Tensor((32,), "float32")):
+            with Ts.sblock("root"):
+                Ts.reads(A[0:32])
+                Ts.writes(B[0:32])
+                T.call_packed("external_kernel", A.data, B.data)
+
+        @R.function
+        def main(A: R.Tensor((32,), "float32")):
+            B = R.call_tir(Module.external, (A,), ty_args=(R.Tensor((32,), "float32"),))
+            return B
+
+    attrs = {"kind": "cuda", "arch": "sm_100a"}
+    if backend_config is not None:
+        attrs["backend_config"] = backend_config
+    with tvm.target.Target(attrs):
+        built = build(Module)
+    assert isinstance(built, tvm.runtime.Executable)
+
+
 if __name__ == "__main__":
     tvm.testing.main()

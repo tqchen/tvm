@@ -63,6 +63,7 @@ def prepare_target(target, mod=None):
     from tvm.target import Target
 
     active = Target.current() if target is None else target
+    arch_updated = False
     # Inspect explicit CUDA settings before constructing a generic Target, which
     # may otherwise query a device for its architecture.
     if active == "cuda":
@@ -76,6 +77,7 @@ def prepare_target(target, mod=None):
         if cuda and active.get("kind") != "cuda":
             raise ValueError("CUDA backend_config requires a CUDA target")
         if "arch" in cuda:
+            arch_updated = active.get("arch") != cuda["arch"]
             active["arch"] = cuda["arch"]
 
     generic_cuda = active is None or (active.get("kind") == "cuda" and "arch" not in active)
@@ -88,6 +90,10 @@ def prepare_target(target, mod=None):
                 entries.append(parse_backend_config(node.attrs.get("backend_config", "")))
 
         tvm_ffi.structural_walk(mod, visit)
+    # Keep an implicit Target scope implicit unless preparation changes it.
+    # Relax distinguishes an omitted target when selecting its default pipeline.
+    if target is None and not arch_updated and not any(entries):
+        return None
     if any(entries):
         active = active if active is not None else {"kind": "cuda"}
         if all(c.get("cuda", {}).get("arch") for c in entries):
