@@ -611,7 +611,8 @@ class StoragePlanRewriter : public StmtExprMutator {
     if (op->op.same_as(tirx::alloc_tensor_op()) || op->op.same_as(tirx::decl_tensor_op())) {
       // Call attrs are opaque to the generic mutator, but retained storage metadata
       // can refer to earlier bindings that this pass has remapped.
-      auto attrs = Mutate(op->attrs, InplaceMode::kDisallow).as_or_throw<UnchangedOr<Attrs>>();
+      auto attrs = Mutate(op->attrs, InplaceMode::kDisallow)
+                       .as_or_throw<UnchangedOr<ffi::Optional<Attrs>>>();
       auto call = StmtExprMutator::Mutate_(op, inplace_mode)
                       .ValueOrUnchanged(ffi::GetRef<Expr>(op))
                       .as_or_throw<Call>();
@@ -744,7 +745,7 @@ class StoragePlanRewriter : public StmtExprMutator {
     if (it != alloc_map_.end()) {
       TensorVar buffer = RemapBuffer(op->var.as_or_throw<TensorVar>(), it->second->alloc_var);
       auto attrs = Mutate(buffer_call->attrs, InplaceMode::kDisallow)
-                       .as_or_throw<UnchangedOr<Attrs>>()
+                       .as_or_throw<UnchangedOr<ffi::Optional<Attrs>>>()
                        .ValueOrUnchanged(buffer_call->attrs);
       return Bind(
           buffer,
@@ -2019,7 +2020,7 @@ class VectorTypeRewriter : public StmtExprMutator {
       args.Set(3, Mutate(args[3], inplace_mode).ValueOrUnchanged(args[3]));
     }
     auto attrs = Mutate(buffer_call->attrs, InplaceMode::kDisallow)
-                     .as_or_throw<UnchangedOr<Attrs>>()
+                     .as_or_throw<UnchangedOr<ffi::Optional<Attrs>>>()
                      .ValueOrUnchanged(buffer_call->attrs);
     if (new_buf.same_as(op->var.as_or_throw<TensorVar>()) && args.same_as(buffer_call->args) &&
         attrs.same_as(buffer_call->attrs)) {
@@ -2039,7 +2040,7 @@ class VectorTypeRewriter : public StmtExprMutator {
     Expr data = Mutate(buffer_call->args[0], inplace_mode).ValueOrUnchanged(buffer_call->args[0]);
     TensorVar buffer = RemapBuffer(op->var.as_or_throw<TensorVar>());
     auto attrs = Mutate(buffer_call->attrs, InplaceMode::kDisallow)
-                     .as_or_throw<UnchangedOr<Attrs>>()
+                     .as_or_throw<UnchangedOr<ffi::Optional<Attrs>>>()
                      .ValueOrUnchanged(buffer_call->attrs);
     if (buffer.same_as(op->var.as_or_throw<TensorVar>()) && data.same_as(buffer_call->args[0]) &&
         attrs.same_as(buffer_call->attrs))
