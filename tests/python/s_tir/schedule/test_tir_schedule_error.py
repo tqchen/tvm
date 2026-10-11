@@ -52,13 +52,13 @@ def two_kernels(
     with Ts.sblock("exclusive_scan"):
         Ts.reads()
         Ts.writes()
-        s8: T.int32 = seq_len * 8
+        s8: T.let = seq_len * 8
         if s8 == 0:
             blockIdx_x = T.launch_thread("blockIdx.x", 1)
         else:
             with T.launch_thread("threadIdx.x", 1024) as threadIdx_x:
                 blockIdx_x = T.launch_thread("blockIdx.x", T.ceildiv(s8, 1024))
-                i: T.int32 = blockIdx_x * 1024 + threadIdx_x
+                i: T.let = blockIdx_x * 1024 + threadIdx_x
                 if i < s8:
                     B[i // s8, i % s8] = A[i // s8, i % s8]
 
