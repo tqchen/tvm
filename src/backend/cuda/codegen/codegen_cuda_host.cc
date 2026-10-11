@@ -270,7 +270,7 @@ class CodeGenCUDAHost : public CodeGenCHost {
       PrintIndent();
       Type type = op->args[i]->ty;
       if (i < launch_begin) {
-        if (auto* ptr = type.as<PointerTypeNode>()) {
+        if (auto* ptr = type.as<PtrTypeNode>()) {
           if (ptr->element_type.as<tirx::TensorMapTypeNode>()) type = ptr->element_type;
         }
       }
