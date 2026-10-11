@@ -115,7 +115,7 @@ inline Expr pack_buffer(TensorVar buf) {
                              IntImm::Int32(static_cast<int64_t>(buf->shape.size())),
                              MakeConst(PrimType(buf->dtype), 0),
                              buf->elem_offset};
-  return Call(PtrType::VoidPointerTy(), tvm::tirx::stack_make_dltensor_op(), pack_args);
+  return Call(PtrType::VoidPtrType(), tvm::tirx::stack_make_dltensor_op(), pack_args);
 }
 
 /*!

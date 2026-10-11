@@ -605,7 +605,7 @@ void CodeGenCPU::CreateComputeScope(const RegionStmtNode* op) {
   ffi::Array<Type> debug_param_types = vargs.Map([](const Var& var) -> Type {
     if (const auto* buffer_type = var->ty.as<TensorTypeNode>()) {
       // Compute-scope captures use their physical LLVM pointer values.
-      return buffer_type->DataPointerType();
+      return buffer_type->DataPtrType();
     }
     return var->ty;
   });

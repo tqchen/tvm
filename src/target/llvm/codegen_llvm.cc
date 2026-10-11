@@ -2458,7 +2458,7 @@ void CodeGenLLVM::AddDebugInformation(llvm::Value* llvm_value, const Var& tir_va
   if (const auto* buffer_type = debug_type.as<TensorTypeNode>()) {
     // A TensorVar is a compiler-side identity.  Its LLVM value is the physical
     // data pointer installed by AllocTensor or DeclTensor.
-    debug_type = buffer_type->DataPointerType();
+    debug_type = buffer_type->DataPtrType();
   }
   auto dbg_dtype = GetDebugType(debug_type);
   // no invalid dtypes

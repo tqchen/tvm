@@ -61,7 +61,7 @@ class VtcmAllocator : public StmtExprMutator {
       TensorVar buffer = op->var.as_or_throw<TensorVar>();
       return Bind(buffer,
                   Call(buffer.type(), tirx::decl_tensor_op(),
-                       {Call(buffer.type()->DataPointerType(),
+                       {Call(buffer.type()->DataPtrType(),
                              tvm::backend::opencl::nd_mem_alloc_with_scope_op(), args),
                         tvm::Tuple(buffer->shape), DataTypeImm(buffer->dtype->dtype),
                         StringImm(buffer.scope())},

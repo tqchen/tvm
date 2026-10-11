@@ -505,10 +505,10 @@ Expr TVMFFIABIBuilder::DecodeParamOpaqueHandle(int param_index, const PrimExpr& 
   // ── Load value and apply tensor offset ─────────────────────
   const int64_t object_cell_offset = sizeof(TVMFFIObject);
   static_assert(sizeof(TVMFFIObject) == 24);
-  Expr arg_value = LoadTVMFFIAnyUnionValue(v_packed_args_, param_index, PtrType::VoidPointerTy());
-  Expr handle_from_tensor = Call(PtrType::VoidPointerTy(), tirx::handle_add_byte_offset_op(),
+  Expr arg_value = LoadTVMFFIAnyUnionValue(v_packed_args_, param_index, PtrType::VoidPtrType());
+  Expr handle_from_tensor = Call(PtrType::VoidPtrType(), tirx::handle_add_byte_offset_op(),
                                  {arg_value, IntImm::Int32(object_cell_offset)});
-  return Call(PtrType::VoidPointerTy(), prim::if_then_else_op(),
+  return Call(PtrType::VoidPtrType(), prim::if_then_else_op(),
               {type_index == ffi::TypeIndex::kTVMFFITensor, handle_from_tensor, arg_value});
 }
 
@@ -564,7 +564,7 @@ void TVMFFIABIBuilder::DecodeParam(int param_index) {
       ffi::reflection::AccessPath::Root()->Extend(AccessStep::ArrayItem(param_index));
 
   if (param->ty.as<TensorTypeNode>()) {
-    Var handle(param->name + ".handle", PtrType::VoidPointerTy());
+    Var handle(param->name + ".handle", PtrType::VoidPtrType());
     Expr handle_value = DecodeParamOpaqueHandle(param_index, type_index.as_or_throw<PrimExpr>());
     BindPointer(handle, handle_value, param_path, true);
     buffer_handles_.emplace(param.get(), handle);
@@ -833,8 +833,8 @@ Expr TVMFFIABIBuilder::DecodeParamDLTensor(const TensorVar& buffer, const PrimEx
   // ── Section: data pointer ────────────────────────────────────
   {
     ffi::reflection::AccessPath data_path = param_path->Attr(ffi::String("data"));
-    Expr raw_data = TVMStructGet(PtrType::VoidPointerTy(), handle, 0, tirx::kDLTensorData);
-    Expr typed_data = Call(buffer.type()->DataPointerType(), tirx::reinterpret_op(), {raw_data});
+    Expr raw_data = TVMStructGet(PtrType::VoidPtrType(), handle, 0, tirx::kDLTensorData);
+    Expr typed_data = Call(buffer.type()->DataPtrType(), tirx::reinterpret_op(), {raw_data});
     {
       Expr vptr = typed_data;
 
@@ -861,7 +861,7 @@ Expr TVMFFIABIBuilder::DecodeParamDLTensor(const TensorVar& buffer, const PrimEx
         // Check data pointer alignment
         if (buffer->data_alignment > 1) {
           Expr handle =
-              Call(PtrType::VoidPointerTy(), tirx::reinterpret_op(), ffi::Array<Expr>{vptr});
+              Call(PtrType::VoidPtrType(), tirx::reinterpret_op(), ffi::Array<Expr>{vptr});
           PrimExpr ptr_as_int =
               Call(PrimType::UInt(64), tirx::reinterpret_op(), ffi::Array<Expr>{handle})
                   .as_or_throw<PrimExpr>();

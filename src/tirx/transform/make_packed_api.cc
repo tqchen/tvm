@@ -235,10 +235,10 @@ Function MakePackedAPI(Function func) {
   auto* func_ptr = func.CopyOnWrite();
 
   // Data field definitions
-  Var v_self_handle("self_handle", PtrType::VoidPointerTy());
-  Var v_packed_args("args", PtrType::VoidPointerTy());
+  Var v_self_handle("self_handle", PtrType::VoidPtrType());
+  Var v_packed_args("args", PtrType::VoidPtrType());
   Var v_num_packed_args("num_args", PrimType::Int(32));
-  Var v_result("result", PtrType::VoidPointerTy());
+  Var v_result("result", PtrType::VoidPtrType());
 
   // The device context
   PrimVar device_id("dev_id");

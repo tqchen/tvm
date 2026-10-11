@@ -1670,7 +1670,7 @@ def test_void_ptr_vs_handle():
     def void_ptr(out_ret_value: T.handle("void")):
         T.evaluate(out_ret_value)
 
-    # Generates PtrType::VoidPointerTy()
+    # Generates PtrType::VoidPtrType()
     @Ts.function
     def handle(out_ret_value: T.handle):
         T.evaluate(out_ret_value)

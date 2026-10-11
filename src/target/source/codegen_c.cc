@@ -435,7 +435,7 @@ void CodeGenC::RegisterHandleType(const VarNode* buf_var, const PrimType& t) {
 
 void CodeGenC::RegisterHandleTypeFromPointer(const tvm::Var& var, const Expr* value) {
   if (value == nullptr) return;
-  std::optional<PrimType> value_dtype = tirx::GetPointerType((*value)->ty);
+  std::optional<PrimType> value_dtype = tirx::GetPtrElementType((*value)->ty);
   if (!value_dtype.has_value()) return;
   auto* call = value->as<CallNode>();
   if (call != nullptr && call->op.same_as(tirx::ptr_byte_offset_op())) {

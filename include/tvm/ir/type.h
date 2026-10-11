@@ -134,7 +134,7 @@ class PtrType : public Type {
   TVM_DLL explicit PtrType(Type element_type, ffi::String storage_scope = "");
 
   /*! \brief Construct an opaque pointer with void element type. */
-  TVM_DLL static PtrType VoidPointerTy(ffi::String storage_scope = "");
+  TVM_DLL static PtrType VoidPtrType(ffi::String storage_scope = "");
 
   TVM_FFI_DEFINE_OBJECT_REF_METHODS_NOTNULLABLE(PtrType, Type, PtrTypeNode);
 };

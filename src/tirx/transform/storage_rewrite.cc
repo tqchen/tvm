@@ -1464,7 +1464,7 @@ class VectorTypeAccessChecker : public StmtExprVisitor {
                            BufferVarInfo::kFunctionBufferParam);
         continue;
       }
-      auto pointer_type = GetPointerType(buffer_var->ty);
+      auto pointer_type = GetPtrElementType(buffer_var->ty);
       if (pointer_type.has_value() && !pointer_type.value().IsVoid()) {
         PrimType dtype = pointer_type.value();
         PrimExpr extent = 0;
@@ -1550,7 +1550,7 @@ class VectorTypeAccessChecker : public StmtExprVisitor {
   }
 
   void HandleLetNode(Var let_var) {
-    auto pointer_type = GetPointerType(let_var->ty);
+    auto pointer_type = GetPtrElementType(let_var->ty);
     if (pointer_type.has_value()) {
       if (!pointer_type.value().IsVoid()) {
         OnArrayDeclaration(let_var, pointer_type.value(), 0, BufferVarInfo::kLetNode);
@@ -2117,7 +2117,7 @@ class VectorTypeRewriter : public StmtExprMutator {
           if (!op->unique()) inplace_mode = InplaceMode::kDisallow;
         }
         if (!op->op.same_as(tirx::tensor_data_ptr_op()) || op->args.size() != 1) return result;
-        PtrType type = op->args[0].as_or_throw<TensorVar>().type()->DataPointerType();
+        PtrType type = op->args[0].as_or_throw<TensorVar>().type()->DataPtrType();
         if (ffi::StructuralEqual()(op->ty, type)) return result;
         if (inplace_mode == InplaceMode::kAllow) {
           const_cast<CallNode*>(op)->ty = std::move(type);
