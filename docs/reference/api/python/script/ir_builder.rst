@@ -18,6 +18,33 @@
 tvm.script.ir_builder
 ---------------------
 
+Imperative source locations
+***************************
+
+Use :func:`tvm.script.ir_builder.line_trace` inside an active builder to attach
+executed Python source lines to imperative construction. Both statements in the
+with-body and user helpers participate; helper returns restore the caller line.
+Native emission and deferred construction frames consume the same location
+context as explicit ``at_`` annotations and ``with_loc`` scopes.
+
+.. code-block:: python
+
+    from tvm.script import ir_builder
+    from tvm.tirx.script import ir_builder as T
+
+    with ir_builder.IRBuilder() as builder:
+        with ir_builder.line_trace():
+            T.evaluate(1)
+    statement = builder.get()
+
+Locations cover executed lines, without operand or expression column precision.
+Tracing skips synthetic filenames, TVM/tvm-ffi implementation files, and the
+Python standard library. Other packages are considered user helpers. The context
+is synchronous and thread-local: do not yield or await across it. Existing trace
+hooks are suspended during construction and restored on exit, so debugger and
+coverage interoperability is not provided. See ``line_trace`` below for the
+complete filtering and nesting contract.
+
 tvm.script.ir_builder
 *********************
 .. automodule:: tvm.script.ir_builder
